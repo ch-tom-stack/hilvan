@@ -36,6 +36,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
 
   async function handleRespuesta(respuesta: 'aprobada' | 'rechazada') {
     startTransition(async () => {
+      if (!token) return
       await responderCotizacion(token, respuesta, comentario || undefined)
       setEstadoLocal(respuesta)
       setRespondido(true)
