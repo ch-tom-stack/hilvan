@@ -7,7 +7,7 @@ import type { Rol } from '@/types'
 
 const navItems = [
   { label: 'Dashboard',    href: '/dashboard',   disponible: true  },
-  { label: 'Equipos',      href: '/equipos',      disponible: false },
+  { label: 'Equipos',      href: '/equipos',      disponible: true  },
   { label: 'Cotizaciones', href: '/cotizaciones', disponible: false },
   { label: 'Rodaje',       href: '/rodaje',       disponible: false },
   { label: 'Rendiciones',  href: '/rendiciones',  disponible: false },
