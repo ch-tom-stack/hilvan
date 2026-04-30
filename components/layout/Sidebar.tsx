@@ -9,7 +9,7 @@ import type { Rol } from '@/types'
 const navItems = [
   { label: 'Dashboard',    href: '/dashboard',   disponible: true  },
   { label: 'Equipos',      href: '/equipos',      disponible: true  },
-  { label: 'Cotizaciones', href: '/cotizaciones', disponible: false },
+  { label: 'Cotizaciones', href: '/cotizaciones', disponible: true  },
   { label: 'Rodaje',       href: '/rodaje',       disponible: false },
   { label: 'Rendiciones',  href: '/rendiciones',  disponible: false },
   { label: 'Financiero',   href: '/financiero',   disponible: false },
@@ -84,7 +84,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
       {/* ── Desktop sidebar ── */}
       <aside className="hidden lg:flex w-60 min-h-screen bg-ch-black border-r border-ch-border flex-col flex-shrink-0">
         <div className="px-7 py-7 border-b border-ch-border">
-          <p className="text-ch-muted text-[9px] font-body tracking-[0.45em] uppercase mb-1">Casa Hiedra</p>
+          <img src="/logos/logo-horizontal-negro.png" alt="Casa Hiedra" className="h-5 w-auto mb-2 opacity-80" />
           <h1 className="font-display italic text-[2rem] leading-none text-ch-cream tracking-tight">Hilván</h1>
         </div>
         <NavContent />
@@ -93,7 +93,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
       {/* ── Mobile header ── */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-ch-black border-b border-ch-border flex items-center justify-between px-5 py-4">
         <div>
-          <p className="text-ch-muted text-[8px] font-body tracking-[0.45em] uppercase leading-none">Casa Hiedra</p>
+          <img src="/logos/logo-horizontal-negro.png" alt="Casa Hiedra" className="h-4 w-auto mb-1 opacity-80" />
           <h1 className="font-display italic text-xl leading-none text-ch-cream">Hilván</h1>
         </div>
         <button
@@ -126,7 +126,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
       >
         <div className="px-7 py-7 border-b border-ch-border flex items-center justify-between">
           <div>
-            <p className="text-ch-muted text-[9px] font-body tracking-[0.45em] uppercase mb-1">Casa Hiedra</p>
+            <img src="/logos/logo-horizontal-negro.png" alt="Casa Hiedra" className="h-5 w-auto mb-2 opacity-80" />
             <h1 className="font-display italic text-[2rem] leading-none text-ch-cream tracking-tight">Hilván</h1>
           </div>
           <button
