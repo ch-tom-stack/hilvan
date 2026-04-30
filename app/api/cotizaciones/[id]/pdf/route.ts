@@ -23,7 +23,7 @@ export async function GET(
     const logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`
 
     const buffer = await renderToBuffer(
-      createElement(CotizacionPDF, { cotizacion, logoSrc: logoBase64 })
+      createElement(CotizacionPDF, { cotizacion, logoSrc: logoBase64 }) as any
     )
 
     const numVisible = cotizacion.grupo?.numero_base ?? "cotizacion"
