@@ -28,7 +28,7 @@ export default async function EquiposPage({
   const { data: equipos } = await query
 
   return (
-    <div className="p-10">
+    <div className="p-6 lg:p-10">
 
       {/* Header */}
       <div className="flex items-end justify-between mb-10">
@@ -36,18 +36,28 @@ export default async function EquiposPage({
           <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-2">
             Módulo CH-1
           </p>
-          <h1 className="font-display italic text-5xl text-ch-cream leading-none">
+          <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">
             Equipos
           </h1>
         </div>
-        <Link
-          href="/equipos/nuevo"
-          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body
-                     font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3
-                     transition-colors duration-200"
-        >
-          + Agregar equipo
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/equipos/maletas"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body
+                       text-[10px] tracking-[0.35em] uppercase px-5 py-3
+                       transition-colors duration-200"
+          >
+            Maletas
+          </Link>
+          <Link
+            href="/equipos/nuevo"
+            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body
+                       font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3
+                       transition-colors duration-200"
+          >
+            + Agregar equipo
+          </Link>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -86,16 +96,16 @@ export default async function EquiposPage({
           </Link>
         </div>
       ) : (
-        <div className="border border-ch-border overflow-hidden">
+        <div className="border border-ch-border overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-ch-border bg-ch-surface/50">
                 <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Código</th>
                 <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Nombre</th>
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Categoría</th>
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Cant.</th>
+                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase hidden md:table-cell">Categoría</th>
+                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase hidden sm:table-cell">Cant.</th>
                 <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Estado</th>
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Rental</th>
+                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase hidden sm:table-cell">Rental</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
@@ -113,21 +123,21 @@ export default async function EquiposPage({
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       {eq.fotos?.[0] && (
-                        <img src={eq.fotos[0]} alt="" className="w-8 h-8 object-cover flex-shrink-0" />
+                        <img src={eq.fotos[0]} alt="" className="w-8 h-8 object-cover flex-shrink-0 hidden sm:block" />
                       )}
                       <span className="font-body text-sm text-ch-cream">{eq.nombre}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 hidden md:table-cell">
                     <span className="font-body text-xs text-ch-muted">{eq.categoria?.nombre}</span>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 hidden sm:table-cell">
                     <span className="font-body text-xs text-ch-cream">{eq.cantidad}</span>
                   </td>
                   <td className="px-5 py-4">
                     <TagEstado estado={eq.estado} />
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 hidden sm:table-cell">
                     <span className={`font-body text-[10px] tracking-wider ${eq.rentable ? 'text-ch-green' : 'text-ch-muted'}`}>
                       {eq.rentable ? 'Sí' : 'No'}
                     </span>

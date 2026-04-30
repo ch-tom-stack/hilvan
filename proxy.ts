@@ -28,11 +28,15 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith('/login')) {
-    if (user) return NextResponse.redirect(new URL('/dashboard', request.url))
+  // Rutas públicas — no requieren autenticación
+  if (pathname.startsWith('/login') || pathname.startsWith('/m/')) {
+    if (user && pathname.startsWith('/login')) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
     return supabaseResponse
   }
 
+  // Rutas protegidas
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }

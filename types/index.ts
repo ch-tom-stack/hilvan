@@ -38,3 +38,34 @@ export interface Equipo {
   updated_at: string
   categoria?: CategoriaEquipo
 }
+
+export interface MaletaItem {
+  id: string
+  maleta_id: string
+  equipo_id: string
+  cantidad: number
+  notas: string | null
+  equipo?: Equipo
+}
+
+export interface MaletaNota {
+  id: string
+  maleta_id: string
+  autor_id: string | null
+  autor_nombre: string | null
+  contenido: string
+  created_at: string
+}
+
+export interface Maleta {
+  id: string
+  codigo: string
+  nombre: string
+  descripcion: string | null
+  foto_empaque: string | null
+  activa: boolean
+  created_at: string
+  updated_at: string
+  items?: MaletaItem[]
+  notas?: MaletaNota[]
+}
