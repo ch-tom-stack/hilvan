@@ -29,7 +29,7 @@ export async function GET(
     const numVisible = cotizacion.grupo?.numero_base ?? "cotizacion"
     const filename = `${numVisible.replace(/\s/g, "-")}.pdf`
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
