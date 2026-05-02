@@ -18,6 +18,9 @@ export default async function AdminRendicionesPage() {
   }
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase.from('profiles').select('rol').eq('id', user!.id).single()
+  const esAdmin = profile?.rol === 'admin'
 
   // IDs únicos de cotizaciones con rendiciones
   const cotizacionIds = [...new Set(rendiciones.map(r => r.cotizacion_id).filter(Boolean))]
@@ -53,10 +56,12 @@ export default async function AdminRendicionesPage() {
           <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Revisión</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/rendiciones/admin/export"
-            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
-            Exportar →
-          </Link>
+          {esAdmin && (
+            <Link href="/rendiciones/admin/export"
+              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
+              Exportar →
+            </Link>
+          )}
           <Link href="/rendiciones"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
             ← Volver
@@ -92,6 +97,7 @@ export default async function AdminRendicionesPage() {
         cotizacionesForm={cotizacionesForm}
         rendicionesPorItemSumas={rendicionesPorItemSumas}
         colaboradores={colaboradores ?? []}
+        puedeAprobarPago={esAdmin}
       />
     </div>
   )

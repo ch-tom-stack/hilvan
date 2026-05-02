@@ -37,6 +37,7 @@ interface Props {
   cotizacionesForm: any[]
   rendicionesPorItemSumas: Record<string, number>
   colaboradores: { id: string; nombre: string }[]
+  puedeAprobarPago?: boolean
 }
 
 export default function AdminRendiciones({
@@ -46,6 +47,7 @@ export default function AdminRendiciones({
   cotizacionesForm,
   rendicionesPorItemSumas,
   colaboradores,
+  puedeAprobarPago = false,
 }: Props) {
   const [porItem, setPorItem] = useState(initialPorItem)
   const [sinItem, setSinItem] = useState(initialSinItem)
@@ -247,6 +249,7 @@ export default function AdminRendiciones({
                                     onAprobarPago={(r, comp) => aprobarPagoRendicion(r, 'item', item.id, comp)}
                                     onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
                                     onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
+                                    puedeAprobarPago={puedeAprobarPago}
                                     isPending={isPending}
                                   />
                                 ))}
@@ -268,6 +271,7 @@ export default function AdminRendiciones({
                             onAprobarPago={r => aprobarPagoRendicion(r, 'item', item.id)}
                             onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
                             onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
+                            puedeAprobarPago={puedeAprobarPago}
                             isPending={isPending}
                           />
                         ))}
@@ -286,6 +290,7 @@ export default function AdminRendiciones({
                       onAprobarContenido={() => aprobarContenido(r, 'libre', cot.id)}
                       onAprobarPago={comp => aprobarPagoRendicion(r, 'libre', cot.id, comp)}
                       onRechazar={() => { setModalRechazo({ id: r.id, tipo: 'libre', key: cot.id }); setMotivo('') }}
+                      puedeAprobarPago={puedeAprobarPago}
                       isPending={isPending}
                     />
                   ))}
@@ -401,7 +406,7 @@ export default function AdminRendiciones({
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
-function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onToggle, onToggleNotas, onToggleCompletado, onAprobarContenido, onAprobarPago, onRechazar, onGenerarLink, isPending }: {
+function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onToggle, onToggleNotas, onToggleCompletado, onAprobarContenido, onAprobarPago, onRechazar, onGenerarLink, puedeAprobarPago, isPending }: {
   item: Item & { rendicion_completada?: boolean }
   rendiciones: Rendicion[]
   expandido: boolean
@@ -414,6 +419,7 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onTo
   onAprobarPago: (r: Rendicion, comp?: string) => void
   onRechazar: (r: Rendicion) => void
   onGenerarLink: () => void
+  puedeAprobarPago: boolean
   isPending: boolean
 }) {
   const presupuesto = item.precio_neto_proveedor * item.cantidad
@@ -460,6 +466,7 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onTo
               onAprobarContenido={() => onAprobarContenido(r)}
               onAprobarPago={comp => onAprobarPago(r, comp)}
               onRechazar={() => onRechazar(r)}
+              puedeAprobarPago={puedeAprobarPago}
               isPending={isPending}
             />
           ))}
@@ -469,11 +476,12 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onTo
   )
 }
 
-function RendicionRow({ rendicion: r, onAprobarContenido, onAprobarPago, onRechazar, isPending }: {
+function RendicionRow({ rendicion: r, onAprobarContenido, onAprobarPago, onRechazar, puedeAprobarPago: puedeAprobarPagoProp, isPending }: {
   rendicion: Rendicion
   onAprobarContenido: () => void
   onAprobarPago: (comprobante?: string) => void
   onRechazar: () => void
+  puedeAprobarPago: boolean
   isPending: boolean
 }) {
   const [mostrarFormPago, setMostrarFormPago] = useState(false)
@@ -484,7 +492,7 @@ function RendicionRow({ rendicion: r, onAprobarContenido, onAprobarPago, onRecha
   const retencion = r.tipo_documento ? calcularRetencion(r) : null
   const colNombre = (r.colaborador as any)?.nombre || r.nombre_libre || '—'
   const esExterno = r.origen === 'externo'
-  const puedeAprobarPago = (r.estado === 'enviada' && !esExterno) || r.estado === 'aprobada'
+  const puedeAprobarPago = puedeAprobarPagoProp && ((r.estado === 'enviada' && !esExterno) || r.estado === 'aprobada')
 
   const subirComprobantePago = async (file: File) => {
     setSubiendoPago(true)
