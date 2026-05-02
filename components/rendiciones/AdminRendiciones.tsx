@@ -37,7 +37,9 @@ interface Props {
   cotizacionesForm: any[]
   rendicionesPorItemSumas: Record<string, number>
   colaboradores: { id: string; nombre: string }[]
+  colaboradorId?: string
   puedeAprobarPago?: boolean
+  puedeGenerarLink?: boolean
 }
 
 export default function AdminRendiciones({
@@ -47,7 +49,9 @@ export default function AdminRendiciones({
   cotizacionesForm,
   rendicionesPorItemSumas,
   colaboradores,
+  colaboradorId,
   puedeAprobarPago = false,
+  puedeGenerarLink = true,
 }: Props) {
   const [porItem, setPorItem] = useState(initialPorItem)
   const [sinItem, setSinItem] = useState(initialSinItem)
@@ -180,6 +184,7 @@ export default function AdminRendiciones({
           <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-4">Nueva rendición</p>
           <FormularioRendicion
             cotizaciones={cotizacionesForm}
+            colaboradorId={colaboradorId}
             rendicionesPorItem={rendicionesPorItemSumas}
             onSuccess={handleNuevaRendicion}
             onCancel={() => setMostrarForm(false)}
@@ -250,6 +255,7 @@ export default function AdminRendiciones({
                                     onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
                                     onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
                                     puedeAprobarPago={puedeAprobarPago}
+                                    puedeGenerarLink={puedeGenerarLink}
                                     isPending={isPending}
                                   />
                                 ))}
@@ -272,6 +278,7 @@ export default function AdminRendiciones({
                             onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
                             onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
                             puedeAprobarPago={puedeAprobarPago}
+                            puedeGenerarLink={puedeGenerarLink}
                             isPending={isPending}
                           />
                         ))}
@@ -406,7 +413,7 @@ export default function AdminRendiciones({
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
-function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onToggle, onToggleNotas, onToggleCompletado, onAprobarContenido, onAprobarPago, onRechazar, onGenerarLink, puedeAprobarPago, isPending }: {
+function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onToggle, onToggleNotas, onToggleCompletado, onAprobarContenido, onAprobarPago, onRechazar, onGenerarLink, puedeAprobarPago, puedeGenerarLink, isPending }: {
   item: Item & { rendicion_completada?: boolean }
   rendiciones: Rendicion[]
   expandido: boolean
@@ -420,6 +427,7 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onTo
   onRechazar: (r: Rendicion) => void
   onGenerarLink: () => void
   puedeAprobarPago: boolean
+  puedeGenerarLink: boolean
   isPending: boolean
 }) {
   const presupuesto = item.precio_neto_proveedor * item.cantidad
@@ -444,11 +452,13 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onTo
           title="Notas de glosa">
           📝
         </button>
-        <button onClick={e => { e.stopPropagation(); onGenerarLink() }}
-          className="font-body text-[9px] text-ch-muted hover:text-blue-400 transition-colors px-1 border border-ch-border/50 py-0.5 hidden group-hover:inline"
-          title="Generar link para externo">
-          🔗
-        </button>
+        {puedeGenerarLink && (
+          <button onClick={e => { e.stopPropagation(); onGenerarLink() }}
+            className="font-body text-[9px] text-ch-muted hover:text-blue-300 transition-colors px-2 py-0.5 border border-ch-border/40 hover:border-blue-500/40 whitespace-nowrap"
+            title="Generar link para externo">
+            Link externo
+          </button>
+        )}
         <label className="flex items-center gap-1 cursor-pointer" title="Marcar como rendido">
           <input type="checkbox" checked={completado} disabled={isPending}
             onChange={e => onToggleCompletado(e.target.checked)}
