@@ -1,3 +1,4 @@
+import React from 'react'
 import {
   Document, Page, Text, View, StyleSheet, Image, Svg, Circle, Path, Rect,
 } from '@react-pdf/renderer'
@@ -228,7 +229,7 @@ function ClimaIcono({ codigo }: { codigo: number }) {
   )
 }
 
-export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64 }: Props) {
+export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64 }: Props): React.ReactElement {
   const fecha = rodaje.fecha
     ? new Date(rodaje.fecha + 'T12:00:00').toLocaleDateString('es-CL', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
