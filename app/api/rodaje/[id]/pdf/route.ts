@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { renderToBuffer } from '@react-pdf/renderer'
-import { createElement } from 'react'
+import { renderToBuffer, DocumentProps } from '@react-pdf/renderer'
+import { createElement, type ReactElement } from 'react'
 import { HojaLlamadosPDF } from '@/components/rodaje/HojaLlamadosPDF'
 import SunCalc from 'suncalc'
 import { readFileSync } from 'fs'
@@ -103,7 +103,7 @@ export async function GET(
         sol,
         clima,
         logoBase64,
-      })
+      }) as unknown as ReactElement<DocumentProps>
     )
 
     const nombre = `hoja-llamados-${rodaje.nombre.toLowerCase().replace(/\s+/g, '-')}.pdf`
