@@ -3,7 +3,14 @@ import AdminRendiciones from '@/components/rendiciones/AdminRendiciones'
 import Link from 'next/link'
 
 export default async function AdminRendicionesPage() {
-  const rendiciones = await getTodasPendientes()
+  let rendiciones: Awaited<ReturnType<typeof getTodasPendientes>> = []
+  let dbError: string | null = null
+
+  try {
+    rendiciones = await getTodasPendientes()
+  } catch (e: any) {
+    dbError = e?.message || String(e)
+  }
 
   // Agrupar por rodaje
   const porRodaje = rendiciones.reduce((acc, r) => {
@@ -26,6 +33,12 @@ export default async function AdminRendicionesPage() {
           Exportar Santander →
         </Link>
       </div>
+
+      {dbError && (
+        <div className="border border-red-500/40 bg-red-500/10 p-4 mb-8 font-mono text-xs text-red-400 break-all">
+          Error DB: {dbError}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">

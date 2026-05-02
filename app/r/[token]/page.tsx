@@ -20,7 +20,7 @@ export default async function PortalExternoPage({
   if (!link) notFound()
 
   // Verificar expiración
-  if (link.expira_en && new Date(link.expira_en) < new Date()) {
+  if (link.expires_at && new Date(link.expires_at) < new Date()) {
     return (
       <div className="min-h-screen bg-ch-black flex items-center justify-center p-6">
         <div className="text-center">
