@@ -166,7 +166,6 @@ export async function crearRendicion(payload: {
     .single()
   if (error) throw error
 
-  revalidatePath('/rendiciones')
   revalidatePath('/rendiciones/admin')
 
   if (estado !== 'borrador') {
@@ -204,7 +203,6 @@ export async function enviarRendicion(id: string) {
     .select('*')
     .single()
   if (error) throw error
-  revalidatePath('/rendiciones')
   revalidatePath('/rendiciones/admin')
   return data as Rendicion
 }
@@ -298,7 +296,6 @@ export async function eliminarRendicion(id: string) {
     .eq('id', id)
     .eq('estado', 'pendiente')
   if (error) throw error
-  revalidatePath('/rendiciones')
   revalidatePath('/rendiciones/admin')
 }
 
@@ -306,7 +303,7 @@ export async function eliminarRendicion(id: string) {
 
 export async function generarLinkTemporalExterno(payload: {
   cotizacion_item_id: string
-  email: string
+  email?: string
   colaborador_id?: string | null
   dias_expiracion?: number
 }): Promise<{ url: string }> {
@@ -321,7 +318,7 @@ export async function generarLinkTemporalExterno(payload: {
     .from('rendiciones_links_temporales')
     .insert({
       cotizacion_item_id,
-      email,
+      email: email || null,
       colaborador_id: colaborador_id || null,
       token,
       expires_at: expires_at.toISOString(),
@@ -330,20 +327,22 @@ export async function generarLinkTemporalExterno(payload: {
 
   const url = `${APP_URL}/r/${token}`
 
-  try {
-    await resend.emails.send({
-      from: 'Hilván <noreply@casahiedra.com>',
-      to: email,
-      subject: 'Hilván · Envío de rendición de gastos',
-      html: `
-        <p>Hola,</p>
-        <p>Casa Hiedra te invita a registrar tus gastos de producción a través de Hilván.</p>
-        <p><a href="${url}" style="display:inline-block;background:#4ade80;color:#000;padding:10px 20px;text-decoration:none;font-family:monospace;">Ingresar mis gastos →</a></p>
-        <p style="color:#888;font-size:12px;">Este link expira en ${dias_expiracion} días. No lo compartas con terceros.</p>
-        <p>Casa Hiedra</p>
-      `,
-    })
-  } catch { /* email no crítico */ }
+  if (email?.trim()) {
+    try {
+      await resend.emails.send({
+        from: 'Hilván <noreply@casahiedra.com>',
+        to: email,
+        subject: 'Hilván · Envío de rendición de gastos',
+        html: `
+          <p>Hola,</p>
+          <p>Casa Hiedra te invita a registrar tus gastos de producción a través de Hilván.</p>
+          <p><a href="${url}" style="display:inline-block;background:#4ade80;color:#000;padding:10px 20px;text-decoration:none;font-family:monospace;">Ingresar mis gastos →</a></p>
+          <p style="color:#888;font-size:12px;">Este link expira en ${dias_expiracion} días. No lo compartas con terceros.</p>
+          <p>Casa Hiedra</p>
+        `,
+      })
+    } catch { /* email no crítico */ }
+  }
 
   revalidatePath('/rendiciones/admin')
   return { url }

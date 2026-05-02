@@ -108,7 +108,9 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
 
   const seleccionarItem = (item: CotizacionItem) => {
     setItemId(item.id)
-    set('tipo', TIPO_ITEM_A_RENDICION[item.tipo] || 'otro')
+    setForm(p => ({ ...p, tipo: (TIPO_ITEM_A_RENDICION[item.tipo] || 'otro') as TipoRendicion, monto: '', descripcion: '', tipo_documento: '' as TipoDocRendicion | '', foto_url: '' }))
+    setFotoPreview(null)
+    setArchivoNombre(null)
   }
 
   const disponible = (item: CotizacionItem) =>
