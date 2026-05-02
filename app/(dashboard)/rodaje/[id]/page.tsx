@@ -173,7 +173,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       if (bloquesRef.current.length > 0) {
         setGuardando(true)
         try {
-          await guardarBloques(id, bloquesRef.current.map(b => ({ id: b.id, ...b })))
+          await guardarBloques(id, bloquesRef.current.map(b => ({ ...b })))
           setCambiosSinGuardar(false)
         } finally {
           setGuardando(false)
@@ -186,7 +186,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
     setGuardando(true)
     try {
-      await guardarBloques(id, bloques.map(b => ({ id: b.id, ...b })))
+      await guardarBloques(id, bloques.map(b => ({ ...b })))
       setCambiosSinGuardar(false)
     } finally {
       setGuardando(false)
@@ -212,7 +212,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     // Guardar cambios pendientes ANTES de crear para no perder ediciones locales
     if (cambiosSinGuardar && bloquesRef.current.length > 0) {
       try {
-        await guardarBloques(id, bloquesRef.current.map(b => ({ id: b.id, ...b })))
+        await guardarBloques(id, bloquesRef.current.map(b => ({ ...b })))
         setCambiosSinGuardar(false)
       } catch { /* continuar igual */ }
     }
@@ -242,7 +242,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     // Guardar cambios pendientes ANTES de crear
     if (cambiosSinGuardar && bloquesRef.current.length > 0) {
       try {
-        await guardarBloques(id, bloquesRef.current.map(b => ({ id: b.id, ...b })))
+        await guardarBloques(id, bloquesRef.current.map(b => ({ ...b })))
         setCambiosSinGuardar(false)
       } catch { /* continuar igual */ }
     }

@@ -80,12 +80,12 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
             dept={dept}
             rodajeId={id}
             onEditDept={() => setModalDept({ open: true, editando: dept })}
-            onEditPersona={(p) => setModalPersona({ open: true, editando: p })}
+            onEditPersona={(p: any) => setModalPersona({ open: true, editando: p })}
             onDelete={async () => {
               if (!confirm('¿Eliminar departamento?')) return
               startTransition(async () => { await eliminarDepartamento(dept.id, id); recargar() })
             }}
-            onDeletePersona={async (p) => {
+            onDeletePersona={async (p: any) => {
               if (!confirm(`¿Eliminar a ${p.nombre}?`)) return
               startTransition(async () => { await eliminarPersonaEquipo(p.id, id); recargar() })
             }}
