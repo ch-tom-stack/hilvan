@@ -5,13 +5,14 @@ import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 
 const navItems = [
-  { label: 'Dashboard',    href: '/dashboard',    disponible: true  },
-  { label: 'Equipos',      href: '/equipos',      disponible: true  },
-  { label: 'Cotizaciones', href: '/cotizaciones', disponible: true  },
-  { label: 'Rodaje',       href: '/rodaje',       disponible: true  },
-  { label: 'Rendiciones',  href: '/rendiciones',  disponible: false },
-  { label: 'Financiero',   href: '/financiero',   disponible: false },
-  { label: 'CRM',          href: '/crm',          disponible: false },
+  { label: 'Dashboard',      href: '/dashboard',      disponible: true  },
+  { label: 'Equipos',        href: '/equipos',        disponible: true  },
+  { label: 'Cotizaciones',   href: '/cotizaciones',   disponible: true  },
+  { label: 'Rodaje',         href: '/rodaje',         disponible: true  },
+  { label: 'Colaboradores',  href: '/colaboradores',  disponible: true  },
+  { label: 'Rendiciones',    href: '/rendiciones',    disponible: true  },
+  { label: 'Financiero',     href: '/financiero',     disponible: false },
+  { label: 'CRM',            href: '/crm',            disponible: false },
 ]
 
 interface SidebarProps {

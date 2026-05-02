@@ -32,7 +32,12 @@ export async function proxy(request: NextRequest) {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/m/') ||
-    pathname.match(/^\/rodaje\/[^/]+\/ver/)
+    pathname.startsWith('/r/') ||
+    pathname.startsWith('/cotizacion/') ||
+    pathname.startsWith('/citacion/') ||
+    pathname.match(/^\/rodaje\/[^/]+\/ver/) ||
+    pathname.match(/^\/api\/rodaje\/[^/]+\/pdf/) ||
+    pathname.match(/^\/api\/cotizaciones\/[^/]+\/pdf/)
   ) {
     if (user && pathname.startsWith('/login')) {
       return NextResponse.redirect(new URL('/dashboard', request.url))

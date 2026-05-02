@@ -62,7 +62,7 @@ export default async function MaletasPage() {
                     target="_blank"
                     className="flex-1 text-center border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-widest uppercase py-2 transition-colors"
                   >
-                    Ver QR
+                    Ficha pública
                   </Link>
                   <Link
                     href={`/equipos/maletas/${maleta.id}/editar`}

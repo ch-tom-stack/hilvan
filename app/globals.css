@@ -47,3 +47,20 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0px 1000px #242422 inset;
   transition: background-color 5000s ease-in-out 0s;
 }
+
+.input-ch {
+  background: #242422;
+  border: 1px solid #2e2e2b;
+  color: #f5f0e8;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input-ch:focus {
+  border-color: #4a4a46;
+}
+.input-ch::placeholder {
+  color: #6b6b65;
+}

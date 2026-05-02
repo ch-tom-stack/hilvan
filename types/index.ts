@@ -426,12 +426,99 @@ export interface RodajeDepartamento {
 export interface Colaborador {
   id: string
   nombre: string
+  rut?: string
   email?: string
   telefono?: string
+  tipo_persona?: 'natural' | 'empresa'
+  razon_social?: string
+  tipo_documento?: 'boleta' | 'bet' | 'factura' | 'sin_documento'
+  alerta_tributaria?: string
+  banco?: string
+  tipo_cuenta?: 'corriente' | 'vista' | 'ahorro'
+  numero_cuenta?: string
+  disponible: boolean
+  requiere_release: boolean
+  contrato_marco: boolean
+  especialidades?: string[]
+  notas_internas?: string
   rol_habitual?: string
   notas?: string
   created_at: string
   updated_at: string
+}
+
+export interface ColaboradorTarifa {
+  id: string
+  colaborador_id: string
+  rodaje_id?: string
+  rodaje?: { nombre: string; fecha?: string }
+  rol?: string
+  monto_dia: number
+  created_at: string
+}
+
+export interface ColaboradorLinkTemporal {
+  id: string
+  colaborador_id: string
+  rodaje_id?: string
+  token: string
+  expires_at: string
+  used_at?: string
+  created_at: string
+}
+
+export type TipoRendicion = 'honorarios' | 'factura' | 'arte' | 'transporte' | 'alimentacion' | 'otro'
+export type EstadoRendicion = 'pendiente' | 'aprobada' | 'rechazada'
+export type TipoDocRendicion = 'boleta' | 'bet' | 'factura' | 'sin_documento'
+
+export interface Rendicion {
+  id: string
+  rodaje_id: string
+  rodaje?: { nombre: string; fecha?: string }
+  colaborador_id?: string
+  colaborador?: Colaborador
+  nombre_libre?: string
+  tipo: TipoRendicion
+  descripcion: string
+  monto: number
+  foto_url: string
+  estado: EstadoRendicion
+  tipo_documento?: TipoDocRendicion
+  motivo_rechazo?: string
+  aprobada_por?: string
+  notas?: string
+  created_at: string
+  updated_at: string
+}
+
+export type TipoContrato = 'marco_equipo' | 'marco_modelo' | 'marco_empresa' | 'release'
+
+export interface ContratoGenerado {
+  id: string
+  colaborador_id: string
+  rodaje_id?: string
+  rodaje?: { nombre: string }
+  tipo: TipoContrato
+  archivo_url?: string
+  firmado: boolean
+  created_at: string
+}
+
+const RETENCION_BOLETA = 0.154
+
+export function calcularRetencion(rendicion: Rendicion) {
+  if (rendicion.tipo_documento === 'boleta' || rendicion.tipo_documento === 'bet') {
+    return {
+      bruto: rendicion.monto,
+      retencion: Math.round(rendicion.monto * RETENCION_BOLETA),
+      neto: Math.round(rendicion.monto * (1 - RETENCION_BOLETA)),
+      sinDocumento: false,
+    }
+  }
+  if (rendicion.tipo_documento === 'factura') {
+    return { bruto: rendicion.monto, retencion: 0, neto: rendicion.monto, sinDocumento: false }
+  }
+  return { bruto: rendicion.monto, retencion: 0, neto: rendicion.monto, sinDocumento: true }
 }
 
 export interface RodajeEquipoTecnico {

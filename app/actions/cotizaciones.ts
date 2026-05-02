@@ -421,6 +421,7 @@ export async function nuevaVersion(cotizacionId: string) {
     .eq('grupo_id', original.grupo_id)
 
   const maxVersion = Math.max(
+    0,
     ...(existentes ?? []).map((c: any) => c.version)
   )
 

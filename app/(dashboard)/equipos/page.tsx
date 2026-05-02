@@ -87,7 +87,7 @@ export default async function EquiposPage({
         ))}
       </div>
 
-      {/* Tabla */}
+      {/* Listado */}
       {!equipos || equipos.length === 0 ? (
         <div className="border border-dashed border-ch-border p-16 text-center">
           <p className="text-ch-muted font-body text-sm">No hay equipos registrados aún.</p>
@@ -96,65 +96,95 @@ export default async function EquiposPage({
           </Link>
         </div>
       ) : (
-        <div className="border border-ch-border overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-ch-border bg-ch-surface/50">
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Código</th>
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Nombre</th>
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase hidden md:table-cell">Categoría</th>
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase hidden sm:table-cell">Cant.</th>
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Estado</th>
-                <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase hidden sm:table-cell">Rental</th>
-                <th className="px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {(equipos as Equipo[]).map((eq, i) => (
-                <tr
-                  key={eq.id}
-                  className={`border-b border-ch-border/50 hover:bg-ch-surface/30 transition-colors ${
-                    i % 2 === 0 ? '' : 'bg-ch-surface/20'
-                  }`}
-                >
-                  <td className="px-5 py-4">
-                    <span className="font-body text-xs text-ch-muted font-mono">{eq.codigo}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      {eq.fotos?.[0] && (
-                        <img src={eq.fotos[0]} alt="" className="w-8 h-8 object-cover flex-shrink-0 hidden sm:block" />
-                      )}
-                      <span className="font-body text-sm text-ch-cream">{eq.nombre}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 hidden md:table-cell">
-                    <span className="font-body text-xs text-ch-muted">{eq.categoria?.nombre}</span>
-                  </td>
-                  <td className="px-5 py-4 hidden sm:table-cell">
-                    <span className="font-body text-xs text-ch-cream">{eq.cantidad}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <TagEstado estado={eq.estado} />
-                  </td>
-                  <td className="px-5 py-4 hidden sm:table-cell">
-                    <span className={`font-body text-[10px] tracking-wider ${eq.rentable ? 'text-ch-green' : 'text-ch-muted'}`}>
-                      {eq.rentable ? 'Sí' : 'No'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <Link
-                      href={`/equipos/${eq.id}/editar`}
-                      className="text-ch-muted hover:text-ch-cream font-body text-xs transition-colors"
-                    >
-                      Editar
-                    </Link>
-                  </td>
+        <>
+          {/* Tarjetas — móvil */}
+          <div className="sm:hidden space-y-3">
+            {(equipos as Equipo[]).map(eq => (
+              <Link
+                key={eq.id}
+                href={`/equipos/${eq.id}`}
+                className="flex items-center gap-4 border border-ch-border bg-ch-surface/20 p-4 hover:bg-ch-surface/40 transition-colors"
+              >
+                {eq.fotos?.[0] ? (
+                  <img src={eq.fotos[0]} alt={eq.nombre} className="w-14 h-14 object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-14 h-14 bg-ch-surface flex-shrink-0 flex items-center justify-center">
+                    <span className="text-ch-border font-body text-[8px] tracking-widest">SIN<br/>FOTO</span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-body text-[9px] text-ch-muted font-mono mb-0.5">{eq.codigo}</p>
+                  <p className="font-body text-sm text-ch-cream truncate">{eq.nombre}</p>
+                  <p className="font-body text-[10px] text-ch-muted mt-0.5">{eq.categoria?.nombre}</p>
+                </div>
+                <div className="flex-shrink-0">
+                  <TagEstado estado={eq.estado} />
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Tabla — desktop */}
+          <div className="hidden sm:block border border-ch-border overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-ch-border bg-ch-surface/50">
+                  <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Código</th>
+                  <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Nombre</th>
+                  <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase hidden md:table-cell">Categoría</th>
+                  <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Cant.</th>
+                  <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase">Estado</th>
+                  <th className="text-left px-5 py-3 text-ch-muted font-body text-[10px] tracking-[0.35em] uppercase hidden md:table-cell">Rental</th>
+                  <th className="px-5 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {(equipos as Equipo[]).map((eq, i) => (
+                  <tr
+                    key={eq.id}
+                    className={`border-b border-ch-border/50 hover:bg-ch-surface/30 transition-colors ${
+                      i % 2 === 0 ? '' : 'bg-ch-surface/20'
+                    }`}
+                  >
+                    <td className="px-5 py-4">
+                      <span className="font-body text-xs text-ch-muted font-mono">{eq.codigo}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        {eq.fotos?.[0] && (
+                          <img src={eq.fotos[0]} alt="" className="w-8 h-8 object-cover flex-shrink-0" />
+                        )}
+                        <span className="font-body text-sm text-ch-cream">{eq.nombre}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 hidden md:table-cell">
+                      <span className="font-body text-xs text-ch-muted">{eq.categoria?.nombre}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="font-body text-xs text-ch-cream">{eq.cantidad}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <TagEstado estado={eq.estado} />
+                    </td>
+                    <td className="px-5 py-4 hidden md:table-cell">
+                      <span className={`font-body text-[10px] tracking-wider ${eq.rentable ? 'text-ch-green' : 'text-ch-muted'}`}>
+                        {eq.rentable ? 'Sí' : 'No'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <Link
+                        href={`/equipos/${eq.id}`}
+                        className="text-ch-muted hover:text-ch-cream font-body text-xs transition-colors"
+                      >
+                        Ver
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
     </div>

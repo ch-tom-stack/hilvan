@@ -18,7 +18,7 @@ export async function crearEquipo(formData: FormData) {
     precio_jornada:  formData.get('precio_jornada')
                        ? parseInt(formData.get('precio_jornada') as string)
                        : null,
-    fotos:           JSON.parse(formData.get('fotos') as string || '[]'),
+    fotos:           (() => { try { return JSON.parse(formData.get('fotos') as string || '[]') } catch { return [] } })(),
   }
 
   const { error } = await supabase.from('equipos').insert(data)
@@ -45,7 +45,7 @@ export async function actualizarEquipo(id: string, formData: FormData) {
     precio_jornada:  formData.get('precio_jornada')
                        ? parseInt(formData.get('precio_jornada') as string)
                        : null,
-    fotos:           JSON.parse(formData.get('fotos') as string || '[]'),
+    fotos:           (() => { try { return JSON.parse(formData.get('fotos') as string || '[]') } catch { return [] } })(),
   }
 
   const { error } = await supabase.from('equipos').update(data).eq('id', id)
