@@ -130,6 +130,7 @@ export interface CotizacionGrupo {
   nombre: string
   created_at: string
   cotizaciones?: Cotizacion[]
+  numero_base?: string
 }
 
 export interface Cotizacion {
