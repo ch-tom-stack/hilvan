@@ -186,6 +186,7 @@ export default function AdminRendiciones({
             cotizaciones={cotizacionesForm}
             colaboradorId={colaboradorId}
             rendicionesPorItem={rendicionesPorItemSumas}
+            onGenerarLink={puedeGenerarLink ? (id, nombre) => { setMostrarForm(false); setModalLink({ itemId: id, itemNombre: nombre }); setLinkGenerado(null) } : undefined}
             onSuccess={handleNuevaRendicion}
             onCancel={() => setMostrarForm(false)}
           />

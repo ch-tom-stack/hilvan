@@ -69,11 +69,12 @@ interface Props {
   esExterno?: boolean
   lockedCotizacion?: { id: string; nombre: string; grupo?: { numero_base?: string } }
   lockedItem?: { id: string; nombre: string; tipo: string }
+  onGenerarLink?: (itemId: string, itemNombre: string) => void
   onSuccess: (r: Rendicion) => void
   onCancel: () => void
 }
 
-export default function FormularioRendicion({ cotizaciones, colaboradorId, rendicionesPorItem, esExterno = false, lockedCotizacion, lockedItem, onSuccess, onCancel }: Props) {
+export default function FormularioRendicion({ cotizaciones, colaboradorId, rendicionesPorItem, esExterno = false, lockedCotizacion, lockedItem, onGenerarLink, onSuccess, onCancel }: Props) {
   const [isPending, startTransition] = useTransition()
   const [subiendo, setSubiendo] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -274,6 +275,25 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
               Gasto no presupuestado
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Link para externo (solo cuando hay ítem seleccionado y no es gasto no presupuestado) */}
+      {onGenerarLink && itemId && !lockedItem && (
+        <div className="flex items-center gap-2 py-2 border-t border-ch-border/30">
+          <span className="font-body text-[10px] text-ch-muted flex-1">¿El gasto lo rinde un externo?</span>
+          <button
+            type="button"
+            onClick={() => {
+              const item = cotizacionSel?.departamentos?.flatMap(d => [
+                ...(d.items ?? []),
+                ...(d.subgrupos ?? []).flatMap(sg => sg.items ?? []),
+              ]).find(i => i.id === itemId)
+              if (item) onGenerarLink(item.id, item.nombre)
+            }}
+            className="font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 border border-ch-border text-ch-muted hover:text-blue-300 hover:border-blue-500/40 transition-colors whitespace-nowrap">
+            Generar link externo →
+          </button>
         </div>
       )}
 
