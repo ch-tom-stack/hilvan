@@ -88,6 +88,8 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
   })
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null)
+  const [inputEsBruto, setInputEsBruto] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
@@ -131,31 +133,50 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
   const puedeEnviar = cotizacionId && itemId !== undefined && form.tipo && form.monto && form.descripcion && form.foto_url && !subiendo
   const puedeBorrador = !esExterno && cotizacionId && itemId !== undefined && form.tipo && !subiendo
 
-  const retencionPreview = form.monto && form.tipo_documento
-    ? (() => {
-        const monto = parseInt(form.monto)
-        if (isNaN(monto)) return null
-        return { monto, tipo: form.tipo_documento }
-      })()
-    : null
+  const esBoleta = form.tipo_documento === 'boleta'
+  const TASA = 0.154
+
+  // Calcula bruto real a almacenar según el toggle
+  const calcularMontos = (raw: string) => {
+    const val = parseInt(raw)
+    if (isNaN(val) || val <= 0) return null
+    if (!esBoleta) return { bruto: val, retencion: 0, neto: val }
+    if (inputEsBruto) {
+      const retencion = Math.round(val * TASA)
+      return { bruto: val, retencion, neto: val - retencion }
+    } else {
+      // neto ingresado → bruto = neto / (1 - tasa)
+      const bruto = Math.round(val / (1 - TASA))
+      const retencion = bruto - val
+      return { bruto, retencion, neto: val }
+    }
+  }
+
+  const montos = form.monto ? calcularMontos(form.monto) : null
 
   const enviar = (estadoTarget: 'enviada' | 'borrador' = 'enviada') => {
     if (estadoTarget === 'borrador' && !puedeBorrador) return
     if (estadoTarget === 'enviada' && !puedeEnviar) return
+    setError(null)
+    const montoFinal = montos?.bruto ?? (parseInt(form.monto) || 0)
     startTransition(async () => {
-      const nueva = await crearRendicion({
-        cotizacion_id: cotizacionId,
-        cotizacion_item_id: itemId,
-        colaborador_id: colaboradorId,
-        origen: esExterno ? 'externo' : 'interno',
-        tipo: form.tipo as TipoRendicion,
-        descripcion: form.descripcion || '',
-        monto: parseInt(form.monto) || 0,
-        foto_url: form.foto_url || '',
-        tipo_documento: form.tipo_documento || undefined,
-        estado: estadoTarget,
-      })
-      onSuccess(nueva)
+      try {
+        const nueva = await crearRendicion({
+          cotizacion_id: cotizacionId,
+          cotizacion_item_id: itemId,
+          colaborador_id: colaboradorId,
+          origen: esExterno ? 'externo' : 'interno',
+          tipo: form.tipo as TipoRendicion,
+          descripcion: form.descripcion || '',
+          monto: montoFinal,
+          foto_url: form.foto_url || '',
+          tipo_documento: form.tipo_documento || undefined,
+          estado: estadoTarget,
+        })
+        onSuccess(nueva)
+      } catch (e: any) {
+        setError(e?.message || 'Error al guardar. Intenta de nuevo.')
+      }
     })
   }
 
@@ -256,9 +277,32 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
 
           {/* Monto */}
           <div>
-            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Monto CLP *</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em]">Monto CLP *</label>
+              {esBoleta && (
+                <div className="flex gap-0">
+                  <button type="button" onClick={() => setInputEsBruto(false)}
+                    className={`font-body text-[9px] px-2.5 py-1 border transition-colors ${!inputEsBruto ? 'border-ch-green text-ch-cream bg-ch-green/10' : 'border-ch-border text-ch-muted hover:text-ch-cream'}`}>
+                    Neto
+                  </button>
+                  <button type="button" onClick={() => setInputEsBruto(true)}
+                    className={`font-body text-[9px] px-2.5 py-1 border border-l-0 transition-colors ${inputEsBruto ? 'border-ch-green text-ch-cream bg-ch-green/10' : 'border-ch-border text-ch-muted hover:text-ch-cream'}`}>
+                    Bruto
+                  </button>
+                </div>
+              )}
+            </div>
             <input value={form.monto} onChange={e => set('monto', e.target.value)}
-              type="number" placeholder="150000" className="input-ch w-full font-mono text-lg" />
+              type="number" placeholder={esBoleta && !inputEsBruto ? 'Ej: 126900 (lo que recibes)' : '150000'}
+              className="input-ch w-full font-mono text-lg" />
+            {montos && esBoleta && (
+              <div className="mt-1 font-body text-[10px] text-ch-muted font-mono">
+                {inputEsBruto
+                  ? `Retención ${(TASA * 100).toFixed(1)}% = $${montos.retencion.toLocaleString('es-CL')} · Neto = $${montos.neto.toLocaleString('es-CL')}`
+                  : `Bruto boleta = $${montos.bruto.toLocaleString('es-CL')} · Retención = $${montos.retencion.toLocaleString('es-CL')}`
+                }
+              </div>
+            )}
           </div>
 
           {/* Descripción */}
@@ -278,15 +322,11 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
               <option value="exenta">Boleta exenta / servicio sin IVA</option>
               <option value="sin_documento">Sin documento</option>
             </select>
-            {retencionPreview && (
-              <div className="mt-1.5 font-body text-[10px] text-ch-muted font-mono">
-                {retencionPreview.tipo === 'boleta' && (() => {
-                  const ret = Math.round(retencionPreview.monto * 0.154)
-                  return <span>Retención 15.4% = ${ret.toLocaleString('es-CL')} · Neto = ${(retencionPreview.monto - ret).toLocaleString('es-CL')}</span>
-                })()}
-                {retencionPreview.tipo === 'sin_documento' && <span className="text-red-400">⚠ Requerirá justificación</span>}
-                {(retencionPreview.tipo === 'factura' || retencionPreview.tipo === 'exenta') && <span>Pago bruto completo</span>}
-              </div>
+            {form.tipo_documento === 'sin_documento' && (
+              <p className="mt-1.5 font-body text-[10px] text-red-400">⚠ Requerirá justificación</p>
+            )}
+            {(form.tipo_documento === 'factura' || form.tipo_documento === 'exenta') && (
+              <p className="mt-1.5 font-body text-[10px] text-ch-muted font-mono">Pago bruto completo</p>
             )}
           </div>
 
@@ -324,6 +364,10 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
               </button>
             )}
           </div>
+
+          {error && (
+            <p className="font-body text-[10px] text-red-400 border border-red-500/30 px-3 py-2">{error}</p>
+          )}
 
           <div className="flex gap-3 pt-1 flex-wrap">
             <button onClick={() => enviar('enviada')} disabled={!puedeEnviar || isPending}

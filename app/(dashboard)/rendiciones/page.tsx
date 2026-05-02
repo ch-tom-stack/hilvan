@@ -11,18 +11,6 @@ export default async function RendicionesPage() {
   const { data: profile } = await supabase.from('profiles').select('rol').eq('id', user.id).single()
   const esAdmin = profile?.rol === 'admin' || profile?.rol === 'productor'
 
-  if (esAdmin) {
-    return (
-      <div className="p-6 lg:p-10 max-w-2xl">
-        <h1 className="font-display italic text-4xl text-ch-cream mb-6">Rendiciones</h1>
-        <Link href="/rendiciones/admin"
-          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-5 py-3 transition-colors">
-          Vista admin →
-        </Link>
-      </div>
-    )
-  }
-
   const { data: colaborador } = await supabase
     .from('colaboradores')
     .select('id, nombre')
@@ -36,11 +24,21 @@ export default async function RendicionesPage() {
   ])
 
   return (
-    <RendicionesColaborador
-      colaboradorId={colaborador?.id}
-      rendiciones={rendiciones}
-      cotizaciones={cotizaciones}
-      rendicionesPorItem={rendicionesPorItem}
-    />
+    <div>
+      {esAdmin && (
+        <div className="px-4 lg:px-10 pt-6 pb-0 max-w-lg mx-auto lg:max-w-none lg:mx-0">
+          <Link href="/rendiciones/admin"
+            className="inline-block border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors mb-4">
+            Vista admin →
+          </Link>
+        </div>
+      )}
+      <RendicionesColaborador
+        colaboradorId={colaborador?.id}
+        rendiciones={rendiciones}
+        cotizaciones={cotizaciones}
+        rendicionesPorItem={rendicionesPorItem}
+      />
+    </div>
   )
 }
