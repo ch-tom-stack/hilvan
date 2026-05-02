@@ -21,16 +21,10 @@ export default async function RendicionesPage({
     return (
       <div className="p-6 lg:p-10 max-w-2xl">
         <h1 className="font-display italic text-4xl text-ch-cream mb-6">Rendiciones</h1>
-        <div className="flex gap-4">
-          <Link href="/rendiciones/admin"
-            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-5 py-3 transition-colors">
-            Vista admin →
-          </Link>
-          <Link href="/rendiciones/admin/export"
-            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-5 py-3 transition-colors">
-            Exportar Santander →
-          </Link>
-        </div>
+        <Link href="/rendiciones/admin"
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-5 py-3 transition-colors">
+          Vista admin →
+        </Link>
       </div>
     )
   }

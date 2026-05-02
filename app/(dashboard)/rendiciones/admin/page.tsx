@@ -1,10 +1,23 @@
 import { getTodasPendientes } from '@/app/actions/rendiciones'
 import AdminRendiciones from '@/components/rendiciones/AdminRendiciones'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
 export default async function AdminRendicionesPage() {
   let rendiciones: Awaited<ReturnType<typeof getTodasPendientes>> = []
   let dbError: string | null = null
+  const supabase = await createClient()
+
+  const { data: rodajes } = await supabase
+    .from('rodajes')
+    .select('id, nombre, fecha')
+    .order('fecha', { ascending: false })
+    .limit(20)
+
+  const { data: colaboradores } = await supabase
+    .from('colaboradores')
+    .select('id, nombre')
+    .order('nombre')
 
   try {
     rendiciones = await getTodasPendientes()
@@ -28,10 +41,16 @@ export default async function AdminRendicionesPage() {
           <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Rendiciones · Admin</p>
           <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Revisión</h1>
         </div>
-        <Link href="/rendiciones/admin/export"
-          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
-          Exportar Santander →
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/rendiciones/admin/export"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
+            Exportar →
+          </Link>
+          <Link href="/rendiciones"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
+            ← Volver
+          </Link>
+        </div>
       </div>
 
       {dbError && (
@@ -55,7 +74,7 @@ export default async function AdminRendicionesPage() {
         ))}
       </div>
 
-      <AdminRendiciones porRodaje={porRodaje} />
+      <AdminRendiciones porRodaje={porRodaje} rodajes={rodajes ?? []} colaboradores={colaboradores ?? []} />
     </div>
   )
 }

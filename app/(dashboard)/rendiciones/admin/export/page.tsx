@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import ExportSantander from '@/components/rendiciones/ExportSantander'
+import Link from 'next/link'
 
 export default async function ExportSantanderPage({
   searchParams,
@@ -33,6 +34,10 @@ export default async function ExportSantanderPage({
           <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Rendiciones · Admin</p>
           <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Export Santander</h1>
         </div>
+        <Link href="/rendiciones/admin"
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
+          ← Volver
+        </Link>
       </div>
       <ExportSantander rodajes={rodajes ?? []} rendiciones={rendiciones} rodajeFiltro={rodajeId} />
     </div>
