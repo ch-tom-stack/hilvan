@@ -473,8 +473,10 @@ export type TipoDocRendicion = 'boleta' | 'bet' | 'factura' | 'sin_documento'
 
 export interface Rendicion {
   id: string
-  rodaje_id: string
-  rodaje?: { nombre: string; fecha?: string }
+  cotizacion_id: string
+  cotizacion?: { id: string; nombre: string; grupo?: { numero_base?: string } }
+  cotizacion_item_id?: string | null
+  cotizacion_item?: { id: string; nombre: string; tipo: string; precio_neto_proveedor: number; cantidad: number } | null
   colaborador_id?: string
   colaborador?: Colaborador
   nombre_libre?: string
@@ -489,6 +491,15 @@ export interface Rendicion {
   notas?: string
   created_at: string
   updated_at: string
+}
+
+export interface RendicionNotaGlosa {
+  id: string
+  cotizacion_item_id: string
+  autor_id?: string
+  autor?: { nombre?: string; email?: string }
+  nota: string
+  created_at: string
 }
 
 export type TipoContrato = 'marco_equipo' | 'marco_modelo' | 'marco_empresa' | 'release'

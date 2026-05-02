@@ -1,38 +1,49 @@
-import { getTodasPendientes } from '@/app/actions/rendiciones'
+import {
+  getTodasRendiciones, getCotizacionesConEstructura,
+  getCotizacionesParaRendiciones, getRendicionesSumasPorItem,
+} from '@/app/actions/rendiciones'
 import AdminRendiciones from '@/components/rendiciones/AdminRendiciones'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import type { Rendicion } from '@/types'
 
 export default async function AdminRendicionesPage() {
-  let rendiciones: Awaited<ReturnType<typeof getTodasPendientes>> = []
+  let rendiciones: Rendicion[] = []
   let dbError: string | null = null
-  const supabase = await createClient()
-
-  const { data: rodajes } = await supabase
-    .from('rodajes')
-    .select('id, nombre, fecha')
-    .order('fecha', { ascending: false })
-    .limit(20)
-
-  const { data: colaboradores } = await supabase
-    .from('colaboradores')
-    .select('id, nombre')
-    .order('nombre')
 
   try {
-    rendiciones = await getTodasPendientes()
+    rendiciones = await getTodasRendiciones()
   } catch (e: any) {
     dbError = e?.message || String(e)
   }
 
-  // Agrupar por rodaje
-  const porRodaje = rendiciones.reduce((acc, r) => {
-    const rodajeId = r.rodaje_id
-    const rodajeNombre = (r.rodaje as any)?.nombre || 'Sin rodaje'
-    if (!acc[rodajeId]) acc[rodajeId] = { nombre: rodajeNombre, items: [] }
-    acc[rodajeId].items.push(r)
-    return acc
-  }, {} as Record<string, { nombre: string; items: typeof rendiciones }>)
+  const supabase = await createClient()
+
+  // IDs únicos de cotizaciones con rendiciones
+  const cotizacionIds = [...new Set(rendiciones.map(r => r.cotizacion_id).filter(Boolean))]
+
+  // Cargar en paralelo
+  const [cotizaciones, cotizacionesForm, rendicionesPorItemSumas, { data: colaboradores }] = await Promise.all([
+    getCotizacionesConEstructura(cotizacionIds),
+    getCotizacionesParaRendiciones(),
+    getRendicionesSumasPorItem(),
+    supabase.from('colaboradores').select('id, nombre').order('nombre'),
+  ])
+
+  // Agrupar rendiciones por item o sin item
+  const rendicionesPorItem: Record<string, Rendicion[]> = {}
+  const rendicionesSinItem: Record<string, Rendicion[]> = {}
+
+  for (const r of rendiciones) {
+    if (r.cotizacion_item_id) {
+      rendicionesPorItem[r.cotizacion_item_id] = [...(rendicionesPorItem[r.cotizacion_item_id] || []), r]
+    } else if (r.cotizacion_id) {
+      rendicionesSinItem[r.cotizacion_id] = [...(rendicionesSinItem[r.cotizacion_id] || []), r]
+    }
+  }
+
+  const totalPendiente = rendiciones.filter(r => r.estado === 'pendiente').reduce((s, r) => s + r.monto, 0)
+  const hoy = new Date().toISOString().slice(0, 10)
 
   return (
     <div className="p-6 lg:p-10">
@@ -63,8 +74,8 @@ export default async function AdminRendicionesPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {[
           { label: 'Pendientes', value: rendiciones.filter(r => r.estado === 'pendiente').length, color: 'text-amber-400' },
-          { label: 'Total pendiente', value: `$${rendiciones.filter(r => r.estado === 'pendiente').reduce((s, r) => s + r.monto, 0).toLocaleString('es-CL')}`, color: 'text-ch-cream' },
-          { label: 'Aprobadas hoy', value: rendiciones.filter(r => r.estado === 'aprobada' && r.updated_at?.startsWith(new Date().toISOString().slice(0, 10))).length, color: 'text-ch-green' },
+          { label: 'Total pendiente', value: `$${totalPendiente.toLocaleString('es-CL')}`, color: 'text-ch-cream' },
+          { label: 'Aprobadas hoy', value: rendiciones.filter(r => r.estado === 'aprobada' && r.updated_at?.startsWith(hoy)).length, color: 'text-ch-green' },
           { label: 'Sin documento', value: rendiciones.filter(r => r.tipo_documento === 'sin_documento').length, color: 'text-red-400' },
         ].map(stat => (
           <div key={stat.label} className="border border-ch-border p-4">
@@ -74,7 +85,14 @@ export default async function AdminRendicionesPage() {
         ))}
       </div>
 
-      <AdminRendiciones porRodaje={porRodaje} rodajes={rodajes ?? []} colaboradores={colaboradores ?? []} />
+      <AdminRendiciones
+        cotizaciones={cotizaciones as any}
+        rendicionesPorItem={rendicionesPorItem}
+        rendicionesSinItem={rendicionesSinItem}
+        cotizacionesForm={cotizacionesForm}
+        rendicionesPorItemSumas={rendicionesPorItemSumas}
+        colaboradores={colaboradores ?? []}
+      />
     </div>
   )
 }

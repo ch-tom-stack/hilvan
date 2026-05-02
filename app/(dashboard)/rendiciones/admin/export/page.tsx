@@ -5,23 +5,24 @@ import Link from 'next/link'
 export default async function ExportSantanderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ rodaje?: string }>
+  searchParams: Promise<{ cotizacion?: string }>
 }) {
-  const { rodaje: rodajeId } = await searchParams
+  const { cotizacion: cotizacionId } = await searchParams
   const supabase = await createClient()
 
-  const { data: rodajes } = await supabase
-    .from('rodajes')
-    .select('id, nombre, fecha')
-    .order('fecha', { ascending: false })
-    .limit(30)
+  const { data: cotizaciones } = await supabase
+    .from('cotizaciones')
+    .select('id, nombre, estado, grupo:cotizacion_grupos(numero_base)')
+    .in('estado', ['aprobada', 'en_produccion', 'cerrada'])
+    .order('created_at', { ascending: false })
+    .limit(50)
 
   let rendiciones: any[] = []
-  if (rodajeId) {
+  if (cotizacionId) {
     const { data } = await supabase
       .from('rendiciones')
       .select('*, colaborador:colaboradores(nombre, rut, banco, tipo_cuenta, numero_cuenta, tipo_documento)')
-      .eq('rodaje_id', rodajeId)
+      .eq('cotizacion_id', cotizacionId)
       .eq('estado', 'aprobada')
       .order('created_at', { ascending: false })
     rendiciones = data ?? []
@@ -39,7 +40,7 @@ export default async function ExportSantanderPage({
           ← Volver
         </Link>
       </div>
-      <ExportSantander rodajes={rodajes ?? []} rendiciones={rendiciones} rodajeFiltro={rodajeId} />
+      <ExportSantander cotizaciones={cotizaciones ?? []} rendiciones={rendiciones} cotizacionFiltro={cotizacionId} />
     </div>
   )
 }

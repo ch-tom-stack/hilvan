@@ -1,16 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { getRendiciones } from '@/app/actions/rendiciones'
+import { getRendiciones, getCotizacionesParaRendiciones, getRendicionesSumasPorItem } from '@/app/actions/rendiciones'
 import Link from 'next/link'
 import RendicionesColaborador from '@/components/rendiciones/RendicionesColaborador'
 
-export default async function RendicionesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ rodaje?: string }>
-}) {
-  const { rodaje } = await searchParams
+export default async function RendicionesPage() {
   const supabase = await createClient()
-
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
@@ -29,29 +23,24 @@ export default async function RendicionesPage({
     )
   }
 
-  // Vista colaborador
   const { data: colaborador } = await supabase
     .from('colaboradores')
     .select('id, nombre')
     .eq('email', user.email!)
     .single()
 
-  const { data: rodajes } = await supabase
-    .from('rodajes')
-    .select('id, nombre, fecha')
-    .order('fecha', { ascending: false })
-    .limit(20)
-
-  const rendiciones = colaborador
-    ? await getRendiciones({ colaboradorId: colaborador.id, rodajeId: rodaje })
-    : []
+  const [cotizaciones, rendicionesPorItem, rendiciones] = await Promise.all([
+    getCotizacionesParaRendiciones(),
+    getRendicionesSumasPorItem(),
+    colaborador ? getRendiciones({ colaboradorId: colaborador.id }) : Promise.resolve([]),
+  ])
 
   return (
     <RendicionesColaborador
       colaboradorId={colaborador?.id}
       rendiciones={rendiciones}
-      rodajes={rodajes || []}
-      rodajeFiltro={rodaje}
+      cotizaciones={cotizaciones}
+      rendicionesPorItem={rendicionesPorItem}
     />
   )
 }

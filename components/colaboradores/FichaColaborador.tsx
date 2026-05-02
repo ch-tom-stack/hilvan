@@ -6,7 +6,8 @@ import {
   actualizarColaborador, eliminarColaborador, crearTarifa, eliminarTarifa,
   crearLinkTemporal, getLinksPorColaborador,
 } from '@/app/actions/colaboradores'
-import type { Colaborador, ColaboradorTarifa, ContratoGenerado } from '@/types'
+import type { Colaborador, ColaboradorTarifa, ContratoGenerado, Rendicion } from '@/types'
+import FormularioRendicion from '@/components/rendiciones/FormularioRendicion'
 
 const BANCOS = [
   'Banco de Chile', 'BancoEstado', 'Santander', 'BCI', 'Itaú', 'Scotiabank',
@@ -24,15 +25,20 @@ interface Props {
   tarifas: ColaboradorTarifa[]
   contratos: ContratoGenerado[]
   rodajes: { id: string; nombre: string; fecha?: string }[]
+  cotizaciones?: any[]
+  rendiciones?: Rendicion[]
+  rendicionesPorItem?: Record<string, number>
 }
 
-export default function FichaColaborador({ colaborador, tarifas: tarifasIniciales, contratos, rodajes }: Props) {
+export default function FichaColaborador({ colaborador, tarifas: tarifasIniciales, contratos, rodajes, cotizaciones = [], rendiciones: rendicionesIniciales = [], rendicionesPorItem = {} }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [form, setForm] = useState<Partial<Colaborador>>(colaborador)
   const [tarifas, setTarifas] = useState(tarifasIniciales)
   const [guardado, setGuardado] = useState(false)
   const [seccion, setSeccion] = useState<string>('identidad')
+  const [rendiciones, setRendiciones] = useState<Rendicion[]>(rendicionesIniciales)
+  const [mostrarFormRendicion, setMostrarFormRendicion] = useState(false)
 
   // Tarifa nueva
   const [nuevaTarifa, setNuevaTarifa] = useState({ rodaje_id: '', rol: '', monto_dia: '' })
@@ -102,7 +108,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
     })
   }
 
-  const tabs = ['identidad', 'bancario', 'fiscal', 'especialidades', 'contratos', 'tarifas']
+  const tabs = ['identidad', 'bancario', 'fiscal', 'especialidades', 'contratos', 'tarifas', 'rendiciones']
 
   return (
     <div className="max-w-3xl">
@@ -121,7 +127,8 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
              tab === 'bancario' ? 'Bancario' :
              tab === 'fiscal' ? 'Fiscal' :
              tab === 'especialidades' ? 'Especialidades' :
-             tab === 'contratos' ? 'Contratos' : 'Tarifas'}
+             tab === 'contratos' ? 'Contratos' :
+             tab === 'tarifas' ? 'Tarifas' : 'Rendiciones'}
           </button>
         ))}
       </div>
@@ -386,6 +393,57 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
             </div>
           ) : (
             <p className="text-ch-muted font-body text-xs">Sin tarifas registradas.</p>
+          )}
+        </div>
+      )}
+
+      {/* ── RENDICIONES ── */}
+      {seccion === 'rendiciones' && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Rendiciones</p>
+            {cotizaciones.length > 0 && (
+              <button onClick={() => setMostrarFormRendicion(!mostrarFormRendicion)}
+                className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-4 py-2 transition-colors">
+                + Agregar gasto
+              </button>
+            )}
+          </div>
+
+          {mostrarFormRendicion && (
+            <div className="border border-ch-border bg-ch-surface/20 p-5 mb-6">
+              <FormularioRendicion
+                cotizaciones={cotizaciones}
+                colaboradorId={colaborador.id}
+                rendicionesPorItem={rendicionesPorItem}
+                onSuccess={r => { setRendiciones(prev => [r, ...prev]); setMostrarFormRendicion(false) }}
+                onCancel={() => setMostrarFormRendicion(false)}
+              />
+            </div>
+          )}
+
+          {rendiciones.length === 0 ? (
+            <p className="text-ch-muted font-body text-xs">Sin rendiciones registradas.</p>
+          ) : (
+            <div className="space-y-2">
+              {rendiciones.map(r => (
+                <div key={r.id} className="border border-ch-border p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-body text-xs text-ch-cream">{r.descripcion}</p>
+                      <p className="font-body text-[10px] text-ch-muted">
+                        {(r.cotizacion as any)?.nombre}
+                        {(r.cotizacion_item as any)?.nombre && ` · ${(r.cotizacion_item as any).nombre}`}
+                      </p>
+                    </div>
+                    <span className={`font-body text-[9px] tracking-wider px-2 py-0.5 border whitespace-nowrap ${r.estado === 'aprobada' ? 'border-ch-green/30 text-ch-green' : r.estado === 'rechazada' ? 'border-red-500/30 text-red-400' : 'border-amber-500/30 text-amber-400'}`}>
+                      {r.estado}
+                    </span>
+                  </div>
+                  <p className="font-body text-sm text-ch-cream font-mono mt-1">${r.monto.toLocaleString('es-CL')}</p>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
