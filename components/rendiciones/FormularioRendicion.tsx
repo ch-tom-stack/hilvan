@@ -8,11 +8,11 @@ import { createClient } from '@/lib/supabase/client'
 const TIPO_ITEM_A_RENDICION: Record<string, TipoRendicion> = {
   rol: 'honorarios',
   equipo_ch: 'otro',
-  equipo_externo: 'factura',
-  servicio: 'factura',
-  consumible: 'otro',
+  equipo_externo: 'servicios',
+  servicio: 'servicios',
+  consumible: 'insumos',
   post_produccion: 'honorarios',
-  locacion: 'factura',
+  locacion: 'servicios',
   cast: 'honorarios',
   otro: 'otro',
 }
@@ -22,7 +22,9 @@ const TIPOS: { value: TipoRendicion; label: string }[] = [
   { value: 'transporte', label: 'Transporte' },
   { value: 'alimentacion', label: 'Alimentación' },
   { value: 'arte', label: 'Arte / Props' },
-  { value: 'factura', label: 'Factura' },
+  { value: 'insumos', label: 'Insumos' },
+  { value: 'servicios', label: 'Servicios' },
+  { value: 'viaticos', label: 'Viáticos' },
   { value: 'otro', label: 'Otro' },
 ]
 
@@ -84,6 +86,7 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
     foto_url: '',
   })
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [archivoNombre, setArchivoNombre] = useState<string | null>(null)
 
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
@@ -103,7 +106,7 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
   const disponible = (item: CotizacionItem) =>
     item.precio_neto_proveedor * item.cantidad - (rendicionesPorItem[item.id] || 0)
 
-  const subirFoto = async (file: File) => {
+  const subirArchivo = async (file: File) => {
     setSubiendo(true)
     try {
       const supabase = createClient()
@@ -113,7 +116,12 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('rendiciones').getPublicUrl(path)
       set('foto_url', publicUrl)
-      setFotoPreview(URL.createObjectURL(file))
+      setArchivoNombre(file.name)
+      if (file.type.startsWith('image/')) {
+        setFotoPreview(URL.createObjectURL(file))
+      } else {
+        setFotoPreview(null)
+      }
     } finally {
       setSubiendo(false)
     }
@@ -259,16 +267,29 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
             </select>
           </div>
 
-          {/* Foto */}
+          {/* Comprobante */}
           <div>
-            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Foto comprobante *</label>
-            <input ref={fileRef} type="file" accept="image/*" capture="environment"
-              onChange={e => { if (e.target.files?.[0]) subirFoto(e.target.files[0]) }}
+            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Comprobante *</label>
+            <input ref={fileRef} type="file" accept="image/*,application/pdf"
+              onChange={e => { if (e.target.files?.[0]) subirArchivo(e.target.files[0]) }}
               className="hidden" />
-            {fotoPreview ? (
-              <div className="relative">
-                <img src={fotoPreview} alt="Comprobante" className="w-full max-h-48 object-cover border border-ch-border" />
-                <button onClick={() => { setFotoPreview(null); set('foto_url', '') }}
+            {form.foto_url ? (
+              <div className="border border-ch-border relative">
+                {fotoPreview ? (
+                  <img src={fotoPreview} alt="Comprobante" className="w-full max-h-48 object-cover" />
+                ) : (
+                  <div className="flex items-center gap-3 p-4">
+                    <span className="text-2xl">📄</span>
+                    <div className="min-w-0">
+                      <p className="font-body text-xs text-ch-cream truncate">{archivoNombre}</p>
+                      <a href={form.foto_url} target="_blank" rel="noopener noreferrer"
+                        className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors">
+                        Ver archivo →
+                      </a>
+                    </div>
+                  </div>
+                )}
+                <button onClick={() => { setFotoPreview(null); setArchivoNombre(null); set('foto_url', '') }}
                   className="absolute top-2 right-2 bg-ch-surface border border-ch-border text-ch-muted font-body text-xs px-2 py-1 hover:text-red-400 transition-colors">
                   ✕
                 </button>
@@ -276,7 +297,7 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
             ) : (
               <button onClick={() => fileRef.current?.click()} disabled={subiendo}
                 className="w-full border border-dashed border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs py-6 transition-colors disabled:opacity-50">
-                {subiendo ? 'Subiendo...' : '📷 Tomar foto o seleccionar imagen'}
+                {subiendo ? 'Subiendo...' : '📎 Adjuntar imagen o PDF'}
               </button>
             )}
           </div>

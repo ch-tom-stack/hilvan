@@ -467,7 +467,7 @@ export interface ColaboradorLinkTemporal {
   created_at: string
 }
 
-export type TipoRendicion = 'honorarios' | 'factura' | 'arte' | 'transporte' | 'alimentacion' | 'otro'
+export type TipoRendicion = 'honorarios' | 'arte' | 'transporte' | 'alimentacion' | 'insumos' | 'servicios' | 'viaticos' | 'otro'
 export type EstadoRendicion = 'pendiente' | 'aprobada' | 'rechazada'
 export type TipoDocRendicion = 'boleta' | 'bet' | 'factura' | 'sin_documento'
 

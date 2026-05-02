@@ -8,7 +8,7 @@ import FormularioRendicion from './FormularioRendicion'
 
 const TIPO_LABEL: Record<string, string> = {
   honorarios: 'Honorarios', transporte: 'Transporte', alimentacion: 'Alimentación',
-  arte: 'Arte / Props', factura: 'Factura', otro: 'Otro',
+  arte: 'Arte / Props', insumos: 'Insumos', servicios: 'Servicios', viaticos: 'Viáticos', otro: 'Otro',
 }
 
 const ESTADO_COLOR: Record<string, string> = {
