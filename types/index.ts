@@ -467,9 +467,9 @@ export interface ColaboradorLinkTemporal {
   created_at: string
 }
 
-export type TipoRendicion = 'honorarios' | 'factura' | 'arte' | 'transporte' | 'alimentacion' | 'otro'
-export type EstadoRendicion = 'pendiente' | 'aprobada' | 'rechazada'
-export type TipoDocRendicion = 'boleta' | 'bet' | 'factura' | 'sin_documento'
+export type TipoRendicion = 'honorarios' | 'arte' | 'transporte' | 'alimentacion' | 'insumos' | 'servicios' | 'viaticos' | 'otro'
+export type EstadoRendicion = 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'pago_aprobado'
+export type TipoDocRendicion = 'boleta' | 'factura' | 'exenta' | 'sin_documento'
 
 export interface Rendicion {
   id: string
@@ -480,6 +480,7 @@ export interface Rendicion {
   colaborador_id?: string
   colaborador?: Colaborador
   nombre_libre?: string
+  origen?: 'interno' | 'externo'
   tipo: TipoRendicion
   descripcion: string
   monto: number
@@ -489,6 +490,7 @@ export interface Rendicion {
   motivo_rechazo?: string
   aprobada_por?: string
   notas?: string
+  comprobante_pago_url?: string
   created_at: string
   updated_at: string
 }
@@ -517,19 +519,16 @@ export interface ContratoGenerado {
 
 const RETENCION_BOLETA = 0.154
 
-export function calcularRetencion(rendicion: Rendicion) {
+export function calcularRetencion(rendicion: { monto: number; tipo_documento?: string }) {
   if (rendicion.tipo_documento === 'boleta' || rendicion.tipo_documento === 'bet') {
-    return {
-      bruto: rendicion.monto,
-      retencion: Math.round(rendicion.monto * RETENCION_BOLETA),
-      neto: Math.round(rendicion.monto * (1 - RETENCION_BOLETA)),
-      sinDocumento: false,
-    }
+    const retencion = Math.round(rendicion.monto * RETENCION_BOLETA)
+    return { bruto: rendicion.monto, retencion, neto: rendicion.monto - retencion, sinDocumento: false }
   }
-  if (rendicion.tipo_documento === 'factura') {
-    return { bruto: rendicion.monto, retencion: 0, neto: rendicion.monto, sinDocumento: false }
+  if (rendicion.tipo_documento === 'sin_documento') {
+    return { bruto: rendicion.monto, retencion: 0, neto: rendicion.monto, sinDocumento: true }
   }
-  return { bruto: rendicion.monto, retencion: 0, neto: rendicion.monto, sinDocumento: true }
+  // factura, exenta — pago bruto completo
+  return { bruto: rendicion.monto, retencion: 0, neto: rendicion.monto, sinDocumento: false }
 }
 
 export interface RodajeEquipoTecnico {

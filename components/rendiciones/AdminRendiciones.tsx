@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { aprobarRendicion, rechazarRendicion } from '@/app/actions/rendiciones'
+import { useState, useTransition, useRef } from 'react'
+import { aprobarRendicion, rechazarRendicion, aprobarPago, toggleRendicionCompletada, generarLinkTemporalExterno } from '@/app/actions/rendiciones'
+import { createClient } from '@/lib/supabase/client'
 import { calcularRetencion } from '@/types'
 import type { Rendicion } from '@/types'
 import FormularioRendicion from './FormularioRendicion'
@@ -9,7 +10,7 @@ import NotasGlosa from './NotasGlosa'
 
 const TIPO_LABEL: Record<string, string> = {
   honorarios: 'Honorarios', transporte: 'Transporte', alimentacion: 'Alimentación',
-  arte: 'Arte / Props', factura: 'Factura', otro: 'Otro',
+  arte: 'Arte / Props', insumos: 'Insumos', servicios: 'Servicios', viaticos: 'Viáticos', otro: 'Otro',
 }
 
 interface Item {
@@ -36,6 +37,7 @@ interface Props {
   cotizacionesForm: any[]
   rendicionesPorItemSumas: Record<string, number>
   colaboradores: { id: string; nombre: string }[]
+  puedeAprobarPago?: boolean
 }
 
 export default function AdminRendiciones({
@@ -45,6 +47,7 @@ export default function AdminRendiciones({
   cotizacionesForm,
   rendicionesPorItemSumas,
   colaboradores,
+  puedeAprobarPago = false,
 }: Props) {
   const [porItem, setPorItem] = useState(initialPorItem)
   const [sinItem, setSinItem] = useState(initialSinItem)
@@ -54,6 +57,10 @@ export default function AdminRendiciones({
   const [mostrarForm, setMostrarForm] = useState(false)
   const [notasAbiertas, setNotasAbiertas] = useState<Record<string, boolean>>({})
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
+  const [modalLink, setModalLink] = useState<{ itemId: string; itemNombre: string } | null>(null)
+  const [linkForm, setLinkForm] = useState({ email: '', colaboradorId: '', dias: 7 })
+  const [linkGenerado, setLinkGenerado] = useState<string | null>(null)
+  const [generandoLink, setGenerandoLink] = useState(false)
 
   const toggleExpand = (key: string) => setExpandidos(p => ({ ...p, [key]: !p[key] }))
   const toggleNotas = (key: string) => setNotasAbiertas(p => ({ ...p, [key]: !p[key] }))
@@ -72,11 +79,25 @@ export default function AdminRendiciones({
     }))
   }
 
-  const aprobar = (r: Rendicion, tipo: 'item' | 'libre', key: string) => {
+  const aprobarContenido = (r: Rendicion, tipo: 'item' | 'libre', key: string) => {
     startTransition(async () => {
       if (tipo === 'item') actualizarEnItem(key, r.id, { estado: 'aprobada' })
       else actualizarEnSinItem(key, r.id, { estado: 'aprobada' })
       await aprobarRendicion(r.id)
+    })
+  }
+
+  const aprobarPagoRendicion = (r: Rendicion, tipo: 'item' | 'libre', key: string, comprobante?: string) => {
+    startTransition(async () => {
+      if (tipo === 'item') actualizarEnItem(key, r.id, { estado: 'pago_aprobado', comprobante_pago_url: comprobante })
+      else actualizarEnSinItem(key, r.id, { estado: 'pago_aprobado', comprobante_pago_url: comprobante })
+      await aprobarPago(r.id, comprobante)
+    })
+  }
+
+  const toggleCompletado = (tipo: 'item' | 'departamento', id: string, valor: boolean) => {
+    startTransition(async () => {
+      await toggleRendicionCompletada(tipo, id, valor)
     })
   }
 
@@ -90,6 +111,30 @@ export default function AdminRendiciones({
       setModalRechazo(null)
       setMotivo('')
     })
+  }
+
+  const handleGenerarLink = async () => {
+    if (!modalLink || !linkForm.email.trim()) return
+    setGenerandoLink(true)
+    try {
+      const result = await generarLinkTemporalExterno({
+        cotizacion_item_id: modalLink.itemId,
+        email: linkForm.email.trim(),
+        colaborador_id: linkForm.colaboradorId || null,
+        dias_expiracion: linkForm.dias,
+      })
+      setLinkGenerado(result.url)
+    } catch (e: any) {
+      alert(e?.message || 'Error generando link')
+    } finally {
+      setGenerandoLink(false)
+    }
+  }
+
+  const cerrarModalLink = () => {
+    setModalLink(null)
+    setLinkGenerado(null)
+    setLinkForm({ email: '', colaboradorId: '', dias: 7 })
   }
 
   const handleNuevaRendicion = (nueva: Rendicion) => {
@@ -119,8 +164,9 @@ export default function AdminRendiciones({
       {/* Barra superior */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex gap-4 text-ch-muted font-body text-[10px] tracking-wider">
-          <span>{todasLasRendiciones.filter(r => r.estado === 'pendiente').length} pendientes</span>
-          <span>{todasLasRendiciones.filter(r => r.estado === 'aprobada').length} aprobadas</span>
+          <span>{todasLasRendiciones.filter(r => r.estado === 'enviada').length} enviadas</span>
+          <span>{todasLasRendiciones.filter(r => r.estado === 'aprobada').length} por pagar</span>
+          <span>{todasLasRendiciones.filter(r => r.estado === 'pago_aprobado').length} pagadas</span>
         </div>
         <button onClick={() => setMostrarForm(!mostrarForm)}
           className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors">
@@ -196,9 +242,14 @@ export default function AdminRendiciones({
                                 {(sg.items ?? []).map(item => (
                                   <ItemRow key={item.id} item={item} rendiciones={porItem[item.id] || []}
                                     expandido={!!expandidos[item.id]} notasAbiertas={!!notasAbiertas[item.id]}
+                                    completado={!!(item as any).rendicion_completada}
                                     onToggle={() => toggleExpand(item.id)} onToggleNotas={() => toggleNotas(item.id)}
-                                    onAprobar={r => aprobar(r, 'item', item.id)}
+                                    onToggleCompletado={v => toggleCompletado('item', item.id, v)}
+                                    onAprobarContenido={r => aprobarContenido(r, 'item', item.id)}
+                                    onAprobarPago={(r, comp) => aprobarPagoRendicion(r, 'item', item.id, comp)}
                                     onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
+                                    onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
+                                    puedeAprobarPago={puedeAprobarPago}
                                     isPending={isPending}
                                   />
                                 ))}
@@ -213,9 +264,14 @@ export default function AdminRendiciones({
                         .map(item => (
                           <ItemRow key={item.id} item={item} rendiciones={porItem[item.id] || []}
                             expandido={!!expandidos[item.id]} notasAbiertas={!!notasAbiertas[item.id]}
+                            completado={!!(item as any).rendicion_completada}
                             onToggle={() => toggleExpand(item.id)} onToggleNotas={() => toggleNotas(item.id)}
-                            onAprobar={r => aprobar(r, 'item', item.id)}
+                            onToggleCompletado={v => toggleCompletado('item', item.id, v)}
+                            onAprobarContenido={r => aprobarContenido(r, 'item', item.id)}
+                            onAprobarPago={r => aprobarPagoRendicion(r, 'item', item.id)}
                             onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
+                            onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
+                            puedeAprobarPago={puedeAprobarPago}
                             isPending={isPending}
                           />
                         ))}
@@ -231,8 +287,10 @@ export default function AdminRendiciones({
                 <div className="space-y-2">
                   {sinEste.map(r => (
                     <RendicionRow key={r.id} rendicion={r}
-                      onAprobar={() => aprobar(r, 'libre', cot.id)}
+                      onAprobarContenido={() => aprobarContenido(r, 'libre', cot.id)}
+                      onAprobarPago={comp => aprobarPagoRendicion(r, 'libre', cot.id, comp)}
                       onRechazar={() => { setModalRechazo({ id: r.id, tipo: 'libre', key: cot.id }); setMotivo('') }}
+                      puedeAprobarPago={puedeAprobarPago}
                       isPending={isPending}
                     />
                   ))}
@@ -242,6 +300,84 @@ export default function AdminRendiciones({
           </div>
         )
       })}
+
+      {/* Modal generar link externo */}
+      {modalLink && (
+        <div className="fixed inset-0 bg-ch-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-ch-dark border border-ch-border p-6 w-full max-w-md">
+            <h3 className="font-display italic text-2xl text-ch-cream mb-1">Generar link externo</h3>
+            <p className="font-body text-[10px] text-ch-muted mb-5 truncate">{modalLink.itemNombre}</p>
+
+            {linkGenerado ? (
+              <div className="space-y-4">
+                <div className="border border-ch-green/30 bg-ch-green/5 p-3">
+                  <p className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-green mb-2">Link generado · email enviado</p>
+                  <p className="font-mono text-xs text-ch-cream break-all select-all">{linkGenerado}</p>
+                </div>
+                <button
+                  onClick={() => navigator.clipboard.writeText(linkGenerado)}
+                  className="w-full border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase py-2.5 transition-colors">
+                  Copiar link
+                </button>
+                <button onClick={cerrarModalLink}
+                  className="w-full bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase py-2.5 transition-colors">
+                  Listo
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Email del externo *</label>
+                  <input
+                    type="email"
+                    value={linkForm.email}
+                    onChange={e => setLinkForm(p => ({ ...p, email: e.target.value }))}
+                    placeholder="nombre@email.com"
+                    autoFocus
+                    className="input-ch w-full"
+                  />
+                </div>
+                <div>
+                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Colaborador en directorio (opcional)</label>
+                  <select
+                    value={linkForm.colaboradorId}
+                    onChange={e => setLinkForm(p => ({ ...p, colaboradorId: e.target.value }))}
+                    className="input-ch w-full">
+                    <option value="">— Sin ficha en directorio —</option>
+                    {colaboradores.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Días de vigencia</label>
+                  <select
+                    value={linkForm.dias}
+                    onChange={e => setLinkForm(p => ({ ...p, dias: Number(e.target.value) }))}
+                    className="input-ch w-full">
+                    <option value={3}>3 días</option>
+                    <option value={7}>7 días (default)</option>
+                    <option value={14}>14 días</option>
+                    <option value={30}>30 días</option>
+                  </select>
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={handleGenerarLink}
+                    disabled={generandoLink || !linkForm.email.trim()}
+                    className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
+                    {generandoLink ? 'Generando...' : 'Generar y enviar link'}
+                  </button>
+                  <button onClick={cerrarModalLink}
+                    className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-4 transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal rechazo */}
       {modalRechazo && (
@@ -270,39 +406,55 @@ export default function AdminRendiciones({
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
-function ItemRow({ item, rendiciones, expandido, notasAbiertas, onToggle, onToggleNotas, onAprobar, onRechazar, isPending }: {
-  item: Item
+function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onToggle, onToggleNotas, onToggleCompletado, onAprobarContenido, onAprobarPago, onRechazar, onGenerarLink, puedeAprobarPago, isPending }: {
+  item: Item & { rendicion_completada?: boolean }
   rendiciones: Rendicion[]
   expandido: boolean
   notasAbiertas: boolean
+  completado: boolean
   onToggle: () => void
   onToggleNotas: () => void
-  onAprobar: (r: Rendicion) => void
+  onToggleCompletado: (v: boolean) => void
+  onAprobarContenido: (r: Rendicion) => void
+  onAprobarPago: (r: Rendicion, comp?: string) => void
   onRechazar: (r: Rendicion) => void
+  onGenerarLink: () => void
+  puedeAprobarPago: boolean
   isPending: boolean
 }) {
   const presupuesto = item.precio_neto_proveedor * item.cantidad
-  const rendido = rendiciones.filter(r => r.estado === 'aprobada').reduce((s, r) => s + r.monto, 0)
+  const rendido = rendiciones.filter(r => ['aprobada', 'pago_aprobado', 'enviada'].includes(r.estado)).reduce((s, r) => s + r.monto, 0)
   const diferencia = presupuesto - rendido
   const esPerdida = diferencia < 0
   if (rendiciones.length === 0) return null
 
   return (
     <div>
-      <div className="flex items-center gap-2 py-1.5 cursor-pointer hover:text-ch-cream transition-colors group"
-        onClick={onToggle}>
-        <span className="font-body text-[10px] text-ch-muted group-hover:text-ch-cream transition-colors">
+      <div className="flex items-center gap-2 py-1.5 group">
+        <span className="font-body text-[10px] text-ch-muted cursor-pointer group-hover:text-ch-cream transition-colors"
+          onClick={onToggle}>
           {expandido ? '▾' : '▸'}
         </span>
-        <span className="font-body text-xs text-ch-cream flex-1">{item.nombre}</span>
+        <span className="font-body text-xs text-ch-cream flex-1 cursor-pointer" onClick={onToggle}>{item.nombre}</span>
         <span className="font-body text-[10px] text-ch-muted font-mono whitespace-nowrap">
           Presupuesto: ${presupuesto.toLocaleString('es-CL')} · Rendido: ${rendido.toLocaleString('es-CL')} · {esPerdida ? `Pérdida: $${Math.abs(diferencia).toLocaleString('es-CL')}` : `Disponible: $${diferencia.toLocaleString('es-CL')}`}
         </span>
         <button onClick={e => { e.stopPropagation(); onToggleNotas() }}
           className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1"
-          title="Notas">
+          title="Notas de glosa">
           📝
         </button>
+        <button onClick={e => { e.stopPropagation(); onGenerarLink() }}
+          className="font-body text-[9px] text-ch-muted hover:text-blue-400 transition-colors px-1 border border-ch-border/50 py-0.5 hidden group-hover:inline"
+          title="Generar link para externo">
+          🔗
+        </button>
+        <label className="flex items-center gap-1 cursor-pointer" title="Marcar como rendido">
+          <input type="checkbox" checked={completado} disabled={isPending}
+            onChange={e => onToggleCompletado(e.target.checked)}
+            className="accent-ch-green w-3 h-3" />
+          <span className="font-body text-[9px] text-ch-muted">Rendido</span>
+        </label>
       </div>
 
       {notasAbiertas && <NotasGlosa cotizacionItemId={item.id} />}
@@ -311,8 +463,10 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, onToggle, onTogg
         <div className="ml-4 space-y-2 mt-1 mb-2">
           {rendiciones.map(r => (
             <RendicionRow key={r.id} rendicion={r}
-              onAprobar={() => onAprobar(r)}
+              onAprobarContenido={() => onAprobarContenido(r)}
+              onAprobarPago={comp => onAprobarPago(r, comp)}
               onRechazar={() => onRechazar(r)}
+              puedeAprobarPago={puedeAprobarPago}
               isPending={isPending}
             />
           ))}
@@ -322,22 +476,55 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, onToggle, onTogg
   )
 }
 
-function RendicionRow({ rendicion: r, onAprobar, onRechazar, isPending }: {
+function RendicionRow({ rendicion: r, onAprobarContenido, onAprobarPago, onRechazar, puedeAprobarPago: puedeAprobarPagoProp, isPending }: {
   rendicion: Rendicion
-  onAprobar: () => void
+  onAprobarContenido: () => void
+  onAprobarPago: (comprobante?: string) => void
   onRechazar: () => void
+  puedeAprobarPago: boolean
   isPending: boolean
 }) {
+  const [mostrarFormPago, setMostrarFormPago] = useState(false)
+  const [subiendoPago, setSubiendoPago] = useState(false)
+  const [comprobantePago, setComprobantePago] = useState<{ url: string; nombre: string } | null>(null)
+  const fileRefPago = useRef<HTMLInputElement>(null)
+
   const retencion = r.tipo_documento ? calcularRetencion(r) : null
   const colNombre = (r.colaborador as any)?.nombre || r.nombre_libre || '—'
+  const esExterno = r.origen === 'externo'
+  const puedeAprobarPago = puedeAprobarPagoProp && ((r.estado === 'enviada' && !esExterno) || r.estado === 'aprobada')
+
+  const subirComprobantePago = async (file: File) => {
+    setSubiendoPago(true)
+    try {
+      const supabase = createClient()
+      const ext = file.name.split('.').pop()
+      const path = `rendiciones/pagos/${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('rendiciones').upload(path, file)
+      if (error) throw error
+      const { data: { publicUrl } } = supabase.storage.from('rendiciones').getPublicUrl(path)
+      setComprobantePago({ url: publicUrl, nombre: file.name })
+    } finally {
+      setSubiendoPago(false)
+    }
+  }
+
+  const ESTADO_BORDER: Record<string, string> = {
+    borrador: 'border-ch-border/40',
+    enviada: 'border-amber-500/20 bg-amber-500/5',
+    aprobada: 'border-blue-500/20 bg-blue-500/5',
+    rechazada: 'border-red-500/20 bg-red-500/5',
+    pago_aprobado: 'border-ch-green/20 bg-ch-green/5',
+  }
 
   return (
-    <div className={`border p-3 ${r.estado === 'pendiente' ? 'border-amber-500/20 bg-amber-500/5' : r.estado === 'aprobada' ? 'border-ch-green/20 bg-ch-green/5' : 'border-red-500/20 bg-red-500/5'}`}>
+    <div className={`border p-3 ${ESTADO_BORDER[r.estado] || 'border-ch-border/40'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <span className="font-body text-xs text-ch-cream">{colNombre}</span>
             <span className="font-body text-[9px] text-ch-muted">{TIPO_LABEL[r.tipo] || r.tipo}</span>
+            {esExterno && <span className="font-body text-[9px] px-1.5 border border-blue-500/40 text-blue-400">Externo</span>}
             {r.tipo_documento === 'sin_documento' && (
               <span className="font-body text-[9px] px-1.5 border border-red-500/40 text-red-400">SIN DOC</span>
             )}
@@ -360,14 +547,22 @@ function RendicionRow({ rendicion: r, onAprobar, onRechazar, isPending }: {
           {r.foto_url && (
             <a href={r.foto_url} target="_blank" rel="noopener noreferrer"
               className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors">
-              Ver doc →
+              Ver comprobante →
             </a>
           )}
-          {r.estado === 'pendiente' && (
+          {r.comprobante_pago_url && (
+            <a href={r.comprobante_pago_url} target="_blank" rel="noopener noreferrer"
+              className="font-body text-[10px] text-ch-green hover:text-ch-green-light transition-colors">
+              Ver comprobante pago →
+            </a>
+          )}
+
+          {/* Externo enviada → aprobar contenido o rechazar */}
+          {r.estado === 'enviada' && esExterno && (
             <div className="flex gap-1.5">
-              <button onClick={onAprobar} disabled={isPending}
-                className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50">
-                Aprobar
+              <button onClick={onAprobarContenido} disabled={isPending}
+                className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 border border-blue-500/40 text-blue-300 hover:bg-blue-500/10 transition-colors disabled:opacity-50">
+                Aprobar contenido
               </button>
               <button onClick={onRechazar} disabled={isPending}
                 className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50">
@@ -375,13 +570,66 @@ function RendicionRow({ rendicion: r, onAprobar, onRechazar, isPending }: {
               </button>
             </div>
           )}
-          {r.estado !== 'pendiente' && (
-            <span className={`font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border ${r.estado === 'aprobada' ? 'border-ch-green/30 text-ch-green' : 'border-red-500/30 text-red-400'}`}>
-              {r.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}
+
+          {/* Aprobar pago */}
+          {puedeAprobarPago && !mostrarFormPago && (
+            <button onClick={() => setMostrarFormPago(true)} disabled={isPending}
+              className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50">
+              ✓ Aprobar pago
+            </button>
+          )}
+
+          {/* Badge de estado final */}
+          {r.estado === 'pago_aprobado' && (
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-green/30 text-ch-green">
+              Pagado
+            </span>
+          )}
+          {r.estado === 'rechazada' && (
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-red-500/30 text-red-400">
+              Rechazada
+            </span>
+          )}
+          {r.estado === 'borrador' && (
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-border text-ch-muted">
+              Borrador
             </span>
           )}
         </div>
       </div>
+
+      {/* Mini-form aprobación de pago */}
+      {mostrarFormPago && (
+        <div className="mt-3 pt-3 border-t border-ch-border/40 space-y-2">
+          <p className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-muted">Comprobante de pago</p>
+          <input ref={fileRefPago} type="file" accept="image/*,application/pdf"
+            onChange={e => { if (e.target.files?.[0]) subirComprobantePago(e.target.files[0]) }}
+            className="hidden" />
+          {comprobantePago ? (
+            <div className="flex items-center gap-2 p-2 border border-ch-border/50">
+              <span className="font-body text-[10px] text-ch-cream truncate">{comprobantePago.nombre}</span>
+              <button onClick={() => setComprobantePago(null)} className="text-ch-muted hover:text-red-400 text-xs">✕</button>
+            </div>
+          ) : (
+            <button onClick={() => fileRefPago.current?.click()} disabled={subiendoPago}
+              className="w-full border border-dashed border-ch-border/50 text-ch-muted hover:text-ch-cream font-body text-[10px] py-2 transition-colors disabled:opacity-50">
+              {subiendoPago ? 'Subiendo...' : '📎 Adjuntar comprobante (opcional)'}
+            </button>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => { onAprobarPago(comprobantePago?.url); setMostrarFormPago(false); setComprobantePago(null) }}
+              disabled={isPending || subiendoPago}
+              className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase py-2 transition-colors disabled:opacity-50">
+              {isPending ? 'Aprobando...' : 'Confirmar pago'}
+            </button>
+            <button onClick={() => { setMostrarFormPago(false); setComprobantePago(null) }}
+              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] px-3 transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

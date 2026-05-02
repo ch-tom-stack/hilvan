@@ -76,7 +76,7 @@ export async function getRendicionesSumasPorItem(): Promise<Record<string, numbe
   const { data } = await supabase
     .from('rendiciones')
     .select('cotizacion_item_id, monto')
-    .eq('estado', 'aprobada')
+    .in('estado', ['enviada', 'aprobada', 'pago_aprobado'])
     .not('cotizacion_item_id', 'is', null)
 
   const map: Record<string, number> = {}
@@ -143,17 +143,20 @@ export async function crearRendicion(payload: {
   cotizacion_item_id?: string | null
   colaborador_id?: string
   nombre_libre?: string
+  origen?: 'interno' | 'externo'
   tipo: TipoRendicion
   descripcion: string
   monto: number
   foto_url: string
   tipo_documento?: TipoDocRendicion
   notas?: string
+  estado?: 'borrador' | 'enviada'
 }) {
   const supabase = await createClient()
+  const { estado = 'enviada', ...rest } = payload
   const { data, error } = await supabase
     .from('rendiciones')
-    .insert({ ...payload, estado: 'pendiente' })
+    .insert({ ...rest, estado })
     .select(`
       *,
       colaborador:colaboradores(nombre, email),
@@ -166,27 +169,74 @@ export async function crearRendicion(payload: {
   revalidatePath('/rendiciones')
   revalidatePath('/rendiciones/admin')
 
-  try {
-    const cotNombre = (data.cotizacion as any)?.nombre || ''
-    const itemNombre = (data.cotizacion_item as any)?.nombre || 'Gasto no presupuestado'
-    await resend.emails.send({
-      from: 'Hilván <noreply@casahiedra.com>',
-      to: 'admin@casahiedra.com',
-      subject: `Nueva rendición: ${data.colaborador?.nombre || data.nombre_libre} · ${cotNombre}`,
-      html: `
-        <p><strong>${data.colaborador?.nombre || data.nombre_libre}</strong> envió una nueva rendición.</p>
-        <ul>
-          <li>Cotización: ${cotNombre}</li>
-          <li>Ítem: ${itemNombre}</li>
-          <li>Tipo: ${data.tipo}</li>
-          <li>Monto: $${data.monto.toLocaleString('es-CL')}</li>
-        </ul>
-        <p><a href="${APP_URL}/rendiciones/admin">Ver en Hilván →</a></p>
-      `,
-    })
-  } catch { /* email no crítico */ }
+  if (estado !== 'borrador') {
+    try {
+      const cotNombre = (data.cotizacion as any)?.nombre || ''
+      const itemNombre = (data.cotizacion_item as any)?.nombre || 'Gasto no presupuestado'
+      await resend.emails.send({
+        from: 'Hilván <noreply@casahiedra.com>',
+        to: 'admin@casahiedra.com',
+        subject: `Nueva rendición: ${data.colaborador?.nombre || data.nombre_libre} · ${cotNombre}`,
+        html: `
+          <p><strong>${data.colaborador?.nombre || data.nombre_libre}</strong> envió una nueva rendición.</p>
+          <ul>
+            <li>Cotización: ${cotNombre}</li>
+            <li>Ítem: ${itemNombre}</li>
+            <li>Tipo: ${data.tipo}</li>
+            <li>Monto: $${data.monto.toLocaleString('es-CL')}</li>
+          </ul>
+          <p><a href="${APP_URL}/rendiciones/admin">Ver en Hilván →</a></p>
+        `,
+      })
+    } catch { /* email no crítico */ }
+  }
 
   return data as Rendicion
+}
+
+export async function enviarRendicion(id: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('rendiciones')
+    .update({ estado: 'enviada', updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('estado', 'borrador')
+    .select('*')
+    .single()
+  if (error) throw error
+  revalidatePath('/rendiciones')
+  revalidatePath('/rendiciones/admin')
+  return data as Rendicion
+}
+
+export async function aprobarPago(id: string, comprobante_pago_url?: string) {
+  const supabase = await createClient()
+  const updates: Record<string, any> = { estado: 'pago_aprobado', updated_at: new Date().toISOString() }
+  if (comprobante_pago_url) updates.comprobante_pago_url = comprobante_pago_url
+  const { data, error } = await supabase
+    .from('rendiciones')
+    .update(updates)
+    .eq('id', id)
+    .select(`*, colaborador:colaboradores(nombre, email), cotizacion:cotizaciones(nombre)`)
+    .single()
+  if (error) throw error
+  revalidatePath('/rendiciones/admin')
+  return data as Rendicion
+}
+
+export async function toggleRendicionCompletada(
+  tipo: 'item' | 'departamento',
+  id: string,
+  valor: boolean
+) {
+  const supabase = await createClient()
+  const tabla = tipo === 'item' ? 'cotizacion_items' : 'cotizacion_departamentos'
+  const { error } = await supabase
+    .from(tabla)
+    .update({ rendicion_completada: valor })
+    .eq('id', id)
+  if (error) throw error
+  revalidatePath('/rendiciones/admin')
 }
 
 // ─── APROBAR / RECHAZAR ───────────────────────────────────────────────────────
@@ -250,6 +300,53 @@ export async function eliminarRendicion(id: string) {
   if (error) throw error
   revalidatePath('/rendiciones')
   revalidatePath('/rendiciones/admin')
+}
+
+// ─── LINK TEMPORAL EXTERNOS ───────────────────────────────────────────────────
+
+export async function generarLinkTemporalExterno(payload: {
+  cotizacion_item_id: string
+  email: string
+  colaborador_id?: string | null
+  dias_expiracion?: number
+}): Promise<{ url: string }> {
+  const supabase = await createClient()
+  const { cotizacion_item_id, email, colaborador_id, dias_expiracion = 7 } = payload
+
+  const token = crypto.randomUUID().replace(/-/g, '')
+  const expires_at = new Date()
+  expires_at.setDate(expires_at.getDate() + dias_expiracion)
+
+  const { error } = await supabase
+    .from('rendiciones_links_temporales')
+    .insert({
+      cotizacion_item_id,
+      email,
+      colaborador_id: colaborador_id || null,
+      token,
+      expires_at: expires_at.toISOString(),
+    })
+  if (error) throw error
+
+  const url = `${APP_URL}/r/${token}`
+
+  try {
+    await resend.emails.send({
+      from: 'Hilván <noreply@casahiedra.com>',
+      to: email,
+      subject: 'Hilván · Envío de rendición de gastos',
+      html: `
+        <p>Hola,</p>
+        <p>Casa Hiedra te invita a registrar tus gastos de producción a través de Hilván.</p>
+        <p><a href="${url}" style="display:inline-block;background:#4ade80;color:#000;padding:10px 20px;text-decoration:none;font-family:monospace;">Ingresar mis gastos →</a></p>
+        <p style="color:#888;font-size:12px;">Este link expira en ${dias_expiracion} días. No lo compartas con terceros.</p>
+        <p>Casa Hiedra</p>
+      `,
+    })
+  } catch { /* email no crítico */ }
+
+  revalidatePath('/rendiciones/admin')
+  return { url }
 }
 
 // ─── NOTAS POR GLOSA ──────────────────────────────────────────────────────────

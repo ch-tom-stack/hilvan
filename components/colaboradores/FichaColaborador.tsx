@@ -402,12 +402,10 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
         <div>
           <div className="flex items-center justify-between mb-6">
             <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Rendiciones</p>
-            {cotizaciones.length > 0 && (
-              <button onClick={() => setMostrarFormRendicion(!mostrarFormRendicion)}
-                className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-4 py-2 transition-colors">
-                + Agregar gasto
-              </button>
-            )}
+            <button onClick={() => setMostrarFormRendicion(!mostrarFormRendicion)}
+              className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-4 py-2 transition-colors">
+              + Agregar gasto
+            </button>
           </div>
 
           {mostrarFormRendicion && (

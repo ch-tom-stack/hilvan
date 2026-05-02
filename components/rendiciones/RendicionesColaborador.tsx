@@ -8,17 +8,20 @@ import FormularioRendicion from './FormularioRendicion'
 
 const TIPO_LABEL: Record<string, string> = {
   honorarios: 'Honorarios', transporte: 'Transporte', alimentacion: 'Alimentación',
-  arte: 'Arte / Props', factura: 'Factura', otro: 'Otro',
+  arte: 'Arte / Props', insumos: 'Insumos', servicios: 'Servicios', viaticos: 'Viáticos', otro: 'Otro',
 }
 
 const ESTADO_COLOR: Record<string, string> = {
-  pendiente: 'text-amber-400 border-amber-500/30',
-  aprobada: 'text-ch-green border-ch-green/30',
+  borrador: 'text-ch-muted border-ch-border',
+  enviada: 'text-amber-400 border-amber-500/30',
+  aprobada: 'text-blue-400 border-blue-500/30',
   rechazada: 'text-red-400 border-red-500/30',
+  pago_aprobado: 'text-ch-green border-ch-green/30',
 }
 
 const ESTADO_LABEL: Record<string, string> = {
-  pendiente: 'Pendiente', aprobada: 'Aprobada', rechazada: 'Rechazada',
+  borrador: 'Borrador', enviada: 'Enviada', aprobada: 'En revisión',
+  rechazada: 'Rechazada', pago_aprobado: 'Pagada',
 }
 
 interface Props {
@@ -111,7 +114,7 @@ export default function RendicionesColaborador({ colaboradorId, rendiciones: ini
                         Ver doc →
                       </a>
                     )}
-                    {r.estado === 'pendiente' && (
+                    {(r.estado === 'enviada' || r.estado === 'borrador') && (
                       <button onClick={() => startTransition(async () => {
                         await eliminarRendicion(r.id)
                         setRendiciones(prev => prev.filter(x => x.id !== r.id))
