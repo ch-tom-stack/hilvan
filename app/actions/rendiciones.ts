@@ -302,6 +302,53 @@ export async function eliminarRendicion(id: string) {
   revalidatePath('/rendiciones/admin')
 }
 
+// ─── LINK TEMPORAL EXTERNOS ───────────────────────────────────────────────────
+
+export async function generarLinkTemporalExterno(payload: {
+  cotizacion_item_id: string
+  email: string
+  colaborador_id?: string | null
+  dias_expiracion?: number
+}): Promise<{ url: string }> {
+  const supabase = await createClient()
+  const { cotizacion_item_id, email, colaborador_id, dias_expiracion = 7 } = payload
+
+  const token = crypto.randomUUID().replace(/-/g, '')
+  const expires_at = new Date()
+  expires_at.setDate(expires_at.getDate() + dias_expiracion)
+
+  const { error } = await supabase
+    .from('rendiciones_links_temporales')
+    .insert({
+      cotizacion_item_id,
+      email,
+      colaborador_id: colaborador_id || null,
+      token,
+      expires_at: expires_at.toISOString(),
+    })
+  if (error) throw error
+
+  const url = `${APP_URL}/r/${token}`
+
+  try {
+    await resend.emails.send({
+      from: 'Hilván <noreply@casahiedra.com>',
+      to: email,
+      subject: 'Hilván · Envío de rendición de gastos',
+      html: `
+        <p>Hola,</p>
+        <p>Casa Hiedra te invita a registrar tus gastos de producción a través de Hilván.</p>
+        <p><a href="${url}" style="display:inline-block;background:#4ade80;color:#000;padding:10px 20px;text-decoration:none;font-family:monospace;">Ingresar mis gastos →</a></p>
+        <p style="color:#888;font-size:12px;">Este link expira en ${dias_expiracion} días. No lo compartas con terceros.</p>
+        <p>Casa Hiedra</p>
+      `,
+    })
+  } catch { /* email no crítico */ }
+
+  revalidatePath('/rendiciones/admin')
+  return { url }
+}
+
 // ─── NOTAS POR GLOSA ──────────────────────────────────────────────────────────
 
 export async function getNotasGlosa(cotizacionItemId: string): Promise<RendicionNotaGlosa[]> {

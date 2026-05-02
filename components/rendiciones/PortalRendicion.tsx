@@ -19,14 +19,16 @@ const ESTADO_COLOR: Record<string, string> = {
 
 interface Props {
   token: string
-  colaboradorId: string
+  colaboradorId: string | null
   colaboradorNombre: string
   cotizaciones: any[]
   rendicionesPorItem: Record<string, number>
   rendiciones: Rendicion[]
+  lockedCotizacion?: { id: string; nombre: string; grupo?: { numero_base?: string } }
+  lockedItem?: { id: string; nombre: string; tipo: string }
 }
 
-export default function PortalRendicion({ colaboradorId, colaboradorNombre, cotizaciones, rendicionesPorItem, rendiciones: inicial }: Props) {
+export default function PortalRendicion({ colaboradorId, colaboradorNombre, cotizaciones, rendicionesPorItem, rendiciones: inicial, lockedCotizacion, lockedItem }: Props) {
   const [rendiciones, setRendiciones] = useState(inicial)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [enviado, setEnviado] = useState(false)
@@ -44,6 +46,12 @@ export default function PortalRendicion({ colaboradorId, colaboradorNombre, coti
         <div className="mb-8">
           <p className="font-body text-[10px] tracking-[0.45em] uppercase text-ch-muted mb-1">Casa Hiedra · Portal</p>
           <h1 className="font-display italic text-3xl text-ch-cream leading-tight">Hola, {colaboradorNombre}</h1>
+          {lockedItem && (
+            <p className="font-body text-xs text-ch-muted mt-2">
+              {lockedCotizacion?.nombre && <span className="mr-1">{lockedCotizacion.nombre} ·</span>}
+              <span className="text-ch-cream">{lockedItem.nombre}</span>
+            </p>
+          )}
         </div>
 
         {enviado && (
@@ -52,14 +60,14 @@ export default function PortalRendicion({ colaboradorId, colaboradorNombre, coti
           </div>
         )}
 
-        {cotizaciones.length > 0 && (
+        {(lockedItem || cotizaciones.length > 0) && (
           <button onClick={() => setMostrarForm(!mostrarForm)}
             className="w-full bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase py-3 mb-6 transition-colors">
             + Agregar gasto
           </button>
         )}
 
-        {cotizaciones.length === 0 && (
+        {!lockedItem && cotizaciones.length === 0 && (
           <div className="border border-dashed border-ch-border p-8 text-center mb-6">
             <p className="font-body text-sm text-ch-muted">No hay cotizaciones activas asociadas a este enlace.</p>
           </div>
@@ -70,9 +78,11 @@ export default function PortalRendicion({ colaboradorId, colaboradorNombre, coti
             <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-4">Nuevo gasto</p>
             <FormularioRendicion
               cotizaciones={cotizaciones}
-              colaboradorId={colaboradorId}
+              colaboradorId={colaboradorId ?? undefined}
               rendicionesPorItem={rendicionesPorItem}
               esExterno={true}
+              lockedCotizacion={lockedCotizacion}
+              lockedItem={lockedItem}
               onSuccess={handleSuccess}
               onCancel={() => setMostrarForm(false)}
             />

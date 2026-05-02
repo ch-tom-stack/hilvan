@@ -67,20 +67,24 @@ interface Props {
   colaboradorId?: string
   rendicionesPorItem: Record<string, number>
   esExterno?: boolean
+  lockedCotizacion?: { id: string; nombre: string; grupo?: { numero_base?: string } }
+  lockedItem?: { id: string; nombre: string; tipo: string }
   onSuccess: (r: Rendicion) => void
   onCancel: () => void
 }
 
-export default function FormularioRendicion({ cotizaciones, colaboradorId, rendicionesPorItem, esExterno = false, onSuccess, onCancel }: Props) {
+export default function FormularioRendicion({ cotizaciones, colaboradorId, rendicionesPorItem, esExterno = false, lockedCotizacion, lockedItem, onSuccess, onCancel }: Props) {
   const [isPending, startTransition] = useTransition()
   const [subiendo, setSubiendo] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [cotizacionId, setCotizacionId] = useState('')
+  const [cotizacionId, setCotizacionId] = useState(lockedCotizacion?.id || '')
   // undefined = no elegido aún, null = gasto no presupuestado, string = item elegido
-  const [itemId, setItemId] = useState<string | null | undefined>(undefined)
+  const [itemId, setItemId] = useState<string | null | undefined>(
+    lockedItem ? lockedItem.id : undefined
+  )
   const [form, setForm] = useState({
-    tipo: '' as TipoRendicion | '',
+    tipo: (lockedItem ? (TIPO_ITEM_A_RENDICION[lockedItem.tipo] || 'otro') : '') as TipoRendicion | '',
     monto: '',
     descripcion: '',
     tipo_documento: '' as TipoDocRendicion | '',
@@ -184,20 +188,34 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
     <div className="space-y-5">
 
       {/* Cotización */}
-      <div>
-        <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Cotización *</label>
-        <select value={cotizacionId} onChange={e => seleccionarCotizacion(e.target.value)} className="input-ch w-full">
-          <option value="">— Seleccionar —</option>
-          {cotizaciones.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.grupo?.numero_base ? `${c.grupo.numero_base} · ` : ''}{c.nombre}
-            </option>
-          ))}
-        </select>
-      </div>
+      {lockedCotizacion ? (
+        <div>
+          <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1">Cotización</label>
+          <p className="font-body text-xs text-ch-cream px-1">
+            {lockedCotizacion.grupo?.numero_base ? `${lockedCotizacion.grupo.numero_base} · ` : ''}{lockedCotizacion.nombre}
+          </p>
+        </div>
+      ) : (
+        <div>
+          <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Cotización *</label>
+          <select value={cotizacionId} onChange={e => seleccionarCotizacion(e.target.value)} className="input-ch w-full">
+            <option value="">— Seleccionar —</option>
+            {cotizaciones.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.grupo?.numero_base ? `${c.grupo.numero_base} · ` : ''}{c.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Ítem */}
-      {cotizacionSel && (
+      {lockedItem ? (
+        <div>
+          <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1">Ítem</label>
+          <p className="font-body text-xs text-ch-cream px-1">{lockedItem.nombre}</p>
+        </div>
+      ) : cotizacionSel && (
         <div>
           <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-2">Ítem de la cotización *</label>
           <div className="border border-ch-border max-h-60 overflow-y-auto p-3 space-y-3">

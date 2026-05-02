@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { aprobarRendicion, rechazarRendicion, aprobarPago, toggleRendicionCompletada } from '@/app/actions/rendiciones'
+import { aprobarRendicion, rechazarRendicion, aprobarPago, toggleRendicionCompletada, generarLinkTemporalExterno } from '@/app/actions/rendiciones'
 import { createClient } from '@/lib/supabase/client'
 import { calcularRetencion } from '@/types'
 import type { Rendicion } from '@/types'
@@ -55,6 +55,10 @@ export default function AdminRendiciones({
   const [mostrarForm, setMostrarForm] = useState(false)
   const [notasAbiertas, setNotasAbiertas] = useState<Record<string, boolean>>({})
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
+  const [modalLink, setModalLink] = useState<{ itemId: string; itemNombre: string } | null>(null)
+  const [linkForm, setLinkForm] = useState({ email: '', colaboradorId: '', dias: 7 })
+  const [linkGenerado, setLinkGenerado] = useState<string | null>(null)
+  const [generandoLink, setGenerandoLink] = useState(false)
 
   const toggleExpand = (key: string) => setExpandidos(p => ({ ...p, [key]: !p[key] }))
   const toggleNotas = (key: string) => setNotasAbiertas(p => ({ ...p, [key]: !p[key] }))
@@ -105,6 +109,30 @@ export default function AdminRendiciones({
       setModalRechazo(null)
       setMotivo('')
     })
+  }
+
+  const handleGenerarLink = async () => {
+    if (!modalLink || !linkForm.email.trim()) return
+    setGenerandoLink(true)
+    try {
+      const result = await generarLinkTemporalExterno({
+        cotizacion_item_id: modalLink.itemId,
+        email: linkForm.email.trim(),
+        colaborador_id: linkForm.colaboradorId || null,
+        dias_expiracion: linkForm.dias,
+      })
+      setLinkGenerado(result.url)
+    } catch (e: any) {
+      alert(e?.message || 'Error generando link')
+    } finally {
+      setGenerandoLink(false)
+    }
+  }
+
+  const cerrarModalLink = () => {
+    setModalLink(null)
+    setLinkGenerado(null)
+    setLinkForm({ email: '', colaboradorId: '', dias: 7 })
   }
 
   const handleNuevaRendicion = (nueva: Rendicion) => {
@@ -218,6 +246,7 @@ export default function AdminRendiciones({
                                     onAprobarContenido={r => aprobarContenido(r, 'item', item.id)}
                                     onAprobarPago={(r, comp) => aprobarPagoRendicion(r, 'item', item.id, comp)}
                                     onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
+                                    onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
                                     isPending={isPending}
                                   />
                                 ))}
@@ -238,6 +267,7 @@ export default function AdminRendiciones({
                             onAprobarContenido={r => aprobarContenido(r, 'item', item.id)}
                             onAprobarPago={r => aprobarPagoRendicion(r, 'item', item.id)}
                             onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
+                            onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
                             isPending={isPending}
                           />
                         ))}
@@ -266,6 +296,84 @@ export default function AdminRendiciones({
         )
       })}
 
+      {/* Modal generar link externo */}
+      {modalLink && (
+        <div className="fixed inset-0 bg-ch-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-ch-dark border border-ch-border p-6 w-full max-w-md">
+            <h3 className="font-display italic text-2xl text-ch-cream mb-1">Generar link externo</h3>
+            <p className="font-body text-[10px] text-ch-muted mb-5 truncate">{modalLink.itemNombre}</p>
+
+            {linkGenerado ? (
+              <div className="space-y-4">
+                <div className="border border-ch-green/30 bg-ch-green/5 p-3">
+                  <p className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-green mb-2">Link generado · email enviado</p>
+                  <p className="font-mono text-xs text-ch-cream break-all select-all">{linkGenerado}</p>
+                </div>
+                <button
+                  onClick={() => navigator.clipboard.writeText(linkGenerado)}
+                  className="w-full border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase py-2.5 transition-colors">
+                  Copiar link
+                </button>
+                <button onClick={cerrarModalLink}
+                  className="w-full bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase py-2.5 transition-colors">
+                  Listo
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Email del externo *</label>
+                  <input
+                    type="email"
+                    value={linkForm.email}
+                    onChange={e => setLinkForm(p => ({ ...p, email: e.target.value }))}
+                    placeholder="nombre@email.com"
+                    autoFocus
+                    className="input-ch w-full"
+                  />
+                </div>
+                <div>
+                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Colaborador en directorio (opcional)</label>
+                  <select
+                    value={linkForm.colaboradorId}
+                    onChange={e => setLinkForm(p => ({ ...p, colaboradorId: e.target.value }))}
+                    className="input-ch w-full">
+                    <option value="">— Sin ficha en directorio —</option>
+                    {colaboradores.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Días de vigencia</label>
+                  <select
+                    value={linkForm.dias}
+                    onChange={e => setLinkForm(p => ({ ...p, dias: Number(e.target.value) }))}
+                    className="input-ch w-full">
+                    <option value={3}>3 días</option>
+                    <option value={7}>7 días (default)</option>
+                    <option value={14}>14 días</option>
+                    <option value={30}>30 días</option>
+                  </select>
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={handleGenerarLink}
+                    disabled={generandoLink || !linkForm.email.trim()}
+                    className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
+                    {generandoLink ? 'Generando...' : 'Generar y enviar link'}
+                  </button>
+                  <button onClick={cerrarModalLink}
+                    className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-4 transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal rechazo */}
       {modalRechazo && (
         <div className="fixed inset-0 bg-ch-black/80 flex items-center justify-center z-50 p-4">
@@ -293,7 +401,7 @@ export default function AdminRendiciones({
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
-function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onToggle, onToggleNotas, onToggleCompletado, onAprobarContenido, onAprobarPago, onRechazar, isPending }: {
+function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onToggle, onToggleNotas, onToggleCompletado, onAprobarContenido, onAprobarPago, onRechazar, onGenerarLink, isPending }: {
   item: Item & { rendicion_completada?: boolean }
   rendiciones: Rendicion[]
   expandido: boolean
@@ -305,6 +413,7 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onTo
   onAprobarContenido: (r: Rendicion) => void
   onAprobarPago: (r: Rendicion, comp?: string) => void
   onRechazar: (r: Rendicion) => void
+  onGenerarLink: () => void
   isPending: boolean
 }) {
   const presupuesto = item.precio_neto_proveedor * item.cantidad
@@ -328,6 +437,11 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onTo
           className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1"
           title="Notas de glosa">
           📝
+        </button>
+        <button onClick={e => { e.stopPropagation(); onGenerarLink() }}
+          className="font-body text-[9px] text-ch-muted hover:text-blue-400 transition-colors px-1 border border-ch-border/50 py-0.5 hidden group-hover:inline"
+          title="Generar link para externo">
+          🔗
         </button>
         <label className="flex items-center gap-1 cursor-pointer" title="Marcar como rendido">
           <input type="checkbox" checked={completado} disabled={isPending}
