@@ -1,11 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  experimental: {
-    turbo: {
-      root: "/Users/tomasmontealegre/Documents/Automatizaciones DaVinci/CH Hilván/v1/hilvan",
-    },
-  },
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
