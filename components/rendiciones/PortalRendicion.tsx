@@ -10,9 +10,11 @@ const TIPO_LABEL: Record<string, string> = {
   arte: 'Arte / Props', insumos: 'Insumos', servicios: 'Servicios', viaticos: 'Viáticos', otro: 'Otro',
 }
 const ESTADO_COLOR: Record<string, string> = {
-  pendiente: 'text-amber-400 border-amber-500/30',
-  aprobada: 'text-ch-green border-ch-green/30',
+  borrador: 'text-ch-muted border-ch-border',
+  enviada: 'text-amber-400 border-amber-500/30',
+  aprobada: 'text-blue-400 border-blue-500/30',
   rechazada: 'text-red-400 border-red-500/30',
+  pago_aprobado: 'text-ch-green border-ch-green/30',
 }
 
 interface Props {
@@ -70,6 +72,7 @@ export default function PortalRendicion({ colaboradorId, colaboradorNombre, coti
               cotizaciones={cotizaciones}
               colaboradorId={colaboradorId}
               rendicionesPorItem={rendicionesPorItem}
+              esExterno={true}
               onSuccess={handleSuccess}
               onCancel={() => setMostrarForm(false)}
             />
@@ -95,8 +98,8 @@ export default function PortalRendicion({ colaboradorId, colaboradorNombre, coti
                           {itemNombre && ` · ${itemNombre}`}
                         </p>
                       </div>
-                      <span className={`font-body text-[9px] tracking-wider px-2 py-0.5 border whitespace-nowrap ${ESTADO_COLOR[r.estado]}`}>
-                        {r.estado === 'pendiente' ? 'Pendiente' : r.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}
+                      <span className={`font-body text-[9px] tracking-wider px-2 py-0.5 border whitespace-nowrap ${ESTADO_COLOR[r.estado] || 'text-ch-muted border-ch-border'}`}>
+                        {{ borrador: 'Borrador', enviada: 'Enviada', aprobada: 'En revisión', rechazada: 'Rechazada', pago_aprobado: 'Pagada' }[r.estado] || r.estado}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">

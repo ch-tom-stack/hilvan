@@ -66,11 +66,12 @@ interface Props {
   cotizaciones: CotizacionPara[]
   colaboradorId?: string
   rendicionesPorItem: Record<string, number>
+  esExterno?: boolean
   onSuccess: (r: Rendicion) => void
   onCancel: () => void
 }
 
-export default function FormularioRendicion({ cotizaciones, colaboradorId, rendicionesPorItem, onSuccess, onCancel }: Props) {
+export default function FormularioRendicion({ cotizaciones, colaboradorId, rendicionesPorItem, esExterno = false, onSuccess, onCancel }: Props) {
   const [isPending, startTransition] = useTransition()
   const [subiendo, setSubiendo] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -128,19 +129,31 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
   }
 
   const puedeEnviar = cotizacionId && itemId !== undefined && form.tipo && form.monto && form.descripcion && form.foto_url && !subiendo
+  const puedeBorrador = !esExterno && cotizacionId && itemId !== undefined && form.tipo && !subiendo
 
-  const enviar = () => {
-    if (!puedeEnviar) return
+  const retencionPreview = form.monto && form.tipo_documento
+    ? (() => {
+        const monto = parseInt(form.monto)
+        if (isNaN(monto)) return null
+        return { monto, tipo: form.tipo_documento }
+      })()
+    : null
+
+  const enviar = (estadoTarget: 'enviada' | 'borrador' = 'enviada') => {
+    if (estadoTarget === 'borrador' && !puedeBorrador) return
+    if (estadoTarget === 'enviada' && !puedeEnviar) return
     startTransition(async () => {
       const nueva = await crearRendicion({
         cotizacion_id: cotizacionId,
         cotizacion_item_id: itemId,
         colaborador_id: colaboradorId,
+        origen: esExterno ? 'externo' : 'interno',
         tipo: form.tipo as TipoRendicion,
-        descripcion: form.descripcion,
-        monto: parseInt(form.monto),
-        foto_url: form.foto_url,
+        descripcion: form.descripcion || '',
+        monto: parseInt(form.monto) || 0,
+        foto_url: form.foto_url || '',
         tipo_documento: form.tipo_documento || undefined,
+        estado: estadoTarget,
       })
       onSuccess(nueva)
     })
@@ -260,11 +273,21 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
             <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Tipo documento</label>
             <select value={form.tipo_documento} onChange={e => set('tipo_documento', e.target.value)} className="input-ch w-full">
               <option value="">— Seleccionar —</option>
-              <option value="boleta">Boleta</option>
-              <option value="bet">BET</option>
+              <option value="boleta">Boleta de honorarios</option>
               <option value="factura">Factura</option>
+              <option value="exenta">Boleta exenta / servicio sin IVA</option>
               <option value="sin_documento">Sin documento</option>
             </select>
+            {retencionPreview && (
+              <div className="mt-1.5 font-body text-[10px] text-ch-muted font-mono">
+                {retencionPreview.tipo === 'boleta' && (() => {
+                  const ret = Math.round(retencionPreview.monto * 0.154)
+                  return <span>Retención 15.4% = ${ret.toLocaleString('es-CL')} · Neto = ${(retencionPreview.monto - ret).toLocaleString('es-CL')}</span>
+                })()}
+                {retencionPreview.tipo === 'sin_documento' && <span className="text-red-400">⚠ Requerirá justificación</span>}
+                {(retencionPreview.tipo === 'factura' || retencionPreview.tipo === 'exenta') && <span>Pago bruto completo</span>}
+              </div>
+            )}
           </div>
 
           {/* Comprobante */}
@@ -302,11 +325,17 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
             )}
           </div>
 
-          <div className="flex gap-3 pt-1">
-            <button onClick={enviar} disabled={!puedeEnviar || isPending}
+          <div className="flex gap-3 pt-1 flex-wrap">
+            <button onClick={() => enviar('enviada')} disabled={!puedeEnviar || isPending}
               className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
               {isPending ? 'Enviando...' : 'Enviar rendición'}
             </button>
+            {!esExterno && (
+              <button onClick={() => enviar('borrador')} disabled={!puedeBorrador || isPending}
+                className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-4 py-3 transition-colors disabled:opacity-50">
+                Guardar borrador
+              </button>
+            )}
             <button onClick={onCancel}
               className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-4 transition-colors">
               Cancelar

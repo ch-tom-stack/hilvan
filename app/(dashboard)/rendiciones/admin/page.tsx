@@ -42,7 +42,7 @@ export default async function AdminRendicionesPage() {
     }
   }
 
-  const totalPendiente = rendiciones.filter(r => r.estado === 'pendiente').reduce((s, r) => s + r.monto, 0)
+  const totalEnviado = rendiciones.filter(r => r.estado === 'enviada').reduce((s, r) => s + r.monto, 0)
   const hoy = new Date().toISOString().slice(0, 10)
 
   return (
@@ -73,9 +73,9 @@ export default async function AdminRendicionesPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {[
-          { label: 'Pendientes', value: rendiciones.filter(r => r.estado === 'pendiente').length, color: 'text-amber-400' },
-          { label: 'Total pendiente', value: `$${totalPendiente.toLocaleString('es-CL')}`, color: 'text-ch-cream' },
-          { label: 'Aprobadas hoy', value: rendiciones.filter(r => r.estado === 'aprobada' && r.updated_at?.startsWith(hoy)).length, color: 'text-ch-green' },
+          { label: 'Por revisar', value: rendiciones.filter(r => r.estado === 'enviada' && r.origen === 'externo').length, color: 'text-blue-400' },
+          { label: 'Por pagar', value: rendiciones.filter(r => r.estado === 'enviada' || r.estado === 'aprobada').length, color: 'text-amber-400' },
+          { label: 'Total por pagar', value: `$${totalEnviado.toLocaleString('es-CL')}`, color: 'text-ch-cream' },
           { label: 'Sin documento', value: rendiciones.filter(r => r.tipo_documento === 'sin_documento').length, color: 'text-red-400' },
         ].map(stat => (
           <div key={stat.label} className="border border-ch-border p-4">
