@@ -137,6 +137,7 @@ export interface Cotizacion {
   grupo_id: string
   grupo?: CotizacionGrupo
   version: number
+  variante?: string
   nombre?: string
   token: string
   estado: EstadoCotizacion
