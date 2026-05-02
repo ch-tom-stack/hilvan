@@ -239,13 +239,19 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
                               const disp = disponible(item)
                               const sel = itemId === item.id
                               return (
-                                <button key={item.id} type="button" onClick={() => seleccionarItem(item)}
-                                  className={`w-full text-left px-3 py-2 border font-body text-xs transition-colors flex items-center justify-between gap-3 ${sel ? 'border-ch-green bg-ch-green/10 text-ch-cream' : 'border-ch-border text-ch-muted hover:text-ch-cream'}`}>
-                                  <span>{item.nombre}</span>
-                                  <span className="text-[10px] whitespace-nowrap font-mono">
-                                    Disp: ${disp.toLocaleString('es-CL')}
-                                  </span>
-                                </button>
+                                <div key={item.id} className="flex items-stretch gap-1">
+                                  <button type="button" onClick={() => seleccionarItem(item)}
+                                    className={`flex-1 text-left px-3 py-2 border font-body text-xs transition-colors flex items-center justify-between gap-3 ${sel ? 'border-ch-green bg-ch-green/10 text-ch-cream' : 'border-ch-border text-ch-muted hover:text-ch-cream'}`}>
+                                    <span>{item.nombre}</span>
+                                    <span className="text-[10px] whitespace-nowrap font-mono">Disp: ${disp.toLocaleString('es-CL')}</span>
+                                  </button>
+                                  {onGenerarLink && (
+                                    <button type="button" onClick={() => onGenerarLink(item.id, item.nombre)}
+                                      className="px-2 border border-ch-border/60 text-ch-muted hover:text-blue-300 hover:border-blue-500/40 font-body text-[9px] transition-colors whitespace-nowrap">
+                                      Link →
+                                    </button>
+                                  )}
+                                </div>
                               )
                             })}
                           </div>
@@ -255,13 +261,19 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
                         const disp = disponible(item)
                         const sel = itemId === item.id
                         return (
-                          <button key={item.id} type="button" onClick={() => seleccionarItem(item)}
-                            className={`w-full text-left px-3 py-2 border font-body text-xs transition-colors flex items-center justify-between gap-3 ${sel ? 'border-ch-green bg-ch-green/10 text-ch-cream' : 'border-ch-border text-ch-muted hover:text-ch-cream'}`}>
-                            <span>{item.nombre}</span>
-                            <span className="text-[10px] whitespace-nowrap font-mono">
-                              Disp: ${disp.toLocaleString('es-CL')}
-                            </span>
-                          </button>
+                          <div key={item.id} className="flex items-stretch gap-1">
+                            <button type="button" onClick={() => seleccionarItem(item)}
+                              className={`flex-1 text-left px-3 py-2 border font-body text-xs transition-colors flex items-center justify-between gap-3 ${sel ? 'border-ch-green bg-ch-green/10 text-ch-cream' : 'border-ch-border text-ch-muted hover:text-ch-cream'}`}>
+                              <span>{item.nombre}</span>
+                              <span className="text-[10px] whitespace-nowrap font-mono">Disp: ${disp.toLocaleString('es-CL')}</span>
+                            </button>
+                            {onGenerarLink && (
+                              <button type="button" onClick={() => onGenerarLink(item.id, item.nombre)}
+                                className="px-2 border border-ch-border/60 text-ch-muted hover:text-blue-300 hover:border-blue-500/40 font-body text-[9px] transition-colors whitespace-nowrap">
+                                Link →
+                              </button>
+                            )}
+                          </div>
                         )
                       })}
                     </div>
@@ -275,25 +287,6 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
               Gasto no presupuestado
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Link para externo (solo cuando hay ítem seleccionado y no es gasto no presupuestado) */}
-      {onGenerarLink && itemId && !lockedItem && (
-        <div className="flex items-center gap-2 py-2 border-t border-ch-border/30">
-          <span className="font-body text-[10px] text-ch-muted flex-1">¿El gasto lo rinde un externo?</span>
-          <button
-            type="button"
-            onClick={() => {
-              const item = cotizacionSel?.departamentos?.flatMap(d => [
-                ...(d.items ?? []),
-                ...(d.subgrupos ?? []).flatMap(sg => sg.items ?? []),
-              ]).find(i => i.id === itemId)
-              if (item) onGenerarLink(item.id, item.nombre)
-            }}
-            className="font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 border border-ch-border text-ch-muted hover:text-blue-300 hover:border-blue-500/40 transition-colors whitespace-nowrap">
-            Generar link externo →
-          </button>
         </div>
       )}
 
