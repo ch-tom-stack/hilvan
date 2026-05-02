@@ -29,7 +29,11 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Rutas públicas — no requieren autenticación
-  if (pathname.startsWith('/login') || pathname.startsWith('/m/')) {
+  if (
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/m/') ||
+    pathname.match(/^\/rodaje\/[^/]+\/ver/)
+  ) {
     if (user && pathname.startsWith('/login')) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
