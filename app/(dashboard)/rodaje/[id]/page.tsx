@@ -205,70 +205,81 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     programarAutoSave()
   }, [historiaIdx, programarAutoSave])
 
-  const handleCrearBloque = async (payload: any) => {
-    if (creando) return
-    setCreando(true)
-
-    // Guardar cambios pendientes ANTES de crear para no perder ediciones locales
-    if (cambiosSinGuardar && bloquesRef.current.length > 0) {
-      try {
-        await guardarBloques(id, bloquesRef.current.map(b => ({ ...b })))
-        setCambiosSinGuardar(false)
-      } catch { /* continuar igual */ }
-    }
-
+  const resolverYCrear = (payload: Partial<RodajeBloque> & { titulo: string }) => {
     const bloquesRaiz = bloquesRef.current.filter(b => !b.padre_id).sort((a, b) => a.orden - b.orden)
     const cascada = calcularCascada(bloquesRaiz)
     const ultimoFin = cascada.length > 0 ? cascada[cascada.length - 1].fin_min : undefined
+    const tempId = `temp-${Date.now()}`
 
-    try {
-      const nuevo = await crearBloque(id, {
-        ...payload,
-        hora_inicio_fija: ultimoFin !== undefined ? minutosAHora(ultimoFin) : undefined,
-        duracion_min: payload.duracion_min ?? 30,
-      })
-      // Agregar al estado local sin recargar — preserva ediciones existentes
-      const nuevos = [...bloquesRef.current, nuevo as RodajeBloque]
-      actualizarBloques(nuevos)
-    } finally {
-      setCreando(false)
+    const bloqueOptimista: RodajeBloque = {
+      id: tempId,
+      rodaje_id: id,
+      orden: bloquesRaiz.length,
+      titulo: payload.titulo,
+      tipo: payload.tipo ?? 'rodaje',
+      scenes_label: payload.scenes_label,
+      scenes_color: payload.scenes_color ?? '#353135',
+      character_num: payload.character_num,
+      dia_noche: payload.dia_noche ?? 'D',
+      interior_exterior: payload.interior_exterior ?? 'I',
+      locacion_id: payload.locacion_id,
+      descripcion: payload.descripcion,
+      nota_previa: payload.nota_previa,
+      hora_inicio_fija: ultimoFin !== undefined ? minutosAHora(ultimoFin) : undefined,
+      hora_fin: undefined,
+      duracion_min: payload.duracion_min ?? 30,
+      es_paralelo: false,
+      es_anclado: false,
+      visible_equipo: true,
+      visible_catering: true,
+      visible_extras: false,
+      visible_cliente: false,
+      created_at: '',
+      updated_at: '',
     }
+
+    actualizarBloques([...bloquesRef.current, bloqueOptimista])
+
+    // Guardar cambios pendientes en paralelo sin bloquear
+    if (cambiosSinGuardar) {
+      const reales = bloquesRef.current.filter(b => !b.id.startsWith('temp-'))
+      if (reales.length > 0) {
+        guardarBloques(id, reales.map(b => ({ ...b }))).then(() => setCambiosSinGuardar(false)).catch(() => {})
+      }
+    }
+
+    crearBloque(id, {
+      ...payload,
+      hora_inicio_fija: ultimoFin !== undefined ? minutosAHora(ultimoFin) : undefined,
+      duracion_min: payload.duracion_min ?? 30,
+    }).then(real => {
+      const realBloque = real as RodajeBloque
+      setBloques(prev => prev.map(b => b.id === tempId ? realBloque : b))
+      setHistoria(prev => prev.map(snap => snap.map(b => b.id === tempId ? realBloque : b)))
+    }).catch(() => {
+      setBloques(prev => prev.filter(b => b.id !== tempId))
+      setHistoria(prev => prev.map(snap => snap.filter(b => b.id !== tempId)))
+    })
   }
 
-  const handleCrearDesdePlantilla = async (label: string) => {
+  const handleCrearBloque = (payload: any) => {
     if (creando) return
-    setCreando(true)
+    resolverYCrear({ titulo: payload.titulo, tipo: payload.tipo, duracion_min: payload.duracion_min })
+  }
 
-    // Guardar cambios pendientes ANTES de crear
-    if (cambiosSinGuardar && bloquesRef.current.length > 0) {
-      try {
-        await guardarBloques(id, bloquesRef.current.map(b => ({ ...b })))
-        setCambiosSinGuardar(false)
-      } catch { /* continuar igual */ }
-    }
-
-    const bloquesRaiz = bloquesRef.current.filter(b => !b.padre_id).sort((a, b) => a.orden - b.orden)
-    const cascada = calcularCascada(bloquesRaiz)
-    const ultimoFin = cascada.length > 0 ? cascada[cascada.length - 1].fin_min : undefined
-
-    try {
-      const plantilla = PLANTILLAS_BLOQUES.find(p => p.label === label)
-      if (!plantilla) return
-      const nuevo = await crearBloque(id, {
-        titulo: plantilla.titulo,
-        tipo: plantilla.tipo,
-        scenes_label: plantilla.label,
-        scenes_color: plantilla.scenes_color,
-        dia_noche: plantilla.dia_noche,
-        interior_exterior: plantilla.interior_exterior,
-        duracion_min: plantilla.duracion_min || 30,
-        hora_inicio_fija: ultimoFin !== undefined ? minutosAHora(ultimoFin) : undefined,
-      })
-      const nuevos = [...bloquesRef.current, nuevo as RodajeBloque]
-      actualizarBloques(nuevos)
-    } finally {
-      setCreando(false)
-    }
+  const handleCrearDesdePlantilla = (label: string) => {
+    if (creando) return
+    const plantilla = PLANTILLAS_BLOQUES.find(p => p.label === label)
+    if (!plantilla) return
+    resolverYCrear({
+      titulo: plantilla.titulo,
+      tipo: plantilla.tipo,
+      scenes_label: plantilla.label,
+      scenes_color: plantilla.scenes_color,
+      dia_noche: plantilla.dia_noche,
+      interior_exterior: plantilla.interior_exterior,
+      duracion_min: plantilla.duracion_min || 30,
+    })
   }
 
   const cambiarEstado = async () => {
@@ -456,7 +467,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
             onEliminar={async (bloqueId) => {
               const sinEl = bloques.filter(b => b.id !== bloqueId)
               actualizarBloques(sinEl)
-              await eliminarBloque(bloqueId, id)
+              if (!bloqueId.startsWith('temp-')) await eliminarBloque(bloqueId, id)
             }}
           />
         </div>
@@ -494,8 +505,8 @@ function TablaPlan({
   vistaTimeline: boolean
   setVistaTimeline: (v: boolean) => void
   onActualizar: (b: RodajeBloque[]) => void
-  onCrear: (p: any) => Promise<void>
-  onCrearDesdePlantilla: (label: string) => Promise<void>
+  onCrear: (p: any) => void
+  onCrearDesdePlantilla: (label: string) => void
   onEliminar: (id: string) => Promise<void>
 }) {
   const [visibilidadAbierta, setVisibilidadAbierta] = useState<string | null>(null)

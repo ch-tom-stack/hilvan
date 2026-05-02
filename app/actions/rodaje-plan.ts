@@ -209,9 +209,11 @@ export async function guardarBloques(
   }>
 ) {
   const supabase = await createClient()
+  const reales = bloques.filter(b => !b.id.startsWith('temp-'))
+  if (reales.length === 0) { revalidatePath(`/rodaje/${rodajeId}`); return }
 
   await Promise.all(
-    bloques.map(({ id, ...resto }) =>
+    reales.map(({ id, ...resto }) =>
       supabase.from('rodaje_bloques').update(resto).eq('id', id)
     )
   )
