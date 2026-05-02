@@ -118,7 +118,7 @@ export default function AdminRendiciones({
   }
 
   const handleGenerarLink = async () => {
-    if (!modalLink || !linkForm.email.trim()) return
+    if (!modalLink) return
     setGenerandoLink(true)
     try {
       const result = await generarLinkTemporalExterno({
@@ -319,7 +319,7 @@ export default function AdminRendiciones({
             {linkGenerado ? (
               <div className="space-y-4">
                 <div className="border border-ch-green/30 bg-ch-green/5 p-3">
-                  <p className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-green mb-2">Link generado · email enviado</p>
+                  <p className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-green mb-2">Link generado{linkForm.email.trim() ? ' · email enviado' : ''}</p>
                   <p className="font-mono text-xs text-ch-cream break-all select-all">{linkGenerado}</p>
                 </div>
                 <button
@@ -335,12 +335,12 @@ export default function AdminRendiciones({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Email del externo *</label>
+                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Email del externo (opcional)</label>
                   <input
                     type="email"
                     value={linkForm.email}
                     onChange={e => setLinkForm(p => ({ ...p, email: e.target.value }))}
-                    placeholder="nombre@email.com"
+                    placeholder="nombre@email.com — se enviará el link por email"
                     autoFocus
                     className="input-ch w-full"
                   />
@@ -372,9 +372,9 @@ export default function AdminRendiciones({
                 <div className="flex gap-3 pt-1">
                   <button
                     onClick={handleGenerarLink}
-                    disabled={generandoLink || !linkForm.email.trim()}
+                    disabled={generandoLink}
                     className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
-                    {generandoLink ? 'Generando...' : 'Generar y enviar link'}
+                    {generandoLink ? 'Generando...' : linkForm.email.trim() ? 'Generar y enviar link' : 'Generar link'}
                   </button>
                   <button onClick={cerrarModalLink}
                     className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-4 transition-colors">
