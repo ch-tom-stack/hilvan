@@ -1,11 +1,11 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import SunCalc from 'suncalc'
 import PlanViewer from './PlanViewer'
 
 export default async function RodajeVerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data: rodaje } = await supabase
     .from('rodajes')
