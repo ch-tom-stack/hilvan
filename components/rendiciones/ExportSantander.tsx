@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { calcularRetencion } from '@/types'
-import type { Rendicion } from '@/types'
+import type { RendicionGasto } from '@/types'
 
 function padRight(str: string, len: number) { return str.substring(0, len).padEnd(len, ' ') }
 function padLeft(str: string, len: number) { return str.substring(0, len).padStart(len, '0') }
@@ -20,12 +20,12 @@ function formatearRut(rut: string) {
   return rut.replace(/\./g, '').replace('-', '').replace('K', 'k').padStart(12, '0')
 }
 
-function generarLinea(r: Rendicion, rutEmpresa: string) {
+function generarLinea(r: RendicionGasto, rutEmpresa: string) {
   const col = r.colaborador as any
   const ret = r.tipo_documento ? calcularRetencion(r) : { neto: r.monto }
   const monto = ret.neto
   const rutDest = formatearRut(col?.rut || '0')
-  const nombre = padRight(col?.nombre || r.nombre_libre || '', 40)
+  const nombre = padRight(col?.nombre || r.nombre_libre || '—', 40)
   const banco = BANCO_COD[col?.banco || ''] || '000'
   const tipoCta = TIPO_CTA[(col?.tipo_cuenta || '').toLowerCase()] || '01'
   const numCta = padRight(col?.numero_cuenta || '', 20)
@@ -37,7 +37,7 @@ function generarLinea(r: Rendicion, rutEmpresa: string) {
 
 interface Props {
   cotizaciones: { id: string; nombre: string; estado?: string; grupo?: any }[]
-  rendiciones: Rendicion[]
+  rendiciones: RendicionGasto[]
   cotizacionFiltro?: string
 }
 

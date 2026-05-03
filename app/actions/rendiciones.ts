@@ -1,26 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
-import { Rendicion, TipoRendicion, TipoDocRendicion, RendicionNotaGlosa } from '@/types'
+import { Rendicion, RendicionGasto, TipoRendicion, TipoDocRendicion, RendicionNotaGlosa } from '@/types'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.casahiedra.com'
-
-const RENDICION_SELECT = `
-  *,
-  colaborador:colaboradores(id, nombre, email),
-  cotizacion:cotizaciones(id, nombre, grupo:cotizacion_grupos(numero_base)),
-  cotizacion_item:cotizacion_items(id, nombre, tipo)
-`
-
-const RENDICION_ADMIN_SELECT = `
-  *,
-  colaborador:colaboradores(id, nombre, email, banco, tipo_cuenta, numero_cuenta, rut, tipo_documento),
-  cotizacion:cotizaciones(id, nombre, grupo:cotizacion_grupos(numero_base)),
-  cotizacion_item:cotizacion_items(id, nombre, tipo, precio_neto_proveedor, cantidad, departamento_id, subgrupo_id)
-`
 
 // ─── COTIZACIONES PARA FORMULARIO ─────────────────────────────────────────────
 
@@ -46,266 +31,219 @@ export async function getCotizacionesParaRendiciones() {
   return data ?? []
 }
 
-export async function getCotizacionesConEstructura(ids: string[]) {
-  if (ids.length === 0) return []
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('cotizaciones')
-    .select(`
-      id, nombre, estado,
-      grupo:cotizacion_grupos(numero_base),
-      departamentos:cotizacion_departamentos(
-        id, nombre, orden,
-        subgrupos:cotizacion_subgrupos(
-          id, nombre, orden,
-          items:cotizacion_items(id, nombre, tipo, precio_neto_proveedor, cantidad, incluido, orden)
-        ),
-        items:cotizacion_items(id, nombre, tipo, precio_neto_proveedor, cantidad, incluido, orden, subgrupo_id)
-      )
-    `)
-    .in('id', ids)
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data ?? []
-}
+// ─── SUMAS APROBADAS POR ÍTEM (para mostrar "disponible") ─────────────────────
 
-// ─── SUMAS APROBADAS POR ÍTEM ─────────────────────────────────────────────────
-
-export async function getRendicionesSumasPorItem(): Promise<Record<string, number>> {
+export async function getGastosSumasPorItem(): Promise<Record<string, number>> {
   const supabase = await createClient()
   const { data } = await supabase
-    .from('rendiciones')
+    .from('rendicion_gastos')
     .select('cotizacion_item_id, monto')
     .in('estado', ['enviada', 'aprobada', 'pago_aprobado'])
     .not('cotizacion_item_id', 'is', null)
 
   const map: Record<string, number> = {}
-  for (const r of data ?? []) {
-    if (r.cotizacion_item_id) {
-      map[r.cotizacion_item_id] = (map[r.cotizacion_item_id] || 0) + r.monto
+  for (const g of data ?? []) {
+    if (g.cotizacion_item_id) {
+      map[g.cotizacion_item_id] = (map[g.cotizacion_item_id] || 0) + g.monto
     }
   }
   return map
 }
 
-// ─── QUERIES ──────────────────────────────────────────────────────────────────
+// ─── RENDICIONES PADRE ────────────────────────────────────────────────────────
 
-export async function getRendiciones(filtros?: {
-  colaboradorId?: string
-  cotizacionId?: string
-  estado?: string
-}) {
-  const supabase = await createClient()
-  let query = supabase
-    .from('rendiciones')
-    .select(RENDICION_SELECT)
-    .order('created_at', { ascending: false })
+const GASTO_SELECT = `
+  *,
+  colaborador:colaboradores(id, nombre, email, banco, tipo_cuenta, numero_cuenta, rut),
+  cotizacion_item:cotizacion_items(id, nombre, tipo)
+`
 
-  if (filtros?.colaboradorId) query = query.eq('colaborador_id', filtros.colaboradorId)
-  if (filtros?.cotizacionId) query = query.eq('cotizacion_id', filtros.cotizacionId)
-  if (filtros?.estado) query = query.eq('estado', filtros.estado)
-
-  const { data, error } = await query
-  if (error) throw error
-  return data as Rendicion[]
-}
-
-export async function getTodasRendiciones() {
+export async function getTodasRendiciones(): Promise<Rendicion[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('rendiciones')
-    .select(RENDICION_ADMIN_SELECT)
+    .select(`
+      *,
+      cotizacion:cotizaciones(id, nombre, grupo:cotizacion_grupos(numero_base)),
+      gastos:rendicion_gastos(${GASTO_SELECT})
+    `)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data as Rendicion[]
-}
-
-export async function getRendicionesPorToken(token: string) {
-  const supabase = await createClient()
-  const { data: link } = await supabase
-    .from('colaboradores_links_temporales')
-    .select('colaborador_id')
-    .eq('token', token)
-    .single()
-  if (!link) return []
-  const { data } = await supabase
-    .from('rendiciones')
-    .select(RENDICION_SELECT)
-    .eq('colaborador_id', link.colaborador_id)
-    .order('created_at', { ascending: false })
   return (data ?? []) as Rendicion[]
 }
 
-// ─── CREAR ────────────────────────────────────────────────────────────────────
+export async function getRendicionPorCotizacion(cotizacionId: string): Promise<Rendicion | null> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('rendiciones')
+    .select(`
+      *,
+      cotizacion:cotizaciones(id, nombre, grupo:cotizacion_grupos(numero_base)),
+      gastos:rendicion_gastos(${GASTO_SELECT})
+    `)
+    .eq('cotizacion_id', cotizacionId)
+    .single()
+  return data as Rendicion | null
+}
 
-export async function crearRendicion(payload: {
-  cotizacion_id: string
+export async function crearRendicion(cotizacionId: string): Promise<Rendicion> {
+  const supabase = await createClient()
+
+  const { data: existente } = await supabase
+    .from('rendiciones')
+    .select('id')
+    .eq('cotizacion_id', cotizacionId)
+    .single()
+  if (existente) throw new Error('Ya existe una rendición para esta cotización')
+
+  const { data, error } = await supabase
+    .from('rendiciones')
+    .insert({ cotizacion_id: cotizacionId })
+    .select(`
+      *,
+      cotizacion:cotizaciones(id, nombre, grupo:cotizacion_grupos(numero_base)),
+      gastos:rendicion_gastos(${GASTO_SELECT})
+    `)
+    .single()
+  if (error) throw error
+  return data as Rendicion
+}
+
+// ─── GASTOS ───────────────────────────────────────────────────────────────────
+
+export async function crearGasto(payload: {
+  rendicion_id: string
   cotizacion_item_id?: string | null
-  colaborador_id?: string
+  colaborador_id?: string | null
   nombre_libre?: string
   origen?: 'interno' | 'externo'
   tipo: TipoRendicion
   descripcion: string
   monto: number
-  foto_url: string
-  tipo_documento?: TipoDocRendicion
-  notas?: string
+  tipo_documento?: TipoDocRendicion | null
+  foto_url?: string | null
   estado?: 'borrador' | 'enviada'
-}) {
+}): Promise<RendicionGasto> {
   const supabase = await createClient()
   const { estado = 'enviada', ...rest } = payload
   const { data, error } = await supabase
-    .from('rendiciones')
+    .from('rendicion_gastos')
     .insert({ ...rest, estado })
-    .select(`
-      *,
-      colaborador:colaboradores(nombre, email),
-      cotizacion:cotizaciones(nombre, grupo:cotizacion_grupos(numero_base)),
-      cotizacion_item:cotizacion_items(nombre)
-    `)
+    .select(GASTO_SELECT)
     .single()
   if (error) throw error
 
   if (estado !== 'borrador') {
     try {
-      const cotNombre = (data.cotizacion as any)?.nombre || ''
+      const { data: rendicion } = await supabase
+        .from('rendiciones')
+        .select('cotizacion:cotizaciones(nombre)')
+        .eq('id', payload.rendicion_id)
+        .single()
+      const cotNombre = (rendicion?.cotizacion as any)?.nombre || ''
       const itemNombre = (data.cotizacion_item as any)?.nombre || 'Gasto no presupuestado'
+      const quienRinde = (data.colaborador as any)?.nombre || payload.nombre_libre || 'Externo'
       await resend.emails.send({
         from: 'Hilván <noreply@casahiedra.com>',
         to: 'admin@casahiedra.com',
-        subject: `Nueva rendición: ${data.colaborador?.nombre || data.nombre_libre} · ${cotNombre}`,
-        html: `
-          <p><strong>${data.colaborador?.nombre || data.nombre_libre}</strong> envió una nueva rendición.</p>
+        subject: `Nuevo gasto: ${quienRinde} · ${cotNombre}`,
+        html: `<p><strong>${quienRinde}</strong> agregó un gasto.</p>
           <ul>
             <li>Cotización: ${cotNombre}</li>
-            <li>Ítem: ${itemNombre}</li>
+            <li>Glosa: ${itemNombre}</li>
             <li>Tipo: ${data.tipo}</li>
             <li>Monto: $${data.monto.toLocaleString('es-CL')}</li>
           </ul>
-          <p><a href="${APP_URL}/rendiciones/admin">Ver en Hilván →</a></p>
-        `,
+          <p><a href="${APP_URL}/rendiciones/admin">Ver en Hilván →</a></p>`,
       })
     } catch { /* email no crítico */ }
   }
 
-  return data as Rendicion
+  return data as RendicionGasto
 }
 
-export async function enviarRendicion(id: string) {
+export async function aprobarGasto(id: string): Promise<RendicionGasto> {
   const supabase = await createClient()
   const { data, error } = await supabase
-    .from('rendiciones')
-    .update({ estado: 'enviada', updated_at: new Date().toISOString() })
+    .from('rendicion_gastos')
+    .update({ estado: 'aprobada', updated_at: new Date().toISOString() })
     .eq('id', id)
-    .eq('estado', 'borrador')
-    .select('*')
+    .select(GASTO_SELECT)
     .single()
   if (error) throw error
-  return data as Rendicion
+
+  const col = (data.colaborador as any)
+  if (col?.email) {
+    try {
+      await resend.emails.send({
+        from: 'Hilván <noreply@casahiedra.com>',
+        to: col.email,
+        subject: 'Gasto aprobado · Hilván',
+        html: `<p>Hola ${col.nombre},</p><p>Tu gasto de $${data.monto.toLocaleString('es-CL')} fue <strong>aprobado</strong>.</p><p>Casa Hiedra</p>`,
+      })
+    } catch { /* email no crítico */ }
+  }
+  return data as RendicionGasto
 }
 
-export async function aprobarPago(id: string, comprobante_pago_url?: string) {
+export async function rechazarGasto(id: string, motivo: string): Promise<RendicionGasto> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('rendicion_gastos')
+    .update({ estado: 'rechazada', motivo_rechazo: motivo, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select(GASTO_SELECT)
+    .single()
+  if (error) throw error
+
+  const col = (data.colaborador as any)
+  if (col?.email) {
+    try {
+      await resend.emails.send({
+        from: 'Hilván <noreply@casahiedra.com>',
+        to: col.email,
+        subject: 'Gasto rechazado · Hilván',
+        html: `<p>Hola ${col.nombre},</p><p>Tu gasto fue <strong>rechazado</strong>.</p><p>Motivo: ${motivo}</p><p>Puedes corregirlo y volver a enviarlo.</p><p>Casa Hiedra</p>`,
+      })
+    } catch { /* email no crítico */ }
+  }
+  return data as RendicionGasto
+}
+
+export async function aprobarPagoGasto(id: string, comprobante_pago_url?: string): Promise<RendicionGasto> {
   const supabase = await createClient()
   const updates: Record<string, any> = { estado: 'pago_aprobado', updated_at: new Date().toISOString() }
   if (comprobante_pago_url) updates.comprobante_pago_url = comprobante_pago_url
   const { data, error } = await supabase
-    .from('rendiciones')
+    .from('rendicion_gastos')
     .update(updates)
     .eq('id', id)
-    .select(`*, colaborador:colaboradores(nombre, email), cotizacion:cotizaciones(nombre)`)
+    .select(GASTO_SELECT)
     .single()
   if (error) throw error
-  revalidatePath('/rendiciones/admin')
-  return data as Rendicion
+  return data as RendicionGasto
 }
 
-export async function toggleRendicionCompletada(
-  tipo: 'item' | 'departamento',
-  id: string,
-  valor: boolean
-) {
+export async function toggleItemCompletado(itemId: string, valor: boolean) {
   const supabase = await createClient()
-  const tabla = tipo === 'item' ? 'cotizacion_items' : 'cotizacion_departamentos'
   const { error } = await supabase
-    .from(tabla)
+    .from('cotizacion_items')
     .update({ rendicion_completada: valor })
-    .eq('id', id)
+    .eq('id', itemId)
   if (error) throw error
-  revalidatePath('/rendiciones/admin')
-}
-
-// ─── APROBAR / RECHAZAR ───────────────────────────────────────────────────────
-
-export async function aprobarRendicion(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data, error } = await supabase
-    .from('rendiciones')
-    .update({ estado: 'aprobada', aprobada_por: user?.id, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select(`*, colaborador:colaboradores(nombre, email), cotizacion:cotizaciones(nombre)`)
-    .single()
-  if (error) throw error
-  revalidatePath('/rendiciones/admin')
-
-  if (data.colaborador?.email) {
-    try {
-      await resend.emails.send({
-        from: 'Hilván <noreply@casahiedra.com>',
-        to: data.colaborador.email,
-        subject: `Rendición aprobada · ${(data.cotizacion as any)?.nombre}`,
-        html: `<p>Hola ${data.colaborador.nombre},</p><p>Tu rendición fue <strong>aprobada</strong>.</p><p>Monto: $${data.monto.toLocaleString('es-CL')}</p><p>Casa Hiedra</p>`,
-      })
-    } catch { /* email no crítico */ }
-  }
-  return data as Rendicion
-}
-
-export async function rechazarRendicion(id: string, motivo: string) {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('rendiciones')
-    .update({ estado: 'rechazada', motivo_rechazo: motivo, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select(`*, colaborador:colaboradores(nombre, email), cotizacion:cotizaciones(nombre)`)
-    .single()
-  if (error) throw error
-  revalidatePath('/rendiciones/admin')
-
-  if (data.colaborador?.email) {
-    try {
-      await resend.emails.send({
-        from: 'Hilván <noreply@casahiedra.com>',
-        to: data.colaborador.email,
-        subject: `Rendición rechazada · ${(data.cotizacion as any)?.nombre}`,
-        html: `<p>Hola ${data.colaborador.nombre},</p><p>Tu rendición fue <strong>rechazada</strong>.</p><p>Motivo: ${motivo}</p><p>Puedes corregirla y volver a enviarla.</p><p>Casa Hiedra</p>`,
-      })
-    } catch { /* email no crítico */ }
-  }
-  return data as Rendicion
-}
-
-export async function eliminarRendicion(id: string) {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('rendiciones')
-    .delete()
-    .eq('id', id)
-    .eq('estado', 'pendiente')
-  if (error) throw error
-  revalidatePath('/rendiciones/admin')
 }
 
 // ─── LINK TEMPORAL EXTERNOS ───────────────────────────────────────────────────
 
 export async function generarLinkTemporalExterno(payload: {
+  rendicion_id: string
   cotizacion_item_id: string
   email?: string
   colaborador_id?: string | null
   dias_expiracion?: number
 }): Promise<{ url: string }> {
   const supabase = await createClient()
-  const { cotizacion_item_id, email, colaborador_id, dias_expiracion = 7 } = payload
+  const { rendicion_id, cotizacion_item_id, email, colaborador_id, dias_expiracion = 7 } = payload
 
   const token = crypto.randomUUID().replace(/-/g, '')
   const expires_at = new Date()
@@ -313,13 +251,7 @@ export async function generarLinkTemporalExterno(payload: {
 
   const { error } = await supabase
     .from('rendiciones_links_temporales')
-    .insert({
-      cotizacion_item_id,
-      email: email || null,
-      colaborador_id: colaborador_id || null,
-      token,
-      expires_at: expires_at.toISOString(),
-    })
+    .insert({ rendicion_id, cotizacion_item_id, email: email || null, colaborador_id: colaborador_id || null, token, expires_at: expires_at.toISOString() })
   if (error) throw error
 
   const url = `${APP_URL}/r/${token}`
@@ -329,19 +261,62 @@ export async function generarLinkTemporalExterno(payload: {
       await resend.emails.send({
         from: 'Hilván <noreply@casahiedra.com>',
         to: email,
-        subject: 'Hilván · Envío de rendición de gastos',
-        html: `
-          <p>Hola,</p>
-          <p>Casa Hiedra te invita a registrar tus gastos de producción a través de Hilván.</p>
+        subject: 'Hilván · Envío de gastos de producción',
+        html: `<p>Hola,</p>
+          <p>Casa Hiedra te invita a registrar tus gastos de producción.</p>
           <p><a href="${url}" style="display:inline-block;background:#4ade80;color:#000;padding:10px 20px;text-decoration:none;font-family:monospace;">Ingresar mis gastos →</a></p>
-          <p style="color:#888;font-size:12px;">Este link expira en ${dias_expiracion} días. No lo compartas con terceros.</p>
-          <p>Casa Hiedra</p>
-        `,
+          <p style="color:#888;font-size:12px;">Este link expira en ${dias_expiracion} días.</p>
+          <p>Casa Hiedra</p>`,
       })
     } catch { /* email no crítico */ }
   }
 
   return { url }
+}
+
+export async function getInfoPorToken(token: string): Promise<{
+  rendicion: Rendicion
+  cotizacionItem: { id: string; nombre: string; tipo: string; precio_neto_proveedor: number; cantidad: number }
+  colaboradorId: string | null
+  email: string | null
+  gastos: RendicionGasto[]
+} | null> {
+  const supabase = await createClient()
+
+  const { data: link } = await supabase
+    .from('rendiciones_links_temporales')
+    .select(`
+      *,
+      cotizacion_item:cotizacion_items(id, nombre, tipo, precio_neto_proveedor, cantidad)
+    `)
+    .eq('token', token)
+    .single()
+
+  if (!link) return null
+  if (new Date(link.expires_at) < new Date()) return null
+
+  const { data: rendicion } = await supabase
+    .from('rendiciones')
+    .select(`*, cotizacion:cotizaciones(id, nombre, grupo:cotizacion_grupos(numero_base))`)
+    .eq('id', link.rendicion_id)
+    .single()
+
+  if (!rendicion) return null
+
+  const { data: gastos } = await supabase
+    .from('rendicion_gastos')
+    .select(GASTO_SELECT)
+    .eq('rendicion_id', link.rendicion_id)
+    .eq('cotizacion_item_id', link.cotizacion_item_id)
+    .order('created_at', { ascending: false })
+
+  return {
+    rendicion: rendicion as Rendicion,
+    cotizacionItem: link.cotizacion_item as any,
+    colaboradorId: link.colaborador_id,
+    email: link.email,
+    gastos: (gastos ?? []) as RendicionGasto[],
+  }
 }
 
 // ─── NOTAS POR GLOSA ──────────────────────────────────────────────────────────

@@ -19,13 +19,20 @@ export default async function ExportSantanderPage({
 
   let rendiciones: any[] = []
   if (cotizacionId) {
-    const { data } = await supabase
+    const { data: rendicionesCot } = await supabase
       .from('rendiciones')
-      .select('*, colaborador:colaboradores(nombre, rut, banco, tipo_cuenta, numero_cuenta, tipo_documento)')
+      .select('id')
       .eq('cotizacion_id', cotizacionId)
-      .eq('estado', 'aprobada')
-      .order('created_at', { ascending: false })
-    rendiciones = data ?? []
+    const rendicionIds = (rendicionesCot ?? []).map((r: any) => r.id)
+    if (rendicionIds.length > 0) {
+      const { data } = await supabase
+        .from('rendicion_gastos')
+        .select('*, colaborador:colaboradores(nombre, rut, banco, tipo_cuenta, numero_cuenta)')
+        .in('rendicion_id', rendicionIds)
+        .eq('estado', 'aprobada')
+        .order('created_at', { ascending: false })
+      rendiciones = data ?? []
+    }
   }
 
   return (
