@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Rendicion, RendicionGasto, TipoRendicion, TipoDocRendicion, RendicionNotaGlosa } from '@/types'
 import { Resend } from 'resend'
 
@@ -342,4 +343,60 @@ export async function crearNotaGlosa(cotizacionItemId: string, nota: string): Pr
     .single()
   if (error) throw error
   return data as RendicionNotaGlosa
+}
+
+// ─── GESTIÓN DE LINKS TEMPORALES ──────────────────────────────────────────────
+
+const LINK_SELECT = `
+  *,
+  cotizacion_item:cotizacion_items(id, nombre),
+  colaborador:colaboradores(id, nombre, email),
+  rendicion:rendiciones(
+    id,
+    cotizacion:cotizaciones(id, nombre, grupo:cotizacion_grupos(numero_base))
+  )
+`
+
+export async function getLinksTemporales() {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('rendiciones_links_temporales')
+    .select(LINK_SELECT)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function eliminarLinkTemporal(id: string): Promise<void> {
+  const admin = createAdminClient()
+  const { error } = await admin.from('rendiciones_links_temporales').delete().eq('id', id)
+  if (error) throw new Error(`Error al eliminar link: ${error.message}`)
+}
+
+export async function reenviarEmailLink(id: string): Promise<void> {
+  const admin = createAdminClient()
+  const { data: link, error } = await admin
+    .from('rendiciones_links_temporales')
+    .select(LINK_SELECT)
+    .eq('id', id)
+    .single()
+  if (error || !link) throw new Error('Link no encontrado')
+  if (!link.email?.trim()) throw new Error('Este link no tiene email asociado')
+
+  const url = `${APP_URL}/r/${link.token}`
+  const cotNombre = (link.rendicion as any)?.cotizacion?.nombre || ''
+  const diasRestantes = Math.max(0, Math.ceil(
+    (new Date(link.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  ))
+
+  await resend.emails.send({
+    from: 'Hilván <noreply@casahiedra.com>',
+    to: link.email,
+    subject: `Hilván · Recordatorio — Envío de gastos${cotNombre ? ` (${cotNombre})` : ''}`,
+    html: `<p>Hola,</p>
+      <p>Este es un recordatorio para registrar tus gastos de producción.</p>
+      <p><a href="${url}" style="display:inline-block;background:#4ade80;color:#000;padding:10px 20px;text-decoration:none;font-family:monospace;">Ingresar mis gastos →</a></p>
+      <p style="color:#888;font-size:12px;">Este link ${diasRestantes > 0 ? `vence en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}` : 'vence hoy'}.</p>
+      <p>Casa Hiedra</p>`,
+  })
 }

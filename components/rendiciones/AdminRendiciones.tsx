@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import {
   aprobarGasto, rechazarGasto, aprobarPagoGasto,
   toggleItemCompletado, generarLinkTemporalExterno, crearRendicion,
+  eliminarLinkTemporal, reenviarEmailLink,
 } from '@/app/actions/rendiciones'
 import { createClient } from '@/lib/supabase/client'
 import { calcularRetencion } from '@/types'
@@ -33,11 +34,29 @@ interface CotizacionForm {
   departamentos?: Departamento[]
 }
 
+interface LinkTemporal {
+  id: string
+  token: string
+  email: string | null
+  expires_at: string
+  created_at: string
+  rendicion_id: string
+  cotizacion_item_id: string
+  colaborador_id: string | null
+  cotizacion_item: { id: string; nombre: string } | null
+  colaborador: { id: string; nombre: string; email: string } | null
+  rendicion: {
+    id: string
+    cotizacion: { id: string; nombre: string; grupo: { numero_base?: string } | null } | null
+  } | null
+}
+
 interface Props {
   rendiciones: Rendicion[]
   cotizacionesForm: CotizacionForm[]
   gastosSumasPorItem: Record<string, number>
   colaboradores: { id: string; nombre: string }[]
+  linksTemporales?: LinkTemporal[]
   colaboradorId?: string
   puedeAprobarPago?: boolean
   puedeGenerarLink?: boolean
@@ -48,11 +67,14 @@ export default function AdminRendiciones({
   cotizacionesForm,
   gastosSumasPorItem,
   colaboradores,
+  linksTemporales: initialLinks = [],
   colaboradorId,
   puedeAprobarPago = false,
   puedeGenerarLink = true,
 }: Props) {
   const [rendiciones, setRendiciones] = useState(initialRendiciones)
+  const [links, setLinks] = useState<LinkTemporal[]>(initialLinks)
+  const [pestana, setPestana] = useState<'rendiciones' | 'links'>('rendiciones')
   const [isPending, startTransition] = useTransition()
   const [modalRechazo, setModalRechazo] = useState<{ gastoId: string; rendicionId: string } | null>(null)
   const [motivo, setMotivo] = useState('')
@@ -154,8 +176,109 @@ export default function AdminRendiciones({
   const cotizacionesDisponibles = cotizacionesForm.filter(c => !cotizacionIdsConRendicion.has(c.id))
   const todosGastos = rendiciones.flatMap(r => r.gastos || [])
 
+  const handleEliminarLink = async (id: string) => {
+    if (!confirm('¿Eliminar este link? El externo no podrá usarlo más.')) return
+    try {
+      await eliminarLinkTemporal(id)
+      setLinks(prev => prev.filter(l => l.id !== id))
+    } catch (e: any) {
+      alert(e?.message || 'Error al eliminar link')
+    }
+  }
+
+  const handleReenviarLink = async (id: string) => {
+    try {
+      await reenviarEmailLink(id)
+      alert('Email reenviado correctamente.')
+    } catch (e: any) {
+      alert(e?.message || 'Error al reenviar email')
+    }
+  }
+
   return (
     <div className="space-y-8">
+
+      {/* Tabs */}
+      <div className="flex gap-0 border-b border-ch-border">
+        <button onClick={() => setPestana('rendiciones')}
+          className={`font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 border-b-2 transition-colors ${pestana === 'rendiciones' ? 'border-ch-green text-ch-cream' : 'border-transparent text-ch-muted hover:text-ch-cream'}`}>
+          Rendiciones
+        </button>
+        <button onClick={() => setPestana('links')}
+          className={`font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 border-b-2 transition-colors ${pestana === 'links' ? 'border-ch-green text-ch-cream' : 'border-transparent text-ch-muted hover:text-ch-cream'}`}>
+          Links{links.length > 0 && <span className="ml-1.5 font-mono text-[9px] text-ch-muted">({links.length})</span>}
+        </button>
+      </div>
+
+      {/* ── PESTAÑA LINKS ─────────────────────────────────────────────────────── */}
+      {pestana === 'links' && (
+        <div className="space-y-3">
+          {links.length === 0 ? (
+            <div className="border border-dashed border-ch-border p-12 text-center">
+              <p className="text-ch-muted font-body text-sm">No hay links generados aún.</p>
+            </div>
+          ) : links.map(link => {
+            const vencido = new Date(link.expires_at) < new Date()
+            const diasRestantes = Math.ceil((new Date(link.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            const cotNombre = link.rendicion?.cotizacion?.nombre || '—'
+            const numBase = link.rendicion?.cotizacion?.grupo?.numero_base
+            const itemNombre = link.cotizacion_item?.nombre || '—'
+            const destEmail = link.email || link.colaborador?.email || null
+            const destNombre = link.colaborador?.nombre || link.email || 'Sin destinatario'
+            const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${link.token}`
+
+            return (
+              <div key={link.id} className={`border p-4 ${vencido ? 'border-ch-border/30 opacity-60' : 'border-ch-border/60'}`}>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-body text-xs text-ch-cream">{destNombre}</span>
+                      {destEmail && destEmail !== destNombre && (
+                        <span className="font-body text-[10px] text-ch-muted">{destEmail}</span>
+                      )}
+                      {vencido
+                        ? <span className="font-body text-[9px] px-1.5 border border-red-500/40 text-red-400">Vencido</span>
+                        : <span className="font-body text-[9px] px-1.5 border border-ch-green/30 text-ch-green">Vigente</span>
+                      }
+                    </div>
+                    <p className="font-body text-[10px] text-ch-muted">
+                      {numBase && <span className="mr-1">{numBase}</span>}
+                      {cotNombre} · <span className="text-ch-cream/70">{itemNombre}</span>
+                    </p>
+                    <p className="font-body text-[10px] text-ch-muted font-mono break-all">/r/{link.token}</p>
+                    <p className="font-body text-[10px] text-ch-muted">
+                      {vencido
+                        ? `Venció ${new Date(link.expires_at).toLocaleDateString('es-CL')}`
+                        : `Vence en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''} · ${new Date(link.expires_at).toLocaleDateString('es-CL')}`
+                      }
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/r/${link.token}`)}
+                      className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors">
+                      Copiar link
+                    </button>
+                    {!vencido && destEmail && (
+                      <button onClick={() => handleReenviarLink(link.id)}
+                        className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors">
+                        Reenviar email
+                      </button>
+                    )}
+                    <button onClick={() => handleEliminarLink(link.id)}
+                      className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── PESTAÑA RENDICIONES ───────────────────────────────────────────────── */}
+      {pestana === 'rendiciones' && <>
 
       {/* Barra superior */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -314,6 +437,8 @@ export default function AdminRendiciones({
           </div>
         )
       })}
+
+      </>}
 
       {/* Modal nueva rendición */}
       {modalNuevaRendicion && (

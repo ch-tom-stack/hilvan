@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   actualizarColaborador, eliminarColaborador, crearTarifa, eliminarTarifa,
-  crearLinkTemporal, getLinksPorColaborador,
+  crearLinkTemporal, getLinksPorColaborador, crearLinkOnboarding, marcarContratoFirmado,
 } from '@/app/actions/colaboradores'
 import type { Colaborador, ColaboradorTarifa, ContratoGenerado, RendicionGasto } from '@/types'
 
@@ -40,9 +40,13 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
   // Tarifa nueva
   const [nuevaTarifa, setNuevaTarifa] = useState({ rodaje_id: '', rol: '', monto_dia: '' })
 
-  // Link temporal
+  // Link temporal (rendiciones)
   const [linkGenerado, setLinkGenerado] = useState<string | null>(null)
   const [generandoLink, setGenerandoLink] = useState(false)
+
+  // Link onboarding
+  const [linkOnboarding, setLinkOnboarding] = useState<string | null>(null)
+  const [generandoLinkOnboarding, setGenerandoLinkOnboarding] = useState(false)
 
   const set = (campo: keyof Colaborador, valor: any) =>
     setForm(prev => ({ ...prev, [campo]: valor }))
@@ -86,6 +90,18 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
     }
   }
 
+  const generarFichaLink = async () => {
+    setGenerandoLinkOnboarding(true)
+    try {
+      const link = await crearLinkOnboarding(colaborador.id)
+      const url = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.casahiedra.com'}/col/${link.token}`
+      setLinkOnboarding(url)
+      await navigator.clipboard.writeText(url).catch(() => {})
+    } finally {
+      setGenerandoLinkOnboarding(false)
+    }
+  }
+
   const generarContrato = async (tipo: string) => {
     startTransition(async () => {
       const res = await fetch(`/api/contratos/generar`, {
@@ -109,6 +125,23 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
 
   return (
     <div className="max-w-3xl">
+
+      {/* Enviar ficha de onboarding */}
+      <div className="mb-6">
+        <button
+          onClick={generarFichaLink}
+          disabled={generandoLinkOnboarding}
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50"
+        >
+          {generandoLinkOnboarding ? 'Generando...' : 'Enviar ficha al colaborador'}
+        </button>
+        {linkOnboarding && (
+          <div className="mt-2 border border-ch-border/50 bg-ch-surface/30 px-3 py-2">
+            <p className="font-body text-[10px] text-ch-green mb-1">Link copiado al portapapeles:</p>
+            <p className="font-mono text-[10px] text-ch-muted break-all">{linkOnboarding}</p>
+          </div>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-ch-border mb-8 overflow-x-auto">
@@ -298,8 +331,8 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
               <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-3">Historial</p>
               <div className="border border-ch-border divide-y divide-ch-border/50">
                 {contratos.map((c: any) => (
-                  <div key={c.id} className="flex items-center justify-between px-4 py-3">
-                    <div>
+                  <div key={c.id} className="flex items-start justify-between px-4 py-3 gap-3">
+                    <div className="min-w-0">
                       <span className="font-body text-xs text-ch-cream">
                         {c.tipo === 'marco_equipo' ? 'Equipo técnico' :
                          c.tipo === 'marco_modelo' ? 'Modelos / Cast' :
@@ -307,8 +340,39 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
                       </span>
                       {c.rodaje && <span className="font-body text-[10px] text-ch-muted ml-2">· {c.rodaje.nombre}</span>}
                     </div>
-                    <div className="flex items-center gap-3">
-                      {c.firmado && <span className="font-body text-[9px] text-ch-green tracking-wider">Firmado</span>}
+                    <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+                      {c.archivo_url && (
+                        <a href={c.archivo_url} target="_blank" rel="noopener noreferrer"
+                          className="font-body text-[9px] text-ch-muted hover:text-ch-cream tracking-wider transition-colors">
+                          ↓ .docx
+                        </a>
+                      )}
+                      {c.firmado ? (
+                        <span className="font-body text-[9px] text-ch-green tracking-wider">Firmado</span>
+                      ) : (
+                        <>
+                          <label className="font-body text-[9px] text-ch-muted hover:text-ch-cream tracking-wider cursor-pointer transition-colors">
+                            ↑ subir firmado
+                            <input type="file" accept=".pdf,.docx" className="hidden"
+                              onChange={async e => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                const formData = new FormData()
+                                formData.append('file', file)
+                                formData.append('contrato_id', c.id)
+                                formData.append('colaborador_id', colaborador.id)
+                                const res = await fetch('/api/contratos/subir-firmado', { method: 'POST', body: formData })
+                                if (res.ok) router.refresh()
+                              }} />
+                          </label>
+                          <button
+                            onClick={() => startTransition(() => marcarContratoFirmado(c.id, colaborador.id))}
+                            disabled={isPending}
+                            className="font-body text-[9px] text-ch-muted hover:text-ch-cream tracking-wider transition-colors disabled:opacity-50">
+                            ✓ firmado
+                          </button>
+                        </>
+                      )}
                       <span className="font-body text-[10px] text-ch-muted">
                         {new Date(c.created_at).toLocaleDateString('es-CL')}
                       </span>
