@@ -2,10 +2,11 @@ import { getCitacionPublica, responderCitacion } from '@/app/actions/rodaje'
 import { formatHora, resolverHoraLlamado, generarLinkUber, Rodaje, RodajeEquipoTecnico } from '@/types'
 import { notFound } from 'next/navigation'
 
-export default async function CitacionPublicaPage({ params }: { params: { token: string } }) {
+export default async function CitacionPublicaPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params
   let citacion: any
   try {
-    citacion = await getCitacionPublica(params.token)
+    citacion = await getCitacionPublica(token)
   } catch {
     notFound()
   }
@@ -160,21 +161,10 @@ export default async function CitacionPublicaPage({ params }: { params: { token:
           ) : (
             <div>
               <p className="text-sm text-zinc-300 mb-5">Confirma tu asistencia e indícanos si tienes restricciones alimentarias.</p>
-              <form className="space-y-5">
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-2">Restricciones alimentarias</label>
-                  <input
-                    name="restricciones_alimentarias"
-                    placeholder="ej: vegetariano, sin gluten, alergia a los mariscos... (opcional)"
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <BotonRespuesta token={params.token} confirmada={true} label="✓ Confirmo mi asistencia" clase="bg-[#E6E2ED] text-zinc-900 hover:bg-white" />
-                  <BotonRespuesta token={params.token} confirmada={false} label="No puedo asistir" clase="bg-zinc-900 border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200" />
-                </div>
-              </form>
+              <div className="flex flex-col gap-3">
+                <BotonConfirmar token={token} />
+                <BotonDeclinar token={token} />
+              </div>
             </div>
           )}
         </div>
@@ -188,13 +178,35 @@ export default async function CitacionPublicaPage({ params }: { params: { token:
   )
 }
 
-// Botón con server action inline
-function BotonRespuesta({ token, confirmada, label, clase }: {
-  token: string
-  confirmada: boolean
-  label: string
-  clase: string
-}) {
+function BotonConfirmar({ token }: { token: string }) {
+  return (
+    <form
+      action={async (fd: FormData) => {
+        'use server'
+        await responderCitacion(token, fd)
+      }}
+      className="space-y-3"
+    >
+      <input type="hidden" name="confirmada" value="true" />
+      <div>
+        <label className="block text-xs text-zinc-400 mb-2">Restricciones alimentarias</label>
+        <input
+          name="restricciones_alimentarias"
+          placeholder="ej: vegetariano, sin gluten, alergia a los mariscos... (opcional)"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+        />
+      </div>
+      <button
+        type="submit"
+        className="w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors bg-[#E6E2ED] text-zinc-900 hover:bg-white"
+      >
+        ✓ Confirmo mi asistencia
+      </button>
+    </form>
+  )
+}
+
+function BotonDeclinar({ token }: { token: string }) {
   return (
     <form
       action={async (fd: FormData) => {
@@ -202,12 +214,12 @@ function BotonRespuesta({ token, confirmada, label, clase }: {
         await responderCitacion(token, fd)
       }}
     >
-      <input type="hidden" name="confirmada" value={confirmada ? 'true' : 'false'} />
+      <input type="hidden" name="confirmada" value="false" />
       <button
         type="submit"
-        className={`w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors ${clase}`}
+        className="w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors bg-zinc-900 border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
       >
-        {label}
+        No puedo asistir
       </button>
     </form>
   )

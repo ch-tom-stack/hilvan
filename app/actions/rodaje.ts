@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { Resend } from 'resend'
@@ -452,30 +453,37 @@ export async function enviarEmailCitacion(id: string, rodajeId: string) {
 // ─── PORTAL PÚBLICO ───────────────────────────────────────────────────────────
 
 export async function getCitacionPublica(token: string) {
-  const supabase = await createClient()
-  const { data, error } = await supabase
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .from('rodaje_citaciones')
     .select(`
       *,
-      persona:rodaje_equipo_tecnico(
-        *,
-        departamento:rodaje_departamentos(*),
-        miembros_departamento:rodaje_equipo_tecnico(id, nombre, rol, hora_llamado_individual)
-      ),
+      persona:rodaje_equipo_tecnico(*, departamento:rodaje_departamentos(*)),
       rodaje:rodajes(*, escenas:rodaje_escenas(*))
     `)
     .eq('token', token)
     .single()
   if (error) throw error
+
+  const persona = data?.persona as any
+  if (persona?.es_jefe_departamento && persona?.departamento_id) {
+    const { data: miembros } = await admin
+      .from('rodaje_equipo_tecnico')
+      .select('id, nombre, rol, hora_llamado_individual')
+      .eq('rodaje_id', persona.rodaje_id)
+      .eq('departamento_id', persona.departamento_id)
+    persona.miembros_departamento = miembros ?? []
+  }
+
   return data
 }
 
 export async function responderCitacion(token: string, formData: FormData) {
-  const supabase = await createClient()
+  const admin = createAdminClient()
   const confirmada = formData.get('confirmada') === 'true'
   const restricciones = (formData.get('restricciones_alimentarias') as string) || null
 
-  const { error } = await supabase
+  const { error } = await admin
     .from('rodaje_citaciones')
     .update({
       confirmada,

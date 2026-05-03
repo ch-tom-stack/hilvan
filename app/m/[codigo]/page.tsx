@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import type { Maleta } from '@/types'
 import NotasMaleta from '@/components/maletas/NotasMaleta'
@@ -9,9 +10,9 @@ export default async function MaletaPublicaPage({
   params: Promise<{ codigo: string }>
 }) {
   const { codigo } = await params
-  const supabase = await createClient()
+  const admin = createAdminClient()
 
-  const { data: maleta } = await supabase
+  const { data: maleta } = await admin
     .from('maletas')
     .select('*, items:maleta_items(*, equipo:equipos(*)), notas:maleta_notas(*)')
     .eq('codigo', codigo)
@@ -20,6 +21,7 @@ export default async function MaletaPublicaPage({
 
   if (!maleta) notFound()
 
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   // Ordenar notas por fecha descendente

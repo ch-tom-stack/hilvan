@@ -1,11 +1,15 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { aprobarRendicion, rechazarRendicion, aprobarPago, toggleRendicionCompletada, generarLinkTemporalExterno } from '@/app/actions/rendiciones'
+import {
+  aprobarGasto, rechazarGasto, aprobarPagoGasto,
+  toggleItemCompletado, generarLinkTemporalExterno, crearRendicion, purgarYCrearRendicion, eliminarRendicion,
+  eliminarLinkTemporal, reenviarEmailLink,
+} from '@/app/actions/rendiciones'
 import { createClient } from '@/lib/supabase/client'
 import { calcularRetencion } from '@/types'
-import type { Rendicion } from '@/types'
-import FormularioRendicion from './FormularioRendicion'
+import type { Rendicion, RendicionGasto } from '@/types'
+import FormularioGasto from './FormularioGasto'
 import NotasGlosa from './NotasGlosa'
 
 const TIPO_LABEL: Record<string, string> = {
@@ -19,102 +23,132 @@ interface Item {
   tipo: string
   precio_neto_proveedor: number
   cantidad: number
+  rendicion_completada?: boolean
 }
-
 interface Subgrupo { id: string; nombre: string; orden: number; items?: Item[] }
 interface Departamento { id: string; nombre: string; orden: number; subgrupos?: Subgrupo[]; items?: any[] }
-interface Cotizacion {
+interface CotizacionForm {
   id: string
   nombre: string
   grupo?: { numero_base?: string }
   departamentos?: Departamento[]
 }
 
+interface LinkTemporal {
+  id: string
+  token: string
+  email: string | null
+  expires_at: string
+  created_at: string
+  rendicion_id: string
+  cotizacion_item_id: string
+  colaborador_id: string | null
+  cotizacion_item: { id: string; nombre: string } | null
+  colaborador: { id: string; nombre: string; email: string } | null
+  rendicion: {
+    id: string
+    cotizacion: { id: string; nombre: string; grupo: { numero_base?: string } | null } | null
+  } | null
+}
+
 interface Props {
-  cotizaciones: Cotizacion[]
-  rendicionesPorItem: Record<string, Rendicion[]>
-  rendicionesSinItem: Record<string, Rendicion[]>
-  cotizacionesForm: any[]
-  rendicionesPorItemSumas: Record<string, number>
+  rendiciones: Rendicion[]
+  cotizacionesForm: CotizacionForm[]
+  gastosSumasPorItem: Record<string, number>
   colaboradores: { id: string; nombre: string }[]
+  linksTemporales?: LinkTemporal[]
   colaboradorId?: string
   puedeAprobarPago?: boolean
   puedeGenerarLink?: boolean
 }
 
 export default function AdminRendiciones({
-  cotizaciones,
-  rendicionesPorItem: initialPorItem,
-  rendicionesSinItem: initialSinItem,
+  rendiciones: initialRendiciones,
   cotizacionesForm,
-  rendicionesPorItemSumas,
+  gastosSumasPorItem,
   colaboradores,
+  linksTemporales: initialLinks = [],
   colaboradorId,
   puedeAprobarPago = false,
   puedeGenerarLink = true,
 }: Props) {
-  const [porItem, setPorItem] = useState(initialPorItem)
-  const [sinItem, setSinItem] = useState(initialSinItem)
+  const [rendiciones, setRendiciones] = useState(initialRendiciones)
+  const [links, setLinks] = useState<LinkTemporal[]>(initialLinks)
+  const [pestana, setPestana] = useState<'rendiciones' | 'links'>('rendiciones')
   const [isPending, startTransition] = useTransition()
-  const [modalRechazo, setModalRechazo] = useState<{ id: string; tipo: 'item' | 'libre'; key: string } | null>(null)
+  const [modalRechazo, setModalRechazo] = useState<{ gastoId: string; rendicionId: string } | null>(null)
   const [motivo, setMotivo] = useState('')
-  const [mostrarForm, setMostrarForm] = useState(false)
-  const [notasAbiertas, setNotasAbiertas] = useState<Record<string, boolean>>({})
-  const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
-  const [modalLink, setModalLink] = useState<{ itemId: string; itemNombre: string } | null>(null)
+  const [modalLink, setModalLink] = useState<{ rendicionId: string; itemId: string; itemNombre: string } | null>(null)
   const [linkForm, setLinkForm] = useState({ email: '', colaboradorId: '', dias: 7 })
   const [linkGenerado, setLinkGenerado] = useState<string | null>(null)
   const [generandoLink, setGenerandoLink] = useState(false)
+  const [modalNuevaRendicion, setModalNuevaRendicion] = useState(false)
+  const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState('')
+  const [creandoRendicion, setCreandoRendicion] = useState(false)
+  const [conflictoExistente, setConflictoExistente] = useState(false)
+  const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
 
   const toggleExpand = (key: string) => setExpandidos(p => ({ ...p, [key]: !p[key] }))
-  const toggleNotas = (key: string) => setNotasAbiertas(p => ({ ...p, [key]: !p[key] }))
 
-  const actualizarEnItem = (itemId: string, id: string, cambios: Partial<Rendicion>) => {
-    setPorItem(prev => ({
-      ...prev,
-      [itemId]: (prev[itemId] || []).map(r => r.id === id ? { ...r, ...cambios } : r),
+  const actualizarGasto = (rendicionId: string, gastoId: string, cambios: Partial<RendicionGasto>) => {
+    setRendiciones(prev => prev.map(r => r.id !== rendicionId ? r : {
+      ...r,
+      gastos: (r.gastos || []).map(g => g.id === gastoId ? { ...g, ...cambios } : g),
     }))
   }
 
-  const actualizarEnSinItem = (cotId: string, id: string, cambios: Partial<Rendicion>) => {
-    setSinItem(prev => ({
-      ...prev,
-      [cotId]: (prev[cotId] || []).map(r => r.id === id ? { ...r, ...cambios } : r),
+  const agregarGasto = (rendicionId: string, gasto: RendicionGasto) => {
+    setRendiciones(prev => prev.map(r => r.id !== rendicionId ? r : {
+      ...r,
+      gastos: [gasto, ...(r.gastos || [])],
     }))
   }
 
-  const aprobarContenido = (r: Rendicion, tipo: 'item' | 'libre', key: string) => {
+  const aprobarContenido = (rendicionId: string, gastoId: string) => {
     startTransition(async () => {
-      if (tipo === 'item') actualizarEnItem(key, r.id, { estado: 'aprobada' })
-      else actualizarEnSinItem(key, r.id, { estado: 'aprobada' })
-      await aprobarRendicion(r.id)
+      actualizarGasto(rendicionId, gastoId, { estado: 'aprobada' })
+      await aprobarGasto(gastoId)
     })
   }
 
-  const aprobarPagoRendicion = (r: Rendicion, tipo: 'item' | 'libre', key: string, comprobante?: string) => {
+  const rechazar = (rendicionId: string, gastoId: string) => {
+    if (!motivo.trim()) return
     startTransition(async () => {
-      if (tipo === 'item') actualizarEnItem(key, r.id, { estado: 'pago_aprobado', comprobante_pago_url: comprobante })
-      else actualizarEnSinItem(key, r.id, { estado: 'pago_aprobado', comprobante_pago_url: comprobante })
-      await aprobarPago(r.id, comprobante)
-    })
-  }
-
-  const toggleCompletado = (tipo: 'item' | 'departamento', id: string, valor: boolean) => {
-    startTransition(async () => {
-      await toggleRendicionCompletada(tipo, id, valor)
-    })
-  }
-
-  const confirmarRechazo = () => {
-    if (!modalRechazo || !motivo.trim()) return
-    const { id, tipo, key } = modalRechazo
-    startTransition(async () => {
-      if (tipo === 'item') actualizarEnItem(key, id, { estado: 'rechazada', motivo_rechazo: motivo })
-      else actualizarEnSinItem(key, id, { estado: 'rechazada', motivo_rechazo: motivo })
-      await rechazarRendicion(id, motivo)
+      actualizarGasto(rendicionId, gastoId, { estado: 'rechazada', motivo_rechazo: motivo })
+      await rechazarGasto(gastoId, motivo)
       setModalRechazo(null)
       setMotivo('')
     })
+  }
+
+  const aprobarPago = (rendicionId: string, gastoId: string, comprobante?: string) => {
+    startTransition(async () => {
+      actualizarGasto(rendicionId, gastoId, { estado: 'pago_aprobado', comprobante_pago_url: comprobante })
+      await aprobarPagoGasto(gastoId, comprobante)
+    })
+  }
+
+  const handleCrearRendicion = async (forzar = false) => {
+    if (!cotizacionSeleccionada) return
+    setCreandoRendicion(true)
+    setConflictoExistente(false)
+    try {
+      const nueva = forzar
+        ? await purgarYCrearRendicion(cotizacionSeleccionada)
+        : await crearRendicion(cotizacionSeleccionada)
+      setRendiciones(prev => [nueva, ...prev])
+      setExpandidos(p => ({ ...p, [nueva.id]: true }))
+      setModalNuevaRendicion(false)
+      setCotizacionSeleccionada('')
+    } catch (e: any) {
+      if (e?.message?.includes('Ya existe')) {
+        setConflictoExistente(true)
+      } else {
+        alert(e?.message || 'Error al crear rendición')
+      }
+    } finally {
+      setCreandoRendicion(false)
+    }
   }
 
   const handleGenerarLink = async () => {
@@ -122,8 +156,9 @@ export default function AdminRendiciones({
     setGenerandoLink(true)
     try {
       const result = await generarLinkTemporalExterno({
+        rendicion_id: modalLink.rendicionId,
         cotizacion_item_id: modalLink.itemId,
-        email: linkForm.email.trim(),
+        email: linkForm.email.trim() || undefined,
         colaborador_id: linkForm.colaboradorId || null,
         dias_expiracion: linkForm.dias,
       })
@@ -141,173 +176,326 @@ export default function AdminRendiciones({
     setLinkForm({ email: '', colaboradorId: '', dias: 7 })
   }
 
-  const handleNuevaRendicion = (nueva: Rendicion, continuar?: boolean) => {
-    if (nueva.cotizacion_item_id) {
-      setPorItem(prev => ({
-        ...prev,
-        [nueva.cotizacion_item_id!]: [nueva, ...(prev[nueva.cotizacion_item_id!] || [])],
-      }))
-    } else {
-      setSinItem(prev => ({
-        ...prev,
-        [nueva.cotizacion_id]: [nueva, ...(prev[nueva.cotizacion_id] || [])],
-      }))
+  const cotizacionIdsConRendicion = new Set(rendiciones.map(r => r.cotizacion_id))
+  const cotizacionesDisponibles = cotizacionesForm.filter(c => !cotizacionIdsConRendicion.has(c.id))
+  const todosGastos = rendiciones.flatMap(r => r.gastos || [])
+
+  const handleEliminarLink = async (id: string) => {
+    if (!confirm('¿Eliminar este link? El externo no podrá usarlo más.')) return
+    try {
+      await eliminarLinkTemporal(id)
+      setLinks(prev => prev.filter(l => l.id !== id))
+    } catch (e: any) {
+      alert(e?.message || 'Error al eliminar link')
     }
-    if (!continuar) setMostrarForm(false)
   }
 
-  // Totales globales para stats
-  const todasLasRendiciones = [
-    ...Object.values(porItem).flat(),
-    ...Object.values(sinItem).flat(),
-  ]
+  const handleReenviarLink = async (id: string) => {
+    try {
+      await reenviarEmailLink(id)
+      alert('Email reenviado correctamente.')
+    } catch (e: any) {
+      alert(e?.message || 'Error al reenviar email')
+    }
+  }
 
   return (
     <div className="space-y-8">
 
+      {/* Tabs */}
+      <div className="flex gap-0 border-b border-ch-border">
+        <button onClick={() => setPestana('rendiciones')}
+          className={`font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 border-b-2 transition-colors ${pestana === 'rendiciones' ? 'border-ch-green text-ch-cream' : 'border-transparent text-ch-muted hover:text-ch-cream'}`}>
+          Rendiciones
+        </button>
+        <button onClick={() => setPestana('links')}
+          className={`font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 border-b-2 transition-colors ${pestana === 'links' ? 'border-ch-green text-ch-cream' : 'border-transparent text-ch-muted hover:text-ch-cream'}`}>
+          Links{links.length > 0 && <span className="ml-1.5 font-mono text-[9px] text-ch-muted">({links.length})</span>}
+        </button>
+      </div>
+
+      {/* ── PESTAÑA LINKS ─────────────────────────────────────────────────────── */}
+      {pestana === 'links' && (
+        <div className="space-y-3">
+          {links.length === 0 ? (
+            <div className="border border-dashed border-ch-border p-12 text-center">
+              <p className="text-ch-muted font-body text-sm">No hay links generados aún.</p>
+            </div>
+          ) : links.map(link => {
+            const vencido = new Date(link.expires_at) < new Date()
+            const diasRestantes = Math.ceil((new Date(link.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            const cotNombre = link.rendicion?.cotizacion?.nombre || '—'
+            const numBase = link.rendicion?.cotizacion?.grupo?.numero_base
+            const itemNombre = link.cotizacion_item?.nombre || '—'
+            const destEmail = link.email || link.colaborador?.email || null
+            const destNombre = link.colaborador?.nombre || link.email || 'Sin destinatario'
+
+            return (
+              <div key={link.id} className={`border p-4 ${vencido ? 'border-ch-border/30 opacity-60' : 'border-ch-border/60'}`}>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-body text-xs text-ch-cream">{destNombre}</span>
+                      {destEmail && destEmail !== destNombre && (
+                        <span className="font-body text-[10px] text-ch-muted">{destEmail}</span>
+                      )}
+                      {vencido
+                        ? <span className="font-body text-[9px] px-1.5 border border-red-500/40 text-red-400">Vencido</span>
+                        : <span className="font-body text-[9px] px-1.5 border border-ch-green/30 text-ch-green">Vigente</span>
+                      }
+                    </div>
+                    <p className="font-body text-[10px] text-ch-muted">
+                      {numBase && <span className="mr-1">{numBase}</span>}
+                      {cotNombre} · <span className="text-ch-cream/70">{itemNombre}</span>
+                    </p>
+                    <p className="font-body text-[10px] text-ch-muted font-mono break-all">/r/{link.token}</p>
+                    <p className="font-body text-[10px] text-ch-muted">
+                      {vencido
+                        ? `Venció ${new Date(link.expires_at).toLocaleDateString('es-CL')}`
+                        : `Vence en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''} · ${new Date(link.expires_at).toLocaleDateString('es-CL')}`
+                      }
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/r/${link.token}`)}
+                      className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors">
+                      Copiar link
+                    </button>
+                    {!vencido && destEmail && (
+                      <button onClick={() => handleReenviarLink(link.id)}
+                        className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors">
+                        Reenviar email
+                      </button>
+                    )}
+                    <button onClick={() => handleEliminarLink(link.id)}
+                      className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── PESTAÑA RENDICIONES ───────────────────────────────────────────────── */}
+      {pestana === 'rendiciones' && <>
+
       {/* Barra superior */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex gap-4 text-ch-muted font-body text-[10px] tracking-wider">
-          <span>{todasLasRendiciones.filter(r => r.estado === 'enviada').length} enviadas</span>
-          <span>{todasLasRendiciones.filter(r => r.estado === 'aprobada').length} por pagar</span>
-          <span>{todasLasRendiciones.filter(r => r.estado === 'pago_aprobado').length} pagadas</span>
+          <span>{todosGastos.filter(g => g.estado === 'enviada').length} enviados</span>
+          <span>{todosGastos.filter(g => g.estado === 'aprobada').length} por pagar</span>
+          <span>{todosGastos.filter(g => g.estado === 'pago_aprobado').length} pagados</span>
         </div>
-        <button onClick={() => setMostrarForm(!mostrarForm)}
-          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors">
+        <button onClick={() => setModalNuevaRendicion(true)}
+          disabled={cotizacionesDisponibles.length === 0}
+          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors disabled:opacity-40">
           + Nueva rendición
         </button>
       </div>
 
-      {/* Formulario nueva rendición */}
-      {mostrarForm && (
-        <div className="border border-ch-border bg-ch-surface/20 p-5">
-          <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-4">Nueva rendición</p>
-          <FormularioRendicion
-            cotizaciones={cotizacionesForm}
-            colaboradorId={colaboradorId}
-            rendicionesPorItem={rendicionesPorItemSumas}
-            onGenerarLink={puedeGenerarLink ? (id, nombre) => { setMostrarForm(false); setModalLink({ itemId: id, itemNombre: nombre }); setLinkGenerado(null) } : undefined}
-            onSuccess={handleNuevaRendicion}
-            onCancel={() => setMostrarForm(false)}
-          />
-        </div>
-      )}
-
-      {/* Por cotización */}
-      {cotizaciones.length === 0 && (
+      {/* Lista vacía */}
+      {rendiciones.length === 0 && (
         <div className="border border-dashed border-ch-border p-12 text-center">
-          <p className="text-ch-muted font-body text-sm">No hay rendiciones aún.</p>
+          <p className="text-ch-muted font-body text-sm">No hay rendiciones. Crea una con el botón de arriba.</p>
         </div>
       )}
 
-      {cotizaciones.map(cot => {
-        const sinEste = sinItem[cot.id] || []
-        const tieneDatos = (cot.departamentos ?? []).some(dep => {
-          const items = [...(dep.items ?? []).filter((i: any) => !i.subgrupo_id), ...(dep.subgrupos ?? []).flatMap((sg: any) => sg.items ?? [])]
-          return items.some((i: any) => (porItem[i.id] || []).length > 0)
-        }) || sinEste.length > 0
-        if (!tieneDatos) return null
+      {/* Lista de rendiciones */}
+      {rendiciones.map(rendicion => {
+        const cotizacion = cotizacionesForm.find(c => c.id === rendicion.cotizacion_id)
+        const gastos = rendicion.gastos || []
+        const numBase = rendicion.cotizacion?.grupo?.numero_base || cotizacion?.grupo?.numero_base
+        const nombreCot = rendicion.cotizacion?.nombre || cotizacion?.nombre || '—'
+        const isExpandida = expandidos[rendicion.id] !== false
+        const gastosLibres = gastos.filter(g => !g.cotizacion_item_id)
+        const pendientes = gastos.filter(g => g.estado === 'enviada').length
+        const porPagar = gastos.filter(g => g.estado === 'aprobada').length
 
-        const numBase = cot.grupo?.numero_base
         return (
-          <div key={cot.id} className="border border-ch-border/50 p-4 lg:p-6">
-            <h2 className="font-display italic text-2xl text-ch-cream mb-5">
-              {numBase && <span className="font-body text-sm not-italic text-ch-muted mr-2">{numBase}</span>}
-              {cot.nombre}
-            </h2>
+          <div key={rendicion.id} className="border border-ch-border/50">
+            {/* Header cotización */}
+            <div className="flex items-center gap-3 p-4 hover:bg-ch-surface/10">
+              <span className="font-body text-[10px] text-ch-muted cursor-pointer" onClick={() => toggleExpand(rendicion.id)}>{isExpandida ? '▾' : '▸'}</span>
+              <h2 className="font-display italic text-xl text-ch-cream flex-1 cursor-pointer" onClick={() => toggleExpand(rendicion.id)}>
+                {numBase && <span className="font-body text-sm not-italic text-ch-muted mr-2">{numBase}</span>}
+                {nombreCot}
+              </h2>
+              <div className="flex items-center gap-3 font-body text-[10px]">
+                {pendientes > 0 && <span className="text-amber-400">{pendientes} pendiente{pendientes > 1 ? 's' : ''}</span>}
+                {porPagar > 0 && <span className="text-blue-400">{porPagar} por pagar</span>}
+                <span className="text-ch-muted">{gastos.length} gasto{gastos.length !== 1 ? 's' : ''}</span>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    if (confirm(`¿Eliminar rendición de "${nombreCot}" y todos sus gastos? Esta acción no se puede deshacer.`)) {
+                      eliminarRendicion(rendicion.id).then(() =>
+                        setRendiciones(prev => prev.filter(r => r.id !== rendicion.id))
+                      )
+                    }
+                  }}
+                  className="text-ch-muted hover:text-red-400 transition-colors px-1"
+                  title="Eliminar rendición">
+                  ✕
+                </button>
+              </div>
+            </div>
 
-            {/* Por departamento */}
-            {(cot.departamentos ?? [])
-              .slice()
-              .sort((a, b) => a.orden - b.orden)
-              .map(dep => {
-                const itemsDirectos = (dep.items ?? []).filter((i: any) => !i.subgrupo_id)
-                const subgrupos = dep.subgrupos ?? []
-                const todosItems = [...itemsDirectos, ...(subgrupos.flatMap(sg => sg.items ?? []))]
-                const hayRendiciones = todosItems.some(i => (porItem[i.id] || []).length > 0)
-                if (!hayRendiciones) return null
+            {isExpandida && (
+              <div className="p-4 lg:p-6 pt-2 space-y-6">
+                {cotizacion?.departamentos ? (
+                  cotizacion.departamentos
+                    .slice().sort((a, b) => a.orden - b.orden)
+                    .map(dep => {
+                      const itemsDirectos = (dep.items ?? []).filter((i: any) => !i.subgrupo_id)
+                      const subgrupos = dep.subgrupos ?? []
+                      const todosItems: Item[] = [...itemsDirectos, ...subgrupos.flatMap(sg => sg.items ?? [])]
+                      if (!todosItems.length) return null
 
-                return (
-                  <div key={dep.id} className="mb-6">
-                    <p className="font-body text-[9px] tracking-[0.45em] uppercase text-ch-muted mb-3 pb-1 border-b border-ch-border/40">
-                      {dep.nombre}
-                    </p>
-
-                    <div className="space-y-1">
-                      {/* Subgrupos */}
-                      {subgrupos
-                        .slice()
-                        .sort((a, b) => a.orden - b.orden)
-                        .map(sg => {
-                          const haySg = (sg.items ?? []).some(i => (porItem[i.id] || []).length > 0)
-                          if (!haySg) return null
-                          return (
-                            <div key={sg.id} className="mb-3">
-                              <p className="font-body text-[10px] text-ch-muted italic mb-1.5">{sg.nombre}</p>
-                              <div className="space-y-1 pl-2">
-                                {(sg.items ?? []).map(item => (
-                                  <ItemRow key={item.id} item={item} rendiciones={porItem[item.id] || []}
-                                    expandido={!!expandidos[item.id]} notasAbiertas={!!notasAbiertas[item.id]}
-                                    completado={!!(item as any).rendicion_completada}
-                                    onToggle={() => toggleExpand(item.id)} onToggleNotas={() => toggleNotas(item.id)}
-                                    onToggleCompletado={v => toggleCompletado('item', item.id, v)}
-                                    onAprobarContenido={r => aprobarContenido(r, 'item', item.id)}
-                                    onAprobarPago={(r, comp) => aprobarPagoRendicion(r, 'item', item.id, comp)}
-                                    onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
-                                    onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
-                                    puedeAprobarPago={puedeAprobarPago}
-                                    puedeGenerarLink={puedeGenerarLink}
-                                    isPending={isPending}
-                                  />
-                                ))}
+                      return (
+                        <DepSection key={dep.id} nombre={dep.nombre}>
+                          <div className="space-y-1">
+                            {subgrupos.slice().sort((a, b) => a.orden - b.orden).map(sg => (
+                              <div key={sg.id} className="mb-3">
+                                {sg.nombre && <p className="font-body text-[10px] text-ch-muted italic mb-1.5">{sg.nombre}</p>}
+                                <div className="space-y-1 pl-2">
+                                  {(sg.items ?? []).map((item: Item) => (
+                                    <ItemGlosaSection
+                                      key={item.id}
+                                      rendicionId={rendicion.id}
+                                      item={item}
+                                      gastos={gastos.filter(g => g.cotizacion_item_id === item.id)}
+                                      onAgregarGasto={g => agregarGasto(rendicion.id, g)}
+                                      onAprobarContenido={gastoId => aprobarContenido(rendicion.id, gastoId)}
+                                      onRechazar={gastoId => { setModalRechazo({ gastoId, rendicionId: rendicion.id }); setMotivo('') }}
+                                      onAprobarPago={(gastoId, comp) => aprobarPago(rendicion.id, gastoId, comp)}
+                                      onGenerarLink={() => { setModalLink({ rendicionId: rendicion.id, itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
+                                      puedeAprobarPago={puedeAprobarPago}
+                                      puedeGenerarLink={puedeGenerarLink}
+                                      colaboradorId={colaboradorId}
+                                      isPending={isPending}
+                                    />
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )
-                        })}
+                            ))}
+                            {itemsDirectos.map((item: Item) => (
+                              <ItemGlosaSection
+                                key={item.id}
+                                rendicionId={rendicion.id}
+                                item={item}
+                                gastos={gastos.filter(g => g.cotizacion_item_id === item.id)}
+                                onAgregarGasto={g => agregarGasto(rendicion.id, g)}
+                                onAprobarContenido={gastoId => aprobarContenido(rendicion.id, gastoId)}
+                                onRechazar={gastoId => { setModalRechazo({ gastoId, rendicionId: rendicion.id }); setMotivo('') }}
+                                onAprobarPago={(gastoId, comp) => aprobarPago(rendicion.id, gastoId, comp)}
+                                onGenerarLink={() => { setModalLink({ rendicionId: rendicion.id, itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
+                                puedeAprobarPago={puedeAprobarPago}
+                                puedeGenerarLink={puedeGenerarLink}
+                                colaboradorId={colaboradorId}
+                                isPending={isPending}
+                              />
+                            ))}
+                          </div>
+                        </DepSection>
+                      )
+                    })
+                ) : (
+                  <div className="space-y-2">
+                    {gastos.map(g => (
+                      <GastoRow key={g.id} gasto={g}
+                        onAprobarContenido={() => aprobarContenido(rendicion.id, g.id)}
+                        onAprobarPago={comp => aprobarPago(rendicion.id, g.id, comp)}
+                        onRechazar={() => { setModalRechazo({ gastoId: g.id, rendicionId: rendicion.id }); setMotivo('') }}
+                        puedeAprobarPago={puedeAprobarPago}
+                        isPending={isPending}
+                      />
+                    ))}
+                  </div>
+                )}
 
-                      {/* Items directos del departamento */}
-                      {itemsDirectos
-                        .filter(i => (porItem[i.id] || []).length > 0)
-                        .map(item => (
-                          <ItemRow key={item.id} item={item} rendiciones={porItem[item.id] || []}
-                            expandido={!!expandidos[item.id]} notasAbiertas={!!notasAbiertas[item.id]}
-                            completado={!!(item as any).rendicion_completada}
-                            onToggle={() => toggleExpand(item.id)} onToggleNotas={() => toggleNotas(item.id)}
-                            onToggleCompletado={v => toggleCompletado('item', item.id, v)}
-                            onAprobarContenido={r => aprobarContenido(r, 'item', item.id)}
-                            onAprobarPago={r => aprobarPagoRendicion(r, 'item', item.id)}
-                            onRechazar={r => { setModalRechazo({ id: r.id, tipo: 'item', key: item.id }); setMotivo('') }}
-                            onGenerarLink={() => { setModalLink({ itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
-                            puedeAprobarPago={puedeAprobarPago}
-                            puedeGenerarLink={puedeGenerarLink}
-                            isPending={isPending}
-                          />
-                        ))}
+                {/* Gastos sin glosa */}
+                {gastosLibres.length > 0 && (
+                  <div>
+                    <p className="font-body text-[9px] tracking-[0.45em] uppercase text-ch-muted mb-3 pb-1 border-b border-ch-border/40">
+                      Gastos no presupuestados
+                    </p>
+                    <div className="space-y-2">
+                      {gastosLibres.map(g => (
+                        <GastoRow key={g.id} gasto={g}
+                          onAprobarContenido={() => aprobarContenido(rendicion.id, g.id)}
+                          onAprobarPago={comp => aprobarPago(rendicion.id, g.id, comp)}
+                          onRechazar={() => { setModalRechazo({ gastoId: g.id, rendicionId: rendicion.id }); setMotivo('') }}
+                          puedeAprobarPago={puedeAprobarPago}
+                          isPending={isPending}
+                        />
+                      ))}
                     </div>
                   </div>
-                )
-              })}
-
-            {/* Gastos no presupuestados */}
-            {sinEste.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-ch-border/40">
-                <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-3">Gastos no presupuestados</p>
-                <div className="space-y-2">
-                  {sinEste.map(r => (
-                    <RendicionRow key={r.id} rendicion={r}
-                      onAprobarContenido={() => aprobarContenido(r, 'libre', cot.id)}
-                      onAprobarPago={comp => aprobarPagoRendicion(r, 'libre', cot.id, comp)}
-                      onRechazar={() => { setModalRechazo({ id: r.id, tipo: 'libre', key: cot.id }); setMotivo('') }}
-                      puedeAprobarPago={puedeAprobarPago}
-                      isPending={isPending}
-                    />
-                  ))}
-                </div>
+                )}
               </div>
             )}
           </div>
         )
       })}
+
+      </>}
+
+      {/* Modal nueva rendición */}
+      {modalNuevaRendicion && (
+        <div className="fixed inset-0 bg-ch-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-ch-dark border border-ch-border p-6 w-full max-w-md">
+            <h3 className="font-display italic text-2xl text-ch-cream mb-5">Nueva rendición</h3>
+            {cotizacionesDisponibles.length === 0 ? (
+              <>
+                <p className="font-body text-sm text-ch-muted mb-5">Todas las cotizaciones ya tienen rendición activa.</p>
+                <button onClick={() => setModalNuevaRendicion(false)}
+                  className="w-full border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs py-2.5 transition-colors">
+                  Cerrar
+                </button>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Cotización</label>
+                  <select value={cotizacionSeleccionada} onChange={e => { setCotizacionSeleccionada(e.target.value); setConflictoExistente(false) }} className="input-ch w-full">
+                    <option value="">— Seleccionar —</option>
+                    {cotizacionesDisponibles.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.grupo?.numero_base ? `${c.grupo.numero_base} · ` : ''}{c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {conflictoExistente && (
+                  <div className="border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                    <p className="font-body text-[10px] text-amber-400">
+                      Ya existe una rendición para esta cotización que no está visible en la lista. Puede purgarla y crear una nueva.
+                    </p>
+                    <button onClick={() => handleCrearRendicion(true)} disabled={creandoRendicion}
+                      className="w-full border border-red-500/40 text-red-400 hover:bg-red-500/10 font-body text-[10px] tracking-[0.35em] uppercase py-2 transition-colors disabled:opacity-50">
+                      {creandoRendicion ? 'Purgando...' : 'Purgar y crear nueva'}
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-3 pt-1">
+                  <button onClick={() => handleCrearRendicion(false)} disabled={!cotizacionSeleccionada || creandoRendicion}
+                    className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
+                    {creandoRendicion ? 'Creando...' : 'Crear rendición'}
+                  </button>
+                  <button onClick={() => { setModalNuevaRendicion(false); setCotizacionSeleccionada(''); setConflictoExistente(false) }}
+                    className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-4 transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal generar link externo */}
       {modalLink && (
@@ -319,11 +507,12 @@ export default function AdminRendiciones({
             {linkGenerado ? (
               <div className="space-y-4">
                 <div className="border border-ch-green/30 bg-ch-green/5 p-3">
-                  <p className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-green mb-2">Link generado{linkForm.email.trim() ? ' · email enviado' : ''}</p>
+                  <p className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-green mb-2">
+                    Link generado{linkForm.email.trim() ? ' · email enviado' : ''}
+                  </p>
                   <p className="font-mono text-xs text-ch-cream break-all select-all">{linkGenerado}</p>
                 </div>
-                <button
-                  onClick={() => navigator.clipboard.writeText(linkGenerado)}
+                <button onClick={() => navigator.clipboard.writeText(linkGenerado)}
                   className="w-full border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase py-2.5 transition-colors">
                   Copiar link
                 </button>
@@ -336,31 +525,22 @@ export default function AdminRendiciones({
               <div className="space-y-4">
                 <div>
                   <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Email del externo (opcional)</label>
-                  <input
-                    type="email"
-                    value={linkForm.email}
+                  <input type="email" value={linkForm.email}
                     onChange={e => setLinkForm(p => ({ ...p, email: e.target.value }))}
-                    placeholder="nombre@email.com — se enviará el link por email"
-                    autoFocus
-                    className="input-ch w-full"
-                  />
+                    placeholder="nombre@email.com" autoFocus className="input-ch w-full" />
                 </div>
                 <div>
                   <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Colaborador en directorio (opcional)</label>
-                  <select
-                    value={linkForm.colaboradorId}
+                  <select value={linkForm.colaboradorId}
                     onChange={e => setLinkForm(p => ({ ...p, colaboradorId: e.target.value }))}
                     className="input-ch w-full">
                     <option value="">— Sin ficha en directorio —</option>
-                    {colaboradores.map(c => (
-                      <option key={c.id} value={c.id}>{c.nombre}</option>
-                    ))}
+                    {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Días de vigencia</label>
-                  <select
-                    value={linkForm.dias}
+                  <select value={linkForm.dias}
                     onChange={e => setLinkForm(p => ({ ...p, dias: Number(e.target.value) }))}
                     className="input-ch w-full">
                     <option value={3}>3 días</option>
@@ -370,9 +550,7 @@ export default function AdminRendiciones({
                   </select>
                 </div>
                 <div className="flex gap-3 pt-1">
-                  <button
-                    onClick={handleGenerarLink}
-                    disabled={generandoLink}
+                  <button onClick={handleGenerarLink} disabled={generandoLink}
                     className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
                     {generandoLink ? 'Generando...' : linkForm.email.trim() ? 'Generar y enviar link' : 'Generar link'}
                   </button>
@@ -396,7 +574,8 @@ export default function AdminRendiciones({
               rows={3} autoFocus placeholder="Ej: Documento ilegible, falta comprobante..."
               className="input-ch w-full resize-none mb-4" />
             <div className="flex gap-3">
-              <button onClick={confirmarRechazo} disabled={isPending || !motivo.trim()}
+              <button onClick={() => rechazar(modalRechazo.rendicionId, modalRechazo.gastoId)}
+                disabled={isPending || !motivo.trim()}
                 className="flex-1 bg-red-600 hover:bg-red-500 text-white font-body text-[10px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
                 {isPending ? 'Rechazando...' : 'Confirmar rechazo'}
               </button>
@@ -412,71 +591,124 @@ export default function AdminRendiciones({
   )
 }
 
-// ─── Sub-componentes ──────────────────────────────────────────────────────────
+// ─── DepSection ───────────────────────────────────────────────────────────────
 
-function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onToggle, onToggleNotas, onToggleCompletado, onAprobarContenido, onAprobarPago, onRechazar, onGenerarLink, puedeAprobarPago, puedeGenerarLink, isPending }: {
-  item: Item & { rendicion_completada?: boolean }
-  rendiciones: Rendicion[]
-  expandido: boolean
-  notasAbiertas: boolean
-  completado: boolean
-  onToggle: () => void
-  onToggleNotas: () => void
-  onToggleCompletado: (v: boolean) => void
-  onAprobarContenido: (r: Rendicion) => void
-  onAprobarPago: (r: Rendicion, comp?: string) => void
-  onRechazar: (r: Rendicion) => void
+function DepSection({ nombre, children }: { nombre: string; children: React.ReactNode }) {
+  const [abierto, setAbierto] = useState(true)
+  return (
+    <div>
+      <button
+        onClick={() => setAbierto(v => !v)}
+        className="w-full flex items-center gap-2 mb-3 pb-1 border-b border-ch-border/40 group">
+        <span className="font-body text-[9px] text-ch-muted group-hover:text-ch-cream transition-colors">{abierto ? '▾' : '▸'}</span>
+        <span className="font-body text-[9px] tracking-[0.45em] uppercase text-ch-muted group-hover:text-ch-cream transition-colors flex-1 text-left">{nombre}</span>
+      </button>
+      {abierto && children}
+    </div>
+  )
+}
+
+// ─── ItemGlosaSection ─────────────────────────────────────────────────────────
+
+function ItemGlosaSection({
+  rendicionId, item, gastos,
+  onAgregarGasto,
+  onAprobarContenido, onRechazar, onAprobarPago, onGenerarLink,
+  puedeAprobarPago, puedeGenerarLink, colaboradorId, isPending,
+}: {
+  rendicionId: string
+  item: Item
+  gastos: RendicionGasto[]
+  onAgregarGasto: (g: RendicionGasto) => void
+  onAprobarContenido: (gastoId: string) => void
+  onRechazar: (gastoId: string) => void
+  onAprobarPago: (gastoId: string, comprobante?: string) => void
   onGenerarLink: () => void
   puedeAprobarPago: boolean
   puedeGenerarLink: boolean
+  colaboradorId?: string
   isPending: boolean
 }) {
+  const [isPendingLocal, startTransitionLocal] = useTransition()
+  const [completado, setCompletado] = useState(item.rendicion_completada ?? false)
+  const [formAbierto, setFormAbierto] = useState(false)
+  const [notasAbiertas, setNotasAbiertas] = useState(false)
+
   const presupuesto = item.precio_neto_proveedor * item.cantidad
-  const rendido = rendiciones.filter(r => ['aprobada', 'pago_aprobado', 'enviada'].includes(r.estado)).reduce((s, r) => s + r.monto, 0)
+  const rendido = gastos
+    .filter(g => ['enviada', 'aprobada', 'pago_aprobado'].includes(g.estado))
+    .reduce((s, g) => s + g.monto, 0)
   const diferencia = presupuesto - rendido
   const esPerdida = diferencia < 0
-  if (rendiciones.length === 0) return null
+
+  const handleToggleCompletado = (v: boolean) => {
+    setCompletado(v)
+    startTransitionLocal(async () => { await toggleItemCompletado(item.id, v) })
+  }
 
   return (
     <div>
-      <div className="flex items-center gap-2 py-1.5 group">
-        <span className="font-body text-[10px] text-ch-muted cursor-pointer group-hover:text-ch-cream transition-colors"
-          onClick={onToggle}>
-          {expandido ? '▾' : '▸'}
+      <div className="flex items-center gap-2 py-1.5">
+        <span className="font-body text-xs text-ch-cream flex-1">{item.nombre}</span>
+        <span className="font-body text-[10px] text-ch-muted font-mono whitespace-nowrap hidden sm:block">
+          ${presupuesto.toLocaleString('es-CL')}
+          {rendido > 0 && <> · rend ${rendido.toLocaleString('es-CL')}</>}
+          {' · '}
+          <span className={esPerdida ? 'text-red-400' : ''}>
+            {esPerdida ? `−$${Math.abs(diferencia).toLocaleString('es-CL')}` : `disp $${diferencia.toLocaleString('es-CL')}`}
+          </span>
         </span>
-        <span className="font-body text-xs text-ch-cream flex-1 cursor-pointer" onClick={onToggle}>{item.nombre}</span>
-        <span className="font-body text-[10px] text-ch-muted font-mono whitespace-nowrap">
-          Presupuesto: ${presupuesto.toLocaleString('es-CL')} · Rendido: ${rendido.toLocaleString('es-CL')} · {esPerdida ? `Pérdida: $${Math.abs(diferencia).toLocaleString('es-CL')}` : `Disponible: $${diferencia.toLocaleString('es-CL')}`}
-        </span>
-        <button onClick={e => { e.stopPropagation(); onToggleNotas() }}
+        <button onClick={() => setNotasAbiertas(v => !v)}
           className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1"
-          title="Notas de glosa">
-          📝
-        </button>
+          title="Notas">📝</button>
         {puedeGenerarLink && (
-          <button onClick={e => { e.stopPropagation(); onGenerarLink() }}
-            className="font-body text-[9px] text-ch-muted hover:text-blue-300 transition-colors px-2 py-0.5 border border-ch-border/40 hover:border-blue-500/40 whitespace-nowrap"
-            title="Generar link para externo">
-            Link externo
+          <button onClick={onGenerarLink}
+            className="font-body text-[9px] text-ch-muted hover:text-blue-300 transition-colors px-2 py-0.5 border border-ch-border/40 hover:border-blue-500/40 whitespace-nowrap">
+            Link →
           </button>
         )}
-        <label className="flex items-center gap-1 cursor-pointer" title="Marcar como rendido">
-          <input type="checkbox" checked={completado} disabled={isPending}
-            onChange={e => onToggleCompletado(e.target.checked)}
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input type="checkbox" checked={completado} disabled={isPendingLocal}
+            onChange={e => handleToggleCompletado(e.target.checked)}
             className="accent-ch-green w-3 h-3" />
           <span className="font-body text-[9px] text-ch-muted">Rendido</span>
         </label>
+        <button onClick={() => setFormAbierto(v => !v)}
+          className={`font-body text-[9px] tracking-wider uppercase px-2.5 py-1 border transition-colors whitespace-nowrap ${
+            formAbierto
+              ? 'border-ch-green/50 text-ch-green bg-ch-green/5'
+              : 'border-ch-border/50 text-ch-muted hover:text-ch-cream hover:border-ch-border'
+          }`}>
+          {formAbierto ? '− Cancelar' : '+ Gasto'}
+        </button>
       </div>
 
       {notasAbiertas && <NotasGlosa cotizacionItemId={item.id} />}
 
-      {expandido && (
+      {formAbierto && (
+        <div className="ml-2 mb-2">
+          <FormularioGasto
+            rendicionId={rendicionId}
+            cotizacionItemId={item.id}
+            itemTipo={item.tipo}
+            colaboradorId={colaboradorId}
+            esExterno={false}
+            onSuccess={(gasto, continuar) => {
+              onAgregarGasto(gasto)
+              if (!continuar) setFormAbierto(false)
+            }}
+            onCancel={() => setFormAbierto(false)}
+          />
+        </div>
+      )}
+
+      {gastos.length > 0 && (
         <div className="ml-4 space-y-2 mt-1 mb-2">
-          {rendiciones.map(r => (
-            <RendicionRow key={r.id} rendicion={r}
-              onAprobarContenido={() => onAprobarContenido(r)}
-              onAprobarPago={comp => onAprobarPago(r, comp)}
-              onRechazar={() => onRechazar(r)}
+          {gastos.map(g => (
+            <GastoRow key={g.id} gasto={g}
+              onAprobarContenido={() => onAprobarContenido(g.id)}
+              onAprobarPago={comp => onAprobarPago(g.id, comp)}
+              onRechazar={() => onRechazar(g.id)}
               puedeAprobarPago={puedeAprobarPago}
               isPending={isPending}
             />
@@ -487,8 +719,10 @@ function ItemRow({ item, rendiciones, expandido, notasAbiertas, completado, onTo
   )
 }
 
-function RendicionRow({ rendicion: r, onAprobarContenido, onAprobarPago, onRechazar, puedeAprobarPago: puedeAprobarPagoProp, isPending }: {
-  rendicion: Rendicion
+// ─── GastoRow ─────────────────────────────────────────────────────────────────
+
+function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, puedeAprobarPago: puedeAprobarPagoProp, isPending }: {
+  gasto: RendicionGasto
   onAprobarContenido: () => void
   onAprobarPago: (comprobante?: string) => void
   onRechazar: () => void
@@ -500,10 +734,10 @@ function RendicionRow({ rendicion: r, onAprobarContenido, onAprobarPago, onRecha
   const [comprobantePago, setComprobantePago] = useState<{ url: string; nombre: string } | null>(null)
   const fileRefPago = useRef<HTMLInputElement>(null)
 
-  const retencion = r.tipo_documento ? calcularRetencion(r) : null
-  const colNombre = (r.colaborador as any)?.nombre || r.nombre_libre || '—'
-  const esExterno = r.origen === 'externo'
-  const puedeAprobarPago = puedeAprobarPagoProp && ((r.estado === 'enviada' && !esExterno) || r.estado === 'aprobada')
+  const retencion = g.tipo_documento ? calcularRetencion(g) : null
+  const colNombre = (g.colaborador as any)?.nombre || g.nombre_libre || '—'
+  const esExterno = g.origen === 'externo'
+  const puedeAprobarPago = puedeAprobarPagoProp && ((g.estado === 'enviada' && !esExterno) || g.estado === 'aprobada')
 
   const subirComprobantePago = async (file: File) => {
     setSubiendoPago(true)
@@ -529,51 +763,55 @@ function RendicionRow({ rendicion: r, onAprobarContenido, onAprobarPago, onRecha
   }
 
   return (
-    <div className={`border p-3 ${ESTADO_BORDER[r.estado] || 'border-ch-border/40'}`}>
+    <div className={`border p-3 ${ESTADO_BORDER[g.estado] || 'border-ch-border/40'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <span className="font-body text-xs text-ch-cream">{colNombre}</span>
-            <span className="font-body text-[9px] text-ch-muted">{TIPO_LABEL[r.tipo] || r.tipo}</span>
+            <span className="font-body text-[9px] text-ch-muted">{TIPO_LABEL[g.tipo] || g.tipo}</span>
             {esExterno && <span className="font-body text-[9px] px-1.5 border border-blue-500/40 text-blue-400">Externo</span>}
-            {r.tipo_documento === 'sin_documento' && (
-              <span className="font-body text-[9px] px-1.5 border border-red-500/40 text-red-400">SIN DOC</span>
+            {g.tipo_documento === 'sin_documento' && (
+              <span className="font-body text-[9px] px-1.5 border border-red-500/40 text-red-400">⚠ SIN DOC</span>
+            )}
+            {g.tipo_documento === 'boleta' && <span className="font-body text-[9px] text-ch-muted">Boleta</span>}
+            {g.tipo_documento === 'factura' && <span className="font-body text-[9px] text-ch-muted">Factura</span>}
+            {g.tipo_documento === 'exenta' && (
+              <span className="font-body text-[9px] px-1.5 border border-ch-border/40 text-ch-muted">Exenta</span>
             )}
           </div>
-          <p className="font-body text-[10px] text-ch-muted truncate">{r.descripcion}</p>
+          <p className="font-body text-[10px] text-ch-muted truncate">{g.descripcion}</p>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
-            <span className="font-body text-sm text-ch-cream font-mono">${r.monto.toLocaleString('es-CL')}</span>
+            <span className="font-body text-sm text-ch-cream font-mono">${g.monto.toLocaleString('es-CL')}</span>
             {retencion && retencion.retencion > 0 && (
               <span className="font-body text-[10px] text-ch-muted font-mono">
                 ret. ${retencion.retencion.toLocaleString('es-CL')} · neto ${retencion.neto.toLocaleString('es-CL')}
               </span>
             )}
           </div>
-          {r.estado === 'rechazada' && r.motivo_rechazo && (
-            <p className="font-body text-[10px] text-red-400 mt-1">Motivo: {r.motivo_rechazo}</p>
+          {g.estado === 'rechazada' && g.motivo_rechazo && (
+            <p className="font-body text-[10px] text-red-400 mt-1">Motivo: {g.motivo_rechazo}</p>
           )}
         </div>
 
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          {r.foto_url && (
-            <a href={r.foto_url} target="_blank" rel="noopener noreferrer"
+          {g.foto_url && (
+            <a href={g.foto_url} target="_blank" rel="noopener noreferrer"
               className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors">
               Ver comprobante →
             </a>
           )}
-          {r.comprobante_pago_url && (
-            <a href={r.comprobante_pago_url} target="_blank" rel="noopener noreferrer"
+          {g.comprobante_pago_url && (
+            <a href={g.comprobante_pago_url} target="_blank" rel="noopener noreferrer"
               className="font-body text-[10px] text-ch-green hover:text-ch-green-light transition-colors">
               Ver comprobante pago →
             </a>
           )}
 
-          {/* Externo enviada → aprobar contenido o rechazar */}
-          {r.estado === 'enviada' && esExterno && (
+          {g.estado === 'enviada' && esExterno && (
             <div className="flex gap-1.5">
               <button onClick={onAprobarContenido} disabled={isPending}
                 className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 border border-blue-500/40 text-blue-300 hover:bg-blue-500/10 transition-colors disabled:opacity-50">
-                Aprobar contenido
+                Aprobar
               </button>
               <button onClick={onRechazar} disabled={isPending}
                 className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50">
@@ -582,49 +820,43 @@ function RendicionRow({ rendicion: r, onAprobarContenido, onAprobarPago, onRecha
             </div>
           )}
 
-          {/* Aprobar pago */}
           {puedeAprobarPago && !mostrarFormPago && (
             <button onClick={() => setMostrarFormPago(true)} disabled={isPending}
               className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50">
-              ✓ Aprobar pago
+              ✓ Pago
             </button>
           )}
 
-          {/* Badge de estado final */}
-          {r.estado === 'pago_aprobado' && (
-            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-green/30 text-ch-green">
-              Pagado
-            </span>
+          {g.estado === 'pago_aprobado' && (
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-green/30 text-ch-green">Pagado</span>
           )}
-          {r.estado === 'rechazada' && (
-            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-red-500/30 text-red-400">
-              Rechazada
-            </span>
+          {g.estado === 'rechazada' && (
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-red-500/30 text-red-400">Rechazada</span>
           )}
-          {r.estado === 'borrador' && (
-            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-border text-ch-muted">
-              Borrador
-            </span>
+          {g.estado === 'borrador' && (
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-border text-ch-muted">Borrador</span>
+          )}
+          {g.estado === 'aprobada' && !puedeAprobarPago && (
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-blue-500/30 text-blue-400">Aprobado</span>
           )}
         </div>
       </div>
 
-      {/* Mini-form aprobación de pago */}
       {mostrarFormPago && (
         <div className="mt-3 pt-3 border-t border-ch-border/40 space-y-2">
-          <p className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-muted">Comprobante de pago</p>
+          <p className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-muted">Comprobante de pago (opcional)</p>
           <input ref={fileRefPago} type="file" accept="image/*,application/pdf"
             onChange={e => { if (e.target.files?.[0]) subirComprobantePago(e.target.files[0]) }}
             className="hidden" />
           {comprobantePago ? (
             <div className="flex items-center gap-2 p-2 border border-ch-border/50">
-              <span className="font-body text-[10px] text-ch-cream truncate">{comprobantePago.nombre}</span>
+              <span className="font-body text-[10px] text-ch-cream truncate flex-1">{comprobantePago.nombre}</span>
               <button onClick={() => setComprobantePago(null)} className="text-ch-muted hover:text-red-400 text-xs">✕</button>
             </div>
           ) : (
             <button onClick={() => fileRefPago.current?.click()} disabled={subiendoPago}
               className="w-full border border-dashed border-ch-border/50 text-ch-muted hover:text-ch-cream font-body text-[10px] py-2 transition-colors disabled:opacity-50">
-              {subiendoPago ? 'Subiendo...' : '📎 Adjuntar comprobante (opcional)'}
+              {subiendoPago ? 'Subiendo...' : '📎 Adjuntar comprobante'}
             </button>
           )}
           <div className="flex gap-2">

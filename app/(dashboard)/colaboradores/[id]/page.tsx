@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import FichaColaborador from '@/components/colaboradores/FichaColaborador'
 import { getColaborador, getTarifas, getContratos } from '@/app/actions/colaboradores'
-import { getRendiciones, getCotizacionesParaRendiciones, getRendicionesSumasPorItem } from '@/app/actions/rendiciones'
+import { getCotizacionesParaRendiciones } from '@/app/actions/rendiciones'
 
 export default async function ColaboradorPage({
   params,
@@ -13,17 +13,20 @@ export default async function ColaboradorPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const [colaborador, tarifas, contratos, cotizaciones, rendicionesPorItem] = await Promise.all([
+  const [colaborador, tarifas, contratos, cotizaciones] = await Promise.all([
     getColaborador(id).catch(() => null),
     getTarifas(id),
     getContratos(id),
     getCotizacionesParaRendiciones(),
-    getRendicionesSumasPorItem(),
   ])
 
   if (!colaborador) notFound()
 
-  const rendiciones = await getRendiciones({ colaboradorId: id })
+  const { data: gastos } = await supabase
+    .from('rendicion_gastos')
+    .select('*, cotizacion_item:cotizacion_items(id, nombre, tipo)')
+    .eq('colaborador_id', id)
+    .order('created_at', { ascending: false })
 
   const { data: rodajes } = await supabase
     .from('rodajes')
@@ -59,8 +62,7 @@ export default async function ColaboradorPage({
         contratos={contratos as any}
         rodajes={rodajes || []}
         cotizaciones={cotizaciones}
-        rendiciones={rendiciones}
-        rendicionesPorItem={rendicionesPorItem}
+        rendicionGastos={(gastos ?? []) as any}
       />
     </div>
   )

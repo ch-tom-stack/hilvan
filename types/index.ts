@@ -469,30 +469,37 @@ export interface ColaboradorLinkTemporal {
 
 export type TipoRendicion = 'honorarios' | 'arte' | 'transporte' | 'alimentacion' | 'insumos' | 'servicios' | 'viaticos' | 'otro'
 export type EstadoRendicion = 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'pago_aprobado'
-export type TipoDocRendicion = 'boleta' | 'factura' | 'exenta' | 'sin_documento'
+export type TipoDocRendicion = 'boleta' | 'boleta_consumo' | 'factura' | 'exenta' | 'sin_documento'
 
 export interface Rendicion {
   id: string
   cotizacion_id: string
   cotizacion?: { id: string; nombre: string; grupo?: { numero_base?: string } }
-  cotizacion_item_id?: string | null
-  cotizacion_item?: { id: string; nombre: string; tipo: string; precio_neto_proveedor: number; cantidad: number } | null
-  colaborador_id?: string
-  colaborador?: Colaborador
-  nombre_libre?: string
-  origen?: 'interno' | 'externo'
+  estado: EstadoRendicion
+  created_at: string
+  updated_at: string
+  gastos?: RendicionGasto[]
+}
+
+export interface RendicionGasto {
+  id: string
+  rendicion_id: string
+  cotizacion_item_id: string | null
+  colaborador_id: string | null
+  nombre_libre: string | null
+  origen: 'interno' | 'externo'
   tipo: TipoRendicion
   descripcion: string
   monto: number
-  foto_url: string
+  tipo_documento: TipoDocRendicion | null
+  foto_url: string | null
   estado: EstadoRendicion
-  tipo_documento?: TipoDocRendicion
-  motivo_rechazo?: string
-  aprobada_por?: string
-  notas?: string
-  comprobante_pago_url?: string
+  motivo_rechazo: string | null
+  comprobante_pago_url: string | null
   created_at: string
   updated_at: string
+  colaborador?: { id: string; nombre: string; email: string; banco?: string; tipo_cuenta?: string; numero_cuenta?: string; rut?: string } | null
+  cotizacion_item?: { id: string; nombre: string; tipo: string } | null
 }
 
 export interface RendicionNotaGlosa {
@@ -519,7 +526,7 @@ export interface ContratoGenerado {
 
 const RETENCION_BOLETA = 0.154
 
-export function calcularRetencion(rendicion: { monto: number; tipo_documento?: string }) {
+export function calcularRetencion(rendicion: { monto: number; tipo_documento?: string | null }) {
   if (rendicion.tipo_documento === 'boleta' || rendicion.tipo_documento === 'bet') {
     const retencion = Math.round(rendicion.monto * RETENCION_BOLETA)
     return { bruto: rendicion.monto, retencion, neto: rendicion.monto - retencion, sinDocumento: false }
