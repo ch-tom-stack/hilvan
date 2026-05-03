@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import {
-  getRendiciones, getCotizacionesConEstructura,
+  getRendiciones, getTodasRendiciones, getCotizacionesConEstructura,
   getCotizacionesParaRendiciones, getRendicionesSumasPorItem,
 } from '@/app/actions/rendiciones'
 import AdminRendiciones from '@/components/rendiciones/AdminRendiciones'
@@ -14,20 +13,24 @@ export default async function RendicionesPage() {
 
   const { data: profile } = await supabase.from('profiles').select('rol').eq('id', user.id).single()
   const esProductorOAdmin = profile?.rol === 'admin' || profile?.rol === 'productor'
+  const esAdmin = profile?.rol === 'admin'
 
-  // Productores y admins van directo a la vista completa
-  if (esProductorOAdmin) redirect('/rendiciones/admin')
+  let rendiciones: Rendicion[] = []
+  let colaboradorId: string | undefined
 
-  // Colaboradores: misma vista pero filtrada a sus propias rendiciones
-  const { data: colaborador } = await supabase
-    .from('colaboradores')
-    .select('id, nombre')
-    .eq('email', user.email!)
-    .single()
-
-  const rendiciones: Rendicion[] = colaborador
-    ? await getRendiciones({ colaboradorId: colaborador.id })
-    : []
+  if (esProductorOAdmin) {
+    rendiciones = await getTodasRendiciones()
+  } else {
+    const { data: colaborador } = await supabase
+      .from('colaboradores')
+      .select('id')
+      .eq('email', user.email!)
+      .single()
+    colaboradorId = colaborador?.id
+    if (colaboradorId) {
+      rendiciones = await getRendiciones({ colaboradorId })
+    }
+  }
 
   const cotizacionIds = [...new Set(rendiciones.map(r => r.cotizacion_id).filter(Boolean))]
 
@@ -52,7 +55,9 @@ export default async function RendicionesPage() {
       <div className="flex items-end justify-between mb-10">
         <div>
           <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Rendiciones</p>
-          <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Mis gastos</h1>
+          <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">
+            {esProductorOAdmin ? 'Revisión' : 'Mis gastos'}
+          </h1>
         </div>
       </div>
       <AdminRendiciones
@@ -62,9 +67,9 @@ export default async function RendicionesPage() {
         cotizacionesForm={cotizacionesForm}
         rendicionesPorItemSumas={rendicionesPorItemSumas}
         colaboradores={[]}
-        colaboradorId={colaborador?.id}
-        puedeAprobarPago={false}
-        puedeGenerarLink={false}
+        colaboradorId={colaboradorId}
+        puedeAprobarPago={esAdmin}
+        puedeGenerarLink={esProductorOAdmin}
       />
     </div>
   )

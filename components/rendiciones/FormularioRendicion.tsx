@@ -137,7 +137,8 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
     }
   }
 
-  const puedeEnviar = cotizacionId && itemId !== undefined && form.tipo && form.monto && form.descripcion && form.foto_url && !subiendo
+  const comprobanteOk = esExterno ? !!form.foto_url : true
+  const puedeEnviar = cotizacionId && itemId !== undefined && form.tipo && form.monto && form.descripcion && comprobanteOk && !subiendo
   const puedeBorrador = !esExterno && cotizacionId && itemId !== undefined && form.tipo && !subiendo
 
   const esBoleta = form.tipo_documento === 'boleta'
@@ -378,7 +379,7 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
 
           {/* Comprobante */}
           <div>
-            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Comprobante *</label>
+            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Comprobante{esExterno ? ' *' : ' (opcional)'}</label>
             <input ref={fileRef} type="file" accept="image/*,application/pdf"
               onChange={e => { if (e.target.files?.[0]) subirArchivo(e.target.files[0]) }}
               className="hidden" />
