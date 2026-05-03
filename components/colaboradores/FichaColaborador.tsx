@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   actualizarColaborador, eliminarColaborador, crearTarifa, eliminarTarifa,
-  crearLinkTemporal, getLinksPorColaborador,
+  crearLinkTemporal, getLinksPorColaborador, crearLinkOnboarding,
 } from '@/app/actions/colaboradores'
 import type { Colaborador, ColaboradorTarifa, ContratoGenerado, RendicionGasto } from '@/types'
 
@@ -40,9 +40,13 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
   // Tarifa nueva
   const [nuevaTarifa, setNuevaTarifa] = useState({ rodaje_id: '', rol: '', monto_dia: '' })
 
-  // Link temporal
+  // Link temporal (rendiciones)
   const [linkGenerado, setLinkGenerado] = useState<string | null>(null)
   const [generandoLink, setGenerandoLink] = useState(false)
+
+  // Link onboarding
+  const [linkOnboarding, setLinkOnboarding] = useState<string | null>(null)
+  const [generandoLinkOnboarding, setGenerandoLinkOnboarding] = useState(false)
 
   const set = (campo: keyof Colaborador, valor: any) =>
     setForm(prev => ({ ...prev, [campo]: valor }))
@@ -86,6 +90,18 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
     }
   }
 
+  const generarFichaLink = async () => {
+    setGenerandoLinkOnboarding(true)
+    try {
+      const link = await crearLinkOnboarding(colaborador.id)
+      const url = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.casahiedra.com'}/col/${link.token}`
+      setLinkOnboarding(url)
+      await navigator.clipboard.writeText(url).catch(() => {})
+    } finally {
+      setGenerandoLinkOnboarding(false)
+    }
+  }
+
   const generarContrato = async (tipo: string) => {
     startTransition(async () => {
       const res = await fetch(`/api/contratos/generar`, {
@@ -109,6 +125,23 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
 
   return (
     <div className="max-w-3xl">
+
+      {/* Enviar ficha de onboarding */}
+      <div className="mb-6">
+        <button
+          onClick={generarFichaLink}
+          disabled={generandoLinkOnboarding}
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50"
+        >
+          {generandoLinkOnboarding ? 'Generando...' : 'Enviar ficha al colaborador'}
+        </button>
+        {linkOnboarding && (
+          <div className="mt-2 border border-ch-border/50 bg-ch-surface/30 px-3 py-2">
+            <p className="font-body text-[10px] text-ch-green mb-1">Link copiado al portapapeles:</p>
+            <p className="font-mono text-[10px] text-ch-muted break-all">{linkOnboarding}</p>
+          </div>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-ch-border mb-8 overflow-x-auto">

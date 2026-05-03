@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { Colaborador, ColaboradorTarifa, ColaboradorLinkTemporal } from '@/types'
 
@@ -132,12 +133,73 @@ export async function crearLinkTemporal(colaboradorId: string, rodajeId?: string
 
   const { data, error } = await supabase
     .from('colaboradores_links_temporales')
-    .insert({ colaborador_id: colaboradorId, rodaje_id: rodajeId || null, token, expires_at })
+    .insert({ colaborador_id: colaboradorId, rodaje_id: rodajeId || null, tipo: 'rendicion', token, expires_at })
     .select()
     .single()
   if (error) throw error
   revalidatePath(`/colaboradores/${colaboradorId}`)
   return data as ColaboradorLinkTemporal
+}
+
+export async function crearLinkOnboarding(colaboradorId: string) {
+  const supabase = await createClient()
+  const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+  const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data, error } = await supabase
+    .from('colaboradores_links_temporales')
+    .insert({ colaborador_id: colaboradorId, tipo: 'onboarding', token, expires_at })
+    .select()
+    .single()
+  if (error) throw error
+  revalidatePath(`/colaboradores/${colaboradorId}`)
+  return data as ColaboradorLinkTemporal
+}
+
+export async function validarLinkOnboarding(token: string) {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('colaboradores_links_temporales')
+    .select('*, colaborador:colaboradores(*)')
+    .eq('token', token)
+    .eq('tipo', 'onboarding')
+    .single()
+
+  if (!data) return null
+  if (new Date(data.expires_at) < new Date()) return null
+  return data as ColaboradorLinkTemporal & { colaborador: import('@/types').Colaborador }
+}
+
+export async function guardarDatosOnboarding(token: string, payload: {
+  nombre?: string
+  rut?: string
+  email?: string
+  telefono?: string
+  notas?: string
+  banco?: string
+  tipo_cuenta?: string
+  numero_cuenta?: string
+  tipo_documento?: string
+  restricciones_alimentarias?: string
+}) {
+  const admin = createAdminClient()
+
+  const { data: link } = await admin
+    .from('colaboradores_links_temporales')
+    .select('colaborador_id, expires_at')
+    .eq('token', token)
+    .eq('tipo', 'onboarding')
+    .single()
+
+  if (!link) throw new Error('Link inválido')
+  if (new Date(link.expires_at) < new Date()) throw new Error('Link expirado')
+
+  const { error } = await admin
+    .from('colaboradores')
+    .update(payload)
+    .eq('id', link.colaborador_id)
+
+  if (error) throw error
 }
 
 export async function getLinksPorColaborador(colaboradorId: string) {

@@ -35,6 +35,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/r/') ||
     pathname.startsWith('/cotizacion/') ||
     pathname.startsWith('/citacion/') ||
+    pathname.startsWith('/col/') ||
     pathname.match(/^\/rodaje\/[^/]+\/ver/) ||
     pathname.match(/^\/api\/rodaje\/[^/]+\/pdf/) ||
     pathname.match(/^\/api\/cotizaciones\/[^/]+\/pdf/)

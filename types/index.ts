@@ -443,6 +443,7 @@ export interface Colaborador {
   notas_internas?: string
   rol_habitual?: string
   notas?: string
+  restricciones_alimentarias?: string
   created_at: string
   updated_at: string
 }
@@ -461,6 +462,7 @@ export interface ColaboradorLinkTemporal {
   id: string
   colaborador_id: string
   rodaje_id?: string
+  tipo: 'rendicion' | 'onboarding'
   token: string
   expires_at: string
   used_at?: string
