@@ -166,8 +166,6 @@ export async function crearRendicion(payload: {
     .single()
   if (error) throw error
 
-  revalidatePath('/rendiciones/admin')
-
   if (estado !== 'borrador') {
     try {
       const cotNombre = (data.cotizacion as any)?.nombre || ''
@@ -203,7 +201,6 @@ export async function enviarRendicion(id: string) {
     .select('*')
     .single()
   if (error) throw error
-  revalidatePath('/rendiciones/admin')
   return data as Rendicion
 }
 
@@ -344,7 +341,6 @@ export async function generarLinkTemporalExterno(payload: {
     } catch { /* email no crítico */ }
   }
 
-  revalidatePath('/rendiciones/admin')
   return { url }
 }
 

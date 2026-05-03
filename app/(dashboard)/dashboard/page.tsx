@@ -5,7 +5,7 @@ const modulos = [
   { codigo: 'CH-1', nombre: 'Equipos',      desc: 'Inventario, QR y disponibilidad',  href: '/equipos',      activo: true  },
   { codigo: 'CH-2', nombre: 'Cotizaciones', desc: 'Presupuestos y aprobaciones',       href: '/cotizaciones', activo: true  },
   { codigo: 'CH-3', nombre: 'Rodaje',       desc: 'Hojas de llamado y citaciones',     href: '/rodaje',       activo: true  },
-  { codigo: 'CH-4', nombre: 'Rendiciones',  desc: 'Gastos de colaboradores',           href: '/rendiciones',  activo: false },
+  { codigo: 'CH-4', nombre: 'Rendiciones',  desc: 'Gastos de colaboradores',           href: '/rendiciones/admin',  activo: true  },
   { codigo: 'CH-5', nombre: 'Financiero',   desc: 'Estado de resultados',              href: '/financiero',   activo: false },
   { codigo: 'CH-6', nombre: 'CRM',          desc: 'Clientes y proyectos',              href: '/crm',          activo: false },
 ]

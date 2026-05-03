@@ -141,7 +141,7 @@ export default function AdminRendiciones({
     setLinkForm({ email: '', colaboradorId: '', dias: 7 })
   }
 
-  const handleNuevaRendicion = (nueva: Rendicion) => {
+  const handleNuevaRendicion = (nueva: Rendicion, continuar?: boolean) => {
     if (nueva.cotizacion_item_id) {
       setPorItem(prev => ({
         ...prev,
@@ -153,7 +153,7 @@ export default function AdminRendiciones({
         [nueva.cotizacion_id]: [nueva, ...(prev[nueva.cotizacion_id] || [])],
       }))
     }
-    setMostrarForm(false)
+    if (!continuar) setMostrarForm(false)
   }
 
   // Totales globales para stats
