@@ -320,6 +320,18 @@ function interpretarCodigoClima(codigo: number): string {
   return 'Variable'
 }
 
+// ─── IMAGEN POR BLOQUE ────────────────────────────────────────────────────────
+
+export async function actualizarImagenBloque(bloqueId: string, rodajeId: string, imagenUrl: string | null) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('rodaje_bloques')
+    .update({ imagen_url: imagenUrl })
+    .eq('id', bloqueId)
+  if (error) throw error
+  revalidatePath(`/rodaje/${rodajeId}`)
+}
+
 // ─── SUBIDA DE IMAGEN DEL CHISTE ─────────────────────────────────────────────
 
 export async function subirImagenChiste(

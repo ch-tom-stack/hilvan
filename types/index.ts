@@ -673,6 +673,7 @@ export interface RodajeBloque {
   visible_catering: boolean
   visible_extras: boolean
   visible_cliente: boolean
+  imagen_url?: string
   created_at: string
   updated_at: string
   hijos?: RodajeBloque[]

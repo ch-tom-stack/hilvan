@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation'
 import { getRodaje, actualizarEstadoRodaje } from '@/app/actions/rodaje'
 import {
   getBloques, getLocaciones, crearBloque, crearBloqueDesdePlantilla,
-  guardarBloques, eliminarBloque, dividirBloque, getClima
+  guardarBloques, eliminarBloque, dividirBloque, getClima, actualizarImagenBloque,
 } from '@/app/actions/rodaje-plan'
+import { subirImagenBloque, eliminarImagenBloque } from '@/lib/supabase/storage-rodaje'
 import {
   RodajeBloque, RodajeLocacion, RodajeEquipoTecnico, RodajeCitacion,
   EstadoRodaje, TipoBloque, PLANTILLAS_BLOQUES,
@@ -452,6 +453,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       <div className="max-w-[1400px] mx-auto lg:grid lg:grid-cols-[1fr_300px]">
         <div className={`${tabMobil !== 'plan' ? 'hidden lg:block' : ''} border-r border-zinc-800`}>
           <TablaPlan
+            rodajeId={id}
             bloques={bloques}
             bloquesRaiz={bloquesRaiz}
             cascada={cascada}
@@ -490,11 +492,12 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
 // ─── Tabla del plan ───────────────────────────────────────────────────────────
 
 function TablaPlan({
-  bloques, bloquesRaiz, cascada, locaciones, creando,
+  rodajeId, bloques, bloquesRaiz, cascada, locaciones, creando,
   mostrarPlantillas, setMostrarPlantillas,
   vistaTimeline, setVistaTimeline,
   onActualizar, onCrear, onCrearDesdePlantilla, onEliminar,
 }: {
+  rodajeId: string
   bloques: RodajeBloque[]
   bloquesRaiz: RodajeBloque[]
   cascada: ReturnType<typeof calcularCascada>
@@ -513,7 +516,38 @@ function TablaPlan({
   const [colorPickerAbierto, setColorPickerAbierto] = useState<string | null>(null)
   const [expandidoMobil, setExpandidoMobil] = useState<string | null>(null)
   const [confirmarEliminar, setConfirmarEliminar] = useState<string | null>(null)
+  const [subiendoImagen, setSubiendoImagen] = useState<string | null>(null)
   const plantillasRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const bloqueParaImagenRef = useRef<string | null>(null)
+
+  const handleSeleccionarImagen = (bloqueId: string) => {
+    bloqueParaImagenRef.current = bloqueId
+    fileInputRef.current?.click()
+  }
+
+  const handleArchivoSeleccionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const bloqueId = bloqueParaImagenRef.current
+    if (!file || !bloqueId) return
+    e.target.value = ''
+    setSubiendoImagen(bloqueId)
+    try {
+      const url = await subirImagenBloque(file, rodajeId, bloqueId)
+      if (url) {
+        await actualizarImagenBloque(bloqueId, rodajeId, url)
+        onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: url } : b))
+      }
+    } finally {
+      setSubiendoImagen(null)
+    }
+  }
+
+  const handleEliminarImagen = async (bloqueId: string, url: string) => {
+    await eliminarImagenBloque(url)
+    await actualizarImagenBloque(bloqueId, rodajeId, null)
+    onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: undefined } : b))
+  }
 
   const actualizarCelda = (bloqueId: string, campo: string, valor: any) => {
     onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, [campo]: valor } : b))
@@ -597,9 +631,18 @@ function TablaPlan({
         </div>
       </div>
 
+      {/* File input oculto para subida de imágenes */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleArchivoSeleccionado}
+      />
+
       {/* Headers desktop */}
       <div className="hidden lg:grid border-b border-zinc-800 px-2 py-1.5 text-xs text-zinc-700 uppercase tracking-wider select-none"
-        style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 60px 60px 50px 56px' }}>
+        style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 60px 60px 50px 40px 56px' }}>
         <span />
         <span>↓</span>
         <span>Scenes</span>
@@ -611,6 +654,7 @@ function TablaPlan({
         <span>Inicio</span>
         <span>Fin</span>
         <span>Dur</span>
+        <span>Img</span>
         <span />
       </div>
 
@@ -637,7 +681,7 @@ function TablaPlan({
                 {/* FILA DESKTOP */}
                 <div
                   className="hidden lg:grid border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors group items-center min-h-[34px]"
-                  style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 60px 60px 50px 56px' }}
+                  style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 60px 60px 50px 40px 56px' }}
                 >
                   {/* Orden */}
                   <div className="flex flex-col items-center justify-center gap-0 opacity-0 group-hover:opacity-100">
@@ -747,6 +791,32 @@ function TablaPlan({
                       className="bg-transparent text-xs text-zinc-400 focus:outline-none w-full font-mono placeholder:text-zinc-800 focus:bg-zinc-800 focus:rounded px-1" />
                   </div>
 
+                  {/* IMG */}
+                  <div className="flex items-center justify-center px-0.5" onClick={e => e.stopPropagation()}>
+                    {subiendoImagen === bloque.id ? (
+                      <span className="text-[10px] text-zinc-600">...</span>
+                    ) : bloque.imagen_url ? (
+                      <div className="relative group/img">
+                        <img
+                          src={bloque.imagen_url}
+                          alt=""
+                          className="w-7 h-7 object-cover rounded-[2px] border border-zinc-700 cursor-pointer"
+                          onClick={() => handleSeleccionarImagen(bloque.id)}
+                        />
+                        <button
+                          onClick={() => handleEliminarImagen(bloque.id, bloque.imagen_url!)}
+                          className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-zinc-900 border border-zinc-700 rounded-full text-[8px] text-red-400 hidden group-hover/img:flex items-center justify-center leading-none"
+                        >✕</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleSeleccionarImagen(bloque.id)}
+                        className="text-zinc-800 hover:text-zinc-500 opacity-0 group-hover:opacity-100 transition-all text-xs leading-none"
+                        title="Agregar imagen"
+                      >⬜</button>
+                    )}
+                  </div>
+
                   {/* Eliminar — inline confirm */}
                   <div className="flex items-center justify-end px-1 gap-1" onClick={e => e.stopPropagation()}>
                     {isEliminando ? (
@@ -816,16 +886,28 @@ function TablaPlan({
                             className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-2 py-1 text-sm text-zinc-100" />
                         </div>
                       </div>
-                      <div className="flex gap-3 items-center">
+                      <div className="flex gap-3 items-center flex-wrap">
                         <button onClick={() => actualizarCelda(bloque.id, 'dia_noche', bloque.dia_noche === 'D' ? 'N' : 'D')}
                           className="text-xs text-zinc-300 border border-zinc-700 px-2 py-0.5 rounded-[2px]">{bloque.dia_noche || 'D'}</button>
                         <button onClick={() => {
                           const ciclo: Record<string, string> = { 'I': 'E', 'E': '-', '-': 'I' }
                           actualizarCelda(bloque.id, 'interior_exterior', ciclo[bloque.interior_exterior || 'I'])
                         }} className="text-xs text-zinc-300 border border-zinc-700 px-2 py-0.5 rounded-[2px]">{bloque.interior_exterior || 'I'}</button>
+                        <button
+                          onClick={() => handleSeleccionarImagen(bloque.id)}
+                          disabled={subiendoImagen === bloque.id}
+                          className="text-xs text-zinc-500 border border-zinc-700 px-2 py-0.5 rounded-[2px] disabled:opacity-50"
+                        >{subiendoImagen === bloque.id ? '...' : bloque.imagen_url ? '→ cambiar img' : '+ imagen'}</button>
+                        {bloque.imagen_url && (
+                          <button onClick={() => handleEliminarImagen(bloque.id, bloque.imagen_url!)}
+                            className="text-xs text-red-500/70 border border-red-900/40 px-2 py-0.5 rounded-[2px]">✕ imagen</button>
+                        )}
                         <button onClick={async () => await onEliminar(bloque.id)}
                           className="text-xs text-red-500 ml-auto">Eliminar</button>
                       </div>
+                      {bloque.imagen_url && (
+                        <img src={bloque.imagen_url} alt="" className="w-full max-h-40 object-cover rounded-[2px] border border-zinc-700" />
+                      )}
                     </div>
                   )}
                 </div>
