@@ -5,35 +5,86 @@ import { useRouter } from 'next/navigation'
 import { calcularRetencion } from '@/types'
 import type { RendicionGasto } from '@/types'
 
-function padRight(str: string, len: number) { return str.substring(0, len).padEnd(len, ' ') }
-function padLeft(str: string, len: number) { return str.substring(0, len).padStart(len, '0') }
-
-const BANCO_COD: Record<string, string> = {
-  'Santander': '037', 'BancoEstado': '012', 'Banco Estado': '012',
-  'Chile': '001', 'Banco de Chile': '001', 'BCI': '016',
-  'Scotiabank': '014', 'Itaú': '039', 'BICE': '028',
-  'Security': '049', 'Falabella': '051', 'Ripley': '053', 'Consorcio': '055',
+// Códigos SBIF como enteros (Excel los almacena sin ceros a la izquierda)
+const BANCO_COD: Record<string, number> = {
+  'Banco de Chile': 1, 'Chile': 1,
+  'BancoEstado': 12, 'Banco Estado': 12, 'Banco Estado Chile': 12,
+  'Scotiabank': 14,
+  'BCI': 16,
+  'Santander': 37, 'Banco Santander': 37,
+  'Itaú': 39, 'Banco Itaú': 39,
+  'BICE': 28,
+  'Security': 49, 'Banco Security': 49,
+  'Falabella': 51, 'Banco Falabella': 51,
+  'Ripley': 53, 'Banco Ripley': 53,
+  'Consorcio': 55, 'Banco Consorcio': 55,
+  'Coopeuch': 672,
+  'Otro': 0,
 }
-const TIPO_CTA: Record<string, string> = { corriente: '01', vista: '02', ahorro: '03', rut: '02' }
 
-function formatearRut(rut: string) {
-  return rut.replace(/\./g, '').replace('-', '').replace('K', 'k').padStart(12, '0')
+function rutSoloDigitos(rut: string): string {
+  return rut.replace(/\./g, '').replace('-', '').toUpperCase()
 }
 
-function generarLinea(r: RendicionGasto, rutEmpresa: string) {
+// Devuelve true si la cuenta destino es Santander (no requiere banco/RUT/nombre)
+function esSantander(banco: string): boolean {
+  return banco === 'Santander' || banco === 'Banco Santander'
+}
+
+interface Fila {
+  cuenta_origen: string
+  moneda_origen: 'CLP'
+  cuenta_destino: string
+  moneda_destino: 'CLP'
+  codigo_banco_destino: number | ''
+  rut_beneficiario: string
+  nombre_beneficiario: string
+  monto: number
+  glosa_transferencia: string
+  correo_beneficiario: string
+  mensaje_correo: string
+  glosa_cartola_originador: string
+  glosa_cartola_beneficiario: string
+}
+
+function buildFila(r: RendicionGasto, cuentaOrigen: string): Fila {
   const col = r.colaborador as any
   const ret = r.tipo_documento ? calcularRetencion(r) : { neto: r.monto }
-  const monto = ret.neto
-  const rutDest = formatearRut(col?.rut || '0')
-  const nombre = padRight(col?.nombre || r.nombre_libre || '—', 40)
-  const banco = BANCO_COD[col?.banco || ''] || '000'
-  const tipoCta = TIPO_CTA[(col?.tipo_cuenta || '').toLowerCase()] || '01'
-  const numCta = padRight(col?.numero_cuenta || '', 20)
-  const montoStr = padLeft(Math.round(monto).toString(), 15)
-  const rutEmp = padLeft(rutEmpresa.replace(/[.\-kK]/g, ''), 12)
-  const linea = `03${rutEmp}${rutDest}${nombre}${banco}${tipoCta}${numCta}${montoStr}${padRight('CLP', 3)}${padRight(r.descripcion || '', 40)}${padRight('', 485)}`
-  return linea.substring(0, 634)
+  const banco = col?.banco || ''
+  const santander = esSantander(banco)
+
+  return {
+    cuenta_origen: cuentaOrigen,
+    moneda_origen: 'CLP',
+    cuenta_destino: col?.numero_cuenta || '',
+    moneda_destino: 'CLP',
+    codigo_banco_destino: santander ? '' : (BANCO_COD[banco] ?? ''),
+    rut_beneficiario: santander ? '' : rutSoloDigitos(col?.rut || ''),
+    nombre_beneficiario: santander ? '' : (col?.nombre || r.nombre_libre || ''),
+    monto: Math.round(ret.neto),
+    glosa_transferencia: r.descripcion || '',
+    correo_beneficiario: col?.email || '',
+    mensaje_correo: '',
+    glosa_cartola_originador: '',
+    glosa_cartola_beneficiario: '',
+  }
 }
+
+const HEADERS = [
+  'Cuenta origen\n(obligatorio)',
+  'Moneda origen\n(obligatorio)',
+  'Cuenta destino\n(obligatorio)',
+  'Moneda destino\n(obligatorio)',
+  'Código banco destino\n(obligatorio solo si banco destino no es Santander)',
+  'RUT beneficiario\n(obligatorio solo si banco destino no es Santander)',
+  'Nombre beneficiario\n(obligatorio solo si banco destino no es Santander)',
+  'Monto transferencia\n(obligatorio)',
+  'Glosa personalizada transferencia\n(opcional)',
+  'Correo beneficiario\n(opcional)',
+  'Mensaje correo beneficiario\n(opcional)',
+  'Glosa cartola originador\n(opcional)',
+  'Glosa cartola beneficiario\n(opcional, solo aplica si cuenta destino es Santander)',
+]
 
 interface Props {
   cotizaciones: { id: string; nombre: string; estado?: string; grupo?: any }[]
@@ -43,35 +94,47 @@ interface Props {
 
 export default function ExportSantander({ cotizaciones, rendiciones, cotizacionFiltro }: Props) {
   const router = useRouter()
-  const [rutEmpresa, setRutEmpresa] = useState('76.123.456-7')
+  const [cuentaOrigen, setCuentaOrigen] = useState('')
+  const [rutEmpresa, setRutEmpresa] = useState('76.XXX.XXX-X')
 
   const totalNeto = rendiciones.reduce((s, r) => {
     const ret = r.tipo_documento ? calcularRetencion(r) : { neto: r.monto }
     return s + ret.neto
   }, 0)
 
-  const descargar = () => {
-    const contenido = rendiciones.map(r => generarLinea(r, rutEmpresa)).join('\r\n')
-    const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
+  const descargar = async () => {
+    const { utils, writeFile } = await import('xlsx')
+
+    const filas = rendiciones.map(r => buildFila(r, cuentaOrigen))
+    const rows = filas.map(f => [
+      f.cuenta_origen, f.moneda_origen, f.cuenta_destino, f.moneda_destino,
+      f.codigo_banco_destino, f.rut_beneficiario, f.nombre_beneficiario,
+      f.monto, f.glosa_transferencia, f.correo_beneficiario,
+      f.mensaje_correo, f.glosa_cartola_originador, f.glosa_cartola_beneficiario,
+    ])
+
+    const ws = utils.aoa_to_sheet([HEADERS, ...rows])
+    ws['!cols'] = [{ wch: 16 }, { wch: 10 }, { wch: 16 }, { wch: 10 }, { wch: 8 },
+      { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 30 }, { wch: 28 },
+      { wch: 30 }, { wch: 20 }, { wch: 20 }]
+
+    const wb = utils.book_new()
+    utils.book_append_sheet(wb, ws, 'Hoja1')
+
     const nombre = cotizaciones.find(c => c.id === cotizacionFiltro)?.nombre || 'export'
-    a.download = `santander_${nombre.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    writeFile(wb, `santander_${nombre.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
 
   return (
     <div className="max-w-4xl">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+        <div className="lg:col-span-1">
           <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Cotización</label>
           <select
             value={cotizacionFiltro || ''}
             onChange={e => router.push(e.target.value ? `/rendiciones/admin/export?cotizacion=${e.target.value}` : '/rendiciones/admin/export')}
             className="input-ch w-full">
-            <option value="">— Seleccionar cotización —</option>
+            <option value="">— Seleccionar —</option>
             {cotizaciones.map(c => (
               <option key={c.id} value={c.id}>
                 {c.grupo?.numero_base ? `${c.grupo.numero_base} · ` : ''}{c.nombre}
@@ -80,8 +143,14 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
           </select>
         </div>
         <div>
+          <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Cuenta origen Casa Hiedra</label>
+          <input value={cuentaOrigen} onChange={e => setCuentaOrigen(e.target.value)}
+            placeholder="Nº de cuenta Santander" className="input-ch w-full" />
+        </div>
+        <div>
           <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">RUT empresa</label>
-          <input value={rutEmpresa} onChange={e => setRutEmpresa(e.target.value)} placeholder="76.123.456-7" className="input-ch w-full" />
+          <input value={rutEmpresa} onChange={e => setRutEmpresa(e.target.value)}
+            placeholder="76.XXX.XXX-X" className="input-ch w-full" />
         </div>
       </div>
 
@@ -125,12 +194,13 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
                 {rendiciones.map(r => {
                   const col = r.colaborador as any
                   const ret = r.tipo_documento ? calcularRetencion(r) : { retencion: 0, neto: r.monto }
+                  const faltaDatos = !col?.numero_cuenta || !col?.banco || !col?.rut
                   return (
-                    <tr key={r.id} className="border-b border-ch-border/30">
+                    <tr key={r.id} className={`border-b border-ch-border/30 ${faltaDatos ? 'bg-amber-500/5' : ''}`}>
                       <td className="font-body text-xs text-ch-cream py-2.5 pr-4">{col?.nombre || '—'}</td>
                       <td className="font-body text-[10px] text-ch-muted py-2.5 pr-4 font-mono">{col?.rut || '—'}</td>
-                      <td className="font-body text-[10px] text-ch-muted py-2.5 pr-4">{col?.banco || '—'}</td>
-                      <td className="font-body text-[10px] text-ch-muted py-2.5 pr-4 font-mono">{col?.numero_cuenta || '—'}</td>
+                      <td className="font-body text-[10px] text-ch-muted py-2.5 pr-4">{col?.banco || <span className="text-amber-400">sin banco</span>}</td>
+                      <td className="font-body text-[10px] text-ch-muted py-2.5 pr-4 font-mono">{col?.numero_cuenta || <span className="text-amber-400">sin cuenta</span>}</td>
                       <td className="font-body text-[10px] text-ch-muted py-2.5 pr-4 font-mono">${r.monto.toLocaleString('es-CL')}</td>
                       <td className="font-body text-[10px] text-red-400 py-2.5 pr-4 font-mono">
                         {ret.retencion > 0 ? `-$${ret.retencion.toLocaleString('es-CL')}` : '—'}
@@ -143,17 +213,30 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
             </table>
           </div>
 
-          {rendiciones.some(r => !(r.colaborador as any)?.numero_cuenta) && (
+          {rendiciones.some(r => {
+            const col = r.colaborador as any
+            return !col?.numero_cuenta || !col?.banco || !col?.rut
+          }) && (
             <div className="border border-amber-500/30 bg-amber-500/5 p-4 mb-6">
               <p className="font-body text-xs text-amber-400">
-                ⚠ Algunos colaboradores no tienen cuenta bancaria registrada.
+                ⚠ Algunos colaboradores no tienen banco, cuenta o RUT registrado. Completa sus fichas antes de exportar.
               </p>
             </div>
           )}
 
-          <button onClick={descargar}
-            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-8 py-3 transition-colors">
-            Descargar archivo Santander →
+          {!cuentaOrigen && (
+            <div className="border border-amber-500/30 bg-amber-500/5 p-4 mb-6">
+              <p className="font-body text-xs text-amber-400">
+                ⚠ Ingresa la cuenta de origen de Casa Hiedra antes de exportar.
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={descargar}
+            disabled={!cuentaOrigen}
+            className="bg-ch-green hover:bg-ch-green-light disabled:opacity-40 disabled:cursor-not-allowed text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-8 py-3 transition-colors">
+            Descargar Excel Santander →
           </button>
         </>
       )}

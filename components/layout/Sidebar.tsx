@@ -27,7 +27,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar — sticky en el flujo flex del layout */}
-      <aside className="hidden lg:flex flex-col w-52 min-h-screen shrink-0 bg-zinc-950 border-r border-zinc-900 py-6 px-4 sticky top-0 self-start h-screen">
+      <aside className="hidden lg:flex flex-col w-52 min-h-screen shrink-0 bg-ch-black border-r border-ch-border py-6 px-4 sticky top-0 self-start h-screen">
         {/* Logo */}
         <div className="mb-8 px-2">
           <Link href="/dashboard">
@@ -51,8 +51,8 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
                 href={item.href}
                 className={`text-sm px-3 py-2 rounded-[2px] transition-colors ${
                   activo
-                    ? 'bg-zinc-800 text-zinc-100'
-                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900'
+                    ? 'bg-ch-surface text-ch-cream'
+                    : 'text-ch-muted hover:text-ch-cream hover:bg-ch-dark'
                 }`}
               >
                 {item.label}
@@ -60,7 +60,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
             ) : (
               <span
                 key={item.href}
-                className="text-sm px-3 py-2 text-zinc-700 cursor-default select-none"
+                className="text-sm px-3 py-2 text-ch-border cursor-default select-none"
               >
                 {item.label}
               </span>
@@ -70,9 +70,9 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
 
         {/* Usuario */}
         {(nombre || email) && (
-          <div className="px-2 mt-4 pt-4 border-t border-zinc-900">
-            <p className="text-xs text-zinc-400 truncate">{nombre || email}</p>
-            {rol && <p className="text-xs text-zinc-700 capitalize mt-0.5">{rol}</p>}
+          <div className="px-2 mt-4 pt-4 border-t border-ch-border">
+            <p className="text-xs text-ch-muted truncate">{nombre || email}</p>
+            {rol && <p className="text-xs text-ch-border capitalize mt-0.5">{rol}</p>}
           </div>
         )}
 
@@ -89,7 +89,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
       </aside>
 
       {/* Mobile header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-zinc-950 border-b border-zinc-900 px-4 py-3 flex items-center justify-between">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-ch-black border-b border-ch-border px-4 py-3 flex items-center justify-between">
         <Link href="/dashboard">
           <Image
             src="/logos/logo-horizontal-negro.png"
@@ -107,7 +107,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 className={`text-xs px-3 py-1.5 rounded-[2px] whitespace-nowrap transition-colors ${
-                  activo ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-200'
+                  activo ? 'bg-ch-surface text-ch-cream' : 'text-ch-muted hover:text-ch-cream'
                 }`}
               >
                 {item.label}

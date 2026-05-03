@@ -28,6 +28,10 @@ GRANT SELECT, INSERT  ON public.rendicion_gastos       TO service_role;
 GRANT SELECT          ON public.rendiciones            TO service_role;
 
 -- ─── DASHBOARD AUTENTICADO (authenticated) ───────────────────────────────────
+-- Módulo Cotizaciones (lectura para rendiciones y ficha colaborador)
+GRANT SELECT ON public.cotizacion_departamentos  TO authenticated;
+GRANT SELECT ON public.cotizacion_subgrupos      TO authenticated;
+
 -- Módulo Colaboradores
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.colaboradores_tarifas        TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.contratos_generados          TO authenticated;

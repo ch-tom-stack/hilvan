@@ -27,7 +27,7 @@ export default async function ExportSantanderPage({
     if (rendicionIds.length > 0) {
       const { data } = await supabase
         .from('rendicion_gastos')
-        .select('*, colaborador:colaboradores(nombre, rut, banco, tipo_cuenta, numero_cuenta)')
+        .select('*, colaborador:colaboradores(nombre, rut, banco, tipo_cuenta, numero_cuenta, email)')
         .in('rendicion_id', rendicionIds)
         .eq('estado', 'aprobada')
         .order('created_at', { ascending: false })

@@ -137,10 +137,33 @@ function generarMarcoModelo(col: any, rodaje: any) {
   })
 }
 
+function generarMarcoEmpresa(col: any, rodaje: any) {
+  return new Document({
+    sections: [{
+      children: [
+        titulo('CONTRATO DE SERVICIOS — EMPRESA PROVEEDORA'),
+        parrafo(`Santiago, ${hoy()}`, { center: true }),
+        parrafo(''),
+        parrafo(`Entre PRODUCCIONES CASA HIEDRA SpA, RUT 76.XXX.XXX-X, representada por _______________, en adelante "LA EMPRESA", y ${col.razon_social || col.nombre}, RUT ${col.rut || '___'}, representada por _______________, en adelante "EL PROVEEDOR", se celebra el siguiente contrato de prestación de servicios:`),
+        ...clausula(1, 'OBJETO', `El Proveedor se compromete a prestar los servicios de _______________ para el proyecto "${rodaje?.nombre || '___'}", según los términos acordados entre las partes.`),
+        ...clausula(2, 'HONORARIOS Y FORMA DE PAGO', `Las partes acuerdan un monto total de $_____ CLP + IVA según factura. El pago se realizará dentro de los 30 días corridos tras la recepción de la factura conforme.`),
+        ...clausula(3, 'PLAZO', `Los servicios serán prestados en el período que La Empresa indique, no pudiendo el Proveedor ceder ni subcontratar sin autorización escrita.`),
+        ...clausula(4, 'PROPIEDAD INTELECTUAL', `Todo material producido o entregado será de exclusiva propiedad de La Empresa y/o su cliente. El Proveedor cede todos los derechos patrimoniales sobre dicho material.`),
+        ...clausula(5, 'CONFIDENCIALIDAD', `El Proveedor se obliga a mantener reserva absoluta sobre los contenidos del proyecto, datos del cliente y condiciones comerciales pactadas.`),
+        ...clausula(6, 'RESPONSABILIDAD', `Cada parte responderá por los daños que cause por culpa o dolo de sus dependientes. El Proveedor contará con los seguros pertinentes a su actividad.`),
+        parrafo(''),
+        firmas('PRODUCCIONES CASA HIEDRA SpA', col.razon_social || col.nombre),
+      ],
+    }],
+  })
+}
+
 // ─── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const { colaboradorId, tipo, rodajeId } = await req.json()
+  const body = await req.json()
+  const colaboradorId = body.colaboradorId ?? body.colaborador_id
+  const { tipo, rodajeId } = body
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -168,6 +191,9 @@ export async function POST(req: NextRequest) {
       break
     case 'marco_modelo':
       doc = generarMarcoModelo(col, rodaje)
+      break
+    case 'marco_empresa':
+      doc = generarMarcoEmpresa(col, rodaje)
       break
     case 'release':
       doc = generarRelease(col, rodaje)
