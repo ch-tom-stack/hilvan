@@ -70,7 +70,7 @@ interface Props {
   lockedCotizacion?: { id: string; nombre: string; grupo?: { numero_base?: string } }
   lockedItem?: { id: string; nombre: string; tipo: string }
   onGenerarLink?: (itemId: string, itemNombre: string) => void
-  onSuccess: (r: Rendicion) => void
+  onSuccess: (r: Rendicion, continuar?: boolean) => void
   onCancel: () => void
 }
 
@@ -161,7 +161,15 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
 
   const montos = form.monto ? calcularMontos(form.monto) : null
 
-  const enviar = (estadoTarget: 'enviada' | 'borrador' = 'enviada') => {
+  const resetDetalle = () => {
+    setItemId(undefined)
+    setForm(p => ({ ...p, tipo: '' as TipoRendicion | '', monto: '', descripcion: '', tipo_documento: '' as TipoDocRendicion | '', foto_url: '' }))
+    setFotoPreview(null)
+    setArchivoNombre(null)
+    setInputEsBruto(false)
+  }
+
+  const enviar = (estadoTarget: 'enviada' | 'borrador' = 'enviada', continuar = false) => {
     if (estadoTarget === 'borrador' && !puedeBorrador) return
     if (estadoTarget === 'enviada' && !puedeEnviar) return
     setError(null)
@@ -180,7 +188,12 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
           tipo_documento: form.tipo_documento || undefined,
           estado: estadoTarget,
         })
-        onSuccess(nueva)
+        if (continuar) {
+          onSuccess(nueva, true)
+          resetDetalle()
+        } else {
+          onSuccess(nueva, false)
+        }
       } catch (e: any) {
         setError(e?.message || 'Error al guardar. Intenta de nuevo.')
       }
@@ -403,14 +416,18 @@ export default function FormularioRendicion({ cotizaciones, colaboradorId, rendi
           )}
 
           <div className="flex gap-3 pt-1 flex-wrap">
-            <button onClick={() => enviar('enviada')} disabled={!puedeEnviar || isPending}
+            <button onClick={() => enviar('enviada', true)} disabled={!puedeEnviar || isPending}
               className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
-              {isPending ? 'Enviando...' : 'Enviar rendición'}
+              {isPending ? 'Guardando...' : 'Guardar y continuar'}
+            </button>
+            <button onClick={() => enviar('enviada')} disabled={!puedeEnviar || isPending}
+              className="border border-ch-green/60 text-ch-green hover:bg-ch-green/10 font-body text-[10px] tracking-[0.35em] uppercase px-4 py-3 transition-colors disabled:opacity-50">
+              {isPending ? '...' : 'Enviar y cerrar'}
             </button>
             {!esExterno && (
               <button onClick={() => enviar('borrador')} disabled={!puedeBorrador || isPending}
                 className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-4 py-3 transition-colors disabled:opacity-50">
-                Guardar borrador
+                Borrador
               </button>
             )}
             <button onClick={onCancel}
