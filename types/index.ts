@@ -478,6 +478,9 @@ export interface Rendicion {
   cotizacion_id: string
   cotizacion?: { id: string; nombre: string; grupo?: { numero_base?: string } }
   estado: EstadoRendicion
+  factura_emitida: boolean
+  factura_archivos: string[]
+  pago_recibido: boolean
   created_at: string
   updated_at: string
   gastos?: RendicionGasto[]
@@ -523,6 +526,43 @@ export interface ContratoGenerado {
   tipo: TipoContrato
   archivo_url?: string
   firmado: boolean
+  created_at: string
+}
+
+// ============================================================
+// RENDICIÓN MENSUAL
+// ============================================================
+export type EstadoRendicionMensual = 'pendiente' | 'aprobado' | 'pagado'
+
+export const CATEGORIAS_RENDICION_MENSUAL = [
+  'Transporte',
+  'Alimentación',
+  'Artículos de oficina',
+  'Insumos de rodaje',
+  'Otros',
+] as const
+
+export interface RendicionMensual {
+  id: string
+  periodo: string
+  presupuesto: number
+  estado: EstadoRendicionMensual
+  notas: string | null
+  created_at: string
+  updated_at: string
+  gastos?: RendicionMensualGasto[]
+}
+
+export interface RendicionMensualGasto {
+  id: string
+  rendicion_mensual_id: string
+  descripcion: string
+  monto: number
+  categoria: string | null
+  archivo_url: string | null
+  cargado_por: string
+  cargado_por_id: string | null
+  tipo_documento: string | null
   created_at: string
 }
 

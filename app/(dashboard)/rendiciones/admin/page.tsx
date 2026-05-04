@@ -44,6 +44,10 @@ export default async function AdminRendicionesPage() {
           <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Revisión</h1>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/rendiciones/mensual"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
+            Mensual →
+          </Link>
           {esAdmin && (
             <Link href="/rendiciones/admin/export"
               className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">

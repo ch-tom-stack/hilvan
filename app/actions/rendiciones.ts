@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath } from 'next/cache'
 import { Rendicion, RendicionGasto, TipoRendicion, TipoDocRendicion, RendicionNotaGlosa } from '@/types'
 import { Resend } from 'resend'
 
@@ -438,4 +439,52 @@ export async function reenviarEmailLink(id: string): Promise<void> {
       <p style="color:#888;font-size:12px;">Este link ${diasRestantes > 0 ? `vence en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}` : 'vence hoy'}.</p>
       <p>Casa Hiedra</p>`,
   })
+}
+
+// ─── FACTURA Y PAGO ───────────────────────────────────────────────────────────
+
+export async function toggleFacturaEmitida(rendicionId: string, valor: boolean): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('rendiciones')
+    .update({ factura_emitida: valor, updated_at: new Date().toISOString() })
+    .eq('id', rendicionId)
+  if (error) throw error
+  revalidatePath('/rendiciones/admin')
+}
+
+export async function agregarArchivoFactura(rendicionId: string, url: string): Promise<string[]> {
+  const supabase = await createClient()
+  const { data: r } = await supabase.from('rendiciones').select('factura_archivos').eq('id', rendicionId).single()
+  const archivos = [...(r?.factura_archivos ?? []), url]
+  const { error } = await supabase
+    .from('rendiciones')
+    .update({ factura_archivos: archivos, updated_at: new Date().toISOString() })
+    .eq('id', rendicionId)
+  if (error) throw error
+  revalidatePath('/rendiciones/admin')
+  return archivos
+}
+
+export async function eliminarArchivoFactura(rendicionId: string, url: string): Promise<string[]> {
+  const supabase = await createClient()
+  const { data: r } = await supabase.from('rendiciones').select('factura_archivos').eq('id', rendicionId).single()
+  const archivos = (r?.factura_archivos ?? []).filter((a: string) => a !== url)
+  const { error } = await supabase
+    .from('rendiciones')
+    .update({ factura_archivos: archivos, updated_at: new Date().toISOString() })
+    .eq('id', rendicionId)
+  if (error) throw error
+  revalidatePath('/rendiciones/admin')
+  return archivos
+}
+
+export async function togglePagoRecibido(rendicionId: string, valor: boolean): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('rendiciones')
+    .update({ pago_recibido: valor, updated_at: new Date().toISOString() })
+    .eq('id', rendicionId)
+  if (error) throw error
+  revalidatePath('/rendiciones/admin')
 }

@@ -5,6 +5,7 @@ import {
   aprobarGasto, rechazarGasto, aprobarPagoGasto,
   toggleItemCompletado, generarLinkTemporalExterno, crearRendicion, purgarYCrearRendicion, eliminarRendicion,
   eliminarLinkTemporal, reenviarEmailLink,
+  toggleFacturaEmitida, agregarArchivoFactura, eliminarArchivoFactura, togglePagoRecibido,
 } from '@/app/actions/rendiciones'
 import { createClient } from '@/lib/supabase/client'
 import { calcularRetencion } from '@/types'
@@ -89,6 +90,10 @@ export default function AdminRendiciones({
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
 
   const toggleExpand = (key: string) => setExpandidos(p => ({ ...p, [key]: !p[key] }))
+
+  const actualizarRendicion = (rendicionId: string, cambios: Partial<Rendicion>) => {
+    setRendiciones(prev => prev.map(r => r.id !== rendicionId ? r : { ...r, ...cambios }))
+  }
 
   const actualizarGasto = (rendicionId: string, gastoId: string, cambios: Partial<RendicionGasto>) => {
     setRendiciones(prev => prev.map(r => r.id !== rendicionId ? r : {
@@ -197,6 +202,32 @@ export default function AdminRendiciones({
     } catch (e: any) {
       alert(e?.message || 'Error al reenviar email')
     }
+  }
+
+  const handleToggleFactura = (rendicionId: string, valor: boolean) => {
+    actualizarRendicion(rendicionId, { factura_emitida: valor })
+    startTransition(() => toggleFacturaEmitida(rendicionId, valor))
+  }
+
+  const handleTogglePago = (rendicionId: string, valor: boolean) => {
+    actualizarRendicion(rendicionId, { pago_recibido: valor })
+    startTransition(() => togglePagoRecibido(rendicionId, valor))
+  }
+
+  const handleAgregarArchivoFactura = async (rendicionId: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('carpeta', 'facturas')
+    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+    if (!res.ok) { alert('Error subiendo archivo'); return }
+    const { url } = await res.json()
+    const archivos = await agregarArchivoFactura(rendicionId, url)
+    actualizarRendicion(rendicionId, { factura_archivos: archivos })
+  }
+
+  const handleEliminarArchivoFactura = async (rendicionId: string, url: string) => {
+    const archivos = await eliminarArchivoFactura(rendicionId, url)
+    actualizarRendicion(rendicionId, { factura_archivos: archivos })
   }
 
   return (
@@ -343,6 +374,14 @@ export default function AdminRendiciones({
                 </button>
               </div>
             </div>
+
+            <FacturaPagoBar
+              rendicion={rendicion}
+              onToggleFactura={v => handleToggleFactura(rendicion.id, v)}
+              onTogglePago={v => handleTogglePago(rendicion.id, v)}
+              onAgregarArchivo={f => handleAgregarArchivoFactura(rendicion.id, f)}
+              onEliminarArchivo={url => handleEliminarArchivoFactura(rendicion.id, url)}
+            />
 
             {isExpandida && (
               <div className="p-4 lg:p-6 pt-2 space-y-6">
@@ -873,6 +912,93 @@ function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, pue
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── FACTURA / PAGO BAR ───────────────────────────────────────────────────────
+
+function FacturaPagoBar({
+  rendicion,
+  onToggleFactura,
+  onTogglePago,
+  onAgregarArchivo,
+  onEliminarArchivo,
+}: {
+  rendicion: Rendicion
+  onToggleFactura: (v: boolean) => void
+  onTogglePago: (v: boolean) => void
+  onAgregarArchivo: (f: File) => Promise<void>
+  onEliminarArchivo: (url: string) => Promise<void>
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [subiendo, setSubiendo] = useState(false)
+  const archivos = rendicion.factura_archivos ?? []
+
+  function nombreCorto(url: string) {
+    const partes = url.split('/')
+    return partes[partes.length - 1].slice(0, 28)
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSubiendo(true)
+    try { await onAgregarArchivo(file) } finally { setSubiendo(false) }
+    e.target.value = ''
+  }
+
+  return (
+    <div className="border-t border-ch-border/30 px-4 py-3 flex items-start gap-6 flex-wrap bg-zinc-950/40">
+      <label className="flex items-center gap-2 cursor-pointer select-none group">
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={rendicion.factura_emitida}
+          onClick={() => onToggleFactura(!rendicion.factura_emitida)}
+          className={`w-8 h-4 rounded-full transition-colors relative ${rendicion.factura_emitida ? 'bg-ch-green' : 'bg-zinc-700'}`}
+        >
+          <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${rendicion.factura_emitida ? 'left-[18px]' : 'left-0.5'}`} />
+        </button>
+        <span className={`font-body text-[10px] tracking-[0.3em] uppercase transition-colors ${rendicion.factura_emitida ? 'text-ch-cream' : 'text-ch-muted group-hover:text-ch-cream'}`}>
+          Factura emitida
+        </span>
+      </label>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {archivos.map(url => (
+          <div key={url} className="flex items-center gap-1 border border-ch-border/50 px-2 py-1">
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              className="font-body text-[9px] text-blue-400 hover:underline truncate max-w-[140px]">
+              {nombreCorto(url)}
+            </a>
+            <button onClick={() => onEliminarArchivo(url)}
+              className="text-zinc-700 hover:text-red-400 transition-colors text-xs leading-none ml-0.5">×</button>
+          </div>
+        ))}
+        <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFile} className="hidden" />
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={subiendo}
+          className="font-body text-[9px] tracking-widest uppercase px-2.5 py-1 border border-ch-border/50 text-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50">
+          {subiendo ? '...' : '+ Adjuntar'}
+        </button>
+      </div>
+
+      <div className="hidden sm:block h-4 w-px bg-ch-border/30 self-center" />
+
+      <label className="flex items-center gap-2 cursor-pointer select-none group">
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={rendicion.pago_recibido}
+          onClick={() => onTogglePago(!rendicion.pago_recibido)}
+          className={`w-8 h-4 rounded-full transition-colors relative ${rendicion.pago_recibido ? 'bg-ch-green' : 'bg-zinc-700'}`}
+        >
+          <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${rendicion.pago_recibido ? 'left-[18px]' : 'left-0.5'}`} />
+        </button>
+        <span className={`font-body text-[10px] tracking-[0.3em] uppercase transition-colors ${rendicion.pago_recibido ? 'text-ch-cream' : 'text-ch-muted group-hover:text-ch-cream'}`}>
+          Pago recibido
+        </span>
+      </label>
     </div>
   )
 }
