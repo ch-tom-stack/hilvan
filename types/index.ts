@@ -443,6 +443,7 @@ export interface Colaborador {
   notas_internas?: string
   rol_habitual?: string
   notas?: string
+  restricciones_alimentarias?: string
   created_at: string
   updated_at: string
 }
@@ -461,6 +462,7 @@ export interface ColaboradorLinkTemporal {
   id: string
   colaborador_id: string
   rodaje_id?: string
+  tipo: 'rendicion' | 'onboarding'
   token: string
   expires_at: string
   used_at?: string
@@ -469,7 +471,7 @@ export interface ColaboradorLinkTemporal {
 
 export type TipoRendicion = 'honorarios' | 'arte' | 'transporte' | 'alimentacion' | 'insumos' | 'servicios' | 'viaticos' | 'otro'
 export type EstadoRendicion = 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'pago_aprobado'
-export type TipoDocRendicion = 'boleta' | 'factura' | 'exenta' | 'sin_documento'
+export type TipoDocRendicion = 'boleta' | 'boleta_consumo' | 'factura' | 'exenta' | 'sin_documento'
 
 export interface Rendicion {
   id: string
@@ -521,6 +523,43 @@ export interface ContratoGenerado {
   tipo: TipoContrato
   archivo_url?: string
   firmado: boolean
+  created_at: string
+}
+
+// ============================================================
+// RENDICIÓN MENSUAL
+// ============================================================
+export type EstadoRendicionMensual = 'pendiente' | 'aprobado' | 'pagado'
+
+export const CATEGORIAS_RENDICION_MENSUAL = [
+  'Transporte',
+  'Alimentación',
+  'Artículos de oficina',
+  'Insumos de rodaje',
+  'Otros',
+] as const
+
+export interface RendicionMensual {
+  id: string
+  periodo: string // ISO date, first of month: '2026-05-01'
+  presupuesto: number
+  estado: EstadoRendicionMensual
+  notas: string | null
+  created_at: string
+  updated_at: string
+  gastos?: RendicionMensualGasto[]
+}
+
+export interface RendicionMensualGasto {
+  id: string
+  rendicion_mensual_id: string
+  descripcion: string
+  monto: number
+  categoria: string | null
+  archivo_url: string | null
+  cargado_por: string
+  cargado_por_id: string | null
+  tipo_documento: string | null
   created_at: string
 }
 
@@ -662,6 +701,7 @@ export interface RodajeBloque {
   locacion?: RodajeLocacion
   descripcion?: string
   nota_previa?: string
+  imagen_url?: string
   hora_inicio_fija?: string
   hora_fin?: string
   duracion_min?: number

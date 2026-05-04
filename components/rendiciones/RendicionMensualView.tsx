@@ -1,0 +1,448 @@
+'use client'
+
+import { useState, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  agregarGastoMensual,
+  eliminarGastoMensual,
+  actualizarEstadoRendicionMensual,
+  getOCrearRendicionMensual,
+  exportarCSVGastosMensual,
+} from '@/app/actions/rendiciones_mensuales'
+import { RendicionMensual, RendicionMensualGasto, CATEGORIAS_RENDICION_MENSUAL, EstadoRendicionMensual } from '@/types'
+
+const TIPO_DOC_OPCIONES = [
+  { value: 'boleta', label: 'Boleta' },
+  { value: 'factura', label: 'Factura' },
+  { value: 'boleta_consumo', label: 'Boleta de consumo' },
+  { value: 'exenta', label: 'Exenta' },
+  { value: 'sin_documento', label: 'Sin documento' },
+]
+
+const ESTADO_LABELS: Record<EstadoRendicionMensual, string> = {
+  pendiente: 'Pendiente',
+  aprobado: 'Aprobado',
+  pagado: 'Pagado',
+}
+
+const ESTADO_COLORS: Record<EstadoRendicionMensual, string> = {
+  pendiente: 'text-amber-400',
+  aprobado: 'text-blue-400',
+  pagado: 'text-green-400',
+}
+
+interface Props {
+  rendicionActual: RendicionMensual | null
+  historial: RendicionMensual[]
+  periodoActual: string
+  usuarioNombre: string
+  usuarioId: string
+  esAdmin: boolean
+}
+
+function formatPeriodo(iso: string) {
+  const d = new Date(iso + 'T12:00:00')
+  return d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+}
+
+function formatMonto(n: number) {
+  return `$${n.toLocaleString('es-CL')}`
+}
+
+export default function RendicionMensualView({
+  rendicionActual: rendicionInicial,
+  historial,
+  periodoActual,
+  usuarioNombre,
+  usuarioId,
+  esAdmin,
+}: Props) {
+  const router = useRouter()
+  const [rendicion, setRendicion] = useState<RendicionMensual | null>(rendicionInicial)
+  const [isPending, startTransition] = useTransition()
+  const [modalAbierto, setModalAbierto] = useState(false)
+  const [inicializando, setInicializando] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // Form state
+  const [form, setForm] = useState({
+    descripcion: '',
+    monto: '',
+    categoria: '',
+    categoriaOtros: '',
+    tipo_documento: '',
+    archivo_url: '',
+  })
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  async function iniciarRendicion() {
+    setInicializando(true)
+    try {
+      const r = await getOCrearRendicionMensual(periodoActual)
+      setRendicion({ ...r, gastos: [] })
+      router.refresh()
+    } finally {
+      setInicializando(false)
+    }
+  }
+
+  async function handleFileUpload(file: File) {
+    setUploadingFile(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('carpeta', 'rendicion-mensual')
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      if (!res.ok) throw new Error('Error subiendo archivo')
+      const { url } = await res.json()
+      setForm(f => ({ ...f, archivo_url: url }))
+    } catch (e: any) {
+      setFormError(e.message)
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!rendicion) return
+    setFormError('')
+
+    const categoriaFinal = form.categoria === 'Otros' ? (form.categoriaOtros.trim() || 'Otros') : form.categoria
+    const monto = parseInt(form.monto.replace(/\D/g, ''), 10)
+    if (!form.descripcion.trim()) return setFormError('La descripción es requerida')
+    if (!monto || monto <= 0) return setFormError('El monto debe ser mayor a 0')
+
+    startTransition(async () => {
+      try {
+        const gasto = await agregarGastoMensual({
+          rendicion_mensual_id: rendicion.id,
+          descripcion: form.descripcion.trim(),
+          monto,
+          categoria: categoriaFinal || null,
+          archivo_url: form.archivo_url || null,
+          tipo_documento: form.tipo_documento || null,
+          cargado_por: usuarioNombre,
+          cargado_por_id: usuarioId,
+        })
+        setRendicion(r => r ? { ...r, gastos: [...(r.gastos ?? []), gasto] } : r)
+        setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '' })
+        setModalAbierto(false)
+        router.refresh()
+      } catch (err: any) {
+        setFormError(err.message)
+      }
+    })
+  }
+
+  async function handleEliminar(id: string) {
+    startTransition(async () => {
+      await eliminarGastoMensual(id)
+      setRendicion(r => r ? { ...r, gastos: (r.gastos ?? []).filter(g => g.id !== id) } : r)
+    })
+  }
+
+  async function handleEstado(estado: EstadoRendicionMensual) {
+    if (!rendicion) return
+    startTransition(async () => {
+      await actualizarEstadoRendicionMensual(rendicion.id, estado)
+      setRendicion(r => r ? { ...r, estado } : r)
+    })
+  }
+
+  async function handleExportar() {
+    if (!rendicion) return
+    const csv = await exportarCSVGastosMensual(rendicion.id)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `gastos-${rendicion.periodo}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const gastos = rendicion?.gastos ?? []
+  const totalGastado = gastos.reduce((s, g) => s + g.monto, 0)
+  const presupuesto = rendicion?.presupuesto ?? 100000
+  const pct = Math.min(100, Math.round((totalGastado / presupuesto) * 100))
+  const barColor = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-400' : 'bg-green-500'
+
+  return (
+    <div>
+      {/* Mes actual */}
+      <div className="border border-ch-border p-6 mb-8">
+        <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+          <div>
+            <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-1">
+              {formatPeriodo(periodoActual)}
+            </p>
+            {rendicion ? (
+              <p className={`font-body text-xs tracking-widest uppercase ${ESTADO_COLORS[rendicion.estado]}`}>
+                {ESTADO_LABELS[rendicion.estado]}
+              </p>
+            ) : (
+              <p className="text-ch-muted text-xs">No hay rendición este mes</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {rendicion && esAdmin && (
+              <>
+                {rendicion.estado === 'pendiente' && (
+                  <button onClick={() => handleEstado('aprobado')} disabled={isPending}
+                    className="border border-blue-700 text-blue-400 hover:bg-blue-900/20 font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors disabled:opacity-50">
+                    Aprobar
+                  </button>
+                )}
+                {rendicion.estado === 'aprobado' && (
+                  <button onClick={() => handleEstado('pagado')} disabled={isPending}
+                    className="border border-green-700 text-green-400 hover:bg-green-900/20 font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors disabled:opacity-50">
+                    Marcar pagado
+                  </button>
+                )}
+                <button onClick={handleExportar}
+                  className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors">
+                  Exportar CSV
+                </button>
+              </>
+            )}
+            {!rendicion ? (
+              <button onClick={iniciarRendicion} disabled={inicializando}
+                className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors">
+                {inicializando ? 'Creando...' : 'Iniciar mes'}
+              </button>
+            ) : (
+              <button onClick={() => setModalAbierto(true)}
+                className="border border-ch-border text-ch-cream hover:bg-zinc-800 font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors">
+                + Agregar gasto
+              </button>
+            )}
+          </div>
+        </div>
+
+        {rendicion && (
+          <>
+            {/* Presupuesto */}
+            <div className="mb-6">
+              <div className="flex justify-between text-xs text-ch-muted mb-1">
+                <span>Presupuesto mensual</span>
+                <span>{formatMonto(totalGastado)} / {formatMonto(presupuesto)} ({pct}%)</span>
+              </div>
+              <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+
+            {/* Lista de gastos */}
+            {gastos.length === 0 ? (
+              <p className="text-ch-muted text-sm text-center py-8">Sin gastos registrados este mes</p>
+            ) : (
+              <div className="divide-y divide-zinc-900 border-t border-ch-border">
+                {gastos.map(g => (
+                  <GastoRow key={g.id} gasto={g} onEliminar={handleEliminar} isPending={isPending} esAdmin={esAdmin} usuarioId={usuarioId} />
+                ))}
+              </div>
+            )}
+
+            {gastos.length > 0 && (
+              <div className="flex justify-end mt-4 pt-3 border-t border-zinc-900">
+                <p className="font-body text-sm text-ch-cream font-mono">
+                  Total: {formatMonto(totalGastado)}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Historial */}
+      {historial.length > 0 && (
+        <div>
+          <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-4">Historial</p>
+          <div className="space-y-2">
+            {historial.map(r => {
+              const total = (r.gastos ?? []).reduce((s, g) => s + g.monto, 0)
+              return (
+                <div key={r.id} className="border border-ch-border p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-ch-cream text-sm capitalize">{formatPeriodo(r.periodo)}</p>
+                    <p className={`text-xs ${ESTADO_COLORS[r.estado]}`}>{ESTADO_LABELS[r.estado]}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono text-sm text-ch-cream">{formatMonto(total)}</p>
+                    <p className="text-xs text-ch-muted">{(r.gastos ?? []).length} gasto{(r.gastos ?? []).length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
+      {modalAbierto && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setModalAbierto(false) }}>
+          <div className="bg-zinc-950 border border-ch-border w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Nuevo gasto</p>
+              <button onClick={() => setModalAbierto(false)} className="text-ch-muted hover:text-ch-cream text-xl leading-none">×</button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Descripción *</label>
+                <input
+                  type="text"
+                  value={form.descripcion}
+                  onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
+                  placeholder="Ej: Taxi a locación, café reunión..."
+                  className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Monto *</label>
+                <input
+                  type="number"
+                  value={form.monto}
+                  onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
+                  placeholder="0"
+                  min="1"
+                  className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-2">Categoría</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {CATEGORIAS_RENDICION_MENSUAL.map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, categoria: cat }))}
+                      className={`font-body text-[9px] tracking-widest uppercase px-3 py-1.5 border transition-colors ${
+                        form.categoria === cat
+                          ? 'border-ch-cream text-ch-cream bg-zinc-800'
+                          : 'border-ch-border text-ch-muted hover:text-ch-cream'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                {form.categoria === 'Otros' && (
+                  <input
+                    type="text"
+                    value={form.categoriaOtros}
+                    onChange={e => setForm(f => ({ ...f, categoriaOtros: e.target.value }))}
+                    placeholder="Especificar categoría..."
+                    className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Tipo de documento</label>
+                <select
+                  value={form.tipo_documento}
+                  onChange={e => setForm(f => ({ ...f, tipo_documento: e.target.value }))}
+                  className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500"
+                >
+                  <option value="">— Sin especificar</option>
+                  {TIPO_DOC_OPCIONES.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Archivo / Foto</label>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx"
+                  onChange={e => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]) }}
+                  className="hidden"
+                />
+                {form.archivo_url ? (
+                  <div className="flex items-center gap-2">
+                    <a href={form.archivo_url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-blue-400 underline truncate max-w-[200px]">
+                      Archivo adjunto
+                    </a>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, archivo_url: '' }))}
+                      className="text-ch-muted hover:text-red-400 text-xs">✕</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadingFile}
+                    className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-widest uppercase px-4 py-2 transition-colors disabled:opacity-50">
+                    {uploadingFile ? 'Subiendo...' : 'Adjuntar archivo'}
+                  </button>
+                )}
+              </div>
+
+              {formError && (
+                <p className="text-red-400 text-xs">{formError}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setModalAbierto(false)}
+                  className="flex-1 border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.35em] uppercase py-3 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={isPending}
+                  className="flex-1 border border-ch-cream text-ch-cream hover:bg-zinc-800 font-body text-[9px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
+                  {isPending ? 'Guardando...' : 'Guardar gasto'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GastoRow({ gasto, onEliminar, isPending, esAdmin, usuarioId }: {
+  gasto: RendicionMensualGasto
+  onEliminar: (id: string) => void
+  isPending: boolean
+  esAdmin: boolean
+  usuarioId: string
+}) {
+  const puedeEliminar = esAdmin || gasto.cargado_por_id === usuarioId
+
+  return (
+    <div className="py-3 flex items-start justify-between gap-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-ch-cream text-sm">{gasto.descripcion}</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          {gasto.categoria && (
+            <span className="font-body text-[9px] tracking-widest uppercase text-zinc-600">{gasto.categoria}</span>
+          )}
+          {gasto.tipo_documento && (
+            <span className="font-body text-[9px] tracking-widest uppercase text-zinc-700">{gasto.tipo_documento}</span>
+          )}
+          <span className="text-zinc-700 text-[9px]">{gasto.cargado_por}</span>
+        </div>
+        {gasto.archivo_url && (
+          <a href={gasto.archivo_url} target="_blank" rel="noopener noreferrer"
+            className="text-[10px] text-blue-400 underline mt-0.5 inline-block">
+            Ver adjunto
+          </a>
+        )}
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <span className="font-mono text-sm text-ch-cream">${gasto.monto.toLocaleString('es-CL')}</span>
+        {puedeEliminar && (
+          <button onClick={() => onEliminar(gasto.id)} disabled={isPending}
+            className="text-zinc-700 hover:text-red-400 transition-colors text-sm disabled:opacity-50">
+            ×
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
