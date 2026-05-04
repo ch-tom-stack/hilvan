@@ -478,6 +478,9 @@ export interface Rendicion {
   cotizacion_id: string
   cotizacion?: { id: string; nombre: string; grupo?: { numero_base?: string } }
   estado: EstadoRendicion
+  factura_emitida: boolean
+  factura_archivos: string[]
+  pago_recibido: boolean
   created_at: string
   updated_at: string
   gastos?: RendicionGasto[]
