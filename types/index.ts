@@ -829,6 +829,46 @@ export interface FlujoCajaManual {
   created_by: string | null
 }
 
+// ============================================================
+// MÓDULO INVERSIONES
+// ============================================================
+
+export type CategoriaInversion =
+  | 'equipo_audiovisual'
+  | 'vehiculo'
+  | 'software'
+  | 'consultoria'
+  | 'otro'
+
+export type TratamientoContable = 'activo_fijo' | 'gasto_directo'
+
+export type TipoDocInversion = 'factura' | 'sin_documento' | null
+
+export interface Inversion {
+  id: string
+  categoria: CategoriaInversion
+  descripcion: string
+  proveedor: string | null
+  rut_proveedor: string | null
+  fecha_compra: string           // ISO date YYYY-MM-DD
+  monto: number                  // entero CLP
+  tipo_documento: TipoDocInversion
+  factura_casa_hiedra: boolean
+  comprobante_url: string | null
+  tratamiento_contable: TratamientoContable
+  notas: string | null
+  created_at: string
+  created_by: string | null
+}
+
+export const CATEGORIAS_INVERSION: Record<CategoriaInversion, string> = {
+  equipo_audiovisual: 'Equipo audiovisual',
+  vehiculo: 'Vehículo',
+  software: 'Software',
+  consultoria: 'Consultoría',
+  otro: 'Otro',
+}
+
 export const PLANTILLAS_BLOQUES: Array<{ label: string; titulo: string; tipo: TipoBloque; duracion_min: number; scenes_color: string; dia_noche: 'D' | 'N'; interior_exterior: 'I' | 'E' | '-' }> = [
   { label: 'CALL',       titulo: 'Call equipo completo',  tipo: 'otro',     duracion_min: 0,  scenes_color: '#353135', dia_noche: 'D', interior_exterior: '-' },
   { label: 'PRE SET',    titulo: 'Preparación de set',    tipo: 'montaje',  duracion_min: 40, scenes_color: '#353135', dia_noche: 'D', interior_exterior: 'I' },
