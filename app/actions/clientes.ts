@@ -13,27 +13,56 @@ function r(path: string) {
   revalidatePath('/clientes')
 }
 
+/** PostgREST devuelve el self-join como array — normalizamos a objeto o null */
+function normalizeParent(raw: any): any {
+  if (!raw) return raw
+  const parent = raw.parent
+  return {
+    ...raw,
+    parent: Array.isArray(parent) ? (parent[0] ?? null) : parent,
+  }
+}
+
 // ─── CLIENTES ────────────────────────────────────────────────────────────────
 
 export async function getClientes(): Promise<Cliente[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('clientes')
-    .select('*, parent:clientes!parent_id(id, nombre, empresa)')
+    .select('*')
     .order('nombre')
   if (error) throw new Error(error.message)
-  return data as Cliente[]
+  const rows = (data ?? []) as any[]
+
+  // Resolver parent en memoria para evitar ambigüedad del self-join en PostgREST
+  const byId = Object.fromEntries(rows.map(r => [r.id, r]))
+  return rows.map(r => ({
+    ...r,
+    parent: r.parent_id ? (byId[r.parent_id] ?? null) : null,
+  })) as Cliente[]
 }
 
 export async function getCliente(id: string): Promise<Cliente | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('clientes')
-    .select('*, parent:clientes!parent_id(id, nombre, empresa)')
+    .select('*')
     .eq('id', id)
     .single()
   if (error) return null
-  return data as Cliente
+  const row = data as any
+
+  // Resolver parent por separado
+  let parent: any = null
+  if (row.parent_id) {
+    const { data: p } = await supabase
+      .from('clientes')
+      .select('id, nombre, empresa')
+      .eq('id', row.parent_id)
+      .single()
+    parent = p ?? null
+  }
+  return { ...row, parent } as Cliente
 }
 
 export async function crearCliente(payload: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>): Promise<Cliente> {
