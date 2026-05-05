@@ -322,3 +322,101 @@ export async function getResumenPeriodo(mes: string): Promise<ResumenPeriodo> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CUENTAS POR COBRAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COT_COBRAR_SELECT = `
+  id, nombre, estado, con_iva, descuento_global, descuento_global_tipo,
+  fecha_factura_emitida, fecha_pago_recibido, numero_factura,
+  cliente_nombre_libre, fecha_respuesta_cliente,
+  grupo:cotizacion_grupos(numero_base),
+  cliente:clientes(nombre),
+  departamentos:cotizacion_departamentos(
+    subgrupos:cotizacion_subgrupos(
+      items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)
+    ),
+    items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)
+  )
+`
+
+export interface FilaCobrar {
+  id: string
+  nombre: string
+  cliente: string
+  total: number
+  // por facturar
+  fecha_aprobacion?: string | null
+  dias_desde_aprobacion?: number
+  // por cobrar
+  fecha_factura?: string | null
+  numero_factura?: string | null
+  dias_desde_factura?: number
+}
+
+export interface DatosCobrar {
+  por_facturar: FilaCobrar[]
+  por_cobrar: FilaCobrar[]
+  total_por_facturar: number
+  total_por_cobrar: number
+}
+
+export async function getCuentasPorCobrar(): Promise<DatosCobrar> {
+  const supabase = await createClient()
+  const hoy = new Date()
+
+  const [
+    { data: cotPorFacturar },
+    { data: cotPorCobrar },
+  ] = await Promise.all([
+    supabase.from('cotizaciones')
+      .select(COT_COBRAR_SELECT)
+      .in('estado', ['aprobada', 'en_produccion'])
+      .is('fecha_factura_emitida', null)
+      .order('fecha_respuesta_cliente', { ascending: true }),
+
+    supabase.from('cotizaciones')
+      .select(COT_COBRAR_SELECT)
+      .not('fecha_factura_emitida', 'is', null)
+      .is('fecha_pago_recibido', null)
+      .order('fecha_factura_emitida', { ascending: true }),
+  ])
+
+  const porFacturar: FilaCobrar[] = (cotPorFacturar ?? []).map((c: any) => {
+    const fechaRef = c.fecha_respuesta_cliente
+    const diasDesdeAprobacion = fechaRef
+      ? Math.floor((hoy.getTime() - new Date(fechaRef).getTime()) / 86400000)
+      : undefined
+    return {
+      id: c.id,
+      nombre: nombreCot(c),
+      cliente: clienteCot(c),
+      total: calcularTotalCot(c),
+      fecha_aprobacion: fechaRef ?? null,
+      dias_desde_aprobacion: diasDesdeAprobacion,
+    }
+  })
+
+  const porCobrar: FilaCobrar[] = (cotPorCobrar ?? []).map((c: any) => {
+    const diasDesdeFactura = Math.floor(
+      (hoy.getTime() - new Date(c.fecha_factura_emitida).getTime()) / 86400000
+    )
+    return {
+      id: c.id,
+      nombre: nombreCot(c),
+      cliente: clienteCot(c),
+      total: calcularTotalCot(c),
+      fecha_factura: c.fecha_factura_emitida,
+      numero_factura: c.numero_factura ?? null,
+      dias_desde_factura: diasDesdeFactura,
+    }
+  })
+
+  return {
+    por_facturar: porFacturar,
+    por_cobrar: porCobrar,
+    total_por_facturar: porFacturar.reduce((s, c) => s + c.total, 0),
+    total_por_cobrar: porCobrar.reduce((s, c) => s + c.total, 0),
+  }
+}
+
