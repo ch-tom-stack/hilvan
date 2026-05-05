@@ -717,3 +717,33 @@ export async function crearCliente(formData: FormData) {
   revalidatePath('/cotizaciones')
   return data as Cliente
 }
+
+// ============================================================
+// FACTURACIÓN — Módulo Financiero Fase 2
+// ============================================================
+
+export async function registrarFacturaCotizacion(
+  id: string,
+  campos: { fecha_factura_emitida: string; numero_factura: string }
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('cotizaciones')
+    .update(campos)
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/cotizaciones/${id}`)
+}
+
+export async function registrarPagoCotizacion(
+  id: string,
+  fecha_pago_recibido: string
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('cotizaciones')
+    .update({ fecha_pago_recibido })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/cotizaciones/${id}`)
+}

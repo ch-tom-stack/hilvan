@@ -72,6 +72,9 @@ export default function RendicionMensualView({
     categoriaOtros: '',
     tipo_documento: '',
     archivo_url: '',
+    rut_emisor: '',
+    razon_social_emisor: '',
+    factura_casa_hiedra: false,
   })
   const [uploadingFile, setUploadingFile] = useState(false)
   const [formError, setFormError] = useState('')
@@ -125,9 +128,12 @@ export default function RendicionMensualView({
           tipo_documento: form.tipo_documento || null,
           cargado_por: usuarioNombre,
           cargado_por_id: usuarioId,
+          rut_emisor: form.rut_emisor || null,
+          razon_social_emisor: form.razon_social_emisor || null,
+          factura_casa_hiedra: form.factura_casa_hiedra,
         })
         setRendicion(r => r ? { ...r, gastos: [...(r.gastos ?? []), gasto] } : r)
-        setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '' })
+        setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false })
         setModalAbierto(false)
         router.refresh()
       } catch (err: any) {
@@ -356,6 +362,33 @@ export default function RendicionMensualView({
                   ))}
                 </select>
               </div>
+
+              {/* Campos de factura */}
+              {form.tipo_documento === 'factura' && (
+                <div className="space-y-3 border-l-2 border-ch-green/30 pl-3">
+                  <div>
+                    <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">RUT Emisor</label>
+                    <input type="text" value={form.rut_emisor}
+                      onChange={e => setForm(f => ({ ...f, rut_emisor: e.target.value }))}
+                      placeholder="Ej: 76.123.456-7"
+                      className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Razón Social</label>
+                    <input type="text" value={form.razon_social_emisor}
+                      onChange={e => setForm(f => ({ ...f, razon_social_emisor: e.target.value }))}
+                      placeholder="Nombre del emisor"
+                      className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700" />
+                  </div>
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked={form.factura_casa_hiedra}
+                      onChange={e => setForm(f => ({ ...f, factura_casa_hiedra: e.target.checked }))}
+                      className="w-4 h-4 accent-ch-green" />
+                    <span className="text-xs text-ch-cream">Factura emitida a nombre de Casa Hiedra</span>
+                    <span className="text-[9px] text-ch-muted">(crédito fiscal IVA)</span>
+                  </label>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Archivo / Foto</label>

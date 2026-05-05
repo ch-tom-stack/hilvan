@@ -157,6 +157,9 @@ export async function crearGasto(payload: {
   tipo_documento?: TipoDocRendicion | null
   foto_url?: string | null
   estado?: 'borrador' | 'enviada'
+  rut_emisor?: string | null
+  razon_social_emisor?: string | null
+  factura_casa_hiedra?: boolean
 }): Promise<RendicionGasto> {
   const TIPO_LABEL: Record<string, string> = {
     honorarios: 'Honorarios', transporte: 'Transporte', alimentacion: 'Alimentación',

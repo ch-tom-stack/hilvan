@@ -49,6 +49,9 @@ export default function FormularioGasto({
     descripcion: '',
     tipo_documento: '' as TipoDocRendicion | '',
     foto_url: '',
+    rut_emisor: '',
+    razon_social_emisor: '',
+    factura_casa_hiedra: false,
   })
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null)
@@ -97,7 +100,7 @@ export default function FormularioGasto({
   }
 
   const resetForm = () => {
-    setForm({ tipo: tipoInicial as TipoRendicion | '', monto: '', descripcion: '', tipo_documento: '' as TipoDocRendicion | '', foto_url: '' })
+    setForm({ tipo: tipoInicial as TipoRendicion | '', monto: '', descripcion: '', tipo_documento: '' as TipoDocRendicion | '', foto_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false })
     setFotoPreview(null)
     setArchivoNombre(null)
     setInputEsBruto(false)
@@ -120,6 +123,9 @@ export default function FormularioGasto({
           tipo_documento: (form.tipo_documento || null) as TipoDocRendicion | null,
           foto_url: form.foto_url || null,
           estado: 'enviada',
+          rut_emisor: form.rut_emisor || null,
+          razon_social_emisor: form.razon_social_emisor || null,
+          factura_casa_hiedra: form.factura_casa_hiedra,
         })
         if (continuar) {
           onSuccess(nuevo, true)
@@ -164,6 +170,29 @@ export default function FormularioGasto({
           <p className="mt-1 font-body text-[10px] text-red-400">⚠ Requerirá justificación</p>
         )}
       </div>
+
+      {/* Campos de factura */}
+      {form.tipo_documento === 'factura' && (
+        <div className="space-y-3 border-l-2 border-ch-green/30 pl-3">
+          <div>
+            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">RUT Emisor</label>
+            <input value={form.rut_emisor} onChange={e => set('rut_emisor', e.target.value)}
+              type="text" placeholder="Ej: 76.123.456-7" className="input-ch w-full" />
+          </div>
+          <div>
+            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Razón Social</label>
+            <input value={form.razon_social_emisor} onChange={e => set('razon_social_emisor', e.target.value)}
+              type="text" placeholder="Nombre del emisor" className="input-ch w-full" />
+          </div>
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input type="checkbox" checked={form.factura_casa_hiedra}
+              onChange={e => set('factura_casa_hiedra', e.target.checked)}
+              className="w-4 h-4 accent-ch-green" />
+            <span className="font-body text-xs text-ch-cream">Factura emitida a nombre de Casa Hiedra</span>
+            <span className="font-body text-[9px] text-ch-muted">(crédito fiscal IVA)</span>
+          </label>
+        </div>
+      )}
 
       {/* Monto */}
       <div>

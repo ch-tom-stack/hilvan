@@ -48,6 +48,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.rendicion_gastos             TO a
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.rendiciones                  TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.rendiciones_links_temporales TO authenticated;
 
+-- Cotizaciones (server actions admin necesitan UPDATE/DELETE)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizaciones TO service_role;
+
 -- ─── SERVICE_ROLE para server actions admin (rendiciones + colaboradores) ─────
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.colaboradores_tarifas              TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.contratos_generados                TO service_role;
@@ -57,3 +60,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.rendiciones_links_temporales     
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.colaboradores_links_temporales     TO service_role;
 GRANT SELECT, UPDATE                 ON public.rodaje_bloques                     TO service_role;
 GRANT SELECT, UPDATE                 ON public.colaboradores                      TO service_role;
+
+-- Módulo Financiero
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gastos_fijos         TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gastos_fijos_cuotas  TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.flujo_caja_manual    TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gastos_fijos         TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gastos_fijos_cuotas  TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.flujo_caja_manual    TO service_role;

@@ -193,6 +193,9 @@ export interface Cotizacion {
   fecha_envio?: string
   fecha_respuesta_cliente?: string
   comentario_cliente?: string
+  fecha_factura_emitida?: string | null
+  fecha_pago_recibido?: string | null
+  numero_factura?: string | null
 
   con_iva: boolean
   formato_pdf: FormatoPDF
@@ -501,6 +504,9 @@ export interface RendicionGasto {
   estado: EstadoRendicion
   motivo_rechazo: string | null
   comprobante_pago_url: string | null
+  rut_emisor: string | null
+  razon_social_emisor: string | null
+  factura_casa_hiedra: boolean
   created_at: string
   updated_at: string
   colaborador?: { id: string; nombre: string; email: string; banco?: string; tipo_cuenta?: string; numero_cuenta?: string; rut?: string } | null
@@ -563,13 +569,16 @@ export interface RendicionMensualGasto {
   cargado_por: string
   cargado_por_id: string | null
   tipo_documento: string | null
+  rut_emisor: string | null
+  razon_social_emisor: string | null
+  factura_casa_hiedra: boolean
   created_at: string
 }
 
 const RETENCION_BOLETA = 0.154
 
 export function calcularRetencion(rendicion: { monto: number; tipo_documento?: string | null }) {
-  if (rendicion.tipo_documento === 'boleta' || rendicion.tipo_documento === 'bet') {
+  if (rendicion.tipo_documento === 'boleta') {
     const retencion = Math.round(rendicion.monto * RETENCION_BOLETA)
     return { bruto: rendicion.monto, retencion, neto: rendicion.monto - retencion, sinDocumento: false }
   }
@@ -772,6 +781,52 @@ export function duracionTotalDia(bloques: RodajeBloque[]): number {
 export function uberLinkLocacion(loc: RodajeLocacion): string | undefined {
   if (!loc.lat || !loc.lng) return undefined
   return `https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${loc.lat}&dropoff[longitude]=${loc.lng}&dropoff[nickname]=${encodeURIComponent(loc.nombre)}`
+}
+
+// ============================================================
+// MÓDULO FINANCIERO
+// ============================================================
+
+export type TipoGastoFijo = 'credito_bancario' | 'prestamo_socio' | 'otro'
+
+export interface GastoFijo {
+  id: string
+  nombre: string
+  descripcion: string | null
+  tipo: TipoGastoFijo
+  acreedor: string | null
+  monto_total: number
+  monto_cuota: number
+  n_cuotas: number
+  dia_vencimiento: number
+  fecha_inicio: string
+  tasa_interes: number | null
+  activo: boolean
+  created_at: string
+  cuotas?: GastoFijoCuota[]
+}
+
+export interface GastoFijoCuota {
+  id: string
+  gasto_fijo_id: string
+  numero_cuota: number
+  fecha_vencimiento: string
+  monto: number
+  pagada: boolean
+  fecha_pago: string | null
+  created_at: string
+}
+
+export type TipoFlujoCaja = 'entrada' | 'salida'
+
+export interface FlujoCajaManual {
+  id: string
+  descripcion: string
+  monto: number
+  fecha: string
+  tipo: TipoFlujoCaja
+  created_at: string
+  created_by: string | null
 }
 
 export const PLANTILLAS_BLOQUES: Array<{ label: string; titulo: string; tipo: TipoBloque; duracion_min: number; scenes_color: string; dia_noche: 'D' | 'N'; interior_exterior: 'I' | 'E' | '-' }> = [
