@@ -797,3 +797,155 @@ export async function desmarcarCuotaPagada(id: string): Promise<GastoFijoCuota> 
   return data as GastoFijoCuota
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORTACIÓN PARA EL CONTADOR
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type GastoContador = {
+  fecha: string
+  tipo: string
+  descripcion: string
+  proyecto?: string
+  tipo_documento: string | null
+  rut_emisor: string | null
+  razon_social_emisor: string | null
+  factura_casa_hiedra: boolean
+  monto: number
+  monto_neto: number
+  iva: number
+  credito_fiscal: number
+  retencion: number
+  comprobante_url: string | null
+}
+
+export type InversionContador = {
+  fecha: string
+  categoria: string
+  descripcion: string
+  tipo_documento: string | null
+  rut_emisor: string | null
+  razon_social_emisor: string | null
+  factura_casa_hiedra: boolean
+  monto: number
+  monto_neto: number
+  iva: number
+  credito_fiscal: number
+  tratamiento_contable: string
+  comprobante_url: string | null
+}
+
+export type ResumenContador = {
+  gastosProyectos: GastoContador[]
+  gastosOperacionales: GastoContador[]
+  inversiones: InversionContador[]
+}
+
+function calcularCamposContador(monto: number, tipo_documento: string | null, factura_casa_hiedra: boolean) {
+  const credito_fiscal = factura_casa_hiedra ? Math.round(monto / 1.19 * 0.19) : 0
+  const monto_neto = factura_casa_hiedra ? Math.round(monto / 1.19) : monto
+  const iva = factura_casa_hiedra ? monto - monto_neto : 0
+  const { retencion } = calcularRetencion({ monto, tipo_documento })
+  return { credito_fiscal, monto_neto, iva, retencion }
+}
+
+export async function getResumenContador(mes: number, año: number): Promise<ResumenContador> {
+  const supabase = await createClient()
+
+  const mesStr = String(mes).padStart(2, '0')
+  const inicio = `${año}-${mesStr}-01`
+  // Último día del mes
+  const lastDay = new Date(año, mes, 0).getDate()
+  const fin = `${año}-${mesStr}-${String(lastDay).padStart(2, '0')}`
+  const finTs = `${fin}T23:59:59`
+
+  const [
+    { data: gastosProyRaw },
+    { data: gastosOpRaw },
+    { data: inversionesRaw },
+  ] = await Promise.all([
+    // Gastos de proyectos aprobados con updated_at en el período
+    supabase
+      .from('rendicion_gastos')
+      .select(`
+        id, descripcion, monto, tipo_documento, factura_casa_hiedra,
+        foto_url, rut_emisor, razon_social_emisor, updated_at,
+        rendicion:rendiciones(cotizacion:cotizaciones(nombre))
+      `)
+      .in('estado', ['aprobada', 'pago_aprobado'])
+      .gte('updated_at', inicio)
+      .lte('updated_at', finTs)
+      .order('updated_at'),
+
+    // Gastos operacionales del período
+    supabase
+      .from('rendicion_mensual_gastos')
+      .select(`
+        id, descripcion, monto, tipo_documento, factura_casa_hiedra,
+        archivo_url, rut_emisor, razon_social_emisor, created_at,
+        rendicion_mensual:rendiciones_mensuales!inner(periodo)
+      `)
+      .eq('rendicion_mensual.periodo', inicio)
+      .order('created_at'),
+
+    // Inversiones del período
+    supabase
+      .from('inversiones')
+      .select('*')
+      .gte('fecha_compra', inicio)
+      .lte('fecha_compra', fin)
+      .order('fecha_compra'),
+  ])
+
+  const gastosProyectos: GastoContador[] = (gastosProyRaw ?? []).map((g: any) => {
+    const calc = calcularCamposContador(g.monto, g.tipo_documento, g.factura_casa_hiedra ?? false)
+    return {
+      fecha: g.updated_at?.slice(0, 10) ?? inicio,
+      tipo: 'Gasto proyecto',
+      descripcion: g.descripcion,
+      proyecto: (g.rendicion as any)?.cotizacion?.nombre ?? undefined,
+      tipo_documento: g.tipo_documento ?? null,
+      rut_emisor: g.rut_emisor ?? null,
+      razon_social_emisor: g.razon_social_emisor ?? null,
+      factura_casa_hiedra: g.factura_casa_hiedra ?? false,
+      monto: g.monto,
+      comprobante_url: g.foto_url ?? null,
+      ...calc,
+    }
+  })
+
+  const gastosOperacionales: GastoContador[] = (gastosOpRaw ?? []).map((g: any) => {
+    const calc = calcularCamposContador(g.monto, g.tipo_documento, g.factura_casa_hiedra ?? false)
+    return {
+      fecha: g.created_at?.slice(0, 10) ?? inicio,
+      tipo: 'Gasto operacional',
+      descripcion: g.descripcion,
+      tipo_documento: g.tipo_documento ?? null,
+      rut_emisor: g.rut_emisor ?? null,
+      razon_social_emisor: g.razon_social_emisor ?? null,
+      factura_casa_hiedra: g.factura_casa_hiedra ?? false,
+      monto: g.monto,
+      comprobante_url: g.archivo_url ?? null,
+      ...calc,
+    }
+  })
+
+  const inversiones: InversionContador[] = (inversionesRaw ?? []).map((inv: any) => {
+    const calc = calcularCamposContador(inv.monto, inv.tipo_documento, inv.factura_casa_hiedra ?? false)
+    return {
+      fecha: inv.fecha_compra,
+      categoria: inv.categoria,
+      descripcion: inv.descripcion,
+      tipo_documento: inv.tipo_documento ?? null,
+      rut_emisor: inv.rut_proveedor ?? null,
+      razon_social_emisor: inv.proveedor ?? null,
+      factura_casa_hiedra: inv.factura_casa_hiedra ?? false,
+      monto: inv.monto,
+      tratamiento_contable: inv.tratamiento_contable,
+      comprobante_url: inv.comprobante_url ?? null,
+      ...calc,
+    }
+  })
+
+  return { gastosProyectos, gastosOperacionales, inversiones }
+}
+

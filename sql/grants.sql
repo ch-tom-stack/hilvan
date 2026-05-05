@@ -86,3 +86,25 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.flujo_caja_manual    TO service_r
 -- CREATE POLICY "admin full access" ON public.caja_periodos FOR ALL USING (true) WITH CHECK (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.caja_periodos TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.caja_periodos TO service_role;
+
+-- Módulo Inversiones
+-- CREATE TABLE public.inversiones (
+--   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   categoria             text NOT NULL CHECK (categoria IN ('equipo_audiovisual','vehiculo','software','consultoria','otro')),
+--   descripcion           text NOT NULL,
+--   proveedor             text,
+--   rut_proveedor         text,
+--   fecha_compra          date NOT NULL,
+--   monto                 bigint NOT NULL DEFAULT 0,
+--   tipo_documento        text CHECK (tipo_documento IN ('factura','sin_documento')),
+--   factura_casa_hiedra   boolean NOT NULL DEFAULT false,
+--   comprobante_url       text,
+--   tratamiento_contable  text NOT NULL CHECK (tratamiento_contable IN ('activo_fijo','gasto_directo')),
+--   notas                 text,
+--   created_at            timestamptz DEFAULT now(),
+--   created_by            uuid REFERENCES auth.users(id)
+-- );
+-- ALTER TABLE public.inversiones ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "admin full access" ON public.inversiones FOR ALL USING (true) WITH CHECK (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inversiones TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inversiones TO service_role;

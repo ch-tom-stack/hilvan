@@ -1,7 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import type { DatosFinancieros, ResumenPeriodo, FilaCotizacion, FilaGasto, FilaCuota } from '@/app/actions/financiero'
+import { generarZIPContador } from '@/lib/exportar-contador'
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -122,11 +124,42 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
   const totalCuotas = egresos.cuotas_creditos.reduce((s, c) => s + c.monto, 0)
   const totalEgresos = totalGastosProyectos + totalGastosOp + totalCuotas
 
+  const [exportando, setExportando] = useState(false)
+  const [errorExport, setErrorExport] = useState<string | null>(null)
+
+  const [añoNum, mesNum] = datos.periodo.split('-').map(Number)
+
+  async function handleExportar() {
+    setExportando(true)
+    setErrorExport(null)
+    try {
+      await generarZIPContador(mesNum, añoNum)
+    } catch {
+      setErrorExport('Error al generar el paquete. Intenta nuevamente.')
+    } finally {
+      setExportando(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
 
-      {/* ── Navegación período ── */}
-      <NavPeriodo mes={datos.periodo} />
+      {/* ── Navegación período + Exportar ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <NavPeriodo mes={datos.periodo} />
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={handleExportar}
+            disabled={exportando}
+            className="border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-cream/50 font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors disabled:opacity-50"
+          >
+            {exportando ? 'Generando…' : 'Exportar para contador →'}
+          </button>
+          {errorExport && (
+            <p className="text-red-400 font-body text-xs">{errorExport}</p>
+          )}
+        </div>
+      </div>
 
       {/* ── Grid principal ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
