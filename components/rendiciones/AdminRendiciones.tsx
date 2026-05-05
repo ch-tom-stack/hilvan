@@ -6,6 +6,7 @@ import {
   toggleItemCompletado, generarLinkTemporalExterno, crearRendicion, purgarYCrearRendicion, eliminarRendicion,
   eliminarLinkTemporal, reenviarEmailLink,
   toggleFacturaEmitida, agregarArchivoFactura, eliminarArchivoFactura, togglePagoRecibido,
+  eliminarGasto,
 } from '@/app/actions/rendiciones'
 import { createClient } from '@/lib/supabase/client'
 import { calcularRetencion } from '@/types'
@@ -107,6 +108,16 @@ export default function AdminRendiciones({
       ...r,
       gastos: [gasto, ...(r.gastos || [])],
     }))
+  }
+
+  const eliminarGastoLocal = (rendicionId: string, gastoId: string) => {
+    if (!confirm('¿Eliminar este gasto? Esta acción no se puede deshacer.')) return
+    startTransition(async () => {
+      setRendiciones(prev => prev.map(r => r.id !== rendicionId ? r : {
+        ...r, gastos: (r.gastos || []).filter(g => g.id !== gastoId),
+      }))
+      await eliminarGasto(gastoId)
+    })
   }
 
   const aprobarContenido = (rendicionId: string, gastoId: string) => {
@@ -412,6 +423,7 @@ export default function AdminRendiciones({
                                       onRechazar={gastoId => { setModalRechazo({ gastoId, rendicionId: rendicion.id }); setMotivo('') }}
                                       onAprobarPago={(gastoId, comp) => aprobarPago(rendicion.id, gastoId, comp)}
                                       onGenerarLink={() => { setModalLink({ rendicionId: rendicion.id, itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
+                                      onEliminarGasto={gastoId => eliminarGastoLocal(rendicion.id, gastoId)}
                                       puedeAprobarPago={puedeAprobarPago}
                                       puedeGenerarLink={puedeGenerarLink}
                                       colaboradorId={colaboradorId}
@@ -432,6 +444,7 @@ export default function AdminRendiciones({
                                 onRechazar={gastoId => { setModalRechazo({ gastoId, rendicionId: rendicion.id }); setMotivo('') }}
                                 onAprobarPago={(gastoId, comp) => aprobarPago(rendicion.id, gastoId, comp)}
                                 onGenerarLink={() => { setModalLink({ rendicionId: rendicion.id, itemId: item.id, itemNombre: item.nombre }); setLinkGenerado(null) }}
+                                onEliminarGasto={gastoId => eliminarGastoLocal(rendicion.id, gastoId)}
                                 puedeAprobarPago={puedeAprobarPago}
                                 puedeGenerarLink={puedeGenerarLink}
                                 colaboradorId={colaboradorId}
@@ -449,6 +462,7 @@ export default function AdminRendiciones({
                         onAprobarContenido={() => aprobarContenido(rendicion.id, g.id)}
                         onAprobarPago={comp => aprobarPago(rendicion.id, g.id, comp)}
                         onRechazar={() => { setModalRechazo({ gastoId: g.id, rendicionId: rendicion.id }); setMotivo('') }}
+                        onEliminar={() => eliminarGastoLocal(rendicion.id, g.id)}
                         puedeAprobarPago={puedeAprobarPago}
                         isPending={isPending}
                       />
@@ -468,6 +482,7 @@ export default function AdminRendiciones({
                           onAprobarContenido={() => aprobarContenido(rendicion.id, g.id)}
                           onAprobarPago={comp => aprobarPago(rendicion.id, g.id, comp)}
                           onRechazar={() => { setModalRechazo({ gastoId: g.id, rendicionId: rendicion.id }); setMotivo('') }}
+                          onEliminar={() => eliminarGastoLocal(rendicion.id, g.id)}
                           puedeAprobarPago={puedeAprobarPago}
                           isPending={isPending}
                         />
@@ -652,7 +667,7 @@ function DepSection({ nombre, children }: { nombre: string; children: React.Reac
 function ItemGlosaSection({
   rendicionId, item, gastos,
   onAgregarGasto,
-  onAprobarContenido, onRechazar, onAprobarPago, onGenerarLink,
+  onAprobarContenido, onRechazar, onAprobarPago, onGenerarLink, onEliminarGasto,
   puedeAprobarPago, puedeGenerarLink, colaboradorId, isPending,
 }: {
   rendicionId: string
@@ -663,6 +678,7 @@ function ItemGlosaSection({
   onRechazar: (gastoId: string) => void
   onAprobarPago: (gastoId: string, comprobante?: string) => void
   onGenerarLink: () => void
+  onEliminarGasto: (gastoId: string) => void
   puedeAprobarPago: boolean
   puedeGenerarLink: boolean
   colaboradorId?: string
@@ -748,6 +764,7 @@ function ItemGlosaSection({
               onAprobarContenido={() => onAprobarContenido(g.id)}
               onAprobarPago={comp => onAprobarPago(g.id, comp)}
               onRechazar={() => onRechazar(g.id)}
+              onEliminar={() => onEliminarGasto(g.id)}
               puedeAprobarPago={puedeAprobarPago}
               isPending={isPending}
             />
@@ -760,11 +777,12 @@ function ItemGlosaSection({
 
 // ─── GastoRow ─────────────────────────────────────────────────────────────────
 
-function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, puedeAprobarPago: puedeAprobarPagoProp, isPending }: {
+function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, onEliminar, puedeAprobarPago: puedeAprobarPagoProp, isPending }: {
   gasto: RendicionGasto
   onAprobarContenido: () => void
   onAprobarPago: (comprobante?: string) => void
   onRechazar: () => void
+  onEliminar?: () => void
   puedeAprobarPago: boolean
   isPending: boolean
 }) {
@@ -859,6 +877,13 @@ function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, pue
             </div>
           )}
 
+          {g.estado === 'aprobada' && (
+            <button onClick={onRechazar} disabled={isPending}
+              className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 border border-red-500/30 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50">
+              Rechazar
+            </button>
+          )}
+
           {puedeAprobarPago && !mostrarFormPago && (
             <button onClick={() => setMostrarFormPago(true)} disabled={isPending}
               className="font-body text-[10px] tracking-wider uppercase px-2.5 py-1 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50">
@@ -877,6 +902,14 @@ function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, pue
           )}
           {g.estado === 'aprobada' && !puedeAprobarPago && (
             <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-blue-500/30 text-blue-400">Aprobado</span>
+          )}
+
+          {onEliminar && (
+            <button onClick={onEliminar} disabled={isPending}
+              title="Eliminar gasto"
+              className="font-body text-[10px] text-ch-muted/40 hover:text-red-400 transition-colors px-1 disabled:opacity-30">
+              ✕
+            </button>
           )}
         </div>
       </div>

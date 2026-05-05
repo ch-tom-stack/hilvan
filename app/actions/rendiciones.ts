@@ -266,6 +266,24 @@ export async function aprobarPagoGasto(id: string, comprobante_pago_url?: string
   return data as RendicionGasto
 }
 
+export async function eliminarGasto(id: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('rendicion_gastos').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function revertirAprobacionGasto(id: string): Promise<RendicionGasto> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('rendicion_gastos')
+    .update({ estado: 'pendiente', updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select(GASTO_SELECT)
+    .single()
+  if (error) throw error
+  return data as RendicionGasto
+}
+
 export async function toggleItemCompletado(itemId: string, valor: boolean) {
   const supabase = await createClient()
   const { error } = await supabase
