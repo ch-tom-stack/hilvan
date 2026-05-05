@@ -9,6 +9,7 @@ import type {
   Cliente,
   Proyecto,
 } from '@/types'
+import { autoCrearProyectoDesdeAprobacion } from '@/app/actions/clientes'
 
 // ============================================================
 // HELPERS INTERNOS
@@ -537,6 +538,18 @@ export async function responderCotizacion(
 
   if (error) throw new Error(error.message)
   revalidatePath(`/cotizacion/${token}`)
+
+  // Auto-crear proyecto al aprobar
+  if (respuesta === 'aprobada') {
+    const { data: cot } = await supabase
+      .from('cotizaciones')
+      .select('id, nombre, cliente_id')
+      .eq('token', token)
+      .single()
+    if (cot) {
+      await autoCrearProyectoDesdeAprobacion(cot.id, cot.nombre ?? 'Proyecto', cot.cliente_id ?? null)
+    }
+  }
 }
 
 // ============================================================

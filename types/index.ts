@@ -88,9 +88,43 @@ export interface Cliente {
   telefono?: string
   rut?: string
   direccion?: string
-  notas?: string
+  ciudad?: string | null
+  pais?: string | null
+  parent_id?: string | null
+  parent?: Cliente | null
+  notas?: string | null
   created_at: string
+  updated_at?: string
   created_by?: string
+}
+
+export interface ClienteContacto {
+  id: string
+  cliente_id: string
+  nombre: string
+  cargo?: string | null
+  email?: string | null
+  telefono?: string | null
+  area?: string | null
+  notas?: string | null
+  created_at: string
+  updated_at?: string
+}
+
+export interface ProyectoContacto {
+  id: string
+  proyecto_id: string
+  contacto_id: string
+  contacto?: ClienteContacto
+  rol_en_proyecto?: string | null
+}
+
+export interface ProyectoTarea {
+  id: string
+  proyecto_id: string
+  texto: string
+  completada: boolean
+  created_at: string
 }
 
 // ============================================================
@@ -103,17 +137,32 @@ export type EstadoProyecto =
   | 'post'
   | 'entregado'
   | 'cerrado'
+  | 'cancelado'
+
+export const ESTADO_PROYECTO_LABELS: Record<EstadoProyecto, string> = {
+  prospecto:  'Prospecto',
+  activo:     'Activo',
+  en_rodaje:  'En rodaje',
+  post:       'Post',
+  entregado:  'Entregado',
+  cerrado:    'Cerrado',
+  cancelado:  'Cancelado',
+}
+
+export const ESTADO_PROYECTO_ACTIVOS: EstadoProyecto[] = ['prospecto', 'activo', 'en_rodaje', 'post']
 
 export interface Proyecto {
   id: string
   nombre: string
-  cliente_id?: string
+  cliente_id?: string | null
   cliente?: Cliente
   estado: EstadoProyecto
-  descripcion?: string
-  fecha_inicio?: string
-  fecha_cierre?: string
+  descripcion?: string | null
+  notas?: string | null
+  fecha_inicio?: string | null
+  fecha_cierre?: string | null
   created_at: string
+  updated_at?: string
   created_by?: string
 }
 
