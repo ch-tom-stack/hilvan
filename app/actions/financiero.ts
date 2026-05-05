@@ -26,9 +26,9 @@ const COT_FINANCIERO_SELECT = `
   cliente:clientes(nombre),
   departamentos:cotizacion_departamentos(
     subgrupos:cotizacion_subgrupos(
-      items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo)
+      items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)
     ),
-    items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo)
+    items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)
   )
 `
 
@@ -36,7 +36,8 @@ function calcularTotalCot(cot: any): number {
   const deps: any[] = cot.departamentos ?? []
   let neto = 0
   for (const dep of deps) {
-    for (const item of dep.items ?? []) {
+    // Solo items directos del departamento (los de subgrupos tienen subgrupo_id != null)
+    for (const item of (dep.items ?? []).filter((i: any) => i.subgrupo_id === null)) {
       if (!item.incluido) {
         const base = item.precio_cliente * item.cantidad * item.dias
         neto += item.descuento_item_tipo === 'porcentaje'
