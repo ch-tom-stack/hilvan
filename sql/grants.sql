@@ -69,3 +69,20 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.flujo_caja_manual    TO authentic
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.gastos_fijos         TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.gastos_fijos_cuotas  TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.flujo_caja_manual    TO service_role;
+
+-- Caja períodos (apertura / cierre)
+-- Correr una sola vez en Supabase SQL Editor:
+-- CREATE TABLE IF NOT EXISTS public.caja_periodos (
+--   id                uuid primary key default gen_random_uuid(),
+--   periodo           text not null unique,
+--   saldo_apertura    bigint not null default 0,
+--   saldo_cierre_real bigint,
+--   notas_cierre      text,
+--   cerrado           boolean not null default false,
+--   created_at        timestamptz default now(),
+--   updated_at        timestamptz default now()
+-- );
+-- ALTER TABLE public.caja_periodos ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "admin full access" ON public.caja_periodos FOR ALL USING (true) WITH CHECK (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.caja_periodos TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.caja_periodos TO service_role;
