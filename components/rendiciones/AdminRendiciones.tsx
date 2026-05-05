@@ -89,6 +89,8 @@ export default function AdminRendiciones({
   const [creandoRendicion, setCreandoRendicion] = useState(false)
   const [conflictoExistente, setConflictoExistente] = useState(false)
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
+  const [confirmarEliminarRendicion, setConfirmarEliminarRendicion] = useState<string | null>(null)
+  const [confirmarEliminarLink, setConfirmarEliminarLink] = useState<string | null>(null)
 
   const toggleExpand = (key: string) => setExpandidos(p => ({ ...p, [key]: !p[key] }))
 
@@ -111,7 +113,6 @@ export default function AdminRendiciones({
   }
 
   const eliminarGastoLocal = (rendicionId: string, gastoId: string) => {
-    if (!confirm('¿Eliminar este gasto? Esta acción no se puede deshacer.')) return
     startTransition(async () => {
       setRendiciones(prev => prev.map(r => r.id !== rendicionId ? r : {
         ...r, gastos: (r.gastos || []).filter(g => g.id !== gastoId),
@@ -160,7 +161,7 @@ export default function AdminRendiciones({
       if (e?.message?.includes('Ya existe')) {
         setConflictoExistente(true)
       } else {
-        alert(e?.message || 'Error al crear rendición')
+        console.error('Error al crear rendición:', e)
       }
     } finally {
       setCreandoRendicion(false)
@@ -180,7 +181,7 @@ export default function AdminRendiciones({
       })
       setLinkGenerado(result.url)
     } catch (e: any) {
-      alert(e?.message || 'Error generando link')
+      console.error('Error generando link:', e)
     } finally {
       setGenerandoLink(false)
     }
@@ -197,21 +198,21 @@ export default function AdminRendiciones({
   const todosGastos = rendiciones.flatMap(r => r.gastos || [])
 
   const handleEliminarLink = async (id: string) => {
-    if (!confirm('¿Eliminar este link? El externo no podrá usarlo más.')) return
+    setConfirmarEliminarLink(null)
     try {
       await eliminarLinkTemporal(id)
       setLinks(prev => prev.filter(l => l.id !== id))
     } catch (e: any) {
-      alert(e?.message || 'Error al eliminar link')
+      console.error('Error al eliminar link:', e)
     }
   }
 
   const handleReenviarLink = async (id: string) => {
     try {
       await reenviarEmailLink(id)
-      alert('Email reenviado correctamente.')
+      // success — el link sigue vigente, sin modal necesario
     } catch (e: any) {
-      alert(e?.message || 'Error al reenviar email')
+      console.error('Error al reenviar email:', e)
     }
   }
 
@@ -310,10 +311,24 @@ export default function AdminRendiciones({
                         Reenviar email
                       </button>
                     )}
-                    <button onClick={() => handleEliminarLink(link.id)}
-                      className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
-                      Eliminar
-                    </button>
+                    {confirmarEliminarLink === link.id ? (
+                      <span className="flex items-center gap-1">
+                        <span className="font-body text-[10px] text-ch-muted">¿Eliminar?</span>
+                        <button onClick={() => handleEliminarLink(link.id)}
+                          className="font-body text-[10px] text-red-400 hover:text-red-300 px-1 transition-colors">
+                          Sí
+                        </button>
+                        <button onClick={() => setConfirmarEliminarLink(null)}
+                          className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 transition-colors">
+                          No
+                        </button>
+                      </span>
+                    ) : (
+                      <button onClick={() => setConfirmarEliminarLink(link.id)}
+                        className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
+                        Eliminar
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -370,19 +385,32 @@ export default function AdminRendiciones({
                 {pendientes > 0 && <span className="text-amber-400">{pendientes} pendiente{pendientes > 1 ? 's' : ''}</span>}
                 {porPagar > 0 && <span className="text-blue-400">{porPagar} por pagar</span>}
                 <span className="text-ch-muted">{gastos.length} gasto{gastos.length !== 1 ? 's' : ''}</span>
-                <button
-                  onClick={e => {
-                    e.stopPropagation()
-                    if (confirm(`¿Eliminar rendición de "${nombreCot}" y todos sus gastos? Esta acción no se puede deshacer.`)) {
-                      eliminarRendicion(rendicion.id).then(() =>
-                        setRendiciones(prev => prev.filter(r => r.id !== rendicion.id))
-                      )
-                    }
-                  }}
-                  className="text-ch-muted hover:text-red-400 transition-colors px-1"
-                  title="Eliminar rendición">
-                  ✕
-                </button>
+                {confirmarEliminarRendicion === rendicion.id ? (
+                  <span className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <span className="font-body text-[10px] text-ch-muted">¿Eliminar?</span>
+                    <button
+                      onClick={() => {
+                        setConfirmarEliminarRendicion(null)
+                        eliminarRendicion(rendicion.id).then(() =>
+                          setRendiciones(prev => prev.filter(r => r.id !== rendicion.id))
+                        )
+                      }}
+                      className="font-body text-[10px] text-red-400 hover:text-red-300 px-1 transition-colors">
+                      Sí
+                    </button>
+                    <button onClick={() => setConfirmarEliminarRendicion(null)}
+                      className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 transition-colors">
+                      No
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={e => { e.stopPropagation(); setConfirmarEliminarRendicion(rendicion.id) }}
+                    className="text-ch-muted hover:text-red-400 transition-colors px-1"
+                    title="Eliminar rendición">
+                    ✕
+                  </button>
+                )}
               </div>
             </div>
 
@@ -789,6 +817,7 @@ function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, onE
   const [mostrarFormPago, setMostrarFormPago] = useState(false)
   const [subiendoPago, setSubiendoPago] = useState(false)
   const [comprobantePago, setComprobantePago] = useState<{ url: string; nombre: string } | null>(null)
+  const [confirmEliminar, setConfirmEliminar] = useState(false)
   const fileRefPago = useRef<HTMLInputElement>(null)
 
   const retencion = g.tipo_documento ? calcularRetencion(g) : null
@@ -904,12 +933,25 @@ function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, onE
             <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-blue-500/30 text-blue-400">Aprobado</span>
           )}
 
-          {onEliminar && (
-            <button onClick={onEliminar} disabled={isPending}
+          {onEliminar && !confirmEliminar && (
+            <button onClick={() => setConfirmEliminar(true)} disabled={isPending}
               title="Eliminar gasto"
               className="font-body text-[10px] text-ch-muted/40 hover:text-red-400 transition-colors px-1 disabled:opacity-30">
               ✕
             </button>
+          )}
+          {onEliminar && confirmEliminar && (
+            <span className="flex items-center gap-1">
+              <span className="font-body text-[10px] text-ch-muted">¿Eliminar?</span>
+              <button onClick={() => { setConfirmEliminar(false); onEliminar() }}
+                className="font-body text-[10px] text-red-400 hover:text-red-300 px-1 transition-colors">
+                Sí
+              </button>
+              <button onClick={() => setConfirmEliminar(false)}
+                className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 transition-colors">
+                No
+              </button>
+            </span>
           )}
         </div>
       </div>
