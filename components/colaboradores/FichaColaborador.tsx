@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
 import {
   actualizarColaborador, eliminarColaborador, crearTarifa, eliminarTarifa,
@@ -36,6 +37,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
   const [guardado, setGuardado] = useState(false)
   const [seccion, setSeccion] = useState<string>('identidad')
   const [gastos] = useState<RendicionGasto[]>(rendicionGastos)
+  const { confirm, ConfirmDialog } = useConfirm()
 
   // Tarifa nueva
   const [nuevaTarifa, setNuevaTarifa] = useState({ rodaje_id: '', rol: '', monto_dia: '' })
@@ -125,6 +127,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
 
   return (
     <div className="max-w-3xl">
+      {ConfirmDialog}
 
       {/* Enviar ficha de onboarding */}
       <div className="mb-6">
@@ -464,7 +467,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
             {isPending ? 'Guardando...' : guardado ? 'Guardado ✓' : 'Guardar cambios'}
           </button>
           <button onClick={() => startTransition(async () => {
-            if (!confirm('¿Eliminar este colaborador?')) return
+            if (!await confirm('¿Eliminar este colaborador?')) return
             await eliminarColaborador(colaborador.id)
             router.push('/colaboradores')
           })} className="text-ch-muted hover:text-red-400 font-body text-xs transition-colors">

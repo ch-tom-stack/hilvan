@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useCallback } from 'react'
+import { useConfirm, usePrompt } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
 import {
   actualizarCotizacion,
@@ -86,6 +87,8 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   const [showInterno, setShowInterno] = useState(false)
   const [editandoNombre, setEditandoNombre] = useState(false)
   const router = useRouter()
+  const { confirm, ConfirmDialog } = useConfirm()
+  const { prompt, PromptDialog } = usePrompt()
 
   const numVisible = numeroCotizacion({ grupo: cot.grupo, version: cot.version, variante: cot.variante })
   const totales = calcularTotales(cot)
@@ -167,7 +170,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   // ── DEPARTAMENTOS ───────────────────────────────────────────────────────────
 
   async function handleAgregarDep() {
-    const nombre = prompt('Nombre del departamento:')
+    const nombre = await prompt('Nombre del departamento:')
     if (!nombre?.trim()) return
     const orden = (cot.departamentos?.length ?? 0)
     const data = await agregarDepartamento(cot.id, nombre.trim(), orden)
@@ -178,14 +181,14 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   }
 
   async function handleRenombrarDep(dep: CotizacionDepartamento) {
-    const nombre = prompt('Nuevo nombre:', dep.nombre)
+    const nombre = await prompt('Nuevo nombre:', dep.nombre)
     if (!nombre?.trim() || nombre === dep.nombre) return
     await actualizarDepartamento(dep.id, cot.id, { nombre: nombre.trim() })
     actualizarDepLocal(dep.id, d => ({ ...d, nombre: nombre.trim() }))
   }
 
   async function handleEliminarDep(dep: CotizacionDepartamento) {
-    if (!confirm(`¿Eliminar "${dep.nombre}" y todos sus ítems?`)) return
+    if (!await confirm(`¿Eliminar "${dep.nombre}" y todos sus ítems?`)) return
     await eliminarDepartamento(dep.id, cot.id)
     setCot(c => ({
       ...c,
@@ -196,7 +199,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   // ── SUB-GRUPOS ──────────────────────────────────────────────────────────────
 
   async function handleAgregarSg(dep: CotizacionDepartamento) {
-    const nombre = prompt('Nombre del sub-grupo:')
+    const nombre = await prompt('Nombre del sub-grupo:')
     if (!nombre?.trim()) return
     const orden = (dep.subgrupos?.length ?? 0)
     const data = await agregarSubgrupo(cot.id, dep.id, nombre.trim(), orden)
@@ -207,14 +210,14 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   }
 
   async function handleRenombrarSg(dep: CotizacionDepartamento, sg: CotizacionSubgrupo) {
-    const nombre = prompt('Nuevo nombre:', sg.nombre)
+    const nombre = await prompt('Nuevo nombre:', sg.nombre)
     if (!nombre?.trim() || nombre === sg.nombre) return
     await actualizarSubgrupo(sg.id, cot.id, { nombre: nombre.trim() })
     actualizarSgLocal(dep.id, sg.id, s => ({ ...s, nombre: nombre.trim() }))
   }
 
   async function handleEliminarSg(dep: CotizacionDepartamento, sg: CotizacionSubgrupo) {
-    if (!confirm(`¿Eliminar "${sg.nombre}" y todos sus ítems?`)) return
+    if (!await confirm(`¿Eliminar "${sg.nombre}" y todos sus ítems?`)) return
     await eliminarSubgrupo(sg.id, cot.id)
     actualizarDepLocal(dep.id, d => ({
       ...d,
@@ -257,7 +260,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   }
 
   async function handleEliminarItem(item: CotizacionItem, depId: string, sgId?: string) {
-    if (!confirm(`¿Eliminar "${item.nombre}"?`)) return
+    if (!await confirm(`¿Eliminar "${item.nombre}"?`)) return
     await eliminarItem(item.id, cot.id)
     if (sgId) {
       actualizarSgLocal(depId, sgId, sg => ({
@@ -276,6 +279,8 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
 
   return (
     <div className="min-h-screen flex flex-col">
+      {ConfirmDialog}
+      {PromptDialog}
 
       {/* ── HEADER ── */}
       <div className="border-b border-ch-border px-6 py-4 flex items-center justify-between gap-4 bg-ch-dark sticky top-0 z-20">

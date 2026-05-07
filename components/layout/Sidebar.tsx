@@ -13,7 +13,6 @@ const BASE_NAV_ITEMS = [
   { label: 'Rendiciones',    href: '/rendiciones',    disponible: true  },
   { label: 'Clientes',       href: '/clientes',       disponible: true  },
   { label: 'Financiero',     href: '/financiero',     disponible: false, soloAdmin: true },
-  { label: 'CRM',            href: '/crm',            disponible: false },
 ]
 
 interface SidebarProps {

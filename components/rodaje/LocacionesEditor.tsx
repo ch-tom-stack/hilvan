@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useConfirm } from '@/components/ui/useConfirm'
 import {
   crearLocacion,
   actualizarLocacion,
@@ -20,6 +21,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
   const [editando, setEditando] = useState<string | null>(null)
   const [agregando, setAgregando] = useState(false)
   const [geocodificando, setGeocodificando] = useState<string | null>(null)
+  const { confirm, ConfirmDialog } = useConfirm()
 
   const FormLocacion = ({
     inicial,
@@ -175,6 +177,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
 
   return (
     <div>
+      {ConfirmDialog}
       <div className="flex items-center justify-between mb-3">
         <label className="block text-xs text-zinc-400">Locaciones</label>
         {!agregando && (
@@ -237,8 +240,8 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!confirm(`¿Eliminar "${loc.nombre}"?`)) return
+                    onClick={async () => {
+                      if (!await confirm(`¿Eliminar "${loc.nombre}"?`)) return
                       startTransition(async () => {
                         await eliminarLocacion(loc.id, rodajeId)
                         onActualizar()
