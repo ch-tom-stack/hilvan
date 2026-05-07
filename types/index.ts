@@ -255,6 +255,12 @@ export interface Cotizacion {
   notas_internas?: string
   notas_cliente?: string
 
+  // Header del documento
+  cliente_final?: string | null
+  medios?: string | null
+  referencia?: string | null
+  solicita?: string | null
+
   created_at: string
   updated_at: string
   created_by?: string

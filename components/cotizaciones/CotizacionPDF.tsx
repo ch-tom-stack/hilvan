@@ -267,20 +267,42 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
             <Text style={[S.metaLabel, { width: 20 }]}>N°:</Text>
             <Text style={S.metaValue}>{numVisible}</Text>
           </View>
-          <View style={S.metaRow}>
-            <Text style={S.metaLabel}>Cliente:</Text>
-            <Text style={S.metaValue}>{nombreCliente}</Text>
-          </View>
-          {cotizacion.proyecto && (
+          {cotizacion.solicita && (
             <View style={S.metaRow}>
-              <Text style={S.metaLabel}>Proyecto:</Text>
-              <Text style={S.metaValue}>{cotizacion.proyecto.nombre}</Text>
+              <Text style={S.metaLabel}>Solicita:</Text>
+              <Text style={S.metaValue}>{cotizacion.solicita}</Text>
             </View>
           )}
-          {cotizacion.descripcion && (
-            <Text style={{ fontSize: 8, color: '#333', marginTop: 6, lineHeight: 1.5 }}>
-              {cotizacion.descripcion}
-            </Text>
+          <View style={S.metaRow}>
+            <Text style={S.metaLabel}>Agencia:</Text>
+            <Text style={S.metaValue}>{nombreCliente}</Text>
+          </View>
+          {cotizacion.cliente_final && (
+            <View style={S.metaRow}>
+              <Text style={S.metaLabel}>Cliente:</Text>
+              <Text style={S.metaValue}>{cotizacion.cliente_final}</Text>
+            </View>
+          )}
+          {cotizacion.referencia && (
+            <View style={S.metaRow}>
+              <Text style={S.metaLabel}>Referencia:</Text>
+              <Text style={S.metaValue}>{cotizacion.referencia}</Text>
+            </View>
+          )}
+          {(cotizacion.descripcion || cotizacion.medios) && (
+            <View style={{ marginTop: 6 }}>
+              {cotizacion.medios && (
+                <View style={S.metaRow}>
+                  <Text style={S.metaLabel}>Medios:</Text>
+                  <Text style={S.metaValue}>{cotizacion.medios}</Text>
+                </View>
+              )}
+              {cotizacion.descripcion && (
+                <Text style={{ fontSize: 8, color: '#333', marginTop: 4, lineHeight: 1.5 }}>
+                  {cotizacion.descripcion}
+                </Text>
+              )}
+            </View>
           )}
         </View>
 
