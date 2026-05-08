@@ -10,6 +10,10 @@ ALTER TABLE public.colaboradores
 -- El service_role bypasses RLS pero igual necesita GRANT explícito.
 -- =============================================================================
 
+-- ─── PROFILES (gestión de usuarios y roles) ──────────────────────────────────
+-- service_role necesita UPDATE para que actualizarRol() funcione con admin client
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO service_role;
+
 -- ─── RUTAS PÚBLICAS (service_role) ───────────────────────────────────────────
 -- /citacion/[token]
 GRANT SELECT, UPDATE ON public.rodaje_citaciones       TO service_role;

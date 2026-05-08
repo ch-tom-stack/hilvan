@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { listarUsuarios } from '@/app/actions/usuarios'
 import GestorUsuarios from '@/components/usuarios/GestorUsuarios'
+import InvitarUsuario from '@/components/usuarios/InvitarUsuario'
 import type { Profile } from '@/types'
 
 export const metadata = { title: 'Usuarios — Hilván' }
@@ -29,6 +30,10 @@ export default async function UsuariosPage() {
         <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">
           Usuarios
         </h1>
+      </div>
+
+      <div className="mb-8">
+        <InvitarUsuario />
       </div>
 
       <GestorUsuarios usuarios={usuarios} selfId={self!.id} />

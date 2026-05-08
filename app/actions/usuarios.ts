@@ -46,3 +46,51 @@ export async function actualizarRol(
   revalidatePath('/usuarios')
   return { ok: true }
 }
+
+export async function invitarUsuario(
+  email: string,
+  nombre: string,
+  rol: Rol,
+): Promise<{ ok?: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  // Solo admins pueden invitar
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: self } = await supabase
+    .from('profiles')
+    .select('rol')
+    .eq('id', user.id)
+    .single<Pick<Profile, 'rol'>>()
+
+  if (self?.rol !== 'admin') return { error: 'Sin permisos' }
+
+  const admin = createAdminClient()
+
+  // Enviar invitación por email (Supabase Auth)
+  const { data, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { nombre, rol },
+  })
+
+  if (inviteError) {
+    // Supabase devuelve error genérico si el email ya existe
+    if (inviteError.message.toLowerCase().includes('already')) {
+      return { error: 'Ya existe una cuenta con ese email' }
+    }
+    return { error: inviteError.message }
+  }
+
+  // Crear el profile de inmediato con nombre y rol definidos
+  const { error: profileError } = await admin
+    .from('profiles')
+    .upsert(
+      { id: data.user.id, email: data.user.email!, nombre, rol },
+      { onConflict: 'id' },
+    )
+
+  if (profileError) return { error: profileError.message }
+
+  revalidatePath('/usuarios')
+  return { ok: true }
+}
