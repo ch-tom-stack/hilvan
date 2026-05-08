@@ -72,12 +72,17 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
           })}
         </nav>
 
-        {/* Usuario */}
+        {/* Usuario → link a perfil */}
         {(nombre || email) && (
-          <div className="px-2 mt-4 pt-4 border-t border-ch-border">
-            <p className="text-xs text-ch-muted truncate">{nombre || email}</p>
+          <Link
+            href="/perfil"
+            className={`px-2 mt-4 pt-4 border-t border-ch-border block group transition-opacity ${
+              pathname.startsWith('/perfil') ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+            }`}
+          >
+            <p className="text-xs text-ch-muted truncate group-hover:text-ch-cream transition-colors">{nombre || email}</p>
             {rol && <p className="text-xs text-ch-border capitalize mt-0.5">{rol}</p>}
-          </div>
+          </Link>
         )}
 
         {/* Footer logo */}
