@@ -14,6 +14,7 @@ const BASE_NAV_ITEMS = [
   { label: 'Colaboradores',  href: '/colaboradores',  disponible: true  },
   { label: 'Clientes',       href: '/clientes',       disponible: true  },
   { label: 'Usuarios',       href: '/usuarios',       disponible: false, soloAdmin: true },
+  { label: 'Calendario',    href: '/calendario',     disponible: true  },
 ]
 
 interface SidebarProps {

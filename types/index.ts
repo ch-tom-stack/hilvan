@@ -924,6 +924,57 @@ export const CATEGORIAS_INVERSION: Record<CategoriaInversion, string> = {
   otro: 'Otro',
 }
 
+// ============================================================
+// CH-8 CALENDARIO
+// ============================================================
+
+export type ClasificacionEvento = 'sin_clasificar' | 'rodaje' | 'reunion' | 'ignorar'
+export type EstadoRental = 'pendiente' | 'aprobada' | 'denegada' | 'entregada' | 'devuelta'
+
+export interface EventoCalendario {
+  id: string
+  google_event_id: string
+  titulo: string
+  descripcion: string | null
+  fecha_inicio: string
+  fecha_fin: string
+  todo_el_dia: boolean
+  clasificacion: ClasificacionEvento
+  rodaje_id: string | null
+  clasificado_por: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RentalReserva {
+  id: string
+  equipo_id: string | null
+  maleta_id: string | null
+  cliente_id: string | null
+  fecha_inicio: string
+  fecha_fin: string
+  estado: EstadoRental
+  aprobada_por: string | null
+  cotizacion_id: string | null
+  notas: string | null
+  created_at: string
+  updated_at: string
+}
+
+export const CLASIFICACION_LABELS: Record<ClasificacionEvento, string> = {
+  sin_clasificar: 'Sin clasificar',
+  rodaje:         'Rodaje',
+  reunion:        'Reunión',
+  ignorar:        'Ignorar',
+}
+
+export const CLASIFICACION_COLORES: Record<ClasificacionEvento, string> = {
+  sin_clasificar: '#c9a84c',
+  rodaje:         '#7a9e7e',
+  reunion:        '#6b8cba',
+  ignorar:        '#3a3a38',
+}
+
 export const PLANTILLAS_BLOQUES: Array<{ label: string; titulo: string; tipo: TipoBloque; duracion_min: number; scenes_color: string; dia_noche: 'D' | 'N'; interior_exterior: 'I' | 'E' | '-' }> = [
   { label: 'CALL',       titulo: 'Call equipo completo',  tipo: 'otro',     duracion_min: 0,  scenes_color: '#353135', dia_noche: 'D', interior_exterior: '-' },
   { label: 'PRE SET',    titulo: 'Preparación de set',    tipo: 'montaje',  duracion_min: 40, scenes_color: '#353135', dia_noche: 'D', interior_exterior: 'I' },

@@ -64,3 +64,92 @@ input:-webkit-autofill:focus {
 .input-ch::placeholder {
   color: #6b6b65;
 }
+
+/* ─── FullCalendar — Hilván theme ───────────────────────────────────────────── */
+.fc-hilvan .fc {
+  --fc-border-color:               #2e2e2b;
+  --fc-button-bg-color:            #242422;
+  --fc-button-border-color:        #2e2e2b;
+  --fc-button-text-color:          #6b6b65;
+  --fc-button-hover-bg-color:      #1c1c1a;
+  --fc-button-hover-border-color:  #3a3a38;
+  --fc-button-active-bg-color:     #242422;
+  --fc-button-active-border-color: #7a9e7e;
+  --fc-today-bg-color:             rgba(122,158,126,0.08);
+  --fc-page-bg-color:              transparent;
+  --fc-neutral-bg-color:           #242422;
+  --fc-list-event-hover-bg-color:  #242422;
+  --fc-event-text-color:           #f5f0e8;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #6b6b65;
+}
+.fc-hilvan .fc-button {
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  border-radius: 2px !important;
+  padding: 0.35rem 0.85rem;
+  font-weight: 400;
+}
+.fc-hilvan .fc-button-active,
+.fc-hilvan .fc-button:focus {
+  color: #f5f0e8 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.fc-hilvan .fc-toolbar-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 1.5rem;
+  color: #f5f0e8;
+  font-weight: 400;
+}
+.fc-hilvan .fc-col-header-cell-cushion,
+.fc-hilvan .fc-daygrid-day-number {
+  color: #6b6b65;
+  font-size: 0.7rem;
+  text-decoration: none;
+}
+.fc-hilvan .fc-day-today .fc-daygrid-day-number {
+  color: #7a9e7e;
+}
+.fc-hilvan .fc-event {
+  border-radius: 1px;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  cursor: pointer;
+}
+.fc-hilvan .fc-event:hover {
+  filter: brightness(1.15);
+}
+.fc-hilvan .fc-daygrid-more-link {
+  color: #6b6b65;
+  font-size: 0.65rem;
+}
+.fc-hilvan .fc-list-day-cushion {
+  background: #242422;
+  color: #6b6b65;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+.fc-hilvan .fc-list-event-title a {
+  color: #f5f0e8;
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+.fc-hilvan .fc-list-event-dot {
+  border-radius: 1px;
+}
+.fc-hilvan .fc-scrollgrid,
+.fc-hilvan td,
+.fc-hilvan th {
+  border-color: #2e2e2b;
+}
+.fc-hilvan .fc-timegrid-slot {
+  height: 2rem;
+}
+.fc-hilvan .fc-timegrid-slot-label {
+  font-size: 0.65rem;
+  color: #6b6b65;
+}
