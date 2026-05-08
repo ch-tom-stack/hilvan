@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { Profile, Rol } from '@/types'
 
@@ -33,7 +34,9 @@ export async function actualizarRol(
 
   if (self?.rol !== 'admin') return { error: 'Sin permisos' }
 
-  const { error } = await supabase
+  // Usar admin client para bypassear RLS en el update
+  const admin = createAdminClient()
+  const { error } = await admin
     .from('profiles')
     .update({ rol: nuevoRol })
     .eq('id', userId)
