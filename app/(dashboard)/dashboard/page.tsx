@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 import type { Profile } from '@/types'
 
-const modulos = [
-  { codigo: 'CH-1', nombre: 'Equipos',      desc: 'Inventario, QR y disponibilidad',  href: '/equipos',      activo: true  },
-  { codigo: 'CH-2', nombre: 'Cotizaciones', desc: 'Presupuestos y aprobaciones',       href: '/cotizaciones', activo: true  },
-  { codigo: 'CH-3', nombre: 'Rodaje',       desc: 'Hojas de llamado y citaciones',     href: '/rodaje',       activo: true  },
-  { codigo: 'CH-4', nombre: 'Rendiciones',  desc: 'Gastos de colaboradores',           href: '/rendiciones/admin',  activo: true  },
-  { codigo: 'CH-5', nombre: 'Financiero',   desc: 'Estado de resultados',              href: '/financiero',   activo: false },
-  { codigo: 'CH-6', nombre: 'CRM',          desc: 'Clientes y proyectos',              href: '/crm',          activo: false },
+const MODULOS = [
+  { nombre: 'Cotizaciones', desc: 'Presupuestos y aprobaciones',      href: '/cotizaciones' },
+  { nombre: 'Rodajes',      desc: 'Hojas de llamado y citaciones',    href: '/rodaje'       },
+  { nombre: 'Rendiciones',  desc: 'Gastos de colaboradores',          href: '/rendiciones/admin' },
+  { nombre: 'Equipos',      desc: 'Inventario, QR y disponibilidad',  href: '/equipos'      },
+  { nombre: 'Colaboradores',desc: 'Equipo técnico y contratos',       href: '/colaboradores' },
+  { nombre: 'Clientes',     desc: 'Cartera y proyectos',              href: '/clientes'     },
 ]
 
 function getSaludo() {
@@ -15,6 +16,36 @@ function getSaludo() {
   if (h < 12) return 'Buenos días'
   if (h < 20) return 'Buenas tardes'
   return 'Buenas noches'
+}
+
+function getFecha() {
+  const now = new Date()
+  const dia = now.toLocaleDateString('es-CL', { weekday: 'long' })
+  const fecha = now.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
+  return { dia: dia.charAt(0).toUpperCase() + dia.slice(1), fecha }
+}
+
+function getMiniCalendario() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const today = now.getDate()
+
+  const firstDay = new Date(year, month, 1).getDay() // 0=Dom
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  // Ajustar para semana lunes-domingo
+  const startOffset = (firstDay + 6) % 7
+
+  const cells: (number | null)[] = []
+  for (let i = 0; i < startOffset; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  // Completar última fila
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const mesLabel = now.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+
+  return { cells, today, mesLabel }
 }
 
 export default async function DashboardPage() {
@@ -28,41 +59,108 @@ export default async function DashboardPage() {
     .single<Profile>()
 
   const nombre = profile?.nombre || user?.email?.split('@')[0] || 'admin'
+  const { dia, fecha } = getFecha()
+  const { cells, today, mesLabel } = getMiniCalendario()
 
   return (
-    <div className="p-10 max-w-5xl">
-      <div className="mb-14">
-        <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-2">{getSaludo()}</p>
-        <h1 className="font-display italic text-6xl text-ch-cream leading-none capitalize">{nombre}</h1>
-      </div>
-      <div className="mb-5">
-        <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase">Módulos de Hilván</p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {modulos.map((mod) => (
-          mod.activo ? (
-            <a key={mod.codigo} href={mod.href} className="border border-ch-border bg-ch-surface/50 p-6 hover:bg-ch-surface transition-colors duration-150 block">
-              <p className="text-ch-muted font-body text-[9px] tracking-[0.4em] uppercase mb-4">{mod.codigo}</p>
-              <h3 className="font-display text-2xl text-ch-cream italic mb-1">{mod.nombre}</h3>
-              <p className="text-ch-muted font-body text-xs leading-relaxed">{mod.desc}</p>
-              <div className="mt-5">
-                <span className="text-[8px] font-body tracking-[0.4em] text-ch-green uppercase">Activo →</span>
-              </div>
-            </a>
-          ) : (
-            <div key={mod.codigo} className="border border-ch-border bg-ch-surface/50 p-6 opacity-40 select-none">
-              <p className="text-ch-muted font-body text-[9px] tracking-[0.4em] uppercase mb-4">{mod.codigo}</p>
-              <h3 className="font-display text-2xl text-ch-cream italic mb-1">{mod.nombre}</h3>
-              <p className="text-ch-muted font-body text-xs leading-relaxed">{mod.desc}</p>
-              <div className="mt-5">
-                <span className="text-[8px] font-body tracking-[0.4em] text-ch-border uppercase">Próximamente</span>
-              </div>
-            </div>
-          )
-        ))}
+    <div className="p-6 lg:p-10 max-w-6xl">
+
+      {/* Header */}
+      <div className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-2">
+            {getSaludo()}
+          </p>
+          <h1 className="font-display italic text-5xl lg:text-6xl text-ch-cream leading-none capitalize">
+            {nombre}
+          </h1>
+        </div>
+        <div className="text-right">
+          <p className="text-ch-muted font-body text-[10px] tracking-[0.3em] uppercase">{dia}</p>
+          <p className="text-ch-cream text-sm font-body mt-0.5">{fecha}</p>
+        </div>
       </div>
 
-      <div className="pt-12 pb-4 flex justify-center">
+      {/* Cuerpo: módulos + calendario */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8 items-start">
+
+        {/* Módulos */}
+        <div>
+          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-4">
+            Módulos
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {MODULOS.map((mod) => (
+              <Link
+                key={mod.href}
+                href={mod.href}
+                className="border border-ch-border bg-ch-surface/30 p-5 hover:bg-ch-surface/60 hover:border-ch-border/80 transition-colors duration-150 block group"
+              >
+                <h3 className="font-display text-xl text-ch-cream italic mb-1 group-hover:text-ch-cream">
+                  {mod.nombre}
+                </h3>
+                <p className="text-ch-muted font-body text-xs leading-relaxed">{mod.desc}</p>
+                <div className="mt-4">
+                  <span className="text-[8px] font-body tracking-[0.4em] text-ch-green uppercase group-hover:text-ch-green-light transition-colors">
+                    Abrir →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Mini calendario */}
+        <div>
+          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-4">
+            Calendario
+          </p>
+          <div className="border border-ch-border border-dashed bg-ch-surface/10 p-5 select-none">
+
+            {/* Mes y año */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-ch-cream font-body capitalize">{mesLabel}</p>
+              <span className="text-[8px] font-body tracking-[0.3em] uppercase text-ch-border">
+                Próximamente
+              </span>
+            </div>
+
+            {/* Días de semana */}
+            <div className="grid grid-cols-7 mb-2">
+              {['L','M','X','J','V','S','D'].map(d => (
+                <div key={d} className="text-center text-[9px] font-body text-ch-border pb-1">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Celdas del mes */}
+            <div className="grid grid-cols-7 gap-y-1">
+              {cells.map((day, i) => (
+                <div
+                  key={i}
+                  className={`text-center text-[11px] font-body py-1 rounded-[2px] ${
+                    day === null
+                      ? ''
+                      : day === today
+                      ? 'bg-ch-green/20 text-ch-green font-medium'
+                      : 'text-ch-muted'
+                  }`}
+                >
+                  {day ?? ''}
+                </div>
+              ))}
+            </div>
+
+            <p className="text-[10px] text-ch-border mt-4 leading-relaxed">
+              El módulo de calendario completo estará disponible próximamente.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <div className="pt-14 pb-4 flex justify-center">
         <img src="/logos/logo-horizontal-negro.png" alt="Casa Hiedra" className="h-5 w-auto opacity-20" />
       </div>
     </div>
