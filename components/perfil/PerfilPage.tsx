@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { actualizarNombre, cambiarPassword } from '@/app/actions/perfil'
 import { logout } from '@/app/actions/auth'
 import type { Profile, Rol } from '@/types'
@@ -243,6 +244,20 @@ export default function PerfilPage({ profile, email }: Props) {
           </div>
           <p className="text-xs text-ch-border">Alertas de cotizaciones, cambios de estado y avisos del equipo.</p>
         </section>
+
+        {/* ── Admin: gestión de usuarios ── */}
+        {profile.rol === 'admin' && (
+          <section className="border border-ch-border bg-ch-surface/30 p-6">
+            <h2 className="text-[9px] font-body tracking-[0.4em] uppercase text-ch-muted mb-3">Administración</h2>
+            <Link
+              href="/usuarios"
+              className="inline-flex items-center gap-2 text-sm text-ch-cream hover:text-ch-green transition-colors group"
+            >
+              Gestionar usuarios y roles
+              <span className="text-ch-muted group-hover:text-ch-green transition-colors">→</span>
+            </Link>
+          </section>
+        )}
 
         {/* ── Cerrar sesión ── */}
         <div className="pt-2">
