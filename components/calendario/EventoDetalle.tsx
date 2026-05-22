@@ -10,7 +10,7 @@ import type { EventoFC } from './CalendarioCliente'
 const OPCIONES: { value: ClasificacionEvento; label: string; color: string }[] = [
   { value: 'rodaje',   label: 'Rodaje',   color: 'text-ch-green border-ch-green/40 hover:bg-ch-green/10' },
   { value: 'reunion',  label: 'Reunión',  color: 'text-blue-400 border-blue-400/40 hover:bg-blue-400/10' },
-  { value: 'ignorar',  label: 'Ignorar',  color: 'text-ch-border border-ch-border/40 hover:bg-ch-surface' },
+  { value: 'ignorar',  label: 'Ignorar',  color: 'text-ch-subtle border-ch-border/40 hover:bg-ch-surface' },
 ]
 
 interface Props {
@@ -53,7 +53,7 @@ export default function EventoDetalle({ evento, eventosGCal, onClose }: Props) {
         <h3 className="font-display italic text-lg text-ch-cream leading-tight flex-1">
           {evento.title}
         </h3>
-        <button onClick={onClose} className="text-ch-border hover:text-ch-muted transition-colors text-xs shrink-0">✕</button>
+        <button onClick={onClose} className="text-ch-subtle hover:text-ch-muted transition-colors text-xs shrink-0">✕</button>
       </div>
 
       {/* Fecha */}

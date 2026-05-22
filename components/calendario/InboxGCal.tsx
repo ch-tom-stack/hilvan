@@ -36,7 +36,7 @@ function FilaEvento({ evento }: { evento: EventoCalendario }) {
         <p className="text-[10px] text-ch-muted mt-0.5">
           {formatFechaCorta(evento.fecha_inicio)}
           {evento.descripcion && (
-            <span className="ml-2 truncate text-ch-border">{evento.descripcion.slice(0, 60)}</span>
+            <span className="ml-2 truncate text-ch-subtle">{evento.descripcion.slice(0, 60)}</span>
           )}
         </p>
         {msg && <p className="text-xs text-red-400 mt-1">{msg}</p>}
@@ -59,7 +59,7 @@ function FilaEvento({ evento }: { evento: EventoCalendario }) {
         <button
           onClick={() => handleClasificar('ignorar')}
           disabled={pending}
-          className="text-[10px] font-body px-2 py-1 border border-ch-border text-ch-border rounded-[2px] hover:bg-ch-surface transition-colors disabled:opacity-40"
+          className="text-[10px] font-body px-2 py-1 border border-ch-border text-ch-subtle rounded-[2px] hover:bg-ch-surface transition-colors disabled:opacity-40"
         >
           Ignorar
         </button>
@@ -124,7 +124,7 @@ export default function InboxGCal({ eventos, esAdmin }: Props) {
           )}
           <button
             onClick={() => setAbierto(v => !v)}
-            className="text-ch-border hover:text-ch-muted transition-colors text-xs"
+            className="text-ch-subtle hover:text-ch-muted transition-colors text-xs"
           >
             {abierto ? '▲' : '▼'}
           </button>

@@ -186,7 +186,7 @@ export default function PerfilPage({ profile, email }: Props) {
                   className={`text-xs font-body px-3 py-1 rounded-[2px] border transition-colors ${
                     tiene
                       ? 'border-ch-green/40 text-ch-green bg-ch-green/5'
-                      : 'border-ch-border text-ch-border line-through'
+                      : 'border-ch-border text-ch-subtle line-through'
                   }`}
                 >
                   {mod}
@@ -207,7 +207,7 @@ export default function PerfilPage({ profile, email }: Props) {
                 value={newPwd}
                 onChange={e => setNewPwd(e.target.value)}
                 placeholder="Mínimo 8 caracteres"
-                className="w-full bg-ch-dark border border-ch-border rounded-[2px] px-3 py-1.5 text-sm text-ch-cream placeholder:text-ch-border focus:outline-none focus:border-ch-green"
+                className="w-full bg-ch-dark border border-ch-border rounded-[2px] px-3 py-1.5 text-sm text-ch-cream placeholder:text-ch-subtle focus:outline-none focus:border-ch-green"
               />
             </div>
             <div>
@@ -218,7 +218,7 @@ export default function PerfilPage({ profile, email }: Props) {
                 onChange={e => setConfirmPwd(e.target.value)}
                 placeholder="Repite la contraseña"
                 onKeyDown={e => e.key === 'Enter' && handleCambiarPassword()}
-                className="w-full bg-ch-dark border border-ch-border rounded-[2px] px-3 py-1.5 text-sm text-ch-cream placeholder:text-ch-border focus:outline-none focus:border-ch-green"
+                className="w-full bg-ch-dark border border-ch-border rounded-[2px] px-3 py-1.5 text-sm text-ch-cream placeholder:text-ch-subtle focus:outline-none focus:border-ch-green"
               />
             </div>
             {pwdMsg && (
@@ -239,10 +239,10 @@ export default function PerfilPage({ profile, email }: Props) {
         {/* ── Notificaciones (placeholder) ── */}
         <section className="border border-ch-border border-dashed bg-ch-surface/10 p-6 select-none">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-[9px] font-body tracking-[0.4em] uppercase text-ch-border">Notificaciones</h2>
-            <span className="text-[8px] font-body tracking-[0.3em] uppercase text-ch-border">Próximamente</span>
+            <h2 className="text-[9px] font-body tracking-[0.4em] uppercase text-ch-subtle">Notificaciones</h2>
+            <span className="text-[8px] font-body tracking-[0.3em] uppercase text-ch-subtle">Próximamente</span>
           </div>
-          <p className="text-xs text-ch-border">Alertas de cotizaciones, cambios de estado y avisos del equipo.</p>
+          <p className="text-xs text-ch-subtle">Alertas de cotizaciones, cambios de estado y avisos del equipo.</p>
         </section>
 
         {/* ── Admin: gestión de usuarios ── */}

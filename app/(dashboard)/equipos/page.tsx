@@ -109,7 +109,7 @@ export default async function EquiposPage({
                   <img src={eq.fotos[0]} alt={eq.nombre} className="w-14 h-14 object-cover flex-shrink-0" />
                 ) : (
                   <div className="w-14 h-14 bg-ch-surface flex-shrink-0 flex items-center justify-center">
-                    <span className="text-ch-border font-body text-[8px] tracking-widest">SIN<br/>FOTO</span>
+                    <span className="text-ch-subtle font-body text-[8px] tracking-widest">SIN<br/>FOTO</span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">

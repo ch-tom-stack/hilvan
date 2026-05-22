@@ -288,7 +288,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           <a href="/cotizaciones" className="text-ch-muted hover:text-ch-cream transition-colors text-sm font-body shrink-0">
             ← Cotizaciones
           </a>
-          <span className="text-ch-border">|</span>
+          <span className="text-ch-subtle">|</span>
           <div className="flex items-center gap-3 min-w-0">
             <span className="font-body text-xs text-ch-muted shrink-0">{numVisible}</span>
             {editandoNombre ? (

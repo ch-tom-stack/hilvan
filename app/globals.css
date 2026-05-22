@@ -6,8 +6,9 @@
   --color-ch-black: #111110;
   --color-ch-dark: #1c1c1a;
   --color-ch-surface: #242422;
-  --color-ch-border: #2e2e2b;
-  --color-ch-muted: #6b6b65;
+  --color-ch-border: #383836;
+  --color-ch-subtle: #787872;
+  --color-ch-muted: #9a9a92;
   --color-ch-cream: #f5f0e8;
   --color-ch-white: #faf9f7;
   --color-ch-green: #7a9e7e;
@@ -21,12 +22,12 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2e2e2b #111110;
+  scrollbar-color: #383836 #111110;
 }
 
 *::-webkit-scrollbar { width: 6px; }
 *::-webkit-scrollbar-track { background: #111110; }
-*::-webkit-scrollbar-thumb { background: #2e2e2b; border-radius: 0; }
+*::-webkit-scrollbar-thumb { background: #383836; border-radius: 0; }
 
 body {
   background-color: #1c1c1a;
@@ -62,17 +63,17 @@ input:-webkit-autofill:focus {
   border-color: #4a4a46;
 }
 .input-ch::placeholder {
-  color: #6b6b65;
+  color: #787872;
 }
 
 /* ─── FullCalendar — Hilván theme ───────────────────────────────────────────── */
 .fc-hilvan .fc {
-  --fc-border-color:               #2e2e2b;
+  --fc-border-color:               #383836;
   --fc-button-bg-color:            #242422;
-  --fc-button-border-color:        #2e2e2b;
-  --fc-button-text-color:          #6b6b65;
+  --fc-button-border-color:        #383836;
+  --fc-button-text-color:          #9a9a92;
   --fc-button-hover-bg-color:      #1c1c1a;
-  --fc-button-hover-border-color:  #3a3a38;
+  --fc-button-hover-border-color:  #4a4a47;
   --fc-button-active-bg-color:     #242422;
   --fc-button-active-border-color: #7a9e7e;
   --fc-today-bg-color:             rgba(122,158,126,0.08);
@@ -81,7 +82,7 @@ input:-webkit-autofill:focus {
   --fc-list-event-hover-bg-color:  #242422;
   --fc-event-text-color:           #f5f0e8;
   font-family: 'DM Sans', system-ui, sans-serif;
-  color: #6b6b65;
+  color: #9a9a92;
 }
 .fc-hilvan .fc-button {
   font-size: 0.65rem;
@@ -106,7 +107,7 @@ input:-webkit-autofill:focus {
 }
 .fc-hilvan .fc-col-header-cell-cushion,
 .fc-hilvan .fc-daygrid-day-number {
-  color: #6b6b65;
+  color: #9a9a92;
   font-size: 0.7rem;
   text-decoration: none;
 }
@@ -123,12 +124,12 @@ input:-webkit-autofill:focus {
   filter: brightness(1.15);
 }
 .fc-hilvan .fc-daygrid-more-link {
-  color: #6b6b65;
+  color: #9a9a92;
   font-size: 0.65rem;
 }
 .fc-hilvan .fc-list-day-cushion {
   background: #242422;
-  color: #6b6b65;
+  color: #9a9a92;
   font-size: 0.65rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -151,5 +152,5 @@ input:-webkit-autofill:focus {
 }
 .fc-hilvan .fc-timegrid-slot-label {
   font-size: 0.65rem;
-  color: #6b6b65;
+  color: #9a9a92;
 }

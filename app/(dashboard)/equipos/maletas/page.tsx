@@ -47,7 +47,7 @@ export default async function MaletasPage() {
                 <img src={maleta.foto_empaque} alt="" className="w-full h-40 object-cover" />
               ) : (
                 <div className="w-full h-40 bg-ch-surface flex items-center justify-center">
-                  <span className="text-ch-border font-body text-xs tracking-widest">SIN FOTO</span>
+                  <span className="text-ch-subtle font-body text-xs tracking-widest">SIN FOTO</span>
                 </div>
               )}
               <div className="p-5">

@@ -289,7 +289,7 @@ export default function ListaInversiones({ inversiones: inicial }: Props) {
                                 📎
                               </a>
                             ) : (
-                              <span className="text-ch-border text-sm">—</span>
+                              <span className="text-ch-subtle text-sm">—</span>
                             )}
                           </div>
 

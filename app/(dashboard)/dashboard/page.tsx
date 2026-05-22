@@ -120,7 +120,7 @@ export default async function DashboardPage() {
             {/* Mes y año */}
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs text-ch-cream font-body capitalize">{mesLabel}</p>
-              <span className="text-[8px] font-body tracking-[0.3em] uppercase text-ch-border">
+              <span className="text-[8px] font-body tracking-[0.3em] uppercase text-ch-subtle">
                 Próximamente
               </span>
             </div>
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
             {/* Días de semana */}
             <div className="grid grid-cols-7 mb-2">
               {['L','M','X','J','V','S','D'].map(d => (
-                <div key={d} className="text-center text-[9px] font-body text-ch-border pb-1">
+                <div key={d} className="text-center text-[9px] font-body text-ch-subtle pb-1">
                   {d}
                 </div>
               ))}
@@ -152,7 +152,7 @@ export default async function DashboardPage() {
               ))}
             </div>
 
-            <p className="text-[10px] text-ch-border mt-4 leading-relaxed">
+            <p className="text-[10px] text-ch-subtle mt-4 leading-relaxed">
               El módulo de calendario completo estará disponible próximamente.
             </p>
           </div>

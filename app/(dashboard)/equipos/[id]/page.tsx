@@ -95,7 +95,7 @@ export default async function DetalleEquipoPage({
             </div>
           ) : (
             <div className="w-full aspect-video bg-ch-surface border border-ch-border flex items-center justify-center">
-              <span className="text-ch-border font-body text-xs tracking-widest">SIN FOTO</span>
+              <span className="text-ch-subtle font-body text-xs tracking-widest">SIN FOTO</span>
             </div>
           )}
         </div>

@@ -69,7 +69,7 @@ export default function InvitarUsuario() {
         </h2>
         <button
           onClick={cerrar}
-          className="text-xs text-ch-border hover:text-ch-muted transition-colors"
+          className="text-xs text-ch-subtle hover:text-ch-muted transition-colors"
         >
           ✕
         </button>
@@ -87,7 +87,7 @@ export default function InvitarUsuario() {
             onChange={e => setNombre(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             placeholder="Juan Pérez"
-            className="w-full bg-ch-dark border border-ch-border rounded-[2px] px-3 py-1.5 text-sm text-ch-cream placeholder:text-ch-border focus:outline-none focus:border-ch-green"
+            className="w-full bg-ch-dark border border-ch-border rounded-[2px] px-3 py-1.5 text-sm text-ch-cream placeholder:text-ch-subtle focus:outline-none focus:border-ch-green"
           />
         </div>
 
@@ -100,7 +100,7 @@ export default function InvitarUsuario() {
             onChange={e => setEmail(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             placeholder="juan@ejemplo.com"
-            className="w-full bg-ch-dark border border-ch-border rounded-[2px] px-3 py-1.5 text-sm text-ch-cream placeholder:text-ch-border focus:outline-none focus:border-ch-green"
+            className="w-full bg-ch-dark border border-ch-border rounded-[2px] px-3 py-1.5 text-sm text-ch-cream placeholder:text-ch-subtle focus:outline-none focus:border-ch-green"
           />
         </div>
 
@@ -143,7 +143,7 @@ export default function InvitarUsuario() {
       )}
 
       {msg?.tipo === 'ok' && (
-        <p className="text-[10px] text-ch-border mt-1">
+        <p className="text-[10px] text-ch-subtle mt-1">
           El usuario recibirá un email con el link de acceso. Podrá establecer su contraseña al entrar.
         </p>
       )}

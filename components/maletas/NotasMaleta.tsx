@@ -57,7 +57,7 @@ export default function NotasMaleta({ maletaId, notas, usuarioLogueado, nombreUs
             onChange={e => setTexto(e.target.value)}
             placeholder='Ej: "Batería NP-3 mala"'
             rows={3}
-            className="w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-border focus:outline-none focus:border-ch-green transition-colors resize-none mb-3"
+            className="w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-subtle focus:outline-none focus:border-ch-green transition-colors resize-none mb-3"
           />
           <button
             onClick={handleEnviar}

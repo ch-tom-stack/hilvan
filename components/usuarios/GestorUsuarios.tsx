@@ -64,7 +64,7 @@ function UsuarioRow({ usuario, isSelf }: RowProps) {
             )}
           </div>
           <p className="text-xs text-ch-muted truncate">{usuario.email}</p>
-          <p className="text-[10px] text-ch-border mt-1">
+          <p className="text-[10px] text-ch-subtle mt-1">
             Desde {new Date(usuario.created_at).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}
           </p>
         </div>
@@ -86,7 +86,7 @@ function UsuarioRow({ usuario, isSelf }: RowProps) {
                     }`}
                   >
                     <span className="font-medium">{r.label}</span>
-                    <span className="block text-[10px] text-ch-border mt-0.5">{r.desc}</span>
+                    <span className="block text-[10px] text-ch-subtle mt-0.5">{r.desc}</span>
                   </button>
                 ))}
               </div>
@@ -164,7 +164,7 @@ export default function GestorUsuarios({ usuarios, selfId }: Props) {
         </div>
       ))}
 
-      <p className="text-xs text-ch-border pt-2">
+      <p className="text-xs text-ch-subtle pt-2">
         Total: {usuarios.length} {usuarios.length === 1 ? 'usuario' : 'usuarios'}
       </p>
     </div>

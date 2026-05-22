@@ -101,7 +101,7 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
   }
 
   const labelClass = "block text-ch-muted text-[10px] font-body tracking-[0.35em] uppercase mb-2"
-  const inputClass = "w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-border focus:outline-none focus:border-ch-green transition-colors duration-200"
+  const inputClass = "w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-subtle focus:outline-none focus:border-ch-green transition-colors duration-200"
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl">

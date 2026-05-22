@@ -66,7 +66,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
             ) : (
               <span
                 key={item.href}
-                className="text-sm px-3 py-2 text-ch-border cursor-default select-none"
+                className="text-sm px-3 py-2 text-ch-subtle cursor-default select-none"
               >
                 {item.label}
               </span>
@@ -83,7 +83,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
             }`}
           >
             <p className="text-xs text-ch-muted truncate group-hover:text-ch-cream transition-colors">{nombre || email}</p>
-            {rol && <p className="text-xs text-ch-border capitalize mt-0.5">{rol}</p>}
+            {rol && <p className="text-xs text-ch-subtle capitalize mt-0.5">{rol}</p>}
           </Link>
         )}
 

@@ -73,7 +73,7 @@ export default function LoginPage() {
               <input
                 name="email" type="email" required autoComplete="email"
                 placeholder="tu@casahiedra.com"
-                className="w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-border focus:outline-none focus:border-ch-green transition-colors duration-200"
+                className="w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-subtle focus:outline-none focus:border-ch-green transition-colors duration-200"
               />
             </div>
             <div>
@@ -81,7 +81,7 @@ export default function LoginPage() {
               <input
                 name="password" type="password" required autoComplete="current-password"
                 placeholder="••••••••"
-                className="w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-border focus:outline-none focus:border-ch-green transition-colors duration-200"
+                className="w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-subtle focus:outline-none focus:border-ch-green transition-colors duration-200"
               />
             </div>
             {error && (
