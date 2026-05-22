@@ -8,6 +8,14 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
+  // Validar env vars antes de intentar cualquier cosa
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    return NextResponse.json({ ok: false, error: 'GOOGLE_SERVICE_ACCOUNT_KEY no configurada' }, { status: 500 })
+  }
+  if (!process.env.GOOGLE_CALENDAR_ID) {
+    return NextResponse.json({ ok: false, error: 'GOOGLE_CALENDAR_ID no configurada' }, { status: 500 })
+  }
+
   try {
     const admin = createAdminClient()
     const ahora = new Date()
@@ -22,6 +30,7 @@ export async function GET(request: NextRequest) {
 
     let upserted = 0
     let errors = 0
+    let firstError: string | null = null
 
     for (const evento of eventos) {
       if (!evento.id || !evento.summary) continue
@@ -50,16 +59,18 @@ export async function GET(request: NextRequest) {
       if (error) {
         console.error('sync-gcal upsert error:', error.message, evento.id)
         errors++
+        if (errors === 1) firstError = error.message  // capturar primer error para debug
       } else {
         upserted++
       }
     }
 
     return NextResponse.json({
-      ok: true,
+      ok: errors === 0,
       total: eventos.length,
       upserted,
       errors,
+      firstError: firstError ?? undefined,
       rango: { desde: fechaMin.toISOString(), hasta: fechaMax.toISOString() },
     })
   } catch (err) {

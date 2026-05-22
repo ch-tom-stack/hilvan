@@ -83,13 +83,31 @@ export async function triggerSyncGCal(): Promise<{ ok?: boolean; error?: string;
 
   if (self?.rol !== 'admin') return { error: 'Solo admins pueden sincronizar manualmente' }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const res = await fetch(`${baseUrl}/api/cron/sync-gcal`, {
-    headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
-  })
+  const baseUrl = process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000')
 
-  const json = await res.json()
-  if (!res.ok) return { error: JSON.stringify(json) }
+  let res: Response
+  try {
+    res = await fetch(`${baseUrl}/api/cron/sync-gcal`, {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+    })
+  } catch (fetchErr) {
+    return { error: `No se pudo conectar al endpoint de sync: ${String(fetchErr)}` }
+  }
+
+  // La respuesta puede ser HTML en caso de error 500 de Next.js
+  const text = await res.text()
+  if (!res.ok) {
+    return { error: `HTTP ${res.status}: ${text.slice(0, 300)}` }
+  }
+
+  let json: unknown
+  try {
+    json = JSON.parse(text)
+  } catch {
+    return { error: `Respuesta inválida del servidor: ${text.slice(0, 200)}` }
+  }
 
   revalidatePath('/calendario')
   return { ok: true, data: json }

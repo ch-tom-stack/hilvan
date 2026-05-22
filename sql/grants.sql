@@ -52,8 +52,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.rendicion_gastos             TO a
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.rendiciones                  TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.rendiciones_links_temporales TO authenticated;
 
--- Cotizaciones (server actions admin necesitan UPDATE/DELETE)
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizaciones TO service_role;
+-- Cotizaciones (server actions admin necesitan INSERT/UPDATE/DELETE completo)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizacion_grupos        TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizaciones             TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizacion_departamentos TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizacion_subgrupos     TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizacion_items         TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.clientes                 TO service_role;
 
 -- ─── SERVICE_ROLE para server actions admin (rendiciones + colaboradores) ─────
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.colaboradores_tarifas              TO service_role;
