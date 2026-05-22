@@ -220,7 +220,7 @@ export default function RendicionMensualView({
               </button>
             ) : (
               <button onClick={() => setModalAbierto(true)}
-                className="border border-ch-border text-ch-cream hover:bg-zinc-800 font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors">
+                className="border border-ch-border text-ch-cream hover:bg-ch-dark font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors">
                 + Agregar gasto
               </button>
             )}
@@ -235,7 +235,7 @@ export default function RendicionMensualView({
                 <span>Presupuesto mensual</span>
                 <span>{formatMonto(totalGastado)} / {formatMonto(presupuesto)} ({pct}%)</span>
               </div>
-              <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-ch-dark rounded-full overflow-hidden">
                 <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
               </div>
             </div>
@@ -244,7 +244,7 @@ export default function RendicionMensualView({
             {gastos.length === 0 ? (
               <p className="text-ch-muted text-sm text-center py-8">Sin gastos registrados este mes</p>
             ) : (
-              <div className="divide-y divide-zinc-900 border-t border-ch-border">
+              <div className="divide-y divide-ch-border border-t border-ch-border">
                 {gastos.map(g => (
                   <GastoRow key={g.id} gasto={g} onEliminar={handleEliminar} isPending={isPending} esAdmin={esAdmin} usuarioId={usuarioId} />
                 ))}
@@ -252,7 +252,7 @@ export default function RendicionMensualView({
             )}
 
             {gastos.length > 0 && (
-              <div className="flex justify-end mt-4 pt-3 border-t border-zinc-900">
+              <div className="flex justify-end mt-4 pt-3 border-t border-ch-border">
                 <p className="font-body text-sm text-ch-cream font-mono">
                   Total: {formatMonto(totalGastado)}
                 </p>
@@ -290,7 +290,7 @@ export default function RendicionMensualView({
       {modalAbierto && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setModalAbierto(false) }}>
-          <div className="bg-zinc-950 border border-ch-border w-full max-w-md p-6">
+          <div className="bg-ch-black border border-ch-border w-full max-w-md p-6">
             <div className="flex justify-between items-center mb-6">
               <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Nuevo gasto</p>
               <button onClick={() => setModalAbierto(false)} className="text-ch-muted hover:text-ch-cream text-xl leading-none">×</button>
@@ -304,7 +304,7 @@ export default function RendicionMensualView({
                   value={form.descripcion}
                   onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
                   placeholder="Ej: Taxi a locación, café reunión..."
-                  className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700"
+                  className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green placeholder:text-ch-subtle"
                 />
               </div>
 
@@ -316,7 +316,7 @@ export default function RendicionMensualView({
                   onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
                   placeholder="0"
                   min="1"
-                  className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700"
+                  className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green placeholder:text-ch-subtle"
                 />
               </div>
 
@@ -330,7 +330,7 @@ export default function RendicionMensualView({
                       onClick={() => setForm(f => ({ ...f, categoria: cat }))}
                       className={`font-body text-[9px] tracking-widest uppercase px-3 py-1.5 border transition-colors ${
                         form.categoria === cat
-                          ? 'border-ch-cream text-ch-cream bg-zinc-800'
+                          ? 'border-ch-cream text-ch-cream bg-ch-dark'
                           : 'border-ch-border text-ch-muted hover:text-ch-cream'
                       }`}
                     >
@@ -344,7 +344,7 @@ export default function RendicionMensualView({
                     value={form.categoriaOtros}
                     onChange={e => setForm(f => ({ ...f, categoriaOtros: e.target.value }))}
                     placeholder="Especificar categoría..."
-                    className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700"
+                    className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green placeholder:text-ch-subtle"
                   />
                 )}
               </div>
@@ -354,7 +354,7 @@ export default function RendicionMensualView({
                 <select
                   value={form.tipo_documento}
                   onChange={e => setForm(f => ({ ...f, tipo_documento: e.target.value }))}
-                  className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500"
+                  className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green"
                 >
                   <option value="">— Sin especificar</option>
                   {TIPO_DOC_OPCIONES.map(o => (
@@ -371,14 +371,14 @@ export default function RendicionMensualView({
                     <input type="text" value={form.rut_emisor}
                       onChange={e => setForm(f => ({ ...f, rut_emisor: e.target.value }))}
                       placeholder="Ej: 76.123.456-7"
-                      className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700" />
+                      className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green placeholder:text-ch-subtle" />
                   </div>
                   <div>
                     <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Razón Social</label>
                     <input type="text" value={form.razon_social_emisor}
                       onChange={e => setForm(f => ({ ...f, razon_social_emisor: e.target.value }))}
                       placeholder="Nombre del emisor"
-                      className="w-full bg-zinc-900 border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-700" />
+                      className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green placeholder:text-ch-subtle" />
                   </div>
                   <label className="flex items-center gap-2.5 cursor-pointer">
                     <input type="checkbox" checked={form.factura_casa_hiedra}
@@ -426,7 +426,7 @@ export default function RendicionMensualView({
                   Cancelar
                 </button>
                 <button type="submit" disabled={isPending}
-                  className="flex-1 border border-ch-cream text-ch-cream hover:bg-zinc-800 font-body text-[9px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
+                  className="flex-1 border border-ch-cream text-ch-cream hover:bg-ch-dark font-body text-[9px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50">
                   {isPending ? 'Guardando...' : 'Guardar gasto'}
                 </button>
               </div>
@@ -453,12 +453,12 @@ function GastoRow({ gasto, onEliminar, isPending, esAdmin, usuarioId }: {
         <p className="text-ch-cream text-sm">{gasto.descripcion}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {gasto.categoria && (
-            <span className="font-body text-[9px] tracking-widest uppercase text-zinc-600">{gasto.categoria}</span>
+            <span className="font-body text-[9px] tracking-widest uppercase text-ch-subtle">{gasto.categoria}</span>
           )}
           {gasto.tipo_documento && (
-            <span className="font-body text-[9px] tracking-widest uppercase text-zinc-700">{gasto.tipo_documento}</span>
+            <span className="font-body text-[9px] tracking-widest uppercase text-ch-subtle">{gasto.tipo_documento}</span>
           )}
-          <span className="text-zinc-700 text-[9px]">{gasto.cargado_por}</span>
+          <span className="text-ch-subtle text-[9px]">{gasto.cargado_por}</span>
         </div>
         {gasto.archivo_url && (
           <a href={gasto.archivo_url} target="_blank" rel="noopener noreferrer"
@@ -471,7 +471,7 @@ function GastoRow({ gasto, onEliminar, isPending, esAdmin, usuarioId }: {
         <span className="font-mono text-sm text-ch-cream">${gasto.monto.toLocaleString('es-CL')}</span>
         {puedeEliminar && (
           <button onClick={() => onEliminar(gasto.id)} disabled={isPending}
-            className="text-zinc-700 hover:text-red-400 transition-colors text-sm disabled:opacity-50">
+            className="text-ch-subtle hover:text-red-400 transition-colors text-sm disabled:opacity-50">
             ×
           </button>
         )}

@@ -23,46 +23,44 @@ export default async function CitacionPublicaPage({ params }: { params: Promise<
       })
     : null
 
-  // Escenas visibles según visibilidad_plan
   const escenas = (rodaje.escenas || []).filter((e: any) => {
     if (rodaje.visibilidad_plan === 'ninguna') return false
     if (rodaje.visibilidad_plan === 'completo') return true
     return e.visible_en_citacion
   })
 
-  // Si es jefe, mostrar miembros del departamento
   const miembrosDept = persona.es_jefe_departamento && persona.departamento_id
     ? (citacion.persona?.miembros_departamento || []).filter((m: any) => m.id !== persona.id)
     : []
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100">
+    <div className="min-h-screen bg-ch-black text-ch-cream">
       {/* Header */}
-      <div className="border-b border-zinc-900 px-6 py-4 flex items-center justify-between">
+      <div className="border-b border-ch-border px-6 py-4 flex items-center justify-between">
         <img src="/logos/logo-horizontal-negro.png" alt="Casa Hiedra" className="h-5 opacity-80 invert" />
-        <span className="text-xs text-zinc-600">Citación de rodaje</span>
+        <span className="text-xs text-ch-subtle">Citación de rodaje</span>
       </div>
 
       <div className="max-w-xl mx-auto px-6 py-10 space-y-8">
 
         {/* Saludo */}
         <div>
-          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Hola,</p>
-          <h1 className="text-2xl font-medium text-zinc-100">{persona.nombre}</h1>
-          {persona.rol && <p className="text-sm text-zinc-500 mt-0.5">{persona.rol}</p>}
+          <p className="text-xs text-ch-muted uppercase tracking-wider mb-1">Hola,</p>
+          <h1 className="text-2xl font-medium text-ch-cream">{persona.nombre}</h1>
+          {persona.rol && <p className="text-sm text-ch-muted mt-0.5">{persona.rol}</p>}
         </div>
 
         {/* Card principal */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-[2px] p-6 space-y-4">
+        <div className="bg-ch-surface border border-ch-border rounded-[2px] p-6 space-y-4">
           <div>
-            <p className="text-xs text-zinc-500 mb-1">Producción</p>
-            <p className="text-base font-medium text-zinc-100">{rodaje.nombre}</p>
+            <p className="text-xs text-ch-muted mb-1">Producción</p>
+            <p className="text-base font-medium text-ch-cream">{rodaje.nombre}</p>
           </div>
 
           {fecha && (
             <div>
-              <p className="text-xs text-zinc-500 mb-1">Fecha</p>
-              <p className="text-sm text-zinc-200 capitalize">{fecha}</p>
+              <p className="text-xs text-ch-muted mb-1">Fecha</p>
+              <p className="text-sm text-ch-cream capitalize">{fecha}</p>
               {!rodaje.fecha_confirmada && (
                 <p className="text-xs text-amber-500 mt-0.5">Fecha por confirmar</p>
               )}
@@ -70,21 +68,21 @@ export default async function CitacionPublicaPage({ params }: { params: Promise<
           )}
 
           <div>
-            <p className="text-xs text-zinc-500 mb-1">Tu hora de llegada</p>
-            <p className="text-3xl font-medium text-zinc-100">{horaEfectiva}</p>
+            <p className="text-xs text-ch-muted mb-1">Tu hora de llegada</p>
+            <p className="text-3xl font-medium text-ch-cream">{horaEfectiva}</p>
           </div>
 
           {(rodaje.locacion_nombre || rodaje.locacion_direccion) && (
             <div>
-              <p className="text-xs text-zinc-500 mb-1">Locación</p>
-              {rodaje.locacion_nombre && <p className="text-sm text-zinc-200">{rodaje.locacion_nombre}</p>}
-              {rodaje.locacion_direccion && <p className="text-xs text-zinc-500 mt-0.5">{rodaje.locacion_direccion}</p>}
+              <p className="text-xs text-ch-muted mb-1">Locación</p>
+              {rodaje.locacion_nombre && <p className="text-sm text-ch-cream">{rodaje.locacion_nombre}</p>}
+              {rodaje.locacion_direccion && <p className="text-xs text-ch-muted mt-0.5">{rodaje.locacion_direccion}</p>}
               {uberLink && (
                 <a
                   href={uberLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block mt-3 text-xs bg-zinc-800 border border-zinc-700 px-3 py-1.5 rounded-[2px] text-zinc-300 hover:border-zinc-500 transition-colors"
+                  className="inline-block mt-3 text-xs bg-ch-dark border border-ch-border px-3 py-1.5 rounded-[2px] text-ch-muted hover:border-ch-muted hover:text-ch-cream transition-colors"
                 >
                   Abrir en Uber →
                 </a>
@@ -96,17 +94,17 @@ export default async function CitacionPublicaPage({ params }: { params: Promise<
         {/* Miembros del departamento (solo jefes) */}
         {miembrosDept.length > 0 && (
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">
+            <p className="text-xs text-ch-muted uppercase tracking-wider mb-3">
               Tu departamento — {persona.departamento?.nombre}
             </p>
             <div className="space-y-2">
               {miembrosDept.map((m: any) => (
-                <div key={m.id} className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-[2px] px-4 py-3">
+                <div key={m.id} className="flex items-center justify-between bg-ch-surface border border-ch-border rounded-[2px] px-4 py-3">
                   <div>
-                    <p className="text-sm text-zinc-200">{m.nombre}</p>
-                    {m.rol && <p className="text-xs text-zinc-500">{m.rol}</p>}
+                    <p className="text-sm text-ch-cream">{m.nombre}</p>
+                    {m.rol && <p className="text-xs text-ch-muted">{m.rol}</p>}
                   </div>
-                  <span className="text-sm text-zinc-300">
+                  <span className="text-sm text-ch-cream">
                     {m.hora_llamado_individual ? formatHora(m.hora_llamado_individual) : formatHora(rodaje.hora_llamado_general)}
                   </span>
                 </div>
@@ -118,23 +116,23 @@ export default async function CitacionPublicaPage({ params }: { params: Promise<
         {/* Plan del día */}
         {escenas.length > 0 && (
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Plan del día</p>
+            <p className="text-xs text-ch-muted uppercase tracking-wider mb-3">Plan del día</p>
             <div className="space-y-2">
               {escenas.map((e: any, i: number) => (
-                <div key={e.id} className="flex gap-4 bg-zinc-900 border border-zinc-800 rounded-[2px] px-4 py-3">
-                  <span className="text-xs text-zinc-700 w-4 pt-0.5">{i + 1}</span>
+                <div key={e.id} className="flex gap-4 bg-ch-surface border border-ch-border rounded-[2px] px-4 py-3">
+                  <span className="text-xs text-ch-subtle w-4 pt-0.5">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm text-zinc-200">{e.titulo}</p>
+                      <p className="text-sm text-ch-cream">{e.titulo}</p>
                       {e.hora_estimada && (
-                        <span className="text-xs text-zinc-500">{formatHora(e.hora_estimada)}</span>
+                        <span className="text-xs text-ch-muted">{formatHora(e.hora_estimada)}</span>
                       )}
                       {e.duracion_min && (
-                        <span className="text-xs text-zinc-700">{e.duracion_min} min</span>
+                        <span className="text-xs text-ch-subtle">{e.duracion_min} min</span>
                       )}
                     </div>
-                    {e.descripcion && <p className="text-xs text-zinc-600 mt-0.5">{e.descripcion}</p>}
-                    {e.locacion_especifica && <p className="text-xs text-zinc-700 mt-0.5">📍 {e.locacion_especifica}</p>}
+                    {e.descripcion && <p className="text-xs text-ch-subtle mt-0.5">{e.descripcion}</p>}
+                    {e.locacion_especifica && <p className="text-xs text-ch-subtle mt-0.5">📍 {e.locacion_especifica}</p>}
                   </div>
                 </div>
               ))}
@@ -143,24 +141,24 @@ export default async function CitacionPublicaPage({ params }: { params: Promise<
         )}
 
         {/* Formulario de respuesta */}
-        <div className="border-t border-zinc-800 pt-8">
+        <div className="border-t border-ch-border pt-8">
           {yaRespondio ? (
-            <div className={`rounded-[2px] p-5 text-center ${citacion.confirmada ? 'bg-emerald-950/40 border border-emerald-900' : 'bg-zinc-900 border border-zinc-800'}`}>
-              <p className="text-sm font-medium text-zinc-100 mb-1">
+            <div className={`rounded-[2px] p-5 text-center ${citacion.confirmada ? 'bg-ch-green/10 border border-ch-green/30' : 'bg-ch-surface border border-ch-border'}`}>
+              <p className="text-sm font-medium text-ch-cream mb-1">
                 {citacion.confirmada ? '✓ Asistencia confirmada' : 'Has indicado que no puedes asistir'}
               </p>
               {citacion.restricciones_alimentarias && (
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-ch-muted">
                   Restricciones registradas: {citacion.restricciones_alimentarias}
                 </p>
               )}
-              <p className="text-xs text-zinc-600 mt-3">
+              <p className="text-xs text-ch-subtle mt-3">
                 Si necesitas cambiar tu respuesta, contacta al equipo de producción.
               </p>
             </div>
           ) : (
             <div>
-              <p className="text-sm text-zinc-300 mb-5">Confirma tu asistencia e indícanos si tienes restricciones alimentarias.</p>
+              <p className="text-sm text-ch-cream mb-5">Confirma tu asistencia e indícanos si tienes restricciones alimentarias.</p>
               <div className="flex flex-col gap-3">
                 <BotonConfirmar token={token} />
                 <BotonDeclinar token={token} />
@@ -170,8 +168,8 @@ export default async function CitacionPublicaPage({ params }: { params: Promise<
         </div>
 
         {/* Footer */}
-        <div className="border-t border-zinc-900 pt-6 text-center">
-          <p className="text-xs text-zinc-700">Casa Hiedra · casahiedra.com</p>
+        <div className="border-t border-ch-border pt-6 text-center">
+          <p className="text-xs text-ch-subtle">Casa Hiedra · casahiedra.com</p>
         </div>
       </div>
     </div>
@@ -189,16 +187,16 @@ function BotonConfirmar({ token }: { token: string }) {
     >
       <input type="hidden" name="confirmada" value="true" />
       <div>
-        <label className="block text-xs text-zinc-400 mb-2">Restricciones alimentarias</label>
+        <label className="block text-xs text-ch-muted mb-2">Restricciones alimentarias</label>
         <input
           name="restricciones_alimentarias"
           placeholder="ej: vegetariano, sin gluten, alergia a los mariscos... (opcional)"
-          className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+          className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream placeholder:text-ch-subtle focus:outline-none focus:border-ch-green"
         />
       </div>
       <button
         type="submit"
-        className="w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors bg-[#E6E2ED] text-zinc-900 hover:bg-white"
+        className="w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors bg-ch-cream text-ch-black hover:bg-ch-white"
       >
         ✓ Confirmo mi asistencia
       </button>
@@ -217,7 +215,7 @@ function BotonDeclinar({ token }: { token: string }) {
       <input type="hidden" name="confirmada" value="false" />
       <button
         type="submit"
-        className="w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors bg-zinc-900 border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+        className="w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors bg-ch-surface border border-ch-border text-ch-muted hover:border-ch-muted hover:text-ch-cream"
       >
         No puedo asistir
       </button>

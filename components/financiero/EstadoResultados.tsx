@@ -171,7 +171,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
           <div>
             <SeccionHeader titulo="Por facturar" total={totalPorFacturar} color="text-zinc-400" />
             {ingresos.por_facturar.length === 0
-              ? <p className="font-body text-xs text-ch-subtle">Sin cotizaciones pendientes</p>
+              ? <p className="font-body text-xs text-ch-subtle border border-dashed border-ch-border rounded-[2px] px-4 py-3 text-center">Sin cotizaciones pendientes</p>
               : ingresos.por_facturar.map(c => (
                 <div key={c.id} className="flex justify-between py-1 border-b border-ch-border/20 last:border-0">
                   <div className="min-w-0 pr-2">
@@ -190,7 +190,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
           <div>
             <SeccionHeader titulo="Por cobrar" total={totalPorCobrar} color="text-amber-400" />
             {ingresos.por_cobrar.length === 0
-              ? <p className="font-body text-xs text-ch-subtle">Sin facturas pendientes</p>
+              ? <p className="font-body text-xs text-ch-subtle border border-dashed border-ch-border rounded-[2px] px-4 py-3 text-center">Sin facturas pendientes</p>
               : ingresos.por_cobrar.map(c => (
                 <div key={c.id} className="flex justify-between py-1 border-b border-ch-border/20 last:border-0">
                   <div className="min-w-0 pr-2">
@@ -219,7 +219,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
           <div>
             <SeccionHeader titulo={`Cobrado · ${formatMes(datos.periodo)}`} total={totalCobrado} color="text-ch-green" />
             {ingresos.cobrado.length === 0
-              ? <p className="font-body text-xs text-ch-subtle">Sin cobros este período</p>
+              ? <p className="font-body text-xs text-ch-subtle border border-dashed border-ch-border rounded-[2px] px-4 py-3 text-center">Sin cobros este período</p>
               : ingresos.cobrado.map(c => (
                 <div key={c.id} className="flex justify-between py-1 border-b border-ch-border/20 last:border-0">
                   <div className="min-w-0 pr-2">
@@ -245,7 +245,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
           <div>
             <SeccionHeader titulo="Gastos de proyectos" total={totalGastosProyectos} color="text-red-400" />
             {egresos.gastos_proyectos.length === 0
-              ? <p className="font-body text-xs text-ch-subtle">Sin gastos este período</p>
+              ? <p className="font-body text-xs text-ch-subtle border border-dashed border-ch-border rounded-[2px] px-4 py-3 text-center">Sin gastos este período</p>
               : egresos.gastos_proyectos.map(g => (
                 <div key={g.id} className="flex justify-between py-1 border-b border-ch-border/20 last:border-0">
                   <div className="min-w-0 pr-2">
@@ -272,7 +272,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
           <div>
             <SeccionHeader titulo="Gastos operacionales" total={totalGastosOp} color="text-orange-400" />
             {egresos.gastos_operacionales.length === 0
-              ? <p className="font-body text-xs text-ch-subtle">Sin gastos este período</p>
+              ? <p className="font-body text-xs text-ch-subtle border border-dashed border-ch-border rounded-[2px] px-4 py-3 text-center">Sin gastos este período</p>
               : egresos.gastos_operacionales.map(g => (
                 <div key={g.id} className="flex justify-between py-1 border-b border-ch-border/20 last:border-0">
                   <div className="min-w-0 pr-2">
@@ -296,7 +296,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
           <div>
             <SeccionHeader titulo="Cuotas de créditos" total={totalCuotas} color="text-purple-400" />
             {egresos.cuotas_creditos.length === 0
-              ? <p className="font-body text-xs text-ch-subtle">Sin cuotas este período</p>
+              ? <p className="font-body text-xs text-ch-subtle border border-dashed border-ch-border rounded-[2px] px-4 py-3 text-center">Sin cuotas este período</p>
               : egresos.cuotas_creditos.map(c => (
                 <div key={c.id} className="flex justify-between py-1 border-b border-ch-border/20 last:border-0">
                   <div className="min-w-0 pr-2">
