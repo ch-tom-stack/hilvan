@@ -1,6 +1,7 @@
 # Contexto completo — Módulo Rental (Hilván)
 
-> Módulo construido, pendiente de SQL migration en Supabase y commit/push a producción.
+> **Estado al 23-05-2026:** Módulo 100% funcional en producción.
+> SQL ejecutado · código commiteado y pusheado · precios de rental cargados · testeado en browser.
 > Este documento es el briefing autosuficiente para continuar. Lee todo antes de escribir código.
 
 ---
@@ -75,44 +76,37 @@ al cambiar estado notifica al solicitante.
 **Google Calendar:** implementado — al aprobar una reserva, crea evento en el calendario
 `estudiocasahiedra@gmail.com` vía service account. Usa `crearEventoGCal` de `lib/google-calendar.ts`.
 
-### ❌ Pendiente de ejecución
+### ✅ Ejecutado y verificado (23-05-2026)
 
-#### 1. SQL migration en Supabase (CRÍTICO — sin esto, el módulo no funciona)
+| Tarea | Estado |
+|-------|--------|
+| SQL migration completo (4 tablas + RLS + GRANTs) | ✅ Ejecutado |
+| `created_by` en `rental_reservas` | ✅ Ejecutado |
+| `UPDATE equipos SET rentable = true` (todos) | ✅ Ejecutado |
+| Precios `precio_jornada` cargados (37 equipos) | ✅ SQL ejecutado con criterio: cámaras 1.7%, lentes 2%, equipos >$500k 3.5%, $100k–$500k 4.5%, <$100k 6.5%. Referencia competitiva: NDJ Rentals (ndjrentals.com), precios ~15% por debajo |
+| Commit y push a git (`origin/main`) | ✅ Commit `20d6fb6` + `f941b26` |
+| "Rental" en sidebar de Hilván | ✅ Visible para todos los usuarios |
+| ToggleRentable inline en `/equipos` | ✅ Activa/desactiva rentable sin entrar al detalle |
+| Test catálogo, filtros por categoría | ✅ |
+| Test cotizaciones: crear, ítems, estado, PDF | ✅ PDF descargado (R-002.pdf 28KB) |
+| Test reservas: nueva solicitud, disponibilidad, tabs | ✅ |
+| Maleta de lentes NISI | ⏳ Pendiente — la agrega Simón. Precio: valor mercado maleta completa × 2% |
 
-Ejecutar en el SQL Editor de Supabase (ver sección 3 para el SQL completo):
-- `ALTER TABLE rental_reservas ADD COLUMN created_by`
-- Crear tabla `rental_cotizaciones`
-- Crear tabla `rental_cotizacion_secciones`
-- Crear tabla `rental_cotizacion_items`
-- GRANTs y RLS de las tablas nuevas
-
-#### 2. Git commit y push a producción
-
-Los archivos del módulo no están commiteados. `git status` muestra:
-```
-M  app/actions/rental.ts
-M  types/index.ts
-?? app/(rental)/
-?? app/api/rental/
-?? components/rental/
-?? RENTAL_CONTEXT.md
-```
-
-#### 3. Verificar integraciones post-deploy
+### ⏳ Pendiente de verificación en producción (Vercel)
 
 | Integración | Estado | Qué verificar |
 |------------|--------|---------------|
-| Email Resend | Código listo | ¿Llega email al admin al crear reserva? ¿Llega email al solicitante al aprobar/denegar? Depende de que el dominio `casahiedra.com` esté verificado en Resend |
-| Google Calendar | Código listo | ¿Aparece el evento en el calendario `estudiocasahiedra@gmail.com` al aprobar? Depende de `GOOGLE_SERVICE_ACCOUNT_KEY` en Vercel |
+| Email Resend | Código listo, no verificado en prod | ¿Llega email al admin al crear reserva? ¿Llega al solicitante al cambiar estado? Requiere dominio `casahiedra.com` verificado en Resend |
+| Google Calendar | Código listo, no verificado en prod | ¿Aparece evento en `estudiocasahiedra@gmail.com` al aprobar una reserva? Requiere `GOOGLE_SERVICE_ACCOUNT_KEY` activo en Vercel |
 
-#### 4. Pendientes funcionales menores
+### 🔧 Pendientes funcionales (backlog)
 
 | Función | Detalle |
 |---------|---------|
-| **"Mis solicitudes"** | `listarMisReservas()` filtra por `created_by` — funciona solo después de correr el SQL con la columna `created_by`. Hasta entonces muestra todas (fallback) |
-| **Descuento por ítem** | La DB tiene `descuento` y `descuento_tipo` por ítem, pero el editor (`EditorCotizacion.tsx`) no expone esos campos aún — los guarda siempre como 0 |
-| **Reordenar ítems/secciones** | El campo `orden` existe en ambas tablas, pero sin drag-and-drop |
-| **URL pública cotización** | Si se quiere una URL sin login (`/rental/cotizacion/[token]`), requiere columna `token` en la tabla y ruta pública en `proxy.ts` |
+| **Descuento por ítem** | La DB tiene `descuento` y `descuento_tipo` por ítem, pero `EditorCotizacion.tsx` no expone esos campos — se guardan siempre como 0 |
+| **Reordenar ítems/secciones** | El campo `orden` existe en ambas tablas, sin drag-and-drop aún |
+| **URL pública cotización** | Para compartir sin login requiere columna `token` en `rental_cotizaciones` + ruta pública en `proxy.ts` |
+| **Maleta NISI** | Agregarla en `/equipos/nuevo` con `rentable=true` y `precio_jornada = valor_mercado × 2%` |
 
 ---
 
