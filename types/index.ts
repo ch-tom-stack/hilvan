@@ -957,8 +957,104 @@ export interface RentalReserva {
   aprobada_por: string | null
   cotizacion_id: string | null
   notas: string | null
+  created_by?: string | null
   created_at: string
   updated_at: string
+}
+
+// ============================================================
+// MÓDULO RENTAL — COTIZACIONES
+// ============================================================
+export type EstadoRentalCotizacion = 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'cerrada'
+
+export const ESTADO_RENTAL_COT_LABELS: Record<EstadoRentalCotizacion, string> = {
+  borrador:  'Borrador',
+  enviada:   'Enviada',
+  aprobada:  'Aprobada',
+  rechazada: 'Rechazada',
+  cerrada:   'Cerrada',
+}
+
+export interface RentalCotizacion {
+  id: string
+  numero: string
+  reserva_id: string | null
+  cliente_id: string | null
+  cliente?: Cliente
+  cliente_nombre_libre?: string | null
+  cliente_email_libre?: string | null
+  estado: EstadoRentalCotizacion
+  con_iva: boolean
+  descuento_global: number
+  descuento_global_tipo: 'porcentaje' | 'monto'
+  notas_internas?: string | null
+  notas_cliente?: string | null
+  created_at: string
+  updated_at: string
+  created_by?: string | null
+  secciones?: RentalCotizacionSeccion[]
+}
+
+export interface RentalCotizacionSeccion {
+  id: string
+  cotizacion_id: string
+  nombre: string
+  orden: number
+  items?: RentalCotizacionItem[]
+}
+
+export interface RentalCotizacionItem {
+  id: string
+  cotizacion_id: string
+  seccion_id?: string | null
+  equipo_id?: string | null
+  equipo?: Equipo
+  maleta_id?: string | null
+  maleta?: Maleta
+  descripcion: string
+  cantidad: number
+  dias: number
+  precio_unitario: number
+  descuento: number
+  descuento_tipo: 'porcentaje' | 'monto'
+  incluido: boolean
+  orden: number
+  created_at: string
+}
+
+export function subtotalRentalItem(item: RentalCotizacionItem): number {
+  if (item.incluido) return 0
+  const base = item.precio_unitario * item.cantidad * item.dias
+  if (item.descuento_tipo === 'porcentaje') {
+    return Math.round(base * (1 - item.descuento / 100))
+  }
+  return Math.round(base - item.descuento)
+}
+
+export function calcularTotalesRental(cotizacion: RentalCotizacion): {
+  neto: number
+  descuento_global_monto: number
+  neto_con_descuento: number
+  iva: number
+  total: number
+} {
+  const secciones = cotizacion.secciones ?? []
+  const neto = secciones.reduce(
+    (acc, s) => acc + (s.items ?? []).reduce((a, i) => a + subtotalRentalItem(i), 0),
+    0,
+  )
+  let descuento_global_monto = 0
+  if (cotizacion.descuento_global > 0) {
+    if (cotizacion.descuento_global_tipo === 'porcentaje') {
+      descuento_global_monto = Math.round(neto * cotizacion.descuento_global / 100)
+    } else {
+      descuento_global_monto = cotizacion.descuento_global
+    }
+  }
+  const neto_con_descuento = neto - descuento_global_monto
+  const iva = cotizacion.con_iva ? Math.round(neto_con_descuento * 0.19) : 0
+  const total = neto_con_descuento + iva
+  return { neto, descuento_global_monto, neto_con_descuento, iva, total }
 }
 
 export const CLASIFICACION_LABELS: Record<ClasificacionEvento, string> = {
