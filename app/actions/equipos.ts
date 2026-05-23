@@ -58,6 +58,18 @@ export async function actualizarEquipo(id: string, formData: FormData) {
   return { success: true }
 }
 
+export async function toggleRentable(id: string, rentable: boolean) {
+  'use server'
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('equipos')
+    .update({ rentable })
+    .eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/equipos')
+  return { success: true }
+}
+
 export async function eliminarEquipo(id: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('equipos').delete().eq('id', id)

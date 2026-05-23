@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import TagEstado from '@/components/equipos/TagEstado'
+import ToggleRentable from '@/components/equipos/ToggleRentable'
 import type { Equipo, CategoriaEquipo } from '@/types'
 
 export default async function EquiposPage({
@@ -175,9 +176,7 @@ export default async function EquiposPage({
                       <TagEstado estado={eq.estado} />
                     </td>
                     <td className="px-5 py-4 hidden md:table-cell">
-                      <span className={`font-body text-[10px] tracking-wider ${eq.rentable ? 'text-ch-green' : 'text-ch-muted'}`}>
-                        {eq.rentable ? 'Sí' : 'No'}
-                      </span>
+                      <ToggleRentable id={eq.id} rentable={eq.rentable ?? false} />
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Link
