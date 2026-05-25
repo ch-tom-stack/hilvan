@@ -3,7 +3,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { randomBytes } from 'crypto'
 import type { Profile, Rol } from '@/types'
+
+function generarPasswordTemporal(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$'
+  const bytes = randomBytes(12)
+  return Array.from(bytes).map(b => chars[b % chars.length]).join('')
+}
 
 export async function listarUsuarios(): Promise<Profile[]> {
   const supabase = await createClient()
@@ -51,7 +58,7 @@ export async function invitarUsuario(
   email: string,
   nombre: string,
   rol: Rol,
-): Promise<{ ok?: boolean; error?: string }> {
+): Promise<{ ok?: boolean; error?: string; password?: string }> {
   const supabase = await createClient()
 
   // Solo admins pueden invitar
@@ -67,21 +74,24 @@ export async function invitarUsuario(
   if (self?.rol !== 'admin') return { error: 'Sin permisos' }
 
   const admin = createAdminClient()
+  const passwordTemporal = generarPasswordTemporal()
 
-  // Enviar invitación por email (Supabase Auth)
-  const { data, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { nombre, rol },
+  // Crear usuario con contraseña temporal (sin enviar email)
+  const { data, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password: passwordTemporal,
+    email_confirm: true,
+    user_metadata: { nombre, rol },
   })
 
-  if (inviteError) {
-    // Supabase devuelve error genérico si el email ya existe
-    if (inviteError.message.toLowerCase().includes('already')) {
+  if (createError) {
+    if (createError.message.toLowerCase().includes('already')) {
       return { error: 'Ya existe una cuenta con ese email' }
     }
-    return { error: inviteError.message }
+    return { error: createError.message }
   }
 
-  // Crear el profile de inmediato con nombre y rol definidos
+  // Crear el profile con nombre y rol
   const { error: profileError } = await admin
     .from('profiles')
     .upsert(
@@ -92,5 +102,5 @@ export async function invitarUsuario(
   if (profileError) return { error: profileError.message }
 
   revalidatePath('/usuarios')
-  return { ok: true }
+  return { ok: true, password: passwordTemporal }
 }
