@@ -517,6 +517,46 @@ export async function enviarCotizacion(id: string): Promise<string> {
 }
 
 // ============================================================
+// CAMBIAR ESTADO (admin)
+// ============================================================
+
+export async function cambiarEstadoCotizacion(
+  id: string,
+  estado: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const campos: Record<string, unknown> = { estado }
+
+  // Si se aprueba desde admin, registrar fecha de respuesta
+  if (estado === 'aprobada') {
+    campos.fecha_respuesta_cliente = new Date().toISOString()
+  }
+
+  // Si se envía desde aquí y no tiene token, generarlo
+  if (estado === 'enviada') {
+    const { data: current } = await supabase
+      .from('cotizaciones')
+      .select('token, fecha_envio')
+      .eq('id', id)
+      .single()
+    if (!current?.token) {
+      campos.token = crypto.randomUUID()
+      campos.fecha_envio = new Date().toISOString()
+    }
+  }
+
+  const { error } = await supabase
+    .from('cotizaciones')
+    .update(campos)
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/cotizaciones/${id}`)
+  revalidatePath('/cotizaciones')
+  return { ok: true }
+}
+
+// ============================================================
 // RESPUESTA DEL CLIENTE (anon)
 // ============================================================
 

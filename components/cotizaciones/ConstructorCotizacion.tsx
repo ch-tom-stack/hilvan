@@ -20,6 +20,7 @@ import {
   eliminarItem,
   registrarFacturaCotizacion,
   registrarPagoCotizacion,
+  cambiarEstadoCotizacion,
 } from '@/app/actions/cotizaciones'
 import {
   numeroCotizacion,
@@ -78,6 +79,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   const [cot, setCot] = useState<Cotizacion>(initial)
   const [isPending, startTransition] = useTransition()
   const [linkCopiado, setLinkCopiado] = useState(false)
+  const [estadoOpen, setEstadoOpen] = useState(false)
   const [itemModal, setItemModal] = useState<{
     mode: 'nuevo' | 'editar'
     depId: string
@@ -317,9 +319,41 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                 {cot.nombre}
               </button>
             )}
-            <span className={`font-body text-xs ${ESTADO_CONFIG[cot.estado]?.color}`}>
-              {ESTADO_CONFIG[cot.estado]?.label}
-            </span>
+            {/* Estado — dropdown admin */}
+            <div className="relative">
+              <button
+                onClick={() => setEstadoOpen(o => !o)}
+                className={`font-body text-xs ${ESTADO_CONFIG[cot.estado]?.color} flex items-center gap-1 hover:opacity-80 transition-opacity`}
+              >
+                {ESTADO_CONFIG[cot.estado]?.label}
+                <span className="text-[8px] opacity-50">▾</span>
+              </button>
+              {estadoOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setEstadoOpen(false)} />
+                  <div className="absolute left-0 top-full mt-1 z-50 bg-ch-surface border border-ch-border shadow-lg min-w-[140px]">
+                    {Object.entries(ESTADO_CONFIG).map(([key, { label, color }]) => (
+                      <button
+                        key={key}
+                        disabled={isPending}
+                        onClick={async () => {
+                          setEstadoOpen(false)
+                          startTransition(async () => {
+                            const res = await cambiarEstadoCotizacion(cot.id, key)
+                            if (!res.error) setCot(c => ({ ...c, estado: key as typeof c.estado }))
+                          })
+                        }}
+                        className={`w-full text-left px-3 py-2 font-body text-xs ${color} hover:bg-ch-border/20 transition-colors disabled:opacity-50 ${
+                          key === cot.estado ? 'bg-ch-border/10' : ''
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
