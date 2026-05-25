@@ -313,8 +313,8 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               />
             ) : (
               <button
-                onClick={() => editable && setEditandoNombre(true)}
-                className={`font-body text-sm text-ch-cream truncate ${editable ? 'hover:text-white' : ''}`}
+                onClick={() => setEditandoNombre(true)}
+                className="font-body text-sm text-ch-cream truncate hover:text-white"
               >
                 {cot.nombre}
               </button>
