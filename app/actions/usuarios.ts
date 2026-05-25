@@ -104,3 +104,58 @@ export async function invitarUsuario(
   revalidatePath('/usuarios')
   return { ok: true, password: passwordTemporal }
 }
+
+export async function resetearPassword(
+  userId: string,
+): Promise<{ ok?: boolean; error?: string; password?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: self } = await supabase
+    .from('profiles')
+    .select('rol')
+    .eq('id', user.id)
+    .single<Pick<Profile, 'rol'>>()
+
+  if (self?.rol !== 'admin') return { error: 'Sin permisos' }
+
+  const admin = createAdminClient()
+  const passwordTemporal = generarPasswordTemporal()
+
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    password: passwordTemporal,
+  })
+
+  if (error) return { error: error.message }
+
+  return { ok: true, password: passwordTemporal }
+}
+
+export async function eliminarUsuario(
+  userId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+  if (user.id === userId) return { error: 'No puedes eliminarte a ti mismo' }
+
+  const { data: self } = await supabase
+    .from('profiles')
+    .select('rol')
+    .eq('id', user.id)
+    .single<Pick<Profile, 'rol'>>()
+
+  if (self?.rol !== 'admin') return { error: 'Sin permisos' }
+
+  const admin = createAdminClient()
+
+  // Eliminar de auth (profiles se borra por cascade)
+  const { error } = await admin.auth.admin.deleteUser(userId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/usuarios')
+  return { ok: true }
+}
