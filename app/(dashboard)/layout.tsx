@@ -26,8 +26,8 @@ export default async function DashboardLayout({
         nombre={profile?.nombre}
         rol={profile?.rol}
       />
-      {/* pt-16 en móvil para compensar el header fijo, 0 en desktop */}
-      <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+      {/* pt-14 en móvil para compensar el header fijo (h-14=56px), 0 en desktop */}
+      <main className="flex-1 overflow-auto pt-14 lg:pt-0">
         {children}
       </main>
     </div>

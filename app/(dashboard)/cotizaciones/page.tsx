@@ -75,27 +75,27 @@ function GrupoCotizacion({ grupo }: { grupo: CotizacionGrupo }) {
   return (
     <div className="border border-ch-border rounded-lg overflow-hidden">
       {/* Fila del grupo */}
-      <div className="flex items-center justify-between px-5 py-4 bg-ch-dark/60">
-        <div className="flex items-center gap-4">
-          <span className="font-body text-xs text-ch-muted tracking-wider font-medium">
+      <div className="flex items-start sm:items-center justify-between px-4 sm:px-5 py-3 sm:py-4 bg-ch-dark/60 gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-4 min-w-0">
+          <span className="font-body text-[10px] text-ch-muted tracking-wider font-medium shrink-0">
             {grupo.numero_base}
           </span>
-          <span className="font-body text-sm text-ch-cream font-medium">
+          <span className="font-body text-sm text-ch-cream font-medium truncate">
             {grupo.cliente?.nombre ?? grupo.cliente?.empresa ?? '—'}
           </span>
           {grupo.proyecto && (
-            <span className="font-body text-xs text-ch-muted">
+            <span className="font-body text-xs text-ch-muted truncate hidden sm:block">
               · {grupo.proyecto.nombre}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <span className="font-body text-xs text-ch-muted">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span className="font-body text-xs text-ch-muted whitespace-nowrap">
             {cotizaciones.length} {cotizaciones.length === 1 ? 'versión' : 'versiones'}
           </span>
           <Link
             href="/cotizaciones/nueva"
-            className="font-body text-xs text-ch-muted hover:text-ch-cream transition-colors"
+            className="font-body text-xs text-ch-muted hover:text-ch-cream transition-colors whitespace-nowrap hidden sm:block"
           >
             + cotización
           </Link>
@@ -106,27 +106,28 @@ function GrupoCotizacion({ grupo }: { grupo: CotizacionGrupo }) {
       <div className="divide-y divide-ch-border/50">
         {cotizaciones.map((cot: Cotizacion) => {
           const numVisible = numeroCotizacion({ grupo, version: cot.version, variante: cot.variante })
-          const estado = ESTADO_LABELS[cot.estado] ?? ESTADO_LABELS.borrador
           return (
             <Link
               key={cot.id}
               href={`/cotizaciones/${cot.id}`}
-              className="flex items-center justify-between px-5 py-3 hover:bg-ch-border/10 transition-colors group"
+              className="block px-4 sm:px-5 py-3 hover:bg-ch-border/10 transition-colors group sm:flex sm:items-center sm:justify-between"
             >
-              <div className="flex items-center gap-4">
-                <span className="font-body text-xs text-ch-muted w-28 shrink-0">
+              {/* Número + nombre */}
+              <div className="flex items-baseline gap-2 sm:gap-4 min-w-0">
+                <span className="font-body text-[10px] text-ch-muted shrink-0 sm:w-28">
                   {numVisible}
                 </span>
-                <span className="font-body text-sm text-ch-cream group-hover:text-white transition-colors">
+                <span className="font-body text-sm text-ch-cream group-hover:text-white transition-colors truncate">
                   {cot.nombre}
                 </span>
               </div>
-              <div className="flex items-center gap-4">
+              {/* Estado + fecha */}
+              <div className="flex items-center gap-3 mt-1.5 sm:mt-0 ml-[calc(0.5rem+10px)] sm:ml-0">
                 <TagEstado estado={cot.estado} />
                 <span className="font-body text-xs text-ch-muted">
                   {formatFecha(cot.updated_at)}
                 </span>
-                <span className="font-body text-xs text-ch-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="font-body text-xs text-ch-muted opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
                   →
                 </span>
               </div>
