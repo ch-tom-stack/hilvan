@@ -152,6 +152,7 @@ export default function OnboardingForm({ token, colaborador }: Props) {
                 <option value="bet">BET (Boleta Electrónica de Trabajo)</option>
                 <option value="factura">Factura</option>
                 <option value="sin_documento">Sin documento</option>
+                <option value="contratado">Contratado</option>
               </select>
             </Campo>
           </div>

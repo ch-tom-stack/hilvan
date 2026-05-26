@@ -152,7 +152,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
           <button
             key={tab}
             onClick={() => setSeccion(tab)}
-            className={`font-body text-[10px] tracking-[0.3em] uppercase px-4 py-3 whitespace-nowrap transition-colors border-b-2 -mb-px ${
+            className={`font-body text-[10px] tracking-[0.2em] uppercase px-3 py-3 whitespace-nowrap transition-colors border-b-2 -mb-px ${
               seccion === tab ? 'border-ch-green text-ch-cream' : 'border-transparent text-ch-muted hover:text-ch-cream'
             }`}
           >
@@ -257,6 +257,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
               <option value="bet">BET (Boleta Electrónica de Trabajo)</option>
               <option value="factura">Factura</option>
               <option value="sin_documento">Sin documento</option>
+              <option value="contratado">Contratado</option>
             </select>
           </Campo>
           <Campo label="Alerta tributaria (nota interna para el contador)">

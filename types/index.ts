@@ -489,7 +489,7 @@ export interface Colaborador {
   telefono?: string
   tipo_persona?: 'natural' | 'empresa'
   razon_social?: string
-  tipo_documento?: 'boleta' | 'bet' | 'factura' | 'sin_documento'
+  tipo_documento?: 'boleta' | 'bet' | 'factura' | 'sin_documento' | 'contratado'
   alerta_tributaria?: string
   banco?: string
   tipo_cuenta?: 'corriente' | 'vista' | 'ahorro'
