@@ -17,9 +17,9 @@ function agingBadgeClass(dias: number): string {
 }
 
 function formatFecha(iso: string): string {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('es-CL', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  })
+  const d = new Date(iso.includes('T') ? iso : iso + 'T12:00:00')
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────

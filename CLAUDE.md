@@ -176,8 +176,9 @@ En `public/logos/`:
 ch-black:       #111110   fondo base
 ch-dark:        #1c1c1a   fondo body
 ch-surface:     #242422   cards, inputs
-ch-border:      #2e2e2b   bordes
-ch-muted:       #6b6b65   texto secundario
+ch-border:      #383836   bordes
+ch-muted:       #9a9a92   texto secundario
+ch-subtle:      #787872   texto terciario
 ch-cream:       #f5f0e8   texto principal
 ch-green:       #7a9e7e   acento principal, CTA
 ch-green-light: #9dbfa1   hover verde

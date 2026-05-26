@@ -18,7 +18,7 @@ export default async function ColaboradoresPage({
     <div className="p-6 lg:p-10">
 
       {/* Header */}
-      <div className="flex items-end justify-between mb-10">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 sm:mb-10">
         <div>
           <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">
             Módulo CH-4
@@ -29,7 +29,7 @@ export default async function ColaboradoresPage({
         </div>
         <Link
           href="/colaboradores/nuevo"
-          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
+          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors self-start sm:self-auto"
         >
           + Nuevo
         </Link>
@@ -137,7 +137,8 @@ export default async function ColaboradoresPage({
                         {c.tipo_documento === 'boleta' ? 'Boleta' :
                          c.tipo_documento === 'bet' ? 'BET' :
                          c.tipo_documento === 'factura' ? 'Factura' :
-                         c.tipo_documento === 'sin_documento' ? 'Sin doc.' : '—'}
+                         c.tipo_documento === 'sin_documento' ? 'Sin doc.' :
+                         c.tipo_documento === 'contratado' ? 'Contratado' : '—'}
                       </span>
                     </td>
                     <td className="px-5 py-4">

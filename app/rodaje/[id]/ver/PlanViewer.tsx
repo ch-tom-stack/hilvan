@@ -61,17 +61,17 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
     : null
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen bg-ch-dark text-ch-cream">
 
       {/* HEADER */}
-      <div className="border-b border-zinc-800 px-4 py-5 max-w-4xl mx-auto">
+      <div className="border-b border-ch-border px-4 py-5 max-w-4xl mx-auto">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-xs text-zinc-600 mb-1">Casa Hiedra</p>
-            <h1 className="text-xl font-medium text-zinc-100">{rodaje.nombre}</h1>
-            {fecha && <p className="text-sm text-zinc-400 mt-0.5">{fecha}</p>}
+            <p className="text-xs text-ch-subtle mb-1">Casa Hiedra</p>
+            <h1 className="text-xl font-medium text-ch-cream">{rodaje.nombre}</h1>
+            {fecha && <p className="text-sm text-ch-muted mt-0.5">{fecha}</p>}
             {rodaje.proyecto?.nombre && (
-              <p className="text-xs text-zinc-600 mt-1">{rodaje.proyecto.nombre}</p>
+              <p className="text-xs text-ch-subtle mt-1">{rodaje.proyecto.nombre}</p>
             )}
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -79,7 +79,7 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
               <img src={rodaje.cliente_logo_url} alt="Cliente" className="h-8 w-auto object-contain" style={{ filter: 'invert(1)' }} />
             )}
             {ultimaActualizacion && (
-              <span className="text-[10px] text-zinc-700">
+              <span className="text-[10px] text-ch-subtle">
                 Actualizado {ultimaActualizacion.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
@@ -90,21 +90,21 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
         <div className="flex items-center gap-4 mt-4 flex-wrap text-xs">
           {callMin !== undefined && (
             <div className="flex items-center gap-1.5">
-              <span className="text-zinc-600">CALL</span>
-              <span className="font-medium text-lg text-zinc-100">{minutosAHora(callMin)}</span>
+              <span className="text-ch-subtle">CALL</span>
+              <span className="font-medium text-lg text-ch-cream">{minutosAHora(callMin)}</span>
             </div>
           )}
           {locacionPrincipal && (
             <div className="flex items-center gap-1.5">
-              <span className="text-zinc-600">📍</span>
-              <span className="text-zinc-300">{locacionPrincipal.nombre}</span>
+              <span className="text-ch-subtle">📍</span>
+              <span className="text-ch-muted">{locacionPrincipal.nombre}</span>
               {locacionPrincipal.direccion && (
-                <span className="text-zinc-600">· {locacionPrincipal.direccion}</span>
+                <span className="text-ch-subtle">· {locacionPrincipal.direccion}</span>
               )}
             </div>
           )}
           {sol && (
-            <div className="flex items-center gap-2 text-zinc-500">
+            <div className="flex items-center gap-2 text-ch-muted">
               <span>↑{sol.amanecer}</span>
               <span className="text-amber-500">★{sol.dorada_am}</span>
               <span className="text-amber-500">★{sol.dorada_pm}</span>
@@ -112,18 +112,18 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
             </div>
           )}
           {durTotal > 0 && (
-            <span className="text-zinc-600 ml-auto">{Math.floor(durTotal / 60)}h {durTotal % 60}min</span>
+            <span className="text-ch-subtle ml-auto">{Math.floor(durTotal / 60)}h {durTotal % 60}min</span>
           )}
         </div>
 
         {/* Chiste */}
         {(rodaje.chiste_imagen_url || rodaje.chiste_texto) && (
-          <div className="flex items-center gap-3 mt-4 pt-4 border-t border-zinc-900">
+          <div className="flex items-center gap-3 mt-4 pt-4 border-t border-ch-border/30">
             {rodaje.chiste_imagen_url && (
               <img src={rodaje.chiste_imagen_url} alt="" className="h-10 w-10 object-cover rounded" />
             )}
             {rodaje.chiste_texto && (
-              <p className="text-xs text-zinc-500 italic">{rodaje.chiste_texto}</p>
+              <p className="text-xs text-ch-muted italic">{rodaje.chiste_texto}</p>
             )}
           </div>
         )}
@@ -132,10 +132,10 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
       {/* PLAN */}
       {bloquesRaiz.length > 0 && (
         <div className="max-w-4xl mx-auto px-4 py-6">
-          <p className="text-xs text-zinc-600 uppercase tracking-wider mb-3">Plan de rodaje</p>
+          <p className="text-xs text-ch-subtle uppercase tracking-wider mb-3">Plan de rodaje</p>
 
           {/* Headers desktop */}
-          <div className="hidden sm:grid text-xs text-zinc-700 uppercase tracking-wider pb-1 border-b border-zinc-800 mb-1"
+          <div className="hidden sm:grid text-xs text-ch-subtle uppercase tracking-wider pb-1 border-b border-ch-border mb-1"
             style={{ gridTemplateColumns: '56px 48px 1fr 70px 36px 36px 52px 52px 48px' }}>
             <span></span>
             <span></span>
@@ -154,9 +154,9 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
               <div key={bloque.id} className={bloque.es_paralelo ? 'opacity-75' : ''}>
 
                 {/* FILA DESKTOP */}
-                <div className="hidden sm:grid items-start py-2.5 border-b border-zinc-900 text-sm"
+                <div className="hidden sm:grid items-start py-2.5 border-b border-ch-border/30 text-sm"
                   style={{ gridTemplateColumns: '56px 48px 1fr 70px 36px 36px 52px 52px 48px' }}>
-                  <span className="text-xs text-zinc-600 font-mono pt-0.5">
+                  <span className="text-xs text-ch-subtle font-mono pt-0.5">
                     {casc.inicio_min !== undefined ? minutosAHora(casc.inicio_min) : '—'}
                   </span>
                   <span>
@@ -168,29 +168,29 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
                     )}
                   </span>
                   <div>
-                    <p className="text-zinc-100">{bloque.titulo}</p>
-                    {bloque.descripcion && <p className="text-xs text-zinc-600 mt-0.5">{bloque.descripcion}</p>}
-                    {bloque.nota_previa && <p className="text-xs text-zinc-600 italic mt-0.5">{bloque.nota_previa}</p>}
+                    <p className="text-ch-cream">{bloque.titulo}</p>
+                    {bloque.descripcion && <p className="text-xs text-ch-subtle mt-0.5">{bloque.descripcion}</p>}
+                    {bloque.nota_previa && <p className="text-xs text-ch-subtle italic mt-0.5">{bloque.nota_previa}</p>}
                     {bloque.imagen_url && (
                       <button onClick={() => setImagenAmpliada(bloque.imagen_url!)} className="mt-1.5 block">
-                        <img src={bloque.imagen_url} alt="" className="h-16 w-24 object-cover rounded-[2px] border border-zinc-800 hover:border-zinc-600 transition-colors" />
+                        <img src={bloque.imagen_url} alt="" className="h-16 w-24 object-cover rounded-[2px] border border-ch-border hover:border-ch-muted transition-colors" />
                       </button>
                     )}
                   </div>
-                  <span className="text-xs text-zinc-500 pt-0.5">{bloque.character_num || ''}</span>
+                  <span className="text-xs text-ch-muted pt-0.5">{bloque.character_num || ''}</span>
                   <span className="text-xs text-zinc-500 text-center pt-0.5">{bloque.dia_noche || 'D'}</span>
                   <span className="text-xs text-zinc-500 text-center pt-0.5">{bloque.interior_exterior || 'I'}</span>
-                  <span className="text-xs font-mono text-zinc-300 text-center pt-0.5">
+                  <span className="text-xs font-mono text-ch-muted text-center pt-0.5">
                     {casc.inicio_min !== undefined ? minutosAHora(casc.inicio_min) : '—'}
                   </span>
-                  <span className="text-xs font-mono text-zinc-300 text-center pt-0.5">
+                  <span className="text-xs font-mono text-ch-muted text-center pt-0.5">
                     {casc.fin_min !== undefined ? minutosAHora(casc.fin_min) : '—'}
                   </span>
                   <span></span>
                 </div>
 
                 {/* FILA MÓVIL */}
-                <div className="sm:hidden border-b border-zinc-900 py-3 px-1">
+                <div className="sm:hidden border-b border-ch-border/30 py-3 px-1">
                   <div className="flex items-start gap-2">
                     {bloque.scenes_label && (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-[2px] shrink-0 mt-0.5"
@@ -199,21 +199,21 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
                       </span>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-zinc-100">{bloque.titulo}</p>
-                      {bloque.descripcion && <p className="text-xs text-zinc-600 mt-0.5">{bloque.descripcion}</p>}
-                      {bloque.nota_previa && <p className="text-xs text-zinc-600 italic mt-0.5">{bloque.nota_previa}</p>}
+                      <p className="text-sm text-ch-cream">{bloque.titulo}</p>
+                      {bloque.descripcion && <p className="text-xs text-ch-subtle mt-0.5">{bloque.descripcion}</p>}
+                      {bloque.nota_previa && <p className="text-xs text-ch-subtle italic mt-0.5">{bloque.nota_previa}</p>}
                       {bloque.imagen_url && (
                         <button onClick={() => setImagenAmpliada(bloque.imagen_url!)} className="mt-2 block">
-                          <img src={bloque.imagen_url} alt="" className="h-20 w-full max-w-[200px] object-cover rounded-[2px] border border-zinc-800" />
+                          <img src={bloque.imagen_url} alt="" className="h-20 w-full max-w-[200px] object-cover rounded-[2px] border border-ch-border" />
                         </button>
                       )}
                     </div>
                     <div className="text-right shrink-0 font-mono">
-                      <p className="text-xs text-zinc-300">
+                      <p className="text-xs text-ch-muted">
                         {casc.inicio_min !== undefined ? minutosAHora(casc.inicio_min) : '—'}
                         {casc.fin_min !== undefined ? ` → ${minutosAHora(casc.fin_min)}` : ''}
                       </p>
-                      <p className="text-xs text-zinc-600 mt-0.5">{bloque.dia_noche || 'D'} · {bloque.interior_exterior || 'I'}</p>
+                      <p className="text-xs text-ch-subtle mt-0.5">{bloque.dia_noche || 'D'} · {bloque.interior_exterior || 'I'}</p>
                     </div>
                   </div>
                 </div>
@@ -223,7 +223,7 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
           })}
 
           {durTotal > 0 && (
-            <p className="text-xs text-zinc-600 text-right mt-3">
+            <p className="text-xs text-ch-subtle text-right mt-3">
               Total: {Math.floor(durTotal / 60)}h {durTotal % 60}min
             </p>
           )}
@@ -233,19 +233,19 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
       {/* EQUIPO */}
       {equipo.length > 0 && (
         <div className="max-w-4xl mx-auto px-4 pb-10">
-          <p className="text-xs text-zinc-600 uppercase tracking-wider mb-3">Equipo técnico</p>
-          <div className="divide-y divide-zinc-900 border-t border-zinc-800">
+          <p className="text-xs text-ch-subtle uppercase tracking-wider mb-3">Equipo técnico</p>
+          <div className="divide-y divide-ch-border/20 border-t border-ch-border">
             {equipo.map((p: any) => (
               <div key={p.id} className="flex items-center justify-between py-2.5">
                 <div>
-                  <p className="text-sm text-zinc-200">{p.nombre}</p>
-                  <p className="text-xs text-zinc-600">{p.rol}</p>
+                  <p className="text-sm text-ch-cream">{p.nombre}</p>
+                  <p className="text-xs text-ch-subtle">{p.rol}</p>
                 </div>
                 <div className="text-right">
                   {p.hora_llamado_individual && (
-                    <p className="text-sm font-mono text-zinc-300">{p.hora_llamado_individual.slice(0, 5)}</p>
+                    <p className="text-sm font-mono text-ch-muted">{p.hora_llamado_individual.slice(0, 5)}</p>
                   )}
-                  {p.telefono && <p className="text-xs text-zinc-600">{p.telefono}</p>}
+                  {p.telefono && <p className="text-xs text-ch-subtle">{p.telefono}</p>}
                 </div>
               </div>
             ))}
@@ -254,8 +254,8 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
       )}
 
       {/* Footer */}
-      <div className="border-t border-zinc-900 px-4 py-4 text-center max-w-4xl mx-auto">
-        <p className="text-xs text-zinc-800">Casa Hiedra · Hilván</p>
+      <div className="border-t border-ch-border/20 px-4 py-4 text-center max-w-4xl mx-auto">
+        <p className="text-xs text-ch-border">Casa Hiedra · Hilván</p>
       </div>
 
       {/* Lightbox */}

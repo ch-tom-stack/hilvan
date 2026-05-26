@@ -36,31 +36,31 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
     getColaboradores(busqueda).then(setSugerencias)
   }, [busqueda])
 
-  if (loading) return <div className="p-6 text-zinc-600 text-sm">Cargando...</div>
+  if (loading) return <div className="p-6 text-ch-subtle text-sm">Cargando...</div>
 
   const departamentos: RodajeDepartamento[] = rodaje?.departamentos || []
   const sinDepartamento = (rodaje?.equipo_tecnico || []).filter((p: RodajeEquipoTecnico) => !p.departamento_id)
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <Link href={`/rodaje/${id}`} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+      <Link href={`/rodaje/${id}`} className="text-xs text-ch-muted hover:text-ch-cream transition-colors">
         ← Volver al rodaje
       </Link>
       <div className="flex items-center justify-between mt-3 mb-8">
         <div>
-          <h1 className="text-lg font-medium text-zinc-100">Equipo técnico</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">{rodaje?.nombre}</p>
+          <h1 className="text-lg font-medium text-ch-cream">Equipo técnico</h1>
+          <p className="text-sm text-ch-muted mt-0.5">{rodaje?.nombre}</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setModalDept({ open: true })}
-            className="text-xs text-zinc-400 border border-zinc-700 px-3 py-1.5 rounded-[2px] hover:border-zinc-500 transition-colors"
+            className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors"
           >
             + Departamento
           </button>
           <button
             onClick={() => { setModalPersona({ open: true }); setColaboradorSeleccionado(null); setBusqueda('') }}
-            className="text-xs bg-[#E6E2ED] text-zinc-900 font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors"
+            className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors"
           >
             + Persona
           </button>
@@ -68,7 +68,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       {departamentos.length === 0 && sinDepartamento.length === 0 && (
-        <div className="text-center py-16 text-zinc-600 text-sm">
+        <div className="text-center py-16 text-ch-subtle text-sm">
           Agrega departamentos y personas para armar el equipo técnico.
         </div>
       )}
@@ -94,7 +94,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
 
         {sinDepartamento.length > 0 && (
           <div>
-            <p className="text-xs text-zinc-600 uppercase tracking-wider mb-3">Sin departamento</p>
+            <p className="text-xs text-ch-subtle uppercase tracking-wider mb-3">Sin departamento</p>
             <div className="space-y-2">
               {sinDepartamento.map((p: RodajeEquipoTecnico) => (
                 <PersonaRow
@@ -115,7 +115,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
       {/* Modal Departamento */}
       {modalDept.open && (
         <Modal onClose={() => setModalDept({ open: false })}>
-          <h2 className="text-sm font-medium text-zinc-100 mb-4">
+          <h2 className="text-sm font-medium text-ch-cream mb-4">
             {modalDept.editando ? 'Editar departamento' : 'Nuevo departamento'}
           </h2>
           <form
@@ -133,30 +133,30 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
             className="space-y-4"
           >
             <div>
-              <label className="block text-xs text-zinc-400 mb-1.5">Nombre *</label>
+              <label className="block text-xs text-ch-muted mb-1.5">Nombre *</label>
               <input
                 name="nombre"
                 required
                 defaultValue={modalDept.editando?.nombre}
                 placeholder="ej: Cámara, Arte, Sonido..."
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+                className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream placeholder:text-ch-muted focus:outline-none focus:border-ch-muted"
               />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1.5">Hora de llamado del departamento</label>
+              <label className="block text-xs text-ch-muted mb-1.5">Hora de llamado del departamento</label>
               <input
                 name="hora_llamado"
                 type="time"
                 defaultValue={modalDept.editando?.hora_llamado?.slice(0, 5)}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+                className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
               />
-              <p className="text-xs text-zinc-600 mt-1">Solo va al jefe del departamento. El resto hereda la hora general.</p>
+              <p className="text-xs text-ch-subtle mt-1">Solo va al jefe del departamento. El resto hereda la hora general.</p>
             </div>
             <div className="flex gap-3 pt-1">
-              <button type="submit" disabled={isPending} className="bg-[#E6E2ED] text-zinc-900 text-sm font-medium px-4 py-2 rounded-[2px] hover:bg-white transition-colors">
+              <button type="submit" disabled={isPending} className="bg-ch-cream text-ch-dark text-sm font-medium px-4 py-2 rounded-[2px] hover:bg-white transition-colors">
                 {isPending ? 'Guardando...' : 'Guardar'}
               </button>
-              <button type="button" onClick={() => setModalDept({ open: false })} className="text-sm text-zinc-500 px-3 py-2 hover:text-zinc-300">
+              <button type="button" onClick={() => setModalDept({ open: false })} className="text-sm text-ch-muted px-3 py-2 hover:text-ch-cream">
                 Cancelar
               </button>
             </div>
@@ -167,7 +167,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
       {/* Modal Persona */}
       {modalPersona.open && (
         <Modal onClose={() => setModalPersona({ open: false })}>
-          <h2 className="text-sm font-medium text-zinc-100 mb-4">
+          <h2 className="text-sm font-medium text-ch-cream mb-4">
             {modalPersona.editando ? 'Editar persona' : 'Agregar persona'}
           </h2>
           <form
@@ -188,25 +188,25 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
           >
             {!modalPersona.editando && (
               <div className="relative">
-                <label className="block text-xs text-zinc-400 mb-1.5">Buscar en directorio</label>
+                <label className="block text-xs text-ch-muted mb-1.5">Buscar en directorio</label>
                 <input
                   type="text"
                   value={busqueda}
                   onChange={(e) => { setBusqueda(e.target.value); setColaboradorSeleccionado(null) }}
                   placeholder="Escribe un nombre..."
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+                  className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream placeholder:text-ch-muted focus:outline-none focus:border-ch-muted"
                 />
                 {sugerencias.length > 0 && !colaboradorSeleccionado && (
-                  <div className="absolute z-10 w-full bg-zinc-800 border border-zinc-700 rounded-[2px] mt-1 shadow-xl">
+                  <div className="absolute z-10 w-full bg-ch-surface border border-ch-border rounded-[2px] mt-1">
                     {sugerencias.map((c) => (
                       <button
                         key={c.id}
                         type="button"
                         onClick={() => { setColaboradorSeleccionado(c); setBusqueda(c.nombre); setSugerencias([]) }}
-                        className="w-full text-left px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+                        className="w-full text-left px-3 py-2 text-sm text-ch-cream hover:bg-ch-dark transition-colors"
                       >
                         <span>{c.nombre}</span>
-                        {c.rol_habitual && <span className="text-zinc-500 ml-2 text-xs">{c.rol_habitual}</span>}
+                        {c.rol_habitual && <span className="text-ch-muted ml-2 text-xs">{c.rol_habitual}</span>}
                       </button>
                     ))}
                   </div>
@@ -218,63 +218,63 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
             )}
 
             <div>
-              <label className="block text-xs text-zinc-400 mb-1.5">Nombre *</label>
+              <label className="block text-xs text-ch-muted mb-1.5">Nombre *</label>
               <input
                 name="nombre"
                 required
                 defaultValue={colaboradorSeleccionado?.nombre || modalPersona.editando?.nombre}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+                className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Rol</label>
+                <label className="block text-xs text-ch-muted mb-1.5">Rol</label>
                 <input
                   name="rol"
                   defaultValue={colaboradorSeleccionado?.rol_habitual || modalPersona.editando?.rol || ''}
                   placeholder="ej: Director de fotografía"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+                  className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream placeholder:text-ch-muted focus:outline-none focus:border-ch-muted"
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Hora individual</label>
+                <label className="block text-xs text-ch-muted mb-1.5">Hora individual</label>
                 <input
                   name="hora_llamado_individual"
                   type="time"
                   defaultValue={modalPersona.editando?.hora_llamado_individual?.slice(0, 5)}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+                  className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Email</label>
+                <label className="block text-xs text-ch-muted mb-1.5">Email</label>
                 <input
                   name="email"
                   type="email"
                   defaultValue={colaboradorSeleccionado?.email || modalPersona.editando?.email || ''}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+                  className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Teléfono</label>
+                <label className="block text-xs text-ch-muted mb-1.5">Teléfono</label>
                 <input
                   name="telefono"
                   defaultValue={colaboradorSeleccionado?.telefono || modalPersona.editando?.telefono || ''}
                   placeholder="+56 9..."
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+                  className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream placeholder:text-ch-muted focus:outline-none focus:border-ch-muted"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs text-zinc-400 mb-1.5">Departamento</label>
+              <label className="block text-xs text-ch-muted mb-1.5">Departamento</label>
               <select
                 name="departamento_id"
                 defaultValue={modalPersona.editando?.departamento_id || ''}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+                className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
               >
                 <option value="">Sin departamento</option>
                 {departamentos.map((d) => (
@@ -284,22 +284,22 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
             </div>
 
             <div className="flex items-center gap-2">
-              <input type="checkbox" name="es_jefe_departamento" value="true" defaultChecked={modalPersona.editando?.es_jefe_departamento} id="esjefe" className="accent-[#E6E2ED]" />
-              <label htmlFor="esjefe" className="text-sm text-zinc-400 cursor-pointer">Jefe de departamento</label>
+              <input type="checkbox" name="es_jefe_departamento" value="true" defaultChecked={modalPersona.editando?.es_jefe_departamento} id="esjefe" className="accent-ch-cream" />
+              <label htmlFor="esjefe" className="text-sm text-ch-muted cursor-pointer">Jefe de departamento</label>
             </div>
 
             {!modalPersona.editando && !colaboradorSeleccionado && (
               <div className="flex items-center gap-2">
-                <input type="checkbox" name="guardar_en_directorio" value="true" defaultChecked id="guardardir" className="accent-[#E6E2ED]" />
-                <label htmlFor="guardardir" className="text-sm text-zinc-400 cursor-pointer">Guardar en directorio para futuros rodajes</label>
+                <input type="checkbox" name="guardar_en_directorio" value="true" defaultChecked id="guardardir" className="accent-ch-cream" />
+                <label htmlFor="guardardir" className="text-sm text-ch-muted cursor-pointer">Guardar en directorio para futuros rodajes</label>
               </div>
             )}
 
             <div className="flex gap-3 pt-1">
-              <button type="submit" disabled={isPending} className="bg-[#E6E2ED] text-zinc-900 text-sm font-medium px-4 py-2 rounded-[2px] hover:bg-white transition-colors">
+              <button type="submit" disabled={isPending} className="bg-ch-cream text-ch-dark text-sm font-medium px-4 py-2 rounded-[2px] hover:bg-white transition-colors">
                 {isPending ? 'Guardando...' : 'Guardar'}
               </button>
-              <button type="button" onClick={() => setModalPersona({ open: false })} className="text-sm text-zinc-500 px-3 py-2 hover:text-zinc-300">
+              <button type="button" onClick={() => setModalPersona({ open: false })} className="text-sm text-ch-muted px-3 py-2 hover:text-ch-cream">
                 Cancelar
               </button>
             </div>
@@ -316,16 +316,16 @@ function DepartamentoCard({ dept, rodajeId, onEditDept, onEditPersona, onDelete,
     <div>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
-          <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">{dept.nombre}</p>
-          {dept.hora_llamado && <span className="text-xs text-zinc-600">{formatHora(dept.hora_llamado)}</span>}
+          <p className="text-xs text-ch-muted uppercase tracking-wider font-medium">{dept.nombre}</p>
+          {dept.hora_llamado && <span className="text-xs text-ch-subtle">{formatHora(dept.hora_llamado)}</span>}
         </div>
         <div className="flex gap-2">
-          <button onClick={onEditDept} className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors">Editar</button>
+          <button onClick={onEditDept} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">Editar</button>
           <button onClick={onDelete} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Eliminar</button>
         </div>
       </div>
       {miembros.length === 0 ? (
-        <p className="text-xs text-zinc-700 py-3">Sin miembros en este departamento.</p>
+        <p className="text-xs text-ch-subtle py-3">Sin miembros en este departamento.</p>
       ) : (
         <div className="space-y-1">
           {miembros.map((p) => (
@@ -333,35 +333,35 @@ function DepartamentoCard({ dept, rodajeId, onEditDept, onEditPersona, onDelete,
           ))}
         </div>
       )}
-      <div className="border-b border-zinc-800 mt-4" />
+      <div className="border-b border-ch-border mt-4" />
     </div>
   )
 }
 
 function PersonaRow({ persona, onEdit, onDelete }: any) {
   return (
-    <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-[2px] px-4 py-3 hover:border-zinc-700 transition-colors">
+    <div className="flex items-center justify-between bg-ch-surface border border-ch-border rounded-[2px] px-4 py-3 hover:border-ch-muted transition-colors">
       <div>
         <div className="flex items-center gap-2">
-          <p className="text-sm text-zinc-200">{persona.nombre}</p>
+          <p className="text-sm text-ch-cream">{persona.nombre}</p>
           {persona.es_jefe_departamento && (
             <span className="text-xs text-amber-500/80 bg-amber-950/40 px-1.5 py-0.5 rounded">jefe</span>
           )}
         </div>
-        {persona.rol && <p className="text-xs text-zinc-500">{persona.rol}</p>}
+        {persona.rol && <p className="text-xs text-ch-muted">{persona.rol}</p>}
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right hidden sm:block">
           {persona.hora_llamado_individual && (
-            <p className="text-xs text-zinc-300">{formatHora(persona.hora_llamado_individual)}</p>
+            <p className="text-xs text-ch-muted">{formatHora(persona.hora_llamado_individual)}</p>
           )}
           <div className="flex gap-2 justify-end">
-            {persona.email && <span className="text-xs text-zinc-600">✉</span>}
-            {persona.telefono && <span className="text-xs text-zinc-600">📱</span>}
+            {persona.email && <span className="text-xs text-ch-subtle">✉</span>}
+            {persona.telefono && <span className="text-xs text-ch-subtle">📱</span>}
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit} className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors">Editar</button>
+          <button onClick={onEdit} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">Editar</button>
           <button onClick={onDelete} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Quitar</button>
         </div>
       </div>
@@ -372,7 +372,7 @@ function PersonaRow({ persona, onEdit, onDelete }: any) {
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-      <div className="bg-zinc-900 border border-zinc-700 rounded-[2px] p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-ch-surface border border-ch-border rounded-[2px] p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>

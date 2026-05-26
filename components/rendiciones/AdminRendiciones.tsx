@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import { toast } from 'sonner'
 import {
   aprobarGasto, rechazarGasto, aprobarPagoGasto,
   toggleItemCompletado, generarLinkTemporalExterno, crearRendicion, purgarYCrearRendicion, eliminarRendicion,
@@ -231,7 +232,7 @@ export default function AdminRendiciones({
     fd.append('file', file)
     fd.append('carpeta', 'facturas')
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
-    if (!res.ok) { alert('Error subiendo archivo'); return }
+    if (!res.ok) { toast.error('Error al subir archivo'); return }
     const { url } = await res.json()
     const archivos = await agregarArchivoFactura(rendicionId, url)
     actualizarRendicion(rendicionId, { factura_archivos: archivos })

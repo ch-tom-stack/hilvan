@@ -15,7 +15,7 @@ const ESTADO_LABELS: Record<string, { label: string; color: string }> = {
 function TagEstado({ estado }: { estado: string }) {
   const cfg = ESTADO_LABELS[estado] ?? { label: estado, color: 'bg-ch-muted/20 text-ch-muted' }
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-body tracking-wider uppercase font-medium ${cfg.color}`}>
+    <span className={`inline-block px-2 py-0.5 text-[10px] font-body tracking-wider uppercase font-medium ${cfg.color}`}>
       {cfg.label}
     </span>
   )
@@ -40,7 +40,7 @@ export default async function CotizacionesPage() {
         </div>
         <Link
           href="/cotizaciones/nueva"
-          className="flex items-center gap-2 px-4 py-2 bg-ch-cream text-ch-dark font-body text-sm font-medium rounded hover:bg-ch-cream/90 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-ch-cream text-ch-dark font-body text-sm font-medium hover:bg-ch-cream/90 transition-colors"
         >
           <span className="text-lg leading-none">+</span>
           Nueva cotización
@@ -49,7 +49,7 @@ export default async function CotizacionesPage() {
 
       {/* Lista */}
       {grupos.length === 0 ? (
-        <div className="border border-ch-border rounded-lg p-16 text-center">
+        <div className="border border-ch-border p-16 text-center">
           <p className="font-display text-2xl text-ch-cream/40 mb-2">Sin cotizaciones</p>
           <p className="font-body text-sm text-ch-muted">Crea la primera cotización para comenzar.</p>
         </div>
@@ -73,7 +73,7 @@ function GrupoCotizacion({ grupo }: { grupo: CotizacionGrupo }) {
   const principal = cotizaciones[0]
 
   return (
-    <div className="border border-ch-border rounded-lg overflow-hidden">
+    <div className="border border-ch-border overflow-hidden">
       {/* Fila del grupo */}
       <div className="flex items-start sm:items-center justify-between px-4 sm:px-5 py-3 sm:py-4 bg-ch-dark/60 gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-4 min-w-0">

@@ -22,9 +22,9 @@ import SunCalc from 'suncalc'
 
 const ESTADO_CICLO: EstadoRodaje[] = ['borrador', 'confirmado', 'completado']
 const ESTADO_CONFIG: Record<EstadoRodaje, { label: string; clase: string }> = {
-  borrador:   { label: 'Borrador',   clase: 'bg-zinc-800 text-zinc-400' },
+  borrador:   { label: 'Borrador',   clase: 'bg-ch-surface text-ch-muted' },
   confirmado: { label: 'Confirmado', clase: 'bg-emerald-950 text-emerald-400' },
-  completado: { label: 'Completado', clase: 'bg-zinc-900 text-zinc-500' },
+  completado: { label: 'Completado', clase: 'bg-ch-surface text-ch-subtle' },
 }
 
 const COLORES_RAPIDOS = [
@@ -69,7 +69,7 @@ function TimeInput({ value, onBlur, placeholder = '--:--', className = '' }: {
       onKeyDown={e => { if (e.key === 'Enter') commit() }}
       placeholder={placeholder}
       maxLength={5}
-      className={`bg-transparent text-xs font-mono focus:outline-none focus:bg-zinc-800 focus:rounded px-1 ${className}`}
+      className={`bg-transparent text-xs font-mono focus:outline-none focus:bg-ch-surface focus:rounded-[2px] px-1 ${className}`}
     />
   )
 }
@@ -290,8 +290,8 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     setRodaje((r: any) => ({ ...r, estado: siguiente }))
   }
 
-  if (loading) return <div className="p-6 text-zinc-600 text-sm">Cargando...</div>
-  if (!rodaje) return <div className="p-6 text-zinc-600 text-sm">Rodaje no encontrado.</div>
+  if (loading) return <div className="p-6 text-ch-subtle text-sm">Cargando...</div>
+  if (!rodaje) return <div className="p-6 text-ch-subtle text-sm">Rodaje no encontrado.</div>
 
   const cfg = ESTADO_CONFIG[rodaje.estado as EstadoRodaje]
   const bloquesRaiz = bloques.filter(b => !b.padre_id).sort((a, b) => a.orden - b.orden)
@@ -310,16 +310,16 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     : null
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-ch-dark">
 
       {/* HEADER */}
-      <div className="border-b border-zinc-800 px-4 lg:px-6 py-4">
+      <div className="border-b border-ch-border px-4 lg:px-6 py-4">
         <div className="max-w-[1400px] mx-auto">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <Link href="/rodaje" className="text-xs text-zinc-600 hover:text-zinc-400">← Rodajes</Link>
+              <Link href="/rodaje" className="text-xs text-ch-subtle hover:text-ch-muted">← Rodajes</Link>
               <div className="flex items-center gap-3 mt-1 flex-wrap">
-                <h1 className="text-base font-medium text-zinc-100">{rodaje.nombre}</h1>
+                <h1 className="text-base font-medium text-ch-cream">{rodaje.nombre}</h1>
                 {/* Estado — click cicla */}
                 <button
                   onClick={cambiarEstado}
@@ -328,10 +328,10 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                 >
                   {cfg.label}
                 </button>
-                {rodaje.proyecto && <span className="text-xs text-zinc-600">· {rodaje.proyecto.nombre}</span>}
+                {rodaje.proyecto && <span className="text-xs text-ch-subtle">· {rodaje.proyecto.nombre}</span>}
               </div>
               {fecha && (
-                <p className="text-sm text-zinc-400 mt-0.5">
+                <p className="text-sm text-ch-muted mt-0.5">
                   {fecha}
                   {!rodaje.fecha_confirmada && <span className="ml-2 text-amber-500 text-xs">· fecha por confirmar</span>}
                 </p>
@@ -340,7 +340,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
 
             <div className="flex items-center gap-2 flex-wrap">
               {/* Undo/Redo */}
-              <div className="flex gap-1 border border-zinc-800 rounded-[2px]">
+              <div className="flex gap-1 border border-ch-border rounded-[2px]">
                 <button onClick={() => {
                   if (!puedeUndo) return
                   const newIdx = historiaIdx - 1
@@ -349,7 +349,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                   setCambiosSinGuardar(true)
                   programarAutoSave()
                 }} disabled={!puedeUndo} title="Deshacer (⌘Z)"
-                  className="text-xs px-2 py-1 text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors">
+                  className="text-xs px-2 py-1 text-ch-subtle hover:text-ch-muted disabled:opacity-30 transition-colors">
                   ↩
                 </button>
                 <button onClick={() => {
@@ -360,7 +360,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                   setCambiosSinGuardar(true)
                   programarAutoSave()
                 }} disabled={!puedeRedo} title="Rehacer (⌘⇧Z)"
-                  className="text-xs px-2 py-1 text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors border-l border-zinc-800">
+                  className="text-xs px-2 py-1 text-ch-subtle hover:text-ch-muted disabled:opacity-30 transition-colors border-l border-ch-border">
                   ↪
                 </button>
               </div>
@@ -371,24 +371,24 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                   {guardando ? 'Guardando...' : '● Guardar'}
                 </button>
               ) : (
-                <span className="text-xs text-zinc-700">✓ Guardado</span>
+                <span className="text-xs text-ch-border">✓ Guardado</span>
               )}
 
               {rodaje.fecha && (
                 <a href={generarLinkCalendar(rodaje)} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-zinc-500 border border-zinc-800 px-3 py-1.5 rounded-[2px] hover:border-zinc-600 transition-colors">
+                  className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors">
                   + Calendario
                 </a>
               )}
               <a href={`/api/rodaje/${id}/pdf`} target="_blank"
-                className="text-xs text-zinc-400 border border-zinc-700 px-3 py-1.5 rounded-[2px] hover:border-zinc-500 transition-colors">
+                className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors">
                 PDF
               </a>
               <a href={`/rodaje/${id}/ver`} target="_blank"
-                className="text-xs text-zinc-400 border border-zinc-700 px-3 py-1.5 rounded-[2px] hover:border-zinc-500 transition-colors">
+                className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors">
                 ↗ Ver
               </a>
-              <Link href={`/rodaje/${id}/editar`} className="text-xs text-zinc-600 hover:text-zinc-400 px-2">
+              <Link href={`/rodaje/${id}/editar`} className="text-xs text-ch-subtle hover:text-ch-muted px-2">
                 Editar
               </Link>
             </div>
@@ -398,31 +398,31 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
           <div className="flex items-center gap-4 mt-3 flex-wrap text-xs">
             {callGeneral !== undefined && (
               <div className="flex items-center gap-1.5">
-                <span className="text-zinc-600">CALL</span>
-                <span className="font-medium text-zinc-200">{minutosAHora(callGeneral)}</span>
+                <span className="text-ch-subtle">CALL</span>
+                <span className="font-medium text-ch-cream">{minutosAHora(callGeneral)}</span>
               </div>
             )}
             {locacionPrincipal && (
               <div className="flex items-center gap-1.5">
-                <span className="text-zinc-600">📍</span>
-                <span className="text-zinc-400">{locacionPrincipal.nombre}</span>
+                <span className="text-ch-subtle">📍</span>
+                <span className="text-ch-muted">{locacionPrincipal.nombre}</span>
               </div>
             )}
             {sol && (
-              <div className="flex items-center gap-2 text-zinc-500">
+              <div className="flex items-center gap-2 text-ch-muted">
                 <span>↑{sol.amanecer}</span>
                 <span className="text-amber-500">★{sol.dorada_am}</span>
                 <span className="text-amber-500">★{sol.dorada_pm}</span>
                 <span>↓{sol.atardecer}</span>
               </div>
             )}
-            {clima && <span className="text-zinc-500">{clima.temp_min}°/{clima.temp_max}° · {clima.condicion}</span>}
-            {durTotal > 0 && <span className="text-zinc-600 ml-auto">{Math.floor(durTotal / 60)}h {durTotal % 60}min</span>}
+            {clima && <span className="text-ch-muted">{clima.temp_min}°/{clima.temp_max}° · {clima.condicion}</span>}
+            {durTotal > 0 && <span className="text-ch-subtle ml-auto">{Math.floor(durTotal / 60)}h {durTotal % 60}min</span>}
           </div>
 
           {/* Info strip — fila 2: chiste + logo cliente */}
           {(rodaje.chiste_texto || rodaje.chiste_imagen_url || rodaje.cliente_logo_url) && (
-            <div className="flex items-start gap-4 mt-3 pt-3 border-t border-zinc-900">
+            <div className="flex items-start gap-4 mt-3 pt-3 border-t border-ch-border/30">
               {rodaje.cliente_logo_url && (
                 <img src={rodaje.cliente_logo_url} alt="Logo cliente" className="h-6 w-auto object-contain opacity-80" style={{ filter: 'invert(1)' }} />
               )}
@@ -430,7 +430,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                 <img src={rodaje.chiste_imagen_url} alt="Chiste" className="h-8 w-auto object-contain" />
               )}
               {rodaje.chiste_texto && (
-                <p className="text-xs text-zinc-600 italic leading-relaxed max-w-sm">{rodaje.chiste_texto}</p>
+                <p className="text-xs text-ch-subtle italic leading-relaxed max-w-sm">{rodaje.chiste_texto}</p>
               )}
             </div>
           )}
@@ -438,20 +438,20 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       </div>
 
       {/* TABS MÓVIL */}
-      <div className="lg:hidden flex border-b border-zinc-800">
+      <div className="lg:hidden flex border-b border-ch-border">
         <button onClick={() => setTabMobil('plan')}
-          className={`flex-1 py-2 text-xs font-medium ${tabMobil === 'plan' ? 'text-zinc-100 border-b-2 border-[#E6E2ED]' : 'text-zinc-600'}`}>
+          className={`flex-1 py-2 text-xs font-medium ${tabMobil === 'plan' ? 'text-ch-cream border-b-2 border-ch-cream' : 'text-ch-subtle'}`}>
           Plan
         </button>
         <button onClick={() => setTabMobil('equipo')}
-          className={`flex-1 py-2 text-xs font-medium ${tabMobil === 'equipo' ? 'text-zinc-100 border-b-2 border-[#E6E2ED]' : 'text-zinc-600'}`}>
+          className={`flex-1 py-2 text-xs font-medium ${tabMobil === 'equipo' ? 'text-ch-cream border-b-2 border-ch-cream' : 'text-ch-subtle'}`}>
           Equipo ({equipo.length})
         </button>
       </div>
 
       {/* CONTENIDO */}
       <div className="max-w-[1400px] mx-auto lg:grid lg:grid-cols-[1fr_300px]">
-        <div className={`${tabMobil !== 'plan' ? 'hidden lg:block' : ''} border-r border-zinc-800`}>
+        <div className={`${tabMobil !== 'plan' ? 'hidden lg:block' : ''} border-r border-ch-border`}>
           <TablaPlan
             rodajeId={id}
             bloques={bloques}
@@ -574,19 +574,19 @@ function TablaPlan({
   return (
     <div>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-ch-border">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-500 uppercase tracking-wider">Plan de rodaje</span>
-          <div className="flex border border-zinc-800 rounded-[2px] overflow-hidden">
+          <span className="text-xs text-ch-muted uppercase tracking-wider">Plan de rodaje</span>
+          <div className="flex border border-ch-border rounded-[2px] overflow-hidden">
             <button
               onClick={() => setVistaTimeline(false)}
-              className={`text-xs px-2 py-0.5 transition-colors ${!vistaTimeline ? 'bg-zinc-800 text-zinc-200' : 'text-zinc-600 hover:text-zinc-400'}`}
+              className={`text-xs px-2 py-0.5 transition-colors ${!vistaTimeline ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'}`}
             >
               ☰ Tabla
             </button>
             <button
               onClick={() => setVistaTimeline(true)}
-              className={`text-xs px-2 py-0.5 transition-colors border-l border-zinc-800 ${vistaTimeline ? 'bg-zinc-800 text-zinc-200' : 'text-zinc-600 hover:text-zinc-400'}`}
+              className={`text-xs px-2 py-0.5 transition-colors border-l border-ch-border ${vistaTimeline ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'}`}
             >
               ▬ Timeline
             </button>
@@ -595,21 +595,21 @@ function TablaPlan({
         <div className="flex gap-2 relative" ref={plantillasRef}>
           <button
             onClick={(e) => { e.stopPropagation(); setMostrarPlantillas(!mostrarPlantillas) }}
-            className="text-xs text-zinc-500 border border-zinc-800 px-3 py-1 rounded-[2px] hover:border-zinc-600 hover:text-zinc-300 transition-colors"
+            className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors"
           >
             + Plantilla
           </button>
           <button
             onClick={() => onCrear({ titulo: 'Nuevo bloque', tipo: 'rodaje', duracion_min: 30 })}
             disabled={creando}
-            className="text-xs bg-[#E6E2ED] text-zinc-900 font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
+            className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
           >
             {creando ? '...' : '+ Bloque'}
           </button>
 
           {mostrarPlantillas && (
             <div
-              className="absolute top-8 right-0 z-30 bg-zinc-900 border border-zinc-700 rounded-[2px] shadow-xl min-w-[180px]"
+              className="absolute top-8 right-0 z-30 bg-ch-surface border border-ch-border rounded-[2px] min-w-[180px]"
               onClick={e => e.stopPropagation()}
             >
               {PLANTILLAS_BLOQUES.map(p => (
@@ -620,10 +620,10 @@ function TablaPlan({
                     await onCrearDesdePlantilla(p.label)
                   }}
                   disabled={creando}
-                  className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors flex items-center justify-between disabled:opacity-50"
+                  className="w-full text-left px-3 py-2 text-sm text-ch-muted hover:bg-ch-dark transition-colors flex items-center justify-between disabled:opacity-50"
                 >
                   <span>{p.label}</span>
-                  {p.duracion_min > 0 && <span className="text-xs text-zinc-600">{p.duracion_min}min</span>}
+                  {p.duracion_min > 0 && <span className="text-xs text-ch-subtle">{p.duracion_min}min</span>}
                 </button>
               ))}
             </div>
@@ -641,7 +641,7 @@ function TablaPlan({
       />
 
       {/* Headers desktop */}
-      <div className="hidden lg:grid border-b border-zinc-800 px-2 py-1.5 text-xs text-zinc-700 uppercase tracking-wider select-none"
+      <div className="hidden lg:grid border-b border-ch-border px-2 py-1.5 text-xs text-ch-border uppercase tracking-wider select-none"
         style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 60px 60px 50px 40px 56px' }}>
         <span />
         <span>↓</span>
@@ -661,10 +661,10 @@ function TablaPlan({
       {vistaTimeline ? (
         <TimelineView bloquesRaiz={bloquesRaiz} cascada={cascada} />
       ) : bloquesRaiz.length === 0 ? (
-        <div className="text-center py-12 text-zinc-600 text-sm">
+        <div className="text-center py-12 text-ch-subtle text-sm">
           <p>El plan está vacío.</p>
           <button onClick={() => onCrear({ titulo: 'Nuevo bloque', tipo: 'rodaje', duracion_min: 30 })}
-            className="text-[#E6E2ED] mt-2 inline-block hover:underline">
+            className="text-ch-cream mt-2 inline-block hover:underline">
             Agregar primer bloque →
           </button>
         </div>
@@ -680,20 +680,20 @@ function TablaPlan({
 
                 {/* FILA DESKTOP */}
                 <div
-                  className="hidden lg:grid border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors group items-center min-h-[34px]"
+                  className="hidden lg:grid border-b border-ch-border/30 hover:bg-ch-surface/40 transition-colors group items-center min-h-[34px]"
                   style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 60px 60px 50px 40px 56px' }}
                 >
                   {/* Orden */}
                   <div className="flex flex-col items-center justify-center gap-0 opacity-0 group-hover:opacity-100">
                     <button onClick={() => mover(idx, -1)} disabled={idx === 0}
-                      className="text-zinc-600 hover:text-zinc-300 disabled:opacity-20 text-[9px] leading-none py-0.5">▲</button>
+                      className="text-ch-subtle hover:text-ch-muted disabled:opacity-20 text-[9px] leading-none py-0.5">▲</button>
                     <button onClick={() => mover(idx, 1)} disabled={idx === bloquesRaiz.length - 1}
-                      className="text-zinc-600 hover:text-zinc-300 disabled:opacity-20 text-[9px] leading-none py-0.5">▼</button>
+                      className="text-ch-subtle hover:text-ch-muted disabled:opacity-20 text-[9px] leading-none py-0.5">▼</button>
                   </div>
 
                   {/* Hora calculada */}
                   <div className="px-1">
-                    <span className="text-xs text-zinc-500 font-mono">
+                    <span className="text-xs text-ch-muted font-mono">
                       {casc.inicio_min !== undefined ? minutosAHora(casc.inicio_min) : '—'}
                     </span>
                   </div>
@@ -702,15 +702,15 @@ function TablaPlan({
                   <div className="flex items-center gap-1 px-1 relative" onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => setColorPickerAbierto(colorPickerAbierto === bloque.id ? null : bloque.id)}
-                      className="w-2.5 h-2.5 rounded-sm shrink-0 border border-zinc-800"
+                      className="w-2.5 h-2.5 rounded-sm shrink-0 border border-ch-border"
                       style={{ backgroundColor: bloque.scenes_color || '#353135' }}
                     />
                     {colorPickerAbierto === bloque.id && (
-                      <div className="absolute left-0 top-6 z-30 bg-zinc-900 border border-zinc-700 rounded-[2px] p-2 shadow-xl">
+                      <div className="absolute left-0 top-6 z-30 bg-ch-surface border border-ch-border rounded-[2px] p-2">
                         <div className="grid grid-cols-6 gap-1 mb-2">
                           {COLORES_RAPIDOS.map(c => (
                             <button key={c} onClick={() => { actualizarCelda(bloque.id, 'scenes_color', c); setColorPickerAbierto(null) }}
-                              className="w-5 h-5 rounded-sm border border-zinc-800 hover:scale-110 transition-transform"
+                              className="w-5 h-5 rounded-sm border border-ch-border hover:scale-110 transition-transform"
                               style={{ backgroundColor: c }} />
                           ))}
                         </div>
@@ -723,7 +723,7 @@ function TablaPlan({
                       value={bloque.scenes_label || ''}
                       onChange={e => actualizarCelda(bloque.id, 'scenes_label', e.target.value)}
                       placeholder="SCENE"
-                      className="flex-1 min-w-0 bg-transparent text-xs font-medium focus:outline-none placeholder:text-zinc-800 truncate"
+                      className="flex-1 min-w-0 bg-transparent text-xs font-medium focus:outline-none placeholder:text-ch-border truncate"
                       style={{ color: bloque.scenes_color && bloque.scenes_color !== '#353135' ? bloque.scenes_color : '#999' }}
                     />
                   </div>
@@ -731,27 +731,27 @@ function TablaPlan({
                   {/* Descripción */}
                   <div className="flex flex-col justify-center px-1 py-1">
                     <input value={bloque.titulo} onChange={e => actualizarCelda(bloque.id, 'titulo', e.target.value)}
-                      className="bg-transparent text-sm text-zinc-100 focus:outline-none w-full focus:bg-zinc-800 focus:rounded px-1" />
+                      className="bg-transparent text-sm text-ch-cream focus:outline-none w-full focus:bg-ch-surface focus:rounded-[2px] px-1" />
                     <input value={bloque.descripcion || ''} onChange={e => actualizarCelda(bloque.id, 'descripcion', e.target.value)}
-                      placeholder="subtexto..." className="bg-transparent text-xs text-zinc-600 focus:outline-none w-full mt-0.5 placeholder:text-zinc-800 focus:bg-zinc-800 focus:rounded px-1" />
+                      placeholder="subtexto..." className="bg-transparent text-xs text-ch-subtle focus:outline-none w-full mt-0.5 placeholder:text-ch-border focus:bg-ch-surface focus:rounded-[2px] px-1" />
                   </div>
 
                   {/* Char # */}
                   <div className="px-1">
                     <input value={bloque.character_num || ''} onChange={e => actualizarCelda(bloque.id, 'character_num', e.target.value)}
-                      placeholder="—" className="bg-transparent text-xs text-zinc-400 focus:outline-none w-full placeholder:text-zinc-800 focus:bg-zinc-800 focus:rounded px-1" />
+                      placeholder="—" className="bg-transparent text-xs text-ch-muted focus:outline-none w-full placeholder:text-ch-border focus:bg-ch-surface focus:rounded-[2px] px-1" />
                   </div>
 
                   {/* Notas */}
                   <div className="px-1">
                     <input value={bloque.nota_previa || ''} onChange={e => actualizarCelda(bloque.id, 'nota_previa', e.target.value)}
-                      placeholder="notas..." className="bg-transparent text-xs text-zinc-500 focus:outline-none w-full placeholder:text-zinc-800 focus:bg-zinc-800 focus:rounded px-1" />
+                      placeholder="notas..." className="bg-transparent text-xs text-ch-muted focus:outline-none w-full placeholder:text-ch-border focus:bg-ch-surface focus:rounded-[2px] px-1" />
                   </div>
 
                   {/* D/N */}
                   <div className="flex items-center justify-center">
                     <button onClick={() => actualizarCelda(bloque.id, 'dia_noche', bloque.dia_noche === 'D' ? 'N' : 'D')}
-                      className={`text-xs w-6 h-6 rounded-[2px] font-medium transition-colors ${bloque.dia_noche === 'N' ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-600 hover:text-zinc-400'}`}>
+                      className={`text-xs w-6 h-6 rounded-[2px] font-medium transition-colors ${bloque.dia_noche === 'N' ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'}`}>
                       {bloque.dia_noche || 'D'}
                     </button>
                   </div>
@@ -761,7 +761,7 @@ function TablaPlan({
                     <button onClick={() => {
                       const ciclo: Record<string, string> = { 'I': 'E', 'E': '-', '-': 'I' }
                       actualizarCelda(bloque.id, 'interior_exterior', ciclo[bloque.interior_exterior || 'I'])
-                    }} className="text-xs text-zinc-600 hover:text-zinc-400 w-6 h-6 rounded-[2px] transition-colors">
+                    }} className="text-xs text-ch-subtle hover:text-ch-muted w-6 h-6 rounded-[2px] transition-colors">
                       {bloque.interior_exterior || 'I'}
                     </button>
                   </div>
@@ -769,7 +769,7 @@ function TablaPlan({
                   {/* INICIO */}
                   <div className="px-1">
                     <TimeInput value={bloque.hora_inicio_fija} onBlur={v => actualizarTiempo(bloque.id, 'inicio', v)}
-                      className="text-zinc-300 w-full" />
+                      className="text-ch-cream w-full" />
                   </div>
 
                   {/* FIN */}
@@ -777,7 +777,7 @@ function TablaPlan({
                     <TimeInput
                       value={casc.fin_min !== undefined ? minutosAHora(casc.fin_min) : bloque.hora_fin}
                       onBlur={v => actualizarTiempo(bloque.id, 'fin', v)}
-                      className="text-zinc-300 w-full"
+                      className="text-ch-cream w-full"
                     />
                   </div>
 
@@ -788,7 +788,7 @@ function TablaPlan({
                       onBlur={e => actualizarTiempo(bloque.id, 'duracion', e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                       placeholder="min"
-                      className="bg-transparent text-xs text-zinc-400 focus:outline-none w-full font-mono placeholder:text-zinc-800 focus:bg-zinc-800 focus:rounded px-1" />
+                      className="bg-transparent text-xs text-ch-muted focus:outline-none w-full font-mono placeholder:text-ch-border focus:bg-ch-surface focus:rounded-[2px] px-1" />
                   </div>
 
                   {/* IMG */}
@@ -800,18 +800,18 @@ function TablaPlan({
                         <img
                           src={bloque.imagen_url}
                           alt=""
-                          className="w-7 h-7 object-cover rounded-[2px] border border-zinc-700 cursor-pointer"
+                          className="w-7 h-7 object-cover rounded-[2px] border border-ch-border cursor-pointer"
                           onClick={() => handleSeleccionarImagen(bloque.id)}
                         />
                         <button
                           onClick={() => handleEliminarImagen(bloque.id, bloque.imagen_url!)}
-                          className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-zinc-900 border border-zinc-700 rounded-full text-[8px] text-red-400 hidden group-hover/img:flex items-center justify-center leading-none"
+                          className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-ch-dark border border-ch-border rounded-full text-[8px] text-red-400 hidden group-hover/img:flex items-center justify-center leading-none"
                         >✕</button>
                       </div>
                     ) : (
                       <button
                         onClick={() => handleSeleccionarImagen(bloque.id)}
-                        className="text-zinc-800 hover:text-zinc-500 opacity-0 group-hover:opacity-100 transition-all text-xs leading-none"
+                        className="text-ch-border hover:text-ch-muted opacity-0 group-hover:opacity-100 transition-all text-xs leading-none"
                         title="Agregar imagen"
                       >⬜</button>
                     )}
@@ -825,16 +825,16 @@ function TablaPlan({
                           className="text-xs text-red-400 hover:text-red-300 font-medium transition-colors">
                           Sí
                         </button>
-                        <span className="text-zinc-700">·</span>
+                        <span className="text-ch-border">·</span>
                         <button onClick={() => setConfirmarEliminar(null)}
-                          className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors">
+                          className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">
                           No
                         </button>
                       </>
                     ) : (
                       <button
                         onClick={() => setConfirmarEliminar(bloque.id)}
-                        className="text-zinc-800 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs"
+                        className="text-ch-border hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs"
                       >
                         ✕
                       </button>
@@ -843,60 +843,60 @@ function TablaPlan({
                 </div>
 
                 {/* FILA MÓVIL */}
-                <div className="lg:hidden border-b border-zinc-900">
-                  <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-zinc-900/50"
+                <div className="lg:hidden border-b border-ch-border/30">
+                  <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-ch-surface/50"
                     onClick={() => setExpandidoMobil(isExpandido ? null : bloque.id)}>
                     <div className="w-1 h-5 rounded-full shrink-0" style={{ backgroundColor: bloque.scenes_color || '#353135' }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-zinc-100 truncate">{bloque.titulo}</p>
+                      <p className="text-sm text-ch-cream truncate">{bloque.titulo}</p>
                       {bloque.scenes_label && <p className="text-xs truncate" style={{ color: bloque.scenes_color || '#666' }}>{bloque.scenes_label}</p>}
                     </div>
                     <div className="text-right shrink-0 font-mono">
-                      <p className="text-xs text-zinc-300">
+                      <p className="text-xs text-ch-muted">
                         {casc.inicio_min !== undefined ? minutosAHora(casc.inicio_min) : '—'}
                         {casc.fin_min !== undefined ? ` → ${minutosAHora(casc.fin_min)}` : ''}
                       </p>
                     </div>
-                    <span className="text-zinc-700 text-xs">{isExpandido ? '▲' : '▼'}</span>
+                    <span className="text-ch-border text-xs">{isExpandido ? '▲' : '▼'}</span>
                   </div>
 
                   {isExpandido && (
-                    <div className="px-4 pb-4 pt-2 border-t border-zinc-900 space-y-3">
+                    <div className="px-4 pb-4 pt-2 border-t border-ch-border/30 space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-xs text-zinc-600 mb-1 block">Título</label>
+                          <label className="text-xs text-ch-subtle mb-1 block">Título</label>
                           <input value={bloque.titulo} onChange={e => actualizarCelda(bloque.id, 'titulo', e.target.value)}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-2 py-1 text-sm text-zinc-100 focus:outline-none" />
+                            className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1 text-sm text-ch-cream focus:outline-none" />
                         </div>
                         <div>
-                          <label className="text-xs text-zinc-600 mb-1 block">Duración (min)</label>
+                          <label className="text-xs text-ch-subtle mb-1 block">Duración (min)</label>
                           <input type="text" defaultValue={bloque.duracion_min ?? ''}
                             onBlur={e => actualizarTiempo(bloque.id, 'duracion', e.target.value)}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-2 py-1 text-sm text-zinc-100 focus:outline-none font-mono" />
+                            className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1 text-sm text-ch-cream focus:outline-none font-mono" />
                         </div>
                         <div>
-                          <label className="text-xs text-zinc-600 mb-1 block">Inicio</label>
+                          <label className="text-xs text-ch-subtle mb-1 block">Inicio</label>
                           <TimeInput value={bloque.hora_inicio_fija} onBlur={v => actualizarTiempo(bloque.id, 'inicio', v)}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-2 py-1 text-sm text-zinc-100" />
+                            className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1 text-sm text-ch-cream" />
                         </div>
                         <div>
-                          <label className="text-xs text-zinc-600 mb-1 block">Fin</label>
+                          <label className="text-xs text-ch-subtle mb-1 block">Fin</label>
                           <TimeInput value={casc.fin_min !== undefined ? minutosAHora(casc.fin_min) : bloque.hora_fin}
                             onBlur={v => actualizarTiempo(bloque.id, 'fin', v)}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-2 py-1 text-sm text-zinc-100" />
+                            className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1 text-sm text-ch-cream" />
                         </div>
                       </div>
                       <div className="flex gap-3 items-center flex-wrap">
                         <button onClick={() => actualizarCelda(bloque.id, 'dia_noche', bloque.dia_noche === 'D' ? 'N' : 'D')}
-                          className="text-xs text-zinc-300 border border-zinc-700 px-2 py-0.5 rounded-[2px]">{bloque.dia_noche || 'D'}</button>
+                          className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px]">{bloque.dia_noche || 'D'}</button>
                         <button onClick={() => {
                           const ciclo: Record<string, string> = { 'I': 'E', 'E': '-', '-': 'I' }
                           actualizarCelda(bloque.id, 'interior_exterior', ciclo[bloque.interior_exterior || 'I'])
-                        }} className="text-xs text-zinc-300 border border-zinc-700 px-2 py-0.5 rounded-[2px]">{bloque.interior_exterior || 'I'}</button>
+                        }} className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px]">{bloque.interior_exterior || 'I'}</button>
                         <button
                           onClick={() => handleSeleccionarImagen(bloque.id)}
                           disabled={subiendoImagen === bloque.id}
-                          className="text-xs text-zinc-500 border border-zinc-700 px-2 py-0.5 rounded-[2px] disabled:opacity-50"
+                          className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] disabled:opacity-50"
                         >{subiendoImagen === bloque.id ? '...' : bloque.imagen_url ? '→ cambiar img' : '+ imagen'}</button>
                         {bloque.imagen_url && (
                           <button onClick={() => handleEliminarImagen(bloque.id, bloque.imagen_url!)}
@@ -906,7 +906,7 @@ function TablaPlan({
                           className="text-xs text-red-500 ml-auto">Eliminar</button>
                       </div>
                       {bloque.imagen_url && (
-                        <img src={bloque.imagen_url} alt="" className="w-full max-h-40 object-cover rounded-[2px] border border-zinc-700" />
+                        <img src={bloque.imagen_url} alt="" className="w-full max-h-40 object-cover rounded-[2px] border border-ch-border" />
                       )}
                     </div>
                   )}
@@ -928,7 +928,7 @@ function TimelineView({ bloquesRaiz, cascada }: {
 }) {
   const validos = cascada.filter(c => c.inicio_min !== undefined && c.fin_min !== undefined)
   if (validos.length === 0) return (
-    <div className="px-4 py-8 text-center text-zinc-600 text-sm">
+    <div className="px-4 py-8 text-center text-ch-subtle text-sm">
       Agrega horas de inicio para ver el timeline.
     </div>
   )
@@ -948,7 +948,7 @@ function TimelineView({ bloquesRaiz, cascada }: {
         <div className="flex" style={{ paddingLeft: 96 }}>
           {marcas.map(m => (
             <div key={m}
-              className="absolute text-xs text-zinc-700 font-mono"
+              className="absolute text-xs text-ch-subtle font-mono"
               style={{ left: `calc(96px + ${((m - minTime) / total) * 100}%)` }}
             >
               {minutosAHora(m)}
@@ -963,7 +963,7 @@ function TimelineView({ bloquesRaiz, cascada }: {
         {/* Grid lines */}
         <div className="absolute inset-0 pointer-events-none" style={{ paddingLeft: 96 }}>
           {marcas.map(m => (
-            <div key={m} className="absolute top-0 bottom-0 border-l border-zinc-900"
+            <div key={m} className="absolute top-0 bottom-0 border-l border-ch-border/20"
               style={{ left: `calc(${((m - minTime) / total) * 100}%)` }} />
           ))}
         </div>
@@ -973,9 +973,9 @@ function TimelineView({ bloquesRaiz, cascada }: {
           const casc = cascada[idx]
           if (casc.inicio_min === undefined) return (
             <div key={bloque.id} className="flex items-center gap-2 mb-1 h-7">
-              <div className="w-24 shrink-0 text-xs text-zinc-700 truncate pr-2 text-right">{bloque.titulo}</div>
+              <div className="w-24 shrink-0 text-xs text-ch-subtle truncate pr-2 text-right">{bloque.titulo}</div>
               <div className="flex-1 relative h-full flex items-center">
-                <div className="text-xs text-zinc-800 italic">sin hora</div>
+                <div className="text-xs text-ch-border italic">sin hora</div>
               </div>
             </div>
           )
@@ -992,7 +992,7 @@ function TimelineView({ bloquesRaiz, cascada }: {
                     {bloque.scenes_label}
                   </span>
                 ) : (
-                  <span className="text-xs text-zinc-600 truncate">{bloque.titulo}</span>
+                  <span className="text-xs text-ch-subtle truncate">{bloque.titulo}</span>
                 )}
               </div>
 
@@ -1017,7 +1017,7 @@ function TimelineView({ bloquesRaiz, cascada }: {
               </div>
 
               {/* Hora */}
-              <div className="w-20 shrink-0 text-xs text-zinc-600 font-mono">
+              <div className="w-20 shrink-0 text-xs text-ch-subtle font-mono">
                 {minutosAHora(casc.inicio_min!)} → {minutosAHora(casc.fin_min!)}
               </div>
             </div>
@@ -1066,16 +1066,16 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
 
   return (
     <div>
-      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-        <span className="text-xs text-zinc-500 uppercase tracking-wider">Equipo técnico</span>
+      <div className="px-4 py-3 border-b border-ch-border flex items-center justify-between">
+        <span className="text-xs text-ch-muted uppercase tracking-wider">Equipo técnico</span>
         <div className="flex gap-2">
           <button
             onClick={() => setMostrarForm(!mostrarForm)}
-            className="text-xs bg-[#E6E2ED] text-zinc-900 font-medium px-2.5 py-1 rounded-[2px] hover:bg-white transition-colors"
+            className="text-xs bg-ch-cream text-ch-dark font-medium px-2.5 py-1 rounded-[2px] hover:bg-white transition-colors"
           >
             + Persona
           </button>
-          <Link href={`/rodaje/${rodajeId}/equipo`} className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1">
+          <Link href={`/rodaje/${rodajeId}/equipo`} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors py-1">
             Gestionar →
           </Link>
         </div>
@@ -1083,12 +1083,12 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
 
       {/* Form rápido */}
       {mostrarForm && (
-        <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-900/50 space-y-2">
+        <div className="px-4 py-3 border-b border-ch-border bg-ch-surface/50 space-y-2">
           <input
             value={nombre}
             onChange={e => setNombre(e.target.value)}
             placeholder="Nombre *"
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-2 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-600"
+            className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1.5 text-sm text-ch-cream focus:outline-none focus:border-ch-muted placeholder:text-ch-subtle"
             onKeyDown={e => { if (e.key === 'Enter') handleAgregar() }}
           />
           <div className="grid grid-cols-2 gap-2">
@@ -1096,24 +1096,24 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
               value={rol}
               onChange={e => setRol(e.target.value)}
               placeholder="Rol / cargo"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-2 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-600"
+              className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1.5 text-xs text-ch-cream focus:outline-none focus:border-ch-muted placeholder:text-ch-subtle"
             />
             <input
               value={telefono}
               onChange={e => setTelefono(e.target.value)}
               placeholder="Teléfono"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-[2px] px-2 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 placeholder:text-zinc-600"
+              className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1.5 text-xs text-ch-cream focus:outline-none focus:border-ch-muted placeholder:text-ch-subtle"
             />
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleAgregar}
               disabled={guardando || !nombre.trim()}
-              className="text-xs bg-[#E6E2ED] text-zinc-900 font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
+              className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
             >
               {guardando ? '...' : 'Agregar'}
             </button>
-            <button onClick={() => setMostrarForm(false)} className="text-xs text-zinc-600 hover:text-zinc-300 px-2">
+            <button onClick={() => setMostrarForm(false)} className="text-xs text-ch-subtle hover:text-ch-muted px-2">
               Cancelar
             </button>
           </div>
@@ -1121,11 +1121,11 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
       )}
 
       {equipo.length === 0 && !mostrarForm ? (
-        <div className="px-4 py-8 text-center text-zinc-700 text-sm">
+        <div className="px-4 py-8 text-center text-ch-subtle text-sm">
           <p className="text-xs">Sin equipo agregado.</p>
         </div>
       ) : (
-        <div className="divide-y divide-zinc-900">
+        <div className="divide-y divide-ch-border/20">
           {equipo.map((persona: any) => {
             const horaEfectiva = resolverHoraLlamado(persona, rodaje)
             const citacion: RodajeCitacion | undefined = Array.isArray(persona.citacion)
@@ -1134,11 +1134,11 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
             return (
               <div key={persona.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-zinc-200 truncate">{persona.nombre}</p>
-                  <p className="text-xs text-zinc-600 truncate">{persona.rol}</p>
+                  <p className="text-sm text-ch-cream truncate">{persona.nombre}</p>
+                  <p className="text-xs text-ch-subtle truncate">{persona.rol}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-mono text-zinc-300">{horaEfectiva ? formatHora(horaEfectiva) : '—'}</p>
+                  <p className="text-sm font-mono text-ch-muted">{horaEfectiva ? formatHora(horaEfectiva) : '—'}</p>
                   {estado && (
                     <span className={`text-xs ${estado.color === 'green' ? 'text-emerald-400' : estado.color === 'red' ? 'text-red-400' : estado.color === 'yellow' ? 'text-amber-400' : 'text-zinc-600'}`}>
                       {estado.label}
@@ -1150,8 +1150,8 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
           })}
         </div>
       )}
-      <div className="px-4 py-3 border-t border-zinc-800">
-        <Link href={`/rodaje/${rodajeId}/citaciones`} className="text-xs text-[#E6E2ED] hover:underline">
+      <div className="px-4 py-3 border-t border-ch-border">
+        <Link href={`/rodaje/${rodajeId}/citaciones`} className="text-xs text-ch-cream hover:underline">
           Ver citaciones →
         </Link>
       </div>

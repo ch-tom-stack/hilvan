@@ -257,7 +257,7 @@ function GastoFijoCard({
             type="button"
             onClick={() => onToggleActivo(!gasto.activo)}
             disabled={isPending}
-            className={`w-7 h-3.5 rounded-full transition-colors relative disabled:opacity-50 ${gasto.activo ? 'bg-ch-green' : 'bg-zinc-700'}`}
+            className={`w-7 h-3.5 rounded-full transition-colors relative disabled:opacity-50 ${gasto.activo ? 'bg-ch-green' : 'bg-ch-border'}`}
             title={gasto.activo ? 'Marcar inactivo' : 'Marcar activo'}>
             <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${gasto.activo ? 'left-[14px]' : 'left-0.5'}`} />
           </button>

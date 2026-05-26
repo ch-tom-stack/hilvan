@@ -94,25 +94,42 @@ export default function ListaClientes({ clientes }: Props) {
             <Link
               key={c.id}
               href={`/clientes/${c.id}`}
-              className="grid grid-cols-1 lg:grid-cols-[2fr_2fr_1fr] border-b border-ch-border/50 px-4 py-3 hover:bg-white/5 transition-colors group"
+              className="flex items-center justify-between gap-3 border-b border-ch-border/50 px-4 py-3 hover:bg-white/5 transition-colors group lg:grid lg:grid-cols-[2fr_2fr_1fr]"
             >
-              <div className={nivel === 1 ? 'pl-5 flex items-center gap-2' : 'flex items-center gap-2'}>
-                {nivel === 1 && <span className="text-ch-muted/50 text-xs">·</span>}
-                <div>
-                  <span className="font-body text-sm text-ch-cream group-hover:text-white transition-colors">
-                    {c.nombre}
-                  </span>
-                  {c.empresa && (
-                    <span className="font-body text-xs text-ch-muted ml-2">{c.empresa}</span>
-                  )}
+              {/* Nombre / empresa */}
+              <div className={`min-w-0 ${nivel === 1 ? 'pl-4 flex items-start gap-2' : 'flex items-start gap-2'}`}>
+                {nivel === 1 && <span className="text-ch-muted/50 text-xs mt-0.5 shrink-0">·</span>}
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="font-body text-sm text-ch-cream group-hover:text-white transition-colors">
+                      {c.nombre}
+                    </span>
+                    {c.empresa && c.empresa !== c.nombre && (
+                      <span className="font-body text-xs text-ch-muted">{c.empresa}</span>
+                    )}
+                  </div>
+                  {/* Móvil: email + teléfono debajo del nombre (solo si existen) */}
+                  <div className="lg:hidden flex gap-3 flex-wrap mt-0.5">
+                    {c.email && (
+                      <span className="font-body text-[11px] text-ch-muted truncate max-w-[200px]">{c.email}</span>
+                    )}
+                    {c.telefono && (
+                      <span className="font-body text-[11px] text-ch-muted">{c.telefono}</span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <span className="font-body text-xs text-ch-muted mt-1 lg:mt-0 lg:self-center">
+
+              {/* Desktop: email y teléfono en columnas separadas */}
+              <span className="hidden lg:block font-body text-xs text-ch-muted self-center">
                 {c.email ?? '—'}
               </span>
-              <span className="font-body text-xs text-ch-muted mt-0.5 lg:mt-0 lg:self-center">
+              <span className="hidden lg:block font-body text-xs text-ch-muted self-center">
                 {c.telefono ?? '—'}
               </span>
+
+              {/* Móvil: flecha */}
+              <span className="lg:hidden font-body text-[10px] text-ch-muted shrink-0">→</span>
             </Link>
           ))}
         </div>

@@ -314,7 +314,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
                 { tipo: 'release', label: 'Autorización de imagen' },
               ].map(({ tipo, label }) => (
                 <button key={tipo} onClick={() => generarContrato(tipo)} disabled={isPending}
-                  className="border border-ch-border text-ch-muted hover:text-ch-cream hover:border-zinc-600 font-body text-xs px-4 py-3 text-left transition-colors disabled:opacity-50">
+                  className="border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-muted font-body text-xs px-4 py-3 text-left transition-colors disabled:opacity-50">
                   {label}
                   <span className="block text-[9px] tracking-wider text-ch-muted/60 mt-0.5">→ descarga .docx</span>
                 </button>

@@ -40,19 +40,19 @@ export function useConfirm() {
       onClick={() => handleClose(false)}
     >
       <div
-        className="bg-ch-card border border-ch-border rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl"
+        className="bg-ch-surface border border-ch-border p-6 max-w-sm w-full mx-4"
         onClick={e => e.stopPropagation()}
       >
         <p className="font-body text-sm text-ch-cream mb-6 leading-relaxed">{state.message}</p>
         <div className="flex justify-end gap-3">
           <button
-            className="px-4 py-2 text-sm font-body text-ch-muted hover:text-ch-cream border border-ch-border rounded transition-colors"
+            className="px-4 py-2 text-sm font-body text-ch-muted hover:text-ch-cream border border-ch-border transition-colors"
             onClick={() => handleClose(false)}
           >
             Cancelar
           </button>
           <button
-            className="px-4 py-2 text-sm font-body bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
+            className="px-4 py-2 text-sm font-body bg-red-700 hover:bg-red-600 text-white transition-colors"
             onClick={() => handleClose(true)}
           >
             Eliminar
@@ -113,7 +113,7 @@ export function usePrompt() {
       onClick={handleCancel}
     >
       <div
-        className="bg-ch-card border border-ch-border rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl"
+        className="bg-ch-surface border border-ch-border p-6 max-w-sm w-full mx-4"
         onClick={e => e.stopPropagation()}
       >
         <p className="font-body text-sm text-ch-cream mb-3 leading-relaxed">{state.message}</p>
@@ -126,17 +126,17 @@ export function usePrompt() {
             if (e.key === 'Enter') handleSubmit()
             if (e.key === 'Escape') handleCancel()
           }}
-          className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 text-sm font-body text-ch-cream focus:outline-none focus:border-ch-green mb-4"
+          className="w-full bg-ch-dark border border-ch-border px-3 py-2 text-sm font-body text-ch-cream focus:outline-none focus:border-ch-green mb-4"
         />
         <div className="flex justify-end gap-3">
           <button
-            className="px-4 py-2 text-sm font-body text-ch-muted hover:text-ch-cream border border-ch-border rounded transition-colors"
+            className="px-4 py-2 text-sm font-body text-ch-muted hover:text-ch-cream border border-ch-border transition-colors"
             onClick={handleCancel}
           >
             Cancelar
           </button>
           <button
-            className="px-4 py-2 text-sm font-body bg-ch-green hover:bg-ch-green-light text-ch-black rounded transition-colors"
+            className="px-4 py-2 text-sm font-body bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors"
             onClick={handleSubmit}
           >
             Aceptar

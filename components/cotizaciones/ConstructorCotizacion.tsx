@@ -331,7 +331,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               {estadoOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setEstadoOpen(false)} />
-                  <div className="absolute left-0 top-full mt-1 z-50 bg-ch-surface border border-ch-border shadow-lg min-w-[140px]">
+                  <div className="absolute left-0 top-full mt-1 z-50 bg-ch-surface border border-ch-border min-w-[140px]">
                     {Object.entries(ESTADO_CONFIG).map(([key, { label, color }]) => (
                       <button
                         key={key}
@@ -854,7 +854,7 @@ function DepBlock({
   const subtotal = subtotalDepartamento(dep)
 
   return (
-    <div className="border border-ch-border rounded-lg overflow-hidden">
+    <div className="border border-ch-border overflow-hidden">
       {/* Header departamento */}
       <div className="flex items-center justify-between px-4 py-3 bg-ch-dark/40">
         <div className="flex items-center gap-3">
