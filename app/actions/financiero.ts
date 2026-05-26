@@ -4,7 +4,25 @@ import { createClient } from '@/lib/supabase/server'
 import { calcularRetencion } from '@/types'
 import { mesAnterior, mismoMesAñoAnterior } from '@/lib/periodos'
 
-const PPM_TASA = 0.016 // 1.6% — ajustar según tasa vigente de Casa Hiedra
+// const PPM_TASA = 0.016 // fallback — reemplazado por configuracion_financiero
+
+export async function getPPMTasa(): Promise<number> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('configuracion_financiero')
+    .select('valor')
+    .eq('clave', 'ppm_tasa')
+    .single()
+  return data ? parseFloat(data.valor) : 0.05
+}
+
+export async function setPPMTasa(tasa: number): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('configuracion_financiero')
+    .upsert({ clave: 'ppm_tasa', valor: String(tasa), updated_at: new Date().toISOString() })
+  return error ? { error: error.message } : {}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -145,8 +163,9 @@ export interface ResumenPeriodo {
 // SERVER ACTION PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getDatosFinancieros(mes: string): Promise<DatosFinancieros> {
+export async function getDatosFinancieros(mes: string, ppmTasa?: number): Promise<DatosFinancieros> {
   const supabase = await createClient()
+  const PPM_TASA = ppmTasa !== undefined ? ppmTasa : await getPPMTasa()
   const inicio = inicioPeriodo(mes)
   const fin = finPeriodo(mes)
   const finTs = `${fin}T23:59:59`

@@ -1,9 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import type { DatosFinancieros, ResumenPeriodo, FilaCotizacion, FilaGasto, FilaCuota } from '@/app/actions/financiero'
+import { setPPMTasa } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
+import { toast } from 'sonner'
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -110,9 +112,10 @@ interface Props {
   datos: DatosFinancieros
   anterior: ResumenPeriodo
   añoAnterior: ResumenPeriodo
+  ppmTasa: number
 }
 
-export default function EstadoResultados({ datos, anterior, añoAnterior }: Props) {
+export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTasa: ppmTasaInicial }: Props) {
   const { ingresos, egresos, tributario, totales } = datos
 
   const totalPorFacturar = ingresos.por_facturar.reduce((s, c) => s + c.total, 0)
@@ -126,6 +129,35 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
 
   const [exportando, setExportando] = useState(false)
   const [errorExport, setErrorExport] = useState<string | null>(null)
+
+  // ── PPM editable ──────────────────────────────────────────────────────────
+  const [ppmTasa, setPpmTasaLocal] = useState(ppmTasaInicial)
+  const [editandoPPM, setEditandoPPM] = useState(false)
+  const [ppmInput, setPpmInput] = useState(String(Math.round(ppmTasaInicial * 10000) / 100))
+  const [ppmPending, startPPMTransition] = useTransition()
+
+  // Recalcular PPM con la tasa local
+  const neto_cobrado_sin_iva = datos.ingresos.cobrado.reduce((s, _c) => s, 0) // placeholder, usamos tributario
+  const ppm_estimado_local = Math.round(tributario.ppm_estimado / ppmTasaInicial * ppmTasa) || tributario.ppm_estimado
+
+  function handleGuardarPPM() {
+    const nueva = parseFloat(ppmInput.replace(',', '.'))
+    if (isNaN(nueva) || nueva < 0 || nueva > 100) {
+      toast.error('Tasa inválida (0–100%)')
+      return
+    }
+    const tasaDecimal = nueva / 100
+    startPPMTransition(async () => {
+      const result = await setPPMTasa(tasaDecimal)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        setPpmTasaLocal(tasaDecimal)
+        setEditandoPPM(false)
+        toast.success('Tasa PPM actualizada')
+      }
+    })
+  }
 
   const [añoNum, mesNum] = datos.periodo.split('-').map(Number)
 
@@ -344,13 +376,63 @@ export default function EstadoResultados({ datos, anterior, añoAnterior }: Prop
               </span>
             </div>
             <Separador />
-            <FilaNumero label="PPM estimado (1.6%)" valor={tributario.ppm_estimado} color="text-amber-400" />
+            {/* PPM editable */}
+            <div className="flex items-baseline justify-between py-1.5">
+              <div className="flex items-center gap-2">
+                <span className="font-body text-xs text-ch-muted">
+                  PPM estimado ({(ppmTasa * 100).toLocaleString('es-CL', { maximumFractionDigits: 2 })}%)
+                </span>
+                {!editandoPPM ? (
+                  <button
+                    onClick={() => {
+                      setPpmInput(String(Math.round(ppmTasa * 10000) / 100))
+                      setEditandoPPM(true)
+                    }}
+                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    title="Editar tasa PPM"
+                  >
+                    ✎
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={ppmInput}
+                      onChange={e => setPpmInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleGuardarPPM()
+                        if (e.key === 'Escape') setEditandoPPM(false)
+                      }}
+                      className="w-14 bg-ch-dark border border-ch-green px-1.5 py-0.5 font-mono text-[10px] text-ch-cream text-right focus:outline-none"
+                      autoFocus
+                    />
+                    <span className="font-body text-[10px] text-ch-muted">%</span>
+                    <button
+                      onClick={handleGuardarPPM}
+                      disabled={ppmPending}
+                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setEditandoPPM(false)}
+                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+              <span className="font-mono text-sm tabular-nums text-amber-400">
+                {clp(ppm_estimado_local)}
+              </span>
+            </div>
 
             {/* Total obligaciones */}
             <div className="mt-3 pt-2 border-t border-ch-border/40">
               <FilaNumero
                 label="Total obligaciones"
-                valor={tributario.retenciones_bh + Math.max(0, tributario.saldo_iva) + tributario.ppm_estimado}
+                valor={tributario.retenciones_bh + Math.max(0, tributario.saldo_iva) + ppm_estimado_local}
                 bold
                 color="text-amber-400"
               />

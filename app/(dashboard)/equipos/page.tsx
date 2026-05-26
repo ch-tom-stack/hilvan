@@ -51,6 +51,14 @@ export default async function EquiposPage({
             Maletas
           </Link>
           <Link
+            href="/equipos/bundles"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body
+                       text-[10px] tracking-[0.35em] uppercase px-5 py-3
+                       transition-colors duration-200"
+          >
+            Bundles
+          </Link>
+          <Link
             href="/equipos/reservas"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body
                        text-[10px] tracking-[0.35em] uppercase px-5 py-3

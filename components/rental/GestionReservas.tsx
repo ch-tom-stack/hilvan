@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useConfirm } from '@/components/ui/useConfirm'
 import { actualizarEstadoReserva, eliminarReserva } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
 import type { RentalReserva, EstadoRental } from '@/types'
@@ -48,6 +49,7 @@ function FilaReserva({
   onToggle: () => void
 }) {
   const [pending, startTransition] = useTransition()
+  const { confirm, ConfirmDialog } = useConfirm()
 
   const itemLabel = reserva.equipo
     ? `${reserva.equipo.codigo} · ${reserva.equipo.nombre}`
@@ -68,8 +70,8 @@ function FilaReserva({
     })
   }
 
-  function eliminar() {
-    if (!confirm('¿Eliminar esta reserva?')) return
+  async function eliminar() {
+    if (!await confirm('¿Eliminar esta reserva?')) return
     startTransition(async () => {
       const r = await eliminarReserva(reserva.id)
       if (r.ok) toastOk('Reserva eliminada')
@@ -79,6 +81,7 @@ function FilaReserva({
 
   return (
     <div className="border-b border-ch-border/50 last:border-b-0">
+      {ConfirmDialog}
       {/* Fila principal */}
       <button
         onClick={onToggle}

@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useConfirm } from '@/components/ui/useConfirm'
 import {
   getRodaje,
   getColaboradores,
@@ -26,6 +27,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
   const [busqueda, setBusqueda] = useState('')
   const [sugerencias, setSugerencias] = useState<Colaborador[]>([])
   const [colaboradorSeleccionado, setColaboradorSeleccionado] = useState<Colaborador | null>(null)
+  const { confirm, ConfirmDialog } = useConfirm()
 
   const recargar = () => getRodaje(id).then(setRodaje)
 
@@ -43,6 +45,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      {ConfirmDialog}
       <Link href={`/rodaje/${id}`} className="text-xs text-ch-muted hover:text-ch-cream transition-colors">
         ← Volver al rodaje
       </Link>
@@ -82,11 +85,11 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
             onEditDept={() => setModalDept({ open: true, editando: dept })}
             onEditPersona={(p: any) => setModalPersona({ open: true, editando: p })}
             onDelete={async () => {
-              if (!confirm('¿Eliminar departamento?')) return
+              if (!await confirm('¿Eliminar departamento?')) return
               startTransition(async () => { await eliminarDepartamento(dept.id, id); recargar() })
             }}
             onDeletePersona={async (p: any) => {
-              if (!confirm(`¿Eliminar a ${p.nombre}?`)) return
+              if (!await confirm(`¿Eliminar a ${p.nombre}?`)) return
               startTransition(async () => { await eliminarPersonaEquipo(p.id, id); recargar() })
             }}
           />
@@ -102,7 +105,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
                   persona={p}
                   onEdit={() => setModalPersona({ open: true, editando: p })}
                   onDelete={async () => {
-                    if (!confirm(`¿Eliminar a ${p.nombre}?`)) return
+                    if (!await confirm(`¿Eliminar a ${p.nombre}?`)) return
                     startTransition(async () => { await eliminarPersonaEquipo(p.id, id); recargar() })
                   }}
                 />
