@@ -7,7 +7,7 @@
   --color-ch-dark: #1c1c1a;
   --color-ch-surface: #242422;
   --color-ch-border: #383836;
-  --color-ch-subtle: #787872;
+  --color-ch-subtle: #8c8c86;
   --color-ch-muted: #9a9a92;
   --color-ch-cream: #f5f0e8;
   --color-ch-white: #faf9f7;
@@ -63,7 +63,7 @@ input:-webkit-autofill:focus {
   border-color: #4a4a46;
 }
 .input-ch::placeholder {
-  color: #787872;
+  color: #8c8c86;
 }
 
 /* ─── FullCalendar — Hilván theme ───────────────────────────────────────────── */

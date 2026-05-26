@@ -49,7 +49,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
     'Cliente'
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-[#0D0D0D] px-6 py-5">
         <div className="max-w-3xl mx-auto flex items-end justify-between">
