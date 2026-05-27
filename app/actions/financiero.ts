@@ -8,7 +8,7 @@ import { mesAnterior, mismoMesAñoAnterior } from '@/lib/periodos'
 // const PPM_TASA = 0.016 // fallback — reemplazado por configuracion_financiero
 
 export async function getPPMTasa(): Promise<number> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data } = await supabase
     .from('configuracion_financiero')
     .select('valor')
@@ -26,7 +26,7 @@ export async function setPPMTasa(tasa: number): Promise<{ error?: string }> {
 }
 
 export async function getPreviredMensual(): Promise<number> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data } = await supabase
     .from('configuracion_financiero')
     .select('valor')
@@ -44,7 +44,7 @@ export async function setPreviredMensual(monto: number): Promise<{ error?: strin
 }
 
 export async function getIUSCMensual(): Promise<number> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data } = await supabase
     .from('configuracion_financiero')
     .select('valor')
