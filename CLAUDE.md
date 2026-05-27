@@ -223,11 +223,7 @@ proxy.ts                   ← middleware + rutas públicas
 ## Pendientes anotados
 
 - **CH-8 Calendario**: implementación en curso
-- CH-6 Financiero: PPM pendiente de tasa confirmada por Tomás
 - CH-6: PDF parsing facturas SII pendiente de decisión
 - Citación `/citacion/[token]`: migrar zinc → ch-tokens
-- Estados vacíos consistentes en todos los módulos
-- Sistema de toast/feedback de acciones
 - Página 404 personalizada
-- UI de Bundles (tabla creada, interfaz pendiente)
-- Código banco Santander: confirmar entero SBIF vs 5 dígitos con sufijo
+- **Export Santander**: implementado, pendiente validar con rendiciones aprobadas reales (template en `public/templates/santander_masivo.xlsx`, API route en `/api/rendiciones/santander-export`)
