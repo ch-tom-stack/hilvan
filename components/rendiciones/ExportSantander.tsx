@@ -94,8 +94,8 @@ interface Props {
 
 export default function ExportSantander({ cotizaciones, rendiciones, cotizacionFiltro }: Props) {
   const router = useRouter()
-  const [cuentaOrigen, setCuentaOrigen] = useState('')
-  const [rutEmpresa, setRutEmpresa] = useState('76.XXX.XXX-X')
+  const [cuentaOrigen, setCuentaOrigen] = useState('000084616290')
+  const [rutEmpresa, setRutEmpresa] = useState('77.151.117-1')
 
   const totalNeto = rendiciones.reduce((s, r) => {
     const ret = r.tipo_documento ? calcularRetencion(r) : { neto: r.monto }
@@ -103,26 +103,29 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
   }, 0)
 
   const descargar = async () => {
-    const { utils, writeFile } = await import('xlsx')
-
     const filas = rendiciones.map(r => buildFila(r, cuentaOrigen))
-    const rows = filas.map(f => [
-      f.cuenta_origen, f.moneda_origen, f.cuenta_destino, f.moneda_destino,
-      f.codigo_banco_destino, f.rut_beneficiario, f.nombre_beneficiario,
-      f.monto, f.glosa_transferencia, f.correo_beneficiario,
-      f.mensaje_correo, f.glosa_cartola_originador, f.glosa_cartola_beneficiario,
-    ])
-
-    const ws = utils.aoa_to_sheet([HEADERS, ...rows])
-    ws['!cols'] = [{ wch: 16 }, { wch: 10 }, { wch: 16 }, { wch: 10 }, { wch: 8 },
-      { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 30 }, { wch: 28 },
-      { wch: 30 }, { wch: 20 }, { wch: 20 }]
-
-    const wb = utils.book_new()
-    utils.book_append_sheet(wb, ws, 'Hoja1')
-
     const nombre = cotizaciones.find(c => c.id === cotizacionFiltro)?.nombre || 'export'
-    writeFile(wb, `santander_${nombre.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+
+    const res = await fetch('/api/rendiciones/santander-export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filas, nombre }),
+    })
+
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Error desconocido' }))
+      console.error('[santander-export]', error)
+      return
+    }
+
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1]
+      ?? `santander_${nombre}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
