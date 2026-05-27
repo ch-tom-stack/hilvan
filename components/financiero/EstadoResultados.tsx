@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { DatosFinancieros, ResumenPeriodo, FilaCotizacion, FilaGasto, FilaCuota } from '@/app/actions/financiero'
-import { setPPMTasa } from '@/app/actions/financiero'
+import { setPPMTasa, setPreviredMensual } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
 import { toast } from 'sonner'
 
@@ -113,9 +113,10 @@ interface Props {
   anterior: ResumenPeriodo
   añoAnterior: ResumenPeriodo
   ppmTasa: number
+  previredMensual: number
 }
 
-export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTasa: ppmTasaInicial }: Props) {
+export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTasa: ppmTasaInicial, previredMensual: previredInicial }: Props) {
   const { ingresos, egresos, tributario, totales } = datos
 
   const totalPorFacturar = ingresos.por_facturar.reduce((s, c) => s + c.total, 0)
@@ -139,6 +140,30 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
   // Recalcular PPM con la tasa local
   const neto_cobrado_sin_iva = datos.ingresos.cobrado.reduce((s, _c) => s, 0) // placeholder, usamos tributario
   const ppm_estimado_local = Math.round(tributario.ppm_estimado / ppmTasaInicial * ppmTasa) || tributario.ppm_estimado
+
+  // ── Previred editable ─────────────────────────────────────────────────────
+  const [previred, setPreviredLocal] = useState(previredInicial)
+  const [editandoPrevired, setEditandoPrevired] = useState(false)
+  const [previredInput, setPreviredInput] = useState(String(previredInicial))
+  const [previredPending, startPreviredTransition] = useTransition()
+
+  function handleGuardarPrevired() {
+    const nuevo = parseInt(previredInput.replace(/\./g, '').replace(',', ''), 10)
+    if (isNaN(nuevo) || nuevo < 0) {
+      toast.error('Monto inválido')
+      return
+    }
+    startPreviredTransition(async () => {
+      const result = await setPreviredMensual(nuevo)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        setPreviredLocal(nuevo)
+        setEditandoPrevired(false)
+        toast.success('Monto Previred actualizado')
+      }
+    })
+  }
 
   function handleGuardarPPM() {
     const nueva = parseFloat(ppmInput.replace(',', '.'))
@@ -428,11 +453,61 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
               </span>
             </div>
 
+            <Separador />
+            {/* Previred editable */}
+            <div className="flex items-baseline justify-between py-1.5">
+              <div className="flex items-center gap-2">
+                <span className="font-body text-xs text-ch-muted">Previred (cotizaciones)</span>
+                {!editandoPrevired ? (
+                  <button
+                    onClick={() => {
+                      setPreviredInput(String(previred))
+                      setEditandoPrevired(true)
+                    }}
+                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    title="Editar monto Previred"
+                  >
+                    ✎
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={previredInput}
+                      onChange={e => setPreviredInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleGuardarPrevired()
+                        if (e.key === 'Escape') setEditandoPrevired(false)
+                      }}
+                      className="w-24 bg-ch-dark border border-ch-green px-1.5 py-0.5 font-mono text-[10px] text-ch-cream text-right focus:outline-none"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleGuardarPrevired}
+                      disabled={previredPending}
+                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setEditandoPrevired(false)}
+                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+              <span className="font-mono text-sm tabular-nums text-amber-400">
+                {clp(previred)}
+              </span>
+            </div>
+
             {/* Total obligaciones */}
             <div className="mt-3 pt-2 border-t border-ch-border/40">
               <FilaNumero
                 label="Total obligaciones"
-                valor={tributario.retenciones_bh + Math.max(0, tributario.saldo_iva) + ppm_estimado_local}
+                valor={tributario.retenciones_bh + Math.max(0, tributario.saldo_iva) + ppm_estimado_local + previred}
                 bold
                 color="text-amber-400"
               />
