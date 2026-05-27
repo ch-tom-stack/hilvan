@@ -167,14 +167,14 @@ export interface DatosFinancieros {
     previred_mensual: number
   }
   totales: {
-    ingresos_cobrados: number
+    ingresos_facturados: number
     egresos_confirmados: number
     utilidad_bruta: number
   }
 }
 
 export interface ResumenPeriodo {
-  cobrado: number
+  facturado: number
   egresos: number
   utilidad: number
 }
@@ -197,6 +197,7 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
     { data: cotPorFacturar },
     { data: cotPorCobrar },
     { data: cotCobrado },
+    { data: cotFacturadoPeriodo },
     { data: gastosProyectos },
     { data: gastosOp },
     { data: cuotas },
@@ -213,11 +214,17 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
       .not('fecha_factura_emitida', 'is', null)
       .is('fecha_pago_recibido', null),
 
-    // Cotizaciones cobradas en el período
+    // Cotizaciones cobradas en el período (para mostrar en columna ingresos)
     supabase.from('cotizaciones')
       .select(COT_FINANCIERO_SELECT)
       .gte('fecha_pago_recibido', inicio)
       .lte('fecha_pago_recibido', fin),
+
+    // Cotizaciones facturadas en el período (devengado — base del resultado)
+    supabase.from('cotizaciones')
+      .select(COT_FINANCIERO_SELECT)
+      .gte('fecha_factura_emitida', inicio)
+      .lte('fecha_factura_emitida', fin),
 
     // Gastos de proyectos aprobados en el período
     supabase.from('rendicion_gastos')
@@ -307,13 +314,8 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
     .filter(g => g.tipo_documento === 'boleta')
     .reduce((s, g) => s + calcularRetencion({ monto: g.monto, tipo_documento: g.tipo_documento }).retencion, 0)
 
-  // IVA débito: 19% del neto cobrado en el período (facturas al cliente)
-  const neto_cobrado = cobrado.reduce((s, c) => {
-    // El total ya incluye IVA si aplica; extraemos el neto
-    return s + c.total
-  }, 0)
-  // Aproximación: asumimos que las cotizaciones cobradas con IVA generan débito
-  const iva_debito = (cotCobrado ?? []).reduce((s: number, c: any) => {
+  // IVA débito: 19% de facturas emitidas en el período (devengado)
+  const iva_debito = (cotFacturadoPeriodo ?? []).reduce((s: number, c: any) => {
     if (!c.con_iva) return s
     const tot = calcularTotalCot(c)
     const neto = Math.round(tot / 1.19)
@@ -327,20 +329,20 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
 
   const saldo_iva = iva_debito - iva_credito
 
-  // PPM estimado sobre ingresos cobrados (neto)
-  const neto_cobrado_sin_iva = (cotCobrado ?? []).reduce((s: number, c: any) => {
+  // PPM estimado sobre ingresos facturados (neto sin IVA)
+  const neto_facturado_sin_iva = (cotFacturadoPeriodo ?? []).reduce((s: number, c: any) => {
     const tot = calcularTotalCot(c)
     return s + (c.con_iva ? Math.round(tot / 1.19) : tot)
   }, 0)
-  const ppm_estimado = Math.round(neto_cobrado_sin_iva * PPM_TASA)
+  const ppm_estimado = Math.round(neto_facturado_sin_iva * PPM_TASA)
 
   // ── Totales ────────────────────────────────────────────────────────────────
-  const ingresos_cobrados = cobrado.reduce((s, c) => s + c.total, 0)
+  const ingresos_facturados = (cotFacturadoPeriodo ?? []).reduce((s: number, c: any) => s + calcularTotalCot(c), 0)
   const egresos_confirmados =
     gastosProyectosRows.reduce((s, g) => s + g.monto, 0) +
     gastosOpRows.reduce((s, g) => s + g.monto, 0) +
-    cuotasRows.filter(c => c.pagada).reduce((s, c) => s + c.monto, 0)
-  const utilidad_bruta = ingresos_cobrados - egresos_confirmados
+    cuotasRows.reduce((s, c) => s + c.monto, 0)  // todas las cuotas que vencen en el período (devengado)
+  const utilidad_bruta = ingresos_facturados - egresos_confirmados
 
   return {
     periodo: mes,
@@ -351,14 +353,14 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
       cuotas_creditos: cuotasRows,
     },
     tributario: { retenciones_bh, iva_debito, iva_credito, saldo_iva, ppm_estimado, previred_mensual: PREVIRED },
-    totales: { ingresos_cobrados, egresos_confirmados, utilidad_bruta },
+    totales: { ingresos_facturados, egresos_confirmados, utilidad_bruta },
   }
 }
 
 export async function getResumenPeriodo(mes: string): Promise<ResumenPeriodo> {
   const d = await getDatosFinancieros(mes)
   return {
-    cobrado: d.totales.ingresos_cobrados,
+    facturado: d.totales.ingresos_facturados,
     egresos: d.totales.egresos_confirmados,
     utilidad: d.totales.utilidad_bruta,
   }

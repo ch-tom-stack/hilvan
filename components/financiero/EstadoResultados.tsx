@@ -121,7 +121,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
 
   const totalPorFacturar = ingresos.por_facturar.reduce((s, c) => s + c.total, 0)
   const totalPorCobrar = ingresos.por_cobrar.reduce((s, c) => s + c.total, 0)
-  const totalCobrado = totales.ingresos_cobrados
+  const totalCobrado = ingresos.cobrado.reduce((s, c) => s + c.total, 0)
 
   const totalGastosProyectos = egresos.gastos_proyectos.reduce((s, g) => s + g.monto, 0)
   const totalGastosOp = egresos.gastos_operacionales.reduce((s, g) => s + g.monto, 0)
@@ -289,8 +289,8 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
             }
             {/* Comparativa */}
             <div className="flex items-center gap-4 mt-3 pt-2 border-t border-ch-border/20">
-              <VariacionBadge actual={totalCobrado} anterior={anterior.cobrado} label="mes anterior" />
-              <VariacionBadge actual={totalCobrado} anterior={añoAnterior.cobrado} label="año anterior" />
+              <VariacionBadge actual={totales.ingresos_facturados} anterior={anterior.facturado} label="mes anterior" />
+              <VariacionBadge actual={totales.ingresos_facturados} anterior={añoAnterior.facturado} label="año anterior" />
             </div>
           </div>
         </div>
@@ -518,7 +518,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
           <div className="border border-ch-border p-5">
             <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-4">Resultado</p>
 
-            <FilaNumero label="Ingresos cobrados" valor={totales.ingresos_cobrados} color="text-ch-green" />
+            <FilaNumero label="Ingresos facturados" valor={totales.ingresos_facturados} color="text-ch-green" />
             <FilaNumero label="Egresos confirmados" valor={totales.egresos_confirmados} color="text-red-400" />
             <Separador />
 
