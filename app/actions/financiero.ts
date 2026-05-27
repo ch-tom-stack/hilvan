@@ -43,6 +43,24 @@ export async function setPreviredMensual(monto: number): Promise<{ error?: strin
   return error ? { error: error.message } : {}
 }
 
+export async function getIUSCMensual(): Promise<number> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('configuracion_financiero')
+    .select('valor')
+    .eq('clave', 'iusc_mensual')
+    .single()
+  return data ? parseInt(data.valor, 10) : 0
+}
+
+export async function setIUSCMensual(monto: number): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('configuracion_financiero')
+    .upsert({ clave: 'iusc_mensual', valor: String(Math.round(monto)), updated_at: new Date().toISOString() })
+  return error ? { error: error.message } : {}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -165,6 +183,7 @@ export interface DatosFinancieros {
     saldo_iva: number
     ppm_estimado: number
     previred_mensual: number
+    iusc_mensual: number
   }
   totales: {
     ingresos_facturados: number
@@ -183,11 +202,12 @@ export interface ResumenPeriodo {
 // SERVER ACTION PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getDatosFinancieros(mes: string, ppmTasa?: number, previredEmpleador?: number): Promise<DatosFinancieros> {
+export async function getDatosFinancieros(mes: string, ppmTasa?: number, previredEmpleador?: number, iuscMensual?: number): Promise<DatosFinancieros> {
   const supabase = await createClient()
-  const [PPM_TASA, PREVIRED] = await Promise.all([
+  const [PPM_TASA, PREVIRED, IUSC] = await Promise.all([
     ppmTasa !== undefined ? Promise.resolve(ppmTasa) : getPPMTasa(),
     previredEmpleador !== undefined ? Promise.resolve(previredEmpleador) : getPreviredMensual(),
+    iuscMensual !== undefined ? Promise.resolve(iuscMensual) : getIUSCMensual(),
   ])
   const inicio = inicioPeriodo(mes)
   const fin = finPeriodo(mes)
@@ -352,7 +372,7 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
       gastos_operacionales: gastosOpRows,
       cuotas_creditos: cuotasRows,
     },
-    tributario: { retenciones_bh, iva_debito, iva_credito, saldo_iva, ppm_estimado, previred_mensual: PREVIRED },
+    tributario: { retenciones_bh, iva_debito, iva_credito, saldo_iva, ppm_estimado, previred_mensual: PREVIRED, iusc_mensual: IUSC },
     totales: { ingresos_facturados, egresos_confirmados, utilidad_bruta },
   }
 }

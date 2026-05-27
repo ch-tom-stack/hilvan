@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { DatosFinancieros, ResumenPeriodo, FilaCotizacion, FilaGasto, FilaCuota } from '@/app/actions/financiero'
-import { setPPMTasa, setPreviredMensual } from '@/app/actions/financiero'
+import { setPPMTasa, setPreviredMensual, setIUSCMensual } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
 import { toast } from 'sonner'
 
@@ -114,9 +114,10 @@ interface Props {
   añoAnterior: ResumenPeriodo
   ppmTasa: number
   previredMensual: number
+  iuscMensual: number
 }
 
-export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTasa: ppmTasaInicial, previredMensual: previredInicial }: Props) {
+export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTasa: ppmTasaInicial, previredMensual: previredInicial, iuscMensual: iuscInicial }: Props) {
   const { ingresos, egresos, tributario, totales } = datos
 
   const totalPorFacturar = ingresos.por_facturar.reduce((s, c) => s + c.total, 0)
@@ -147,6 +148,12 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
   const [previredInput, setPreviredInput] = useState(String(previredInicial))
   const [previredPending, startPreviredTransition] = useTransition()
 
+  // ── IUSC editable ─────────────────────────────────────────────────────────
+  const [iusc, setIuscLocal] = useState(iuscInicial)
+  const [editandoIUSC, setEditandoIUSC] = useState(false)
+  const [iuscInput, setIuscInput] = useState(String(iuscInicial))
+  const [iuscPending, startIUSCTransition] = useTransition()
+
   function handleGuardarPrevired() {
     const nuevo = parseInt(previredInput.replace(/\./g, '').replace(',', ''), 10)
     if (isNaN(nuevo) || nuevo < 0) {
@@ -161,6 +168,24 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
         setPreviredLocal(nuevo)
         setEditandoPrevired(false)
         toast.success('Monto Previred actualizado')
+      }
+    })
+  }
+
+  function handleGuardarIUSC() {
+    const nuevo = parseInt(iuscInput.replace(/\./g, '').replace(',', ''), 10)
+    if (isNaN(nuevo) || nuevo < 0) {
+      toast.error('Monto inválido')
+      return
+    }
+    startIUSCTransition(async () => {
+      const result = await setIUSCMensual(nuevo)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        setIuscLocal(nuevo)
+        setEditandoIUSC(false)
+        toast.success('Monto IUSC actualizado')
       }
     })
   }
@@ -503,11 +528,61 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
               </span>
             </div>
 
+            <Separador />
+            {/* IUSC editable */}
+            <div className="flex items-baseline justify-between py-1.5">
+              <div className="flex items-center gap-2">
+                <span className="font-body text-xs text-ch-muted">IUSC (imp. único 2ª categoría)</span>
+                {!editandoIUSC ? (
+                  <button
+                    onClick={() => {
+                      setIuscInput(String(iusc))
+                      setEditandoIUSC(true)
+                    }}
+                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    title="Editar monto IUSC"
+                  >
+                    ✎
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={iuscInput}
+                      onChange={e => setIuscInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleGuardarIUSC()
+                        if (e.key === 'Escape') setEditandoIUSC(false)
+                      }}
+                      className="w-24 bg-ch-dark border border-ch-green px-1.5 py-0.5 font-mono text-[10px] text-ch-cream text-right focus:outline-none"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleGuardarIUSC}
+                      disabled={iuscPending}
+                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setEditandoIUSC(false)}
+                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+              <span className="font-mono text-sm tabular-nums text-amber-400">
+                {clp(iusc)}
+              </span>
+            </div>
+
             {/* Total obligaciones */}
             <div className="mt-3 pt-2 border-t border-ch-border/40">
               <FilaNumero
                 label="Total obligaciones"
-                valor={tributario.retenciones_bh + Math.max(0, tributario.saldo_iva) + ppm_estimado_local + previred}
+                valor={tributario.retenciones_bh + Math.max(0, tributario.saldo_iva) + ppm_estimado_local + previred + iusc}
                 bold
                 color="text-amber-400"
               />
