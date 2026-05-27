@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { calcularRetencion } from '@/types'
 import { mesAnterior, mismoMesAñoAnterior } from '@/lib/periodos'
 
@@ -17,7 +18,7 @@ export async function getPPMTasa(): Promise<number> {
 }
 
 export async function setPPMTasa(tasa: number): Promise<{ error?: string }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('configuracion_financiero')
     .upsert({ clave: 'ppm_tasa', valor: String(tasa), updated_at: new Date().toISOString() })
@@ -35,7 +36,7 @@ export async function getPreviredMensual(): Promise<number> {
 }
 
 export async function setPreviredMensual(monto: number): Promise<{ error?: string }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('configuracion_financiero')
     .upsert({ clave: 'previred_mensual', valor: String(Math.round(monto)), updated_at: new Date().toISOString() })
