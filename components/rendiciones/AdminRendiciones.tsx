@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { toast } from 'sonner'
+import EstadoVacio from '@/components/ui/EstadoVacio'
 import {
   aprobarGasto, rechazarGasto, aprobarPagoGasto,
   toggleItemCompletado, generarLinkTemporalExterno, crearRendicion, purgarYCrearRendicion, eliminarRendicion,
@@ -234,6 +235,7 @@ export default function AdminRendiciones({
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
     if (!res.ok) { toast.error('Error al subir archivo'); return }
     const { url } = await res.json()
+    toast.success('Archivo subido')
     const archivos = await agregarArchivoFactura(rendicionId, url)
     actualizarRendicion(rendicionId, { factura_archivos: archivos })
   }
@@ -262,9 +264,7 @@ export default function AdminRendiciones({
       {pestana === 'links' && (
         <div className="space-y-3">
           {links.length === 0 ? (
-            <div className="border border-dashed border-ch-border p-12 text-center">
-              <p className="text-ch-muted font-body text-sm">No hay links generados aún.</p>
-            </div>
+            <EstadoVacio mensaje="No hay links generados aún." />
           ) : links.map(link => {
             const vencido = new Date(link.expires_at) < new Date()
             const diasRestantes = Math.ceil((new Date(link.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -357,9 +357,7 @@ export default function AdminRendiciones({
 
       {/* Lista vacía */}
       {rendiciones.length === 0 && (
-        <div className="border border-dashed border-ch-border p-12 text-center">
-          <p className="text-ch-muted font-body text-sm">No hay rendiciones. Crea una con el botón de arriba.</p>
-        </div>
+        <EstadoVacio mensaje="No hay rendiciones." submensaje="Crea una con el botón de arriba." />
       )}
 
       {/* Lista de rendiciones */}

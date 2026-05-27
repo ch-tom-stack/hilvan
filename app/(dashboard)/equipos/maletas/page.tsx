@@ -1,6 +1,7 @@
 import { getMaletas } from '@/app/actions/maletas'
 import Link from 'next/link'
 import type { Maleta } from '@/types'
+import EstadoVacio from '@/components/ui/EstadoVacio'
 
 export default async function MaletasPage() {
   const maletas = await getMaletas() as Maleta[]
@@ -33,12 +34,7 @@ export default async function MaletasPage() {
       </div>
 
       {maletas.length === 0 ? (
-        <div className="border border-dashed border-ch-border p-16 text-center">
-          <p className="text-ch-muted font-body text-sm">No hay maletas registradas aún.</p>
-          <Link href="/equipos/maletas/nueva" className="text-ch-green font-body text-sm mt-2 inline-block hover:text-ch-green-light">
-            Crear la primera →
-          </Link>
-        </div>
+        <EstadoVacio mensaje="No hay maletas registradas aún." />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {maletas.map(maleta => (

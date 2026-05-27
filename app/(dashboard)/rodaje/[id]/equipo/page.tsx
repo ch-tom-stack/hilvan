@@ -3,6 +3,7 @@
 import { use, useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useConfirm } from '@/components/ui/useConfirm'
+import { toast } from 'sonner'
 import {
   getRodaje,
   getColaboradores,
@@ -86,11 +87,11 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
             onEditPersona={(p: any) => setModalPersona({ open: true, editando: p })}
             onDelete={async () => {
               if (!await confirm('¿Eliminar departamento?')) return
-              startTransition(async () => { await eliminarDepartamento(dept.id, id); recargar() })
+              startTransition(async () => { await eliminarDepartamento(dept.id, id); toast.success('Departamento eliminado'); recargar() })
             }}
             onDeletePersona={async (p: any) => {
               if (!await confirm(`¿Eliminar a ${p.nombre}?`)) return
-              startTransition(async () => { await eliminarPersonaEquipo(p.id, id); recargar() })
+              startTransition(async () => { await eliminarPersonaEquipo(p.id, id); toast.success('Persona eliminada'); recargar() })
             }}
           />
         ))}
@@ -106,7 +107,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
                   onEdit={() => setModalPersona({ open: true, editando: p })}
                   onDelete={async () => {
                     if (!await confirm(`¿Eliminar a ${p.nombre}?`)) return
-                    startTransition(async () => { await eliminarPersonaEquipo(p.id, id); recargar() })
+                    startTransition(async () => { await eliminarPersonaEquipo(p.id, id); toast.success('Persona eliminada'); recargar() })
                   }}
                 />
               ))}

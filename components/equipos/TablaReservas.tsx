@@ -7,6 +7,7 @@ import {
   eliminarReserva,
 } from '@/app/actions/rental'
 import type { EstadoRental, RentalReserva } from '@/types'
+import EstadoVacio from '@/components/ui/EstadoVacio'
 
 type ReservaConJoins = RentalReserva & {
   equipo?: { codigo: string; nombre: string } | null
@@ -249,11 +250,8 @@ export default function TablaReservas({ reservas: inicial, equipos, maletas, cli
 
       {/* Reservas activas */}
       {activas.length === 0 && !formulario ? (
-        <div className="border border-dashed border-ch-border rounded-[2px] p-10 text-center mb-8">
-          <p className="text-ch-muted text-sm mb-1">No hay reservas activas.</p>
-          <p className="text-ch-subtle text-xs">
-            {puedeGestionar ? 'Usa + Nueva reserva para registrar un bundle de equipo.' : 'Las reservas activas aparecerán aquí.'}
-          </p>
+        <div className="mb-8">
+          <EstadoVacio mensaje="No hay reservas activas." />
         </div>
       ) : activas.length > 0 ? (
         <div className="mb-8">

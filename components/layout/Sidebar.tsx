@@ -54,8 +54,9 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
               alt="Casa Hiedra"
               width={120}
               height={28}
-              className="h-5 w-auto opacity-80"
-              style={{ height: 'auto' }}
+              className="h-5 opacity-80"
+              style={{ width: 'auto' }}
+              priority
             />
           </Link>
         </div>
@@ -107,8 +108,8 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
             alt=""
             width={80}
             height={20}
-            className="h-5 w-auto opacity-20"
-            style={{ height: 'auto' }}
+            className="h-5 opacity-20"
+            style={{ width: 'auto' }}
           />
         </div>
       </aside>
@@ -121,8 +122,8 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
             alt="Casa Hiedra"
             width={100}
             height={24}
-            className="h-4 w-auto opacity-80"
-            style={{ height: 'auto' }}
+            className="h-4 opacity-80"
+            style={{ width: 'auto' }}
           />
         </Link>
 
@@ -162,8 +163,8 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
                   alt="Casa Hiedra"
                   width={100}
                   height={24}
-                  className="h-4 w-auto opacity-80"
-                  style={{ height: 'auto' }}
+                  className="h-4 opacity-80"
+                  style={{ width: 'auto' }}
                 />
               </Link>
               <button

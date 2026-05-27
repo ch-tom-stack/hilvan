@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { Cliente } from '@/types'
+import EstadoVacio from '@/components/ui/EstadoVacio'
 
 interface Props {
   clientes: Cliente[]
@@ -71,16 +72,7 @@ export default function ListaClientes({ clientes }: Props) {
 
       {/* Tabla */}
       {ordenados.length === 0 ? (
-        <div className="border border-dashed border-ch-border rounded-[2px] p-10 text-center">
-          <p className="text-ch-muted font-body text-sm mb-1">
-            {busqueda ? 'Sin resultados para esa búsqueda.' : 'No hay clientes registrados.'}
-          </p>
-          {!busqueda && (
-            <p className="text-ch-subtle font-body text-xs">
-              Usa el botón + Nuevo cliente para agregar el primero.
-            </p>
-          )}
-        </div>
+        <EstadoVacio mensaje={busqueda ? 'Sin resultados para esa búsqueda.' : 'No hay clientes registrados.'} />
       ) : (
         <div className="border border-ch-border">
           {/* Encabezado */}

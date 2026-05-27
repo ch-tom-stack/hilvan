@@ -5,6 +5,7 @@ import { useConfirm } from '@/components/ui/useConfirm'
 import { actualizarEstadoReserva, eliminarReserva } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
 import type { RentalReserva, EstadoRental } from '@/types'
+import EstadoVacio from '@/components/ui/EstadoVacio'
 
 type ReservaConJoins = RentalReserva & {
   equipo?: { codigo: string; nombre: string } | null
@@ -190,10 +191,10 @@ export default function GestionReservas({
 
   if (reservas.length === 0) {
     return (
-      <div className="border border-dashed border-ch-border rounded-[2px] p-16 text-center">
-        <p className="text-ch-muted font-body text-sm mb-1">No hay reservas{vista === 'mias' ? ' tuyas' : ''} aún.</p>
-        <p className="text-ch-subtle font-body text-xs">Las solicitudes aparecerán aquí una vez enviadas.</p>
-      </div>
+      <EstadoVacio
+        mensaje={`No hay reservas${vista === 'mias' ? ' tuyas' : ''} aún.`}
+        submensaje="Las solicitudes aparecerán aquí una vez enviadas."
+      />
     )
   }
 

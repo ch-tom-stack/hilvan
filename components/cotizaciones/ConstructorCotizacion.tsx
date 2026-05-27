@@ -3,6 +3,7 @@
 import { useState, useTransition, useCallback } from 'react'
 import { useConfirm, usePrompt } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import {
   actualizarCotizacion,
   enviarCotizacion,
@@ -156,8 +157,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
       setLinkCopiado(true)
       setCot(c => ({ ...c, estado: 'enviada', token }))
       setTimeout(() => setLinkCopiado(false), 3000)
+      toast.success('Cotización enviada')
     } catch (e: any) {
-      alert('Error al enviar: ' + e.message)
+      toast.error('Error al enviar: ' + e.message)
     }
   }
 
@@ -192,6 +194,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   async function handleEliminarDep(dep: CotizacionDepartamento) {
     if (!await confirm(`¿Eliminar "${dep.nombre}" y todos sus ítems?`)) return
     await eliminarDepartamento(dep.id, cot.id)
+    toast.success('Eliminado')
     setCot(c => ({
       ...c,
       departamentos: c.departamentos?.filter(d => d.id !== dep.id),
@@ -221,6 +224,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   async function handleEliminarSg(dep: CotizacionDepartamento, sg: CotizacionSubgrupo) {
     if (!await confirm(`¿Eliminar "${sg.nombre}" y todos sus ítems?`)) return
     await eliminarSubgrupo(sg.id, cot.id)
+    toast.success('Eliminado')
     actualizarDepLocal(dep.id, d => ({
       ...d,
       subgrupos: d.subgrupos?.filter(s => s.id !== sg.id),
@@ -264,6 +268,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   async function handleEliminarItem(item: CotizacionItem, depId: string, sgId?: string) {
     if (!await confirm(`¿Eliminar "${item.nombre}"?`)) return
     await eliminarItem(item.id, cot.id)
+    toast.success('Eliminado')
     if (sgId) {
       actualizarSgLocal(depId, sgId, sg => ({
         ...sg,

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import TagEstado from '@/components/equipos/TagEstado'
 import ToggleRentable from '@/components/equipos/ToggleRentable'
 import type { Equipo, CategoriaEquipo } from '@/types'
+import EstadoVacio from '@/components/ui/EstadoVacio'
 
 export default async function EquiposPage({
   searchParams,
@@ -106,12 +107,7 @@ export default async function EquiposPage({
 
       {/* Listado */}
       {!equipos || equipos.length === 0 ? (
-        <div className="border border-dashed border-ch-border p-16 text-center">
-          <p className="text-ch-muted font-body text-sm">No hay equipos registrados aún.</p>
-          <Link href="/equipos/nuevo" className="text-ch-green font-body text-sm mt-2 inline-block hover:text-ch-green-light">
-            Agregar el primero →
-          </Link>
-        </div>
+        <EstadoVacio mensaje="No hay equipos registrados aún." />
       ) : (
         <>
           {/* Tarjetas — móvil */}

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getRodajes } from '@/app/actions/rodaje'
 import { EstadoRodaje } from '@/types'
+import EstadoVacio from '@/components/ui/EstadoVacio'
 
 const ESTADO_CONFIG: Record<EstadoRodaje, { label: string; clase: string }> = {
   borrador:   { label: 'Borrador',   clase: 'bg-ch-surface text-ch-muted' },
@@ -27,12 +28,10 @@ export default async function RodajePage() {
       </div>
 
       {rodajes.length === 0 ? (
-        <div className="text-center py-24 text-ch-subtle">
-          <p className="text-sm">No hay rodajes todavía.</p>
-          <Link href="/rodaje/nuevo" className="text-ch-cream text-sm mt-2 inline-block hover:underline">
-            Crear el primero →
-          </Link>
-        </div>
+        <EstadoVacio
+          mensaje="No hay rodajes todavía."
+          accion={<Link href="/rodaje/nuevo" className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-green hover:text-ch-green-light transition-colors">Crear el primero →</Link>}
+        />
       ) : (
         <div className="space-y-2">
           {rodajes.map((r: any) => {

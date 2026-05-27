@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import {
   actualizarColaborador, eliminarColaborador, crearTarifa, eliminarTarifa,
   crearLinkTemporal, getLinksPorColaborador, crearLinkOnboarding,
@@ -58,6 +59,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
       await actualizarColaborador(colaborador.id, form)
       setGuardado(true)
       setTimeout(() => setGuardado(false), 2000)
+      toast.success('Cambios guardados')
     })
   }
 
@@ -111,7 +113,10 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ colaborador_id: colaborador.id, tipo }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        toast.error('Error al generar contrato')
+        return
+      }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -119,6 +124,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
       a.download = `${tipo}-${colaborador.nombre.replace(/\s+/g, '-').toLowerCase()}.docx`
       a.click()
       URL.revokeObjectURL(url)
+      toast.success('Contrato generado')
       router.refresh()
     })
   }
@@ -470,6 +476,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
           <button onClick={() => startTransition(async () => {
             if (!await confirm('¿Eliminar este colaborador?')) return
             await eliminarColaborador(colaborador.id)
+            toast.success('Colaborador eliminado')
             router.push('/colaboradores')
           })} className="text-ch-muted hover:text-red-400 font-body text-xs transition-colors">
             Eliminar

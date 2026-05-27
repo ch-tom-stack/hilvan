@@ -30,12 +30,13 @@ export interface Bundle {
 export async function listarBundles(): Promise<Bundle[]> {
   const supabase = createAdminClient()
 
-  // Query 1: bundles + items con equipo (join simple)
+  // Query 1: bundles + items con equipo
+  // Usamos !bundle_id para desambiguar: bundle_items tiene dos FK a bundles (bundle_id y bundle_hijo_id)
   const { data: bundlesRaw, error: eBundles } = await supabase
     .from('bundles')
     .select(`
       *,
-      items:bundle_items(
+      items:bundle_items!bundle_id(
         id, equipo_id, bundle_hijo_id, cantidad,
         equipo:equipos(codigo, nombre, precio_jornada)
       )

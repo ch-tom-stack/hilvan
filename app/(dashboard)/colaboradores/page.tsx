@@ -1,6 +1,7 @@
 import { getColaboradores } from '@/app/actions/colaboradores'
 import Link from 'next/link'
 import type { Colaborador } from '@/types'
+import EstadoVacio from '@/components/ui/EstadoVacio'
 
 export default async function ColaboradoresPage({
   searchParams,
@@ -77,12 +78,7 @@ export default async function ColaboradoresPage({
 
       {/* Lista */}
       {colaboradores.length === 0 ? (
-        <div className="border border-dashed border-ch-border p-16 text-center">
-          <p className="text-ch-muted font-body text-sm">No hay colaboradores registrados.</p>
-          <Link href="/colaboradores/nuevo" className="text-ch-green font-body text-sm mt-2 inline-block hover:text-ch-green-light">
-            Agregar el primero →
-          </Link>
-        </div>
+        <EstadoVacio mensaje="No hay colaboradores registrados." />
       ) : (
         <>
           {/* Tarjetas móvil */}
