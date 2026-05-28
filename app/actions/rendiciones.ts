@@ -4,9 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { Rendicion, RendicionGasto, TipoRendicion, TipoDocRendicion, RendicionNotaGlosa } from '@/types'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.casahiedra.com'
 
 // ─── COTIZACIONES PARA FORMULARIO ─────────────────────────────────────────────
@@ -185,7 +184,7 @@ export async function crearGasto(payload: {
       const cotNombre = (rendicion?.cotizacion as any)?.nombre || ''
       const itemNombre = (data.cotizacion_item as any)?.nombre || 'Gasto no presupuestado'
       const quienRinde = (data.colaborador as any)?.nombre || payload.nombre_libre || 'Externo'
-      await resend.emails.send({
+      await sendEmail({
         from: 'Hilván <noreply@casahiedra.com>',
         to: 'admin@casahiedra.com',
         subject: `Nuevo gasto: ${quienRinde} · ${cotNombre}`,
@@ -217,7 +216,7 @@ export async function aprobarGasto(id: string): Promise<RendicionGasto> {
   const col = (data.colaborador as any)
   if (col?.email) {
     try {
-      await resend.emails.send({
+      await sendEmail({
         from: 'Hilván <noreply@casahiedra.com>',
         to: col.email,
         subject: 'Gasto aprobado · Hilván',
@@ -241,7 +240,7 @@ export async function rechazarGasto(id: string, motivo: string): Promise<Rendici
   const col = (data.colaborador as any)
   if (col?.email) {
     try {
-      await resend.emails.send({
+      await sendEmail({
         from: 'Hilván <noreply@casahiedra.com>',
         to: col.email,
         subject: 'Gasto rechazado · Hilván',
@@ -318,7 +317,7 @@ export async function generarLinkTemporalExterno(payload: {
 
   if (email?.trim()) {
     try {
-      await resend.emails.send({
+      await sendEmail({
         from: 'Hilván <noreply@casahiedra.com>',
         to: email,
         subject: 'Hilván · Envío de gastos de producción',
@@ -450,7 +449,7 @@ export async function reenviarEmailLink(id: string): Promise<void> {
     (new Date(link.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   ))
 
-  await resend.emails.send({
+  await sendEmail({
     from: 'Hilván <noreply@casahiedra.com>',
     to: link.email,
     subject: `Hilván · Recordatorio — Envío de gastos${cotNombre ? ` (${cotNombre})` : ''}`,

@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { crearEventoGCal } from '@/lib/google-calendar'
 import type {
   RentalReserva,
@@ -16,7 +16,6 @@ import type {
   RentalCotizacionItem,
 } from '@/types'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 // ─── Helpers internos ─────────────────────────────────────────────────────────
@@ -227,7 +226,7 @@ export async function crearRentalReserva(payload: {
         : null
 
       if (admins.length > 0) {
-        await resend.emails.send({
+        await sendEmail({
           from: 'Hilván <noreply@casahiedra.com>',
           to: admins,
           subject: `[Rental] Nueva solicitud — ${itemNombre?.nombre ?? 'equipo'} · ${self?.nombre ?? user.email}`,
@@ -336,7 +335,7 @@ export async function actualizarEstadoReserva(
         ? `${r.maleta.codigo} · ${r.maleta.nombre}`
         : 'equipo'
       const estadoLabel = estado === 'aprobada' ? '✅ Aprobada' : estado === 'denegada' ? '❌ Denegada' : estado
-      await resend.emails.send({
+      await sendEmail({
         from: 'Hilván <noreply@casahiedra.com>',
         to: solicitante.email,
         subject: `[Rental] Tu reserva fue ${estado === 'aprobada' ? 'aprobada' : 'actualizada'} — ${itemNombre}`,

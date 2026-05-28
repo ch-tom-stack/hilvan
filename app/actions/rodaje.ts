@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import {
   Rodaje,
   RodajeDepartamento,
@@ -17,7 +17,6 @@ import {
   formatHora,
 } from '@/types'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 // ─── RODAJES ─────────────────────────────────────────────────────────────────
@@ -413,10 +412,7 @@ export async function enviarEmailCitacion(id: string, rodajeId: string) {
     ? `https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${rodaje.locacion_lat}&dropoff[longitude]=${rodaje.locacion_lng}&dropoff[nickname]=${encodeURIComponent(rodaje.locacion_nombre || 'Locación')}`
     : null
 
-  const from = process.env.RESEND_FROM || 'onboarding@resend.dev'
-
-  await resend.emails.send({
-    from,
+  await sendEmail({
     to: persona.email!,
     subject: `Citación — ${rodaje.nombre}`,
     html: `
@@ -538,11 +534,8 @@ export async function enviarRecordatorios() {
 
       const linkCitacion = `${APP_URL}/citacion/${citacion.token}`
       const hora = formatHora(resolverHoraLlamado(persona, rodajeData))
-      const from = process.env.RESEND_FROM || 'onboarding@resend.dev'
-
       try {
-        await resend.emails.send({
-          from,
+        await sendEmail({
           to: persona.email,
           subject: `Recordatorio — ${rodaje.nombre} es mañana`,
           html: `
