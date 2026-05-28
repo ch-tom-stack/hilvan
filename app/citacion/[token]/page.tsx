@@ -196,7 +196,7 @@ function BotonConfirmar({ token }: { token: string }) {
       </div>
       <button
         type="submit"
-        className="w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors bg-ch-cream text-ch-black hover:bg-ch-white"
+        className="w-full text-sm font-medium px-5 py-3 rounded-[2px] transition-colors bg-ch-cream text-ch-black hover:opacity-90"
       >
         ✓ Confirmo mi asistencia
       </button>
