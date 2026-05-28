@@ -196,6 +196,18 @@ export interface FilaCuota {
   pagada: boolean
 }
 
+export interface FilaInversion {
+  id: string
+  descripcion: string
+  monto: number
+  monto_neto: number
+  iva_credito: number
+  categoria: string
+  tipo_documento: string | null
+  factura_casa_hiedra: boolean
+  tratamiento_contable: string
+}
+
 export interface DatosFinancieros {
   periodo: string
   ingresos: {
@@ -208,11 +220,13 @@ export interface DatosFinancieros {
     gastos_operacionales: FilaGasto[]
     cuotas_creditos: FilaCuota[]
   }
+  inversiones: FilaInversion[]
   nomina: PersonaNomina[]
   tributario: {
     retenciones_bh: number
     iva_debito: number
     iva_credito: number
+    iva_credito_inversiones: number
     saldo_iva: number
     ppm_estimado: number
     previred_mensual: number
@@ -221,6 +235,7 @@ export interface DatosFinancieros {
   totales: {
     ingresos_facturados: number
     egresos_confirmados: number
+    total_inversiones: number
     utilidad_bruta: number
   }
 }
@@ -255,6 +270,7 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
     { data: gastosProyectos },
     { data: gastosOp },
     { data: cuotas },
+    { data: inversionesPeriodo },
   ] = await Promise.all([
     // Cotizaciones sin factura emitida (snapshot actual)
     supabase.from('cotizaciones')
@@ -298,6 +314,13 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
       .gte('fecha_vencimiento', inicio)
       .lte('fecha_vencimiento', fin)
       .order('fecha_vencimiento'),
+
+    // Inversiones del período
+    supabase.from('inversiones')
+      .select('id, descripcion, monto, categoria, tipo_documento, factura_casa_hiedra, tratamiento_contable')
+      .gte('fecha_compra', inicio)
+      .lte('fecha_compra', fin)
+      .order('fecha_compra'),
   ])
 
   // ── Ingresos ───────────────────────────────────────────────────────────────
@@ -360,6 +383,24 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
     pagada: c.pagada,
   }))
 
+  // ── Inversiones del período ────────────────────────────────────────────────
+  const inversionesRows: FilaInversion[] = (inversionesPeriodo ?? []).map((inv: any) => {
+    const tieneIVA = inv.factura_casa_hiedra && inv.tipo_documento === 'factura'
+    const monto_neto = tieneIVA ? Math.round(inv.monto / 1.19) : inv.monto
+    const iva_credito = tieneIVA ? inv.monto - monto_neto : 0
+    return {
+      id: inv.id,
+      descripcion: inv.descripcion,
+      monto: inv.monto,
+      monto_neto,
+      iva_credito,
+      categoria: inv.categoria,
+      tipo_documento: inv.tipo_documento ?? null,
+      factura_casa_hiedra: inv.factura_casa_hiedra ?? false,
+      tratamiento_contable: inv.tratamiento_contable,
+    }
+  })
+
   // ── Tributario ─────────────────────────────────────────────────────────────
   const todosGastos = [...gastosProyectosRows, ...gastosOpRows]
 
@@ -376,11 +417,15 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
     return s + Math.round(neto * 0.19)
   }, 0)
 
-  // IVA crédito: IVA recuperable de gastos con factura_casa_hiedra=true
-  const iva_credito = todosGastos
+  // IVA crédito de gastos operacionales y proyectos
+  const iva_credito_gastos = todosGastos
     .filter(g => g.factura_casa_hiedra && g.tipo_documento === 'factura')
     .reduce((s, g) => s + Math.round(g.monto * 0.19 / 1.19), 0)
 
+  // IVA crédito de inversiones (se declara pero es salida de capital, no egreso operacional)
+  const iva_credito_inversiones = inversionesRows.reduce((s, i) => s + i.iva_credito, 0)
+
+  const iva_credito = iva_credito_gastos + iva_credito_inversiones
   const saldo_iva = iva_debito - iva_credito
 
   // PPM estimado sobre ingresos facturados (neto sin IVA)
@@ -398,6 +443,7 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
     gastosOpRows.reduce((s, g) => s + g.monto, 0) +
     cuotasRows.reduce((s, c) => s + c.monto, 0) +
     totalNomina
+  const total_inversiones = inversionesRows.reduce((s, i) => s + i.monto, 0)
   const utilidad_bruta = ingresos_facturados - egresos_confirmados
 
   return {
@@ -408,9 +454,10 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
       gastos_operacionales: gastosOpRows,
       cuotas_creditos: cuotasRows,
     },
+    inversiones: inversionesRows,
     nomina: NOMINA,
-    tributario: { retenciones_bh, iva_debito, iva_credito, saldo_iva, ppm_estimado, previred_mensual: PREVIRED, iusc_mensual: IUSC },
-    totales: { ingresos_facturados, egresos_confirmados, utilidad_bruta },
+    tributario: { retenciones_bh, iva_debito, iva_credito, iva_credito_inversiones, saldo_iva, ppm_estimado, previred_mensual: PREVIRED, iusc_mensual: IUSC },
+    totales: { ingresos_facturados, egresos_confirmados, total_inversiones, utilidad_bruta },
   }
 }
 

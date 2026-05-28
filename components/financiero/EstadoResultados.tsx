@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import type { DatosFinancieros, ResumenPeriodo, FilaCotizacion, FilaGasto, FilaCuota } from '@/app/actions/financiero'
+import type { DatosFinancieros, ResumenPeriodo, FilaCotizacion, FilaGasto, FilaCuota, FilaInversion } from '@/app/actions/financiero'
 import { setPPMTasa, setPreviredMensual, setIUSCMensual, setNomina } from '@/app/actions/financiero'
 import type { PersonaNomina } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
@@ -120,7 +120,7 @@ interface Props {
 }
 
 export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTasa: ppmTasaInicial, previredMensual: previredInicial, iuscMensual: iuscInicial, nominaInicial }: Props) {
-  const { ingresos, egresos, tributario, totales } = datos
+  const { ingresos, egresos, inversiones, tributario, totales } = datos
 
   const totalPorFacturar = ingresos.por_facturar.reduce((s, c) => s + c.total, 0)
   const totalPorCobrar = ingresos.por_cobrar.reduce((s, c) => s + c.total, 0)
@@ -130,6 +130,8 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
   const totalGastosOp = egresos.gastos_operacionales.reduce((s, g) => s + g.monto, 0)
   const totalCuotas = egresos.cuotas_creditos.reduce((s, c) => s + c.monto, 0)
   const totalEgresos = totalGastosProyectos + totalGastosOp + totalCuotas
+  const totalInversiones = inversiones.reduce((s, i) => s + i.monto, 0)
+  const totalIVACreditoInversiones = inversiones.reduce((s, i) => s + i.iva_credito, 0)
 
   const [exportando, setExportando] = useState(false)
   const [errorExport, setErrorExport] = useState<string | null>(null)
@@ -417,6 +419,41 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
               ))
             }
           </div>
+
+          {/* Inversiones del período */}
+          {inversiones.length > 0 && (
+            <>
+              <Separador />
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Inversiones</p>
+                  <div className="text-right">
+                    <span className="font-mono text-sm font-medium tabular-nums text-amber-400">{clp(totalInversiones)}</span>
+                  </div>
+                </div>
+                {inversiones.map((inv: FilaInversion) => (
+                  <div key={inv.id} className="flex justify-between py-1 border-b border-ch-border/20 last:border-0">
+                    <div className="min-w-0 pr-2">
+                      <p className="font-body text-xs text-ch-cream truncate">{inv.descripcion}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-body text-[9px] text-ch-muted capitalize">{inv.categoria.replace(/_/g, ' ')}</p>
+                        {inv.iva_credito > 0 && (
+                          <span className="font-body text-[9px] text-ch-green">CF {clp(inv.iva_credito)}</span>
+                        )}
+                        <span className="font-body text-[9px] text-ch-subtle">activo fijo</span>
+                      </div>
+                    </div>
+                    <span className="font-mono text-xs text-amber-400 shrink-0">{clp(inv.monto)}</span>
+                  </div>
+                ))}
+                {totalIVACreditoInversiones > 0 && (
+                  <p className="font-body text-[9px] text-ch-subtle mt-1.5">
+                    IVA crédito fiscal {clp(totalIVACreditoInversiones)} incluido en saldo IVA · salida neta {clp(totalInversiones - totalIVACreditoInversiones)}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
 
           <Separador />
 
