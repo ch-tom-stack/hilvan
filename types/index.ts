@@ -600,6 +600,7 @@ export const CATEGORIAS_RENDICION_MENSUAL = [
   'Alimentación',
   'Artículos de oficina',
   'Insumos de rodaje',
+  'Suscripciones',
   'Otros',
 ] as const
 
