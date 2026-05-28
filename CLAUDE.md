@@ -142,12 +142,20 @@ GOOGLE_SERVICE_ACCOUNT_KEY     ← JSON completo de la service account
 - `rendiciones`, `rendicion_gastos`, `rendiciones_links_temporales`
 - Campos nuevos en `rendicion_gastos`: `rut_emisor`, `razon_social_emisor`, `factura_casa_hiedra`
 - `/rendiciones/mensual` — gastos operacionales mensuales
+- `rendicion_mensual_gastos` tiene los mismos campos extra: `rut_emisor`, `razon_social_emisor`, `factura_casa_hiedra`
+- `CATEGORIAS_RENDICION_MENSUAL` (types/index.ts): Transporte, Alimentación, Artículos de oficina, Insumos de rodaje, **Suscripciones**, Otros
+- `cargado_por` es NOT NULL en `rendicion_mensual_gastos` — siempre incluirlo en inserts directos
 - Export Santander: `.xlsx` real 13 columnas (librería `xlsx` instalada)
 - Storage: comprobantes de gastos
 
 ### CH-6 Financiero — solo admin
 - `gastos_fijos`, `gastos_fijos_cuotas`
 - `flujo_caja_manual`, `inversiones`
+- `configuracion_financiero` — key/value store. Claves activas: `ppm_tasa`, `previred_mensual`, `iusc_mensual`, `nomina_personas` (JSON)
+- **RLS**: `configuracion_financiero` no tiene SELECT policy → usar siempre `createAdminClient()` en getters
+- **Estado de Resultados** incluye: IUSC editable (igual que Previred), sección Nómina con 4 personas configurables
+- `getNomina()` / `setNomina()` en `app/actions/financiero.ts` — default: Tomás M. $550k, Natalia $550k, Simón $250k BH, Josué $250k BH
+- **Créditos vigentes** en `gastos_fijos`: BancoEstado Emprende Plus ($3.107.000, 48 cuotas ~$84k, vence ago 2028) + Forum/CORFO ($2.031.064, 36 cuotas ~$56-254k, vence jun 2028)
 - Vistas: `/financiero`, `/financiero/cobrar`, `/financiero/flujo`, `/financiero/inversiones`, `/financiero/creditos`
 
 ### CH-8 Calendario (en construcción)
@@ -222,8 +230,9 @@ proxy.ts                   ← middleware + rutas públicas
 
 ## Pendientes anotados
 
-- **CH-8 Calendario**: implementación en curso
+- **CH-8 Calendario**: implementación en curso — `npm install googleapis` pendiente
 - CH-6: PDF parsing facturas SII pendiente de decisión
 - Citación `/citacion/[token]`: migrar zinc → ch-tokens
 - Página 404 personalizada
 - **Export Santander**: implementado, pendiente validar con rendiciones aprobadas reales (template en `public/templates/santander_masivo.xlsx`, API route en `/api/rendiciones/santander-export`)
+- **OTT\* NT AT HOME**: gasto recurrente en tarjeta (~$10.100/mes) — servicio sin identificar, pendiente agregar a suscripciones
