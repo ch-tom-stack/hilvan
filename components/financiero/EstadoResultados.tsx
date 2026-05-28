@@ -271,7 +271,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* ═══ COLUMNA INGRESOS ═══ */}
-        <div className="border border-ch-border p-5 space-y-5">
+        <div className="border border-ch-border p-5 space-y-5 self-start">
 
           {/* Por facturar */}
           <div>
@@ -510,7 +510,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
         </div>
 
         {/* ═══ COLUMNA TRIBUTARIO + RESULTADO ═══ */}
-        <div className="space-y-4">
+        <div className="space-y-4 self-start">
 
           {/* Obligaciones tributarias */}
           <div className="border border-ch-border p-5">
