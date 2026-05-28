@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getDatosFinancieros, getResumenPeriodo, getPPMTasa, getPreviredMensual, getIUSCMensual } from '@/app/actions/financiero'
+import { getDatosFinancieros, getResumenPeriodo, getPPMTasa, getPreviredMensual, getIUSCMensual, getNomina } from '@/app/actions/financiero'
 import { mesAnterior, mismoMesAñoAnterior } from '@/lib/periodos'
 import EstadoResultados from '@/components/financiero/EstadoResultados'
 import Link from 'next/link'
@@ -28,10 +28,10 @@ export default async function FinancieroPage({ searchParams }: Props) {
   const mesAnt = mesAnterior(mes)
   const mesAñoAnt = mismoMesAñoAnterior(mes)
 
-  const [ppmTasa, previredMensual, iuscMensual] = await Promise.all([getPPMTasa(), getPreviredMensual(), getIUSCMensual()])
+  const [ppmTasa, previredMensual, iuscMensual, nomina] = await Promise.all([getPPMTasa(), getPreviredMensual(), getIUSCMensual(), getNomina()])
 
   const [datos, anterior, añoAnterior] = await Promise.all([
-    getDatosFinancieros(mes, ppmTasa, previredMensual, iuscMensual),
+    getDatosFinancieros(mes, ppmTasa, previredMensual, iuscMensual, nomina),
     getResumenPeriodo(mesAnt),
     getResumenPeriodo(mesAñoAnt),
   ])
@@ -68,7 +68,7 @@ export default async function FinancieroPage({ searchParams }: Props) {
         </div>
       </div>
 
-      <EstadoResultados datos={datos} anterior={anterior} añoAnterior={añoAnterior} ppmTasa={ppmTasa} previredMensual={previredMensual} iuscMensual={iuscMensual} />
+      <EstadoResultados datos={datos} anterior={anterior} añoAnterior={añoAnterior} ppmTasa={ppmTasa} previredMensual={previredMensual} iuscMensual={iuscMensual} nominaInicial={nomina} />
     </div>
   )
 }

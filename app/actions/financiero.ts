@@ -61,6 +61,38 @@ export async function setIUSCMensual(monto: number): Promise<{ error?: string }>
   return error ? { error: error.message } : {}
 }
 
+export interface PersonaNomina {
+  nombre: string
+  monto: number
+  tipo: 'contrato' | 'honorarios'
+}
+
+const NOMINA_DEFAULT: PersonaNomina[] = [
+  { nombre: 'Tomás M.', monto: 550000, tipo: 'contrato' },
+  { nombre: 'Natalia', monto: 550000, tipo: 'contrato' },
+  { nombre: 'Simón Fernández', monto: 250000, tipo: 'honorarios' },
+  { nombre: 'Josué de la Fuente', monto: 250000, tipo: 'honorarios' },
+]
+
+export async function getNomina(): Promise<PersonaNomina[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('configuracion_financiero')
+    .select('valor')
+    .eq('clave', 'nomina_personas')
+    .single()
+  if (!data?.valor) return NOMINA_DEFAULT
+  try { return JSON.parse(data.valor) } catch { return NOMINA_DEFAULT }
+}
+
+export async function setNomina(personas: PersonaNomina[]): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('configuracion_financiero')
+    .upsert({ clave: 'nomina_personas', valor: JSON.stringify(personas), updated_at: new Date().toISOString() })
+  return error ? { error: error.message } : {}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,6 +208,7 @@ export interface DatosFinancieros {
     gastos_operacionales: FilaGasto[]
     cuotas_creditos: FilaCuota[]
   }
+  nomina: PersonaNomina[]
   tributario: {
     retenciones_bh: number
     iva_debito: number
@@ -202,12 +235,13 @@ export interface ResumenPeriodo {
 // SERVER ACTION PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getDatosFinancieros(mes: string, ppmTasa?: number, previredEmpleador?: number, iuscMensual?: number): Promise<DatosFinancieros> {
+export async function getDatosFinancieros(mes: string, ppmTasa?: number, previredEmpleador?: number, iuscMensual?: number, nominaPersonas?: PersonaNomina[]): Promise<DatosFinancieros> {
   const supabase = await createClient()
-  const [PPM_TASA, PREVIRED, IUSC] = await Promise.all([
+  const [PPM_TASA, PREVIRED, IUSC, NOMINA] = await Promise.all([
     ppmTasa !== undefined ? Promise.resolve(ppmTasa) : getPPMTasa(),
     previredEmpleador !== undefined ? Promise.resolve(previredEmpleador) : getPreviredMensual(),
     iuscMensual !== undefined ? Promise.resolve(iuscMensual) : getIUSCMensual(),
+    nominaPersonas !== undefined ? Promise.resolve(nominaPersonas) : getNomina(),
   ])
   const inicio = inicioPeriodo(mes)
   const fin = finPeriodo(mes)
@@ -358,10 +392,12 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
 
   // ── Totales ────────────────────────────────────────────────────────────────
   const ingresos_facturados = (cotFacturadoPeriodo ?? []).reduce((s: number, c: any) => s + calcularTotalCot(c), 0)
+  const totalNomina = NOMINA.reduce((s, p) => s + p.monto, 0)
   const egresos_confirmados =
     gastosProyectosRows.reduce((s, g) => s + g.monto, 0) +
     gastosOpRows.reduce((s, g) => s + g.monto, 0) +
-    cuotasRows.reduce((s, c) => s + c.monto, 0)  // todas las cuotas que vencen en el período (devengado)
+    cuotasRows.reduce((s, c) => s + c.monto, 0) +
+    totalNomina
   const utilidad_bruta = ingresos_facturados - egresos_confirmados
 
   return {
@@ -372,6 +408,7 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
       gastos_operacionales: gastosOpRows,
       cuotas_creditos: cuotasRows,
     },
+    nomina: NOMINA,
     tributario: { retenciones_bh, iva_debito, iva_credito, saldo_iva, ppm_estimado, previred_mensual: PREVIRED, iusc_mensual: IUSC },
     totales: { ingresos_facturados, egresos_confirmados, utilidad_bruta },
   }

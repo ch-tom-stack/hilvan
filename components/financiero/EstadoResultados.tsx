@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { DatosFinancieros, ResumenPeriodo, FilaCotizacion, FilaGasto, FilaCuota } from '@/app/actions/financiero'
-import { setPPMTasa, setPreviredMensual, setIUSCMensual } from '@/app/actions/financiero'
+import { setPPMTasa, setPreviredMensual, setIUSCMensual, setNomina } from '@/app/actions/financiero'
+import type { PersonaNomina } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
 import { toast } from 'sonner'
 
@@ -115,9 +116,10 @@ interface Props {
   ppmTasa: number
   previredMensual: number
   iuscMensual: number
+  nominaInicial: PersonaNomina[]
 }
 
-export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTasa: ppmTasaInicial, previredMensual: previredInicial, iuscMensual: iuscInicial }: Props) {
+export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTasa: ppmTasaInicial, previredMensual: previredInicial, iuscMensual: iuscInicial, nominaInicial }: Props) {
   const { ingresos, egresos, tributario, totales } = datos
 
   const totalPorFacturar = ingresos.por_facturar.reduce((s, c) => s + c.total, 0)
@@ -153,6 +155,26 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
   const [editandoIUSC, setEditandoIUSC] = useState(false)
   const [iuscInput, setIuscInput] = useState(String(iuscInicial))
   const [iuscPending, startIUSCTransition] = useTransition()
+
+  // ── Nómina editable ───────────────────────────────────────────────────────
+  const [nomina, setNominaLocal] = useState<PersonaNomina[]>(nominaInicial)
+  const [editandoNomina, setEditandoNomina] = useState(false)
+  const [nominaEdit, setNominaEdit] = useState<PersonaNomina[]>(nominaInicial)
+  const [nominaPending, startNominaTransition] = useTransition()
+  const totalNomina = nomina.reduce((s, p) => s + p.monto, 0)
+
+  function handleGuardarNomina() {
+    startNominaTransition(async () => {
+      const result = await setNomina(nominaEdit)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        setNominaLocal(nominaEdit)
+        setEditandoNomina(false)
+        toast.success('Nómina actualizada')
+      }
+    })
+  }
 
   function handleGuardarPrevired() {
     const nuevo = parseInt(previredInput.replace(/\./g, '').replace(',', ''), 10)
@@ -396,10 +418,88 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
             }
           </div>
 
+          <Separador />
+
+          {/* Nómina */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Nómina</p>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm font-medium tabular-nums text-red-400">{clp(totalNomina)}</span>
+                {!editandoNomina ? (
+                  <button
+                    onClick={() => { setNominaEdit(nomina.map(p => ({ ...p }))); setEditandoNomina(true) }}
+                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    title="Editar nómina"
+                  >✎</button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <button onClick={handleGuardarNomina} disabled={nominaPending}
+                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50">✓</button>
+                    <button onClick={() => setEditandoNomina(false)}
+                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors">✕</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {!editandoNomina ? (
+              nomina.map((p, i) => (
+                <div key={i} className="flex justify-between items-baseline py-1 border-b border-ch-border/20 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-body text-xs text-ch-cream">{p.nombre}</span>
+                    <span className={`font-body text-[9px] uppercase tracking-wider ${p.tipo === 'contrato' ? 'text-ch-green' : 'text-ch-muted'}`}>
+                      {p.tipo === 'contrato' ? 'contrato' : 'BH'}
+                    </span>
+                  </div>
+                  <span className="font-mono text-xs text-red-400 shrink-0">{clp(p.monto)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="space-y-1.5">
+                {nominaEdit.map((p, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={p.nombre}
+                      onChange={e => setNominaEdit(prev => prev.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x))}
+                      className="flex-1 min-w-0 bg-ch-dark border border-ch-border px-1.5 py-0.5 font-body text-[10px] text-ch-cream focus:outline-none focus:border-ch-green"
+                    />
+                    <select
+                      value={p.tipo}
+                      onChange={e => setNominaEdit(prev => prev.map((x, j) => j === i ? { ...x, tipo: e.target.value as 'contrato' | 'honorarios' } : x))}
+                      className="bg-ch-dark border border-ch-border px-1 py-0.5 font-body text-[10px] text-ch-muted focus:outline-none focus:border-ch-green"
+                    >
+                      <option value="contrato">contrato</option>
+                      <option value="honorarios">BH</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={p.monto}
+                      onChange={e => {
+                        const v = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0
+                        setNominaEdit(prev => prev.map((x, j) => j === i ? { ...x, monto: v } : x))
+                      }}
+                      className="w-24 bg-ch-dark border border-ch-border px-1.5 py-0.5 font-mono text-[10px] text-ch-cream text-right focus:outline-none focus:border-ch-green"
+                    />
+                    <button
+                      onClick={() => setNominaEdit(prev => prev.filter((_, j) => j !== i))}
+                      className="text-red-400/60 hover:text-red-400 font-body text-[10px] transition-colors"
+                    >✕</button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setNominaEdit(prev => [...prev, { nombre: '', monto: 0, tipo: 'honorarios' }])}
+                  className="font-body text-[9px] text-ch-subtle hover:text-ch-cream transition-colors mt-1"
+                >+ agregar persona</button>
+              </div>
+            )}
+          </div>
+
           {/* Total egresos con comparativa */}
           <Separador />
           <div>
-            <FilaNumero label="Total egresos" valor={totalEgresos} bold color="text-red-400" />
+            <FilaNumero label="Total egresos" valor={totalEgresos + totalNomina} bold color="text-red-400" />
             <div className="flex items-center gap-4 mt-1">
               <VariacionBadge actual={totalEgresos} anterior={anterior.egresos} label="mes anterior" />
               <VariacionBadge actual={totalEgresos} anterior={añoAnterior.egresos} label="año anterior" />
