@@ -420,41 +420,6 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
             }
           </div>
 
-          {/* Inversiones del período */}
-          {inversiones.length > 0 && (
-            <>
-              <Separador />
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Inversiones</p>
-                  <div className="text-right">
-                    <span className="font-mono text-sm font-medium tabular-nums text-amber-400">{clp(totalInversiones)}</span>
-                  </div>
-                </div>
-                {inversiones.map((inv: FilaInversion) => (
-                  <div key={inv.id} className="flex justify-between py-1 border-b border-ch-border/20 last:border-0">
-                    <div className="min-w-0 pr-2">
-                      <p className="font-body text-xs text-ch-cream truncate">{inv.descripcion}</p>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="font-body text-[9px] text-ch-muted capitalize">{inv.categoria.replace(/_/g, ' ')}</p>
-                        {inv.iva_credito > 0 && (
-                          <span className="font-body text-[9px] text-ch-green">CF {clp(inv.iva_credito)}</span>
-                        )}
-                        <span className="font-body text-[9px] text-ch-subtle">activo fijo</span>
-                      </div>
-                    </div>
-                    <span className="font-mono text-xs text-amber-400 shrink-0">{clp(inv.monto)}</span>
-                  </div>
-                ))}
-                {totalIVACreditoInversiones > 0 && (
-                  <p className="font-body text-[9px] text-ch-subtle mt-1.5">
-                    IVA crédito fiscal {clp(totalIVACreditoInversiones)} incluido en saldo IVA · salida neta {clp(totalInversiones - totalIVACreditoInversiones)}
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-
           <Separador />
 
           {/* Nómina */}
@@ -754,6 +719,62 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
           </p>
         </div>
       </div>
+
+      {/* ── Inversiones del período ── */}
+      {inversiones.length > 0 && (
+        <div className="border border-ch-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-0.5">Inversiones del período</p>
+              <p className="font-body text-[9px] text-ch-subtle">Activos fijos — no incluidos en egresos operacionales</p>
+            </div>
+            <div className="text-right">
+              <p className="font-body text-[9px] text-ch-muted mb-0.5">Total invertido</p>
+              <span className="font-mono text-lg font-medium tabular-nums text-amber-400">{clp(totalInversiones)}</span>
+            </div>
+          </div>
+
+          <div className="space-y-0">
+            {inversiones.map((inv: FilaInversion) => (
+              <div key={inv.id} className="flex justify-between py-2 border-b border-ch-border/20 last:border-0">
+                <div className="min-w-0 pr-4">
+                  <p className="font-body text-xs text-ch-cream truncate">{inv.descripcion}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-body text-[9px] text-ch-muted capitalize">{inv.categoria.replace(/_/g, ' ')}</span>
+                    {inv.iva_credito > 0 && (
+                      <span className="font-body text-[9px] text-ch-green">CF {clp(inv.iva_credito)}</span>
+                    )}
+                    <span className="font-body text-[9px] text-ch-subtle">activo fijo</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-mono text-xs text-amber-400">{clp(inv.monto)}</p>
+                  {inv.iva_credito > 0 && (
+                    <p className="font-mono text-[9px] text-ch-subtle">neto {clp(inv.monto_neto)}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {totalIVACreditoInversiones > 0 && (
+            <div className="mt-4 pt-3 border-t border-ch-border/40 flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-6">
+                <div>
+                  <p className="font-body text-[9px] text-ch-subtle mb-0.5">IVA crédito fiscal recuperable</p>
+                  <span className="font-mono text-sm text-ch-green">{clp(totalIVACreditoInversiones)}</span>
+                </div>
+                <div>
+                  <p className="font-body text-[9px] text-ch-subtle mb-0.5">Salida neta de capital</p>
+                  <span className="font-mono text-sm text-ch-cream">{clp(totalInversiones - totalIVACreditoInversiones)}</span>
+                </div>
+              </div>
+              <p className="font-body text-[9px] text-ch-subtle">CF incluido en saldo IVA del período</p>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   )
 }
