@@ -7,10 +7,11 @@ import { logout } from '@/app/actions/auth'
 import type { Profile, Rol } from '@/types'
 
 const ROL_LABELS: Record<Rol, string> = {
-  admin:       'Administrador',
-  productor:   'Productor',
-  colaborador: 'Colaborador',
-  cliente:     'Cliente',
+  admin:         'Administrador',
+  productor:     'Productor',
+  colaborador:   'Colaborador',
+  cliente:       'Cliente',
+  contabilidad:  'Contabilidad',
 }
 
 const TODOS_LOS_MODULOS = [
@@ -25,10 +26,11 @@ const TODOS_LOS_MODULOS = [
 ] as const
 
 const PERMISOS: Record<Rol, readonly string[]> = {
-  admin:       TODOS_LOS_MODULOS,
-  productor:   ['Dashboard', 'Equipos', 'Cotizaciones', 'Rodaje', 'Colaboradores', 'Rendiciones', 'Clientes'],
-  colaborador: ['Dashboard', 'Rodaje', 'Rendiciones'],
-  cliente:     ['Dashboard', 'Cotizaciones'],
+  admin:        TODOS_LOS_MODULOS,
+  productor:    ['Dashboard', 'Equipos', 'Cotizaciones', 'Rodaje', 'Colaboradores', 'Rendiciones', 'Clientes'],
+  colaborador:  ['Dashboard', 'Rodaje', 'Rendiciones'],
+  cliente:      ['Dashboard', 'Cotizaciones'],
+  contabilidad: ['Dashboard', 'Cotizaciones', 'Rendiciones', 'Financiero'],
 }
 
 interface Props {
