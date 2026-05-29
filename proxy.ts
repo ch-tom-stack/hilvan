@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  const { hostname, pathname } = request.nextUrl
+
+  // Subdominio rental — sirve el catálogo público sin auth
+  if (hostname === 'rental.casahiedra.com') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/arriendo' + (pathname === '/' ? '' : pathname)
+    return NextResponse.rewrite(url)
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -26,11 +35,11 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-  const { pathname } = request.nextUrl
 
   // Rutas públicas — no requieren autenticación
   if (
     pathname.startsWith('/login') ||
+    pathname.startsWith('/arriendo') ||
     pathname.startsWith('/m/') ||
     pathname.startsWith('/r/') ||
     pathname.startsWith('/cotizacion/') ||
