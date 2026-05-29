@@ -6,17 +6,17 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 
 const BASE_NAV_ITEMS = [
-  { label: 'Dashboard',      href: '/dashboard',      disponible: true  },
-  { label: 'Cotizaciones',   href: '/cotizaciones',   disponible: true  },
-  { label: 'Rodajes',        href: '/rodaje',         disponible: true  },
-  { label: 'Rendiciones',    href: '/rendiciones',    disponible: true  },
-  { label: 'Financiero',     href: '/financiero',     disponible: false, soloAdmin: true },
-  { label: 'Equipos',        href: '/equipos',        disponible: true  },
-  { label: 'Colaboradores',  href: '/colaboradores',  disponible: true  },
-  { label: 'Clientes',       href: '/clientes',       disponible: true  },
-  { label: 'Usuarios',       href: '/usuarios',       disponible: false, soloAdmin: true },
-  { label: 'Calendario',    href: '/calendario',     disponible: true  },
-  { label: 'Rental',         href: '/rental',         disponible: true  },
+  { label: 'Dashboard',     href: '/dashboard',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },
+  { label: 'Cotizaciones',  href: '/cotizaciones',  disponible: true,  rolesPermitidos: null,              ocultarPara: null },
+  { label: 'Rodajes',       href: '/rodaje',        disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
+  { label: 'Rendiciones',   href: '/rendiciones',   disponible: true,  rolesPermitidos: null,              ocultarPara: null },
+  { label: 'Financiero',    href: '/financiero',    disponible: false, rolesPermitidos: ['admin', 'contabilidad'], ocultarPara: null },
+  { label: 'Equipos',       href: '/equipos',       disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
+  { label: 'Colaboradores', href: '/colaboradores', disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
+  { label: 'Clientes',      href: '/clientes',      disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
+  { label: 'Usuarios',      href: '/usuarios',      disponible: false, rolesPermitidos: ['admin'],         ocultarPara: null },
+  { label: 'Calendario',   href: '/calendario',    disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
+  { label: 'Rental',        href: '/rental',        disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
 ]
 
 interface SidebarProps {
@@ -27,10 +27,12 @@ interface SidebarProps {
 
 export default function Sidebar({ email, nombre, rol }: SidebarProps) {
   const pathname = usePathname()
-  const esAdmin = rol === 'admin'
-  const navItems = BASE_NAV_ITEMS.map(item =>
-    item.soloAdmin ? { ...item, disponible: esAdmin } : item
-  )
+  const navItems = BASE_NAV_ITEMS.map(item => {
+    let disp = item.disponible
+    if (item.rolesPermitidos) disp = item.rolesPermitidos.includes(rol ?? '')
+    if (item.ocultarPara?.includes(rol ?? '')) disp = false
+    return { ...item, disponible: disp }
+  })
   const [menuOpen, setMenuOpen] = useState(false)
 
   // Cerrar al cambiar de ruta

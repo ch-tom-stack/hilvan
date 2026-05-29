@@ -3,7 +3,7 @@
 // ============================================================
 // AUTH / USUARIOS
 // ============================================================
-export type Rol = 'admin' | 'productor' | 'colaborador' | 'cliente'
+export type Rol = 'admin' | 'productor' | 'colaborador' | 'cliente' | 'contabilidad'
 
 export interface Profile {
   id: string

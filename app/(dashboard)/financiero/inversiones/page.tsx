@@ -11,7 +11,7 @@ export default async function InversionesPage() {
 
   const { data: profile } = await supabase
     .from('profiles').select('rol').eq('id', user.id).single()
-  if (profile?.rol !== 'admin') redirect('/dashboard')
+  if (profile?.rol !== 'admin' && profile?.rol !== 'contabilidad') redirect('/dashboard')
 
   const inversiones = await getInversiones()
 

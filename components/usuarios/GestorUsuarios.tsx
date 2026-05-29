@@ -5,17 +5,19 @@ import { actualizarRol, resetearPassword, eliminarUsuario } from '@/app/actions/
 import type { Profile, Rol } from '@/types'
 
 const ROLES: { value: Rol; label: string; desc: string }[] = [
-  { value: 'admin',       label: 'Administrador', desc: 'Acceso total, incluyendo Financiero y Usuarios' },
-  { value: 'productor',   label: 'Productor',     desc: 'Acceso completo excepto Financiero' },
-  { value: 'colaborador', label: 'Colaborador',   desc: 'Dashboard, Rodaje y Rendiciones' },
-  { value: 'cliente',     label: 'Cliente',       desc: 'Dashboard y Cotizaciones' },
+  { value: 'admin',         label: 'Administrador', desc: 'Acceso total, incluyendo Financiero y Usuarios' },
+  { value: 'productor',     label: 'Productor',     desc: 'Acceso completo excepto Financiero' },
+  { value: 'contabilidad',  label: 'Contabilidad',  desc: 'Cotizaciones, Rendiciones y Financiero' },
+  { value: 'colaborador',   label: 'Colaborador',   desc: 'Dashboard, Rodaje y Rendiciones' },
+  { value: 'cliente',       label: 'Cliente',       desc: 'Dashboard y Cotizaciones' },
 ]
 
 const ROL_BADGE: Record<Rol, string> = {
-  admin:       'bg-ch-green/10 text-ch-green border-ch-green/30',
-  productor:   'bg-blue-500/10 text-blue-400 border-blue-400/30',
-  colaborador: 'bg-amber-500/10 text-amber-400 border-amber-400/30',
-  cliente:     'bg-purple-500/10 text-purple-400 border-purple-400/30',
+  admin:        'bg-ch-green/10 text-ch-green border-ch-green/30',
+  productor:    'bg-blue-500/10 text-blue-400 border-blue-400/30',
+  contabilidad: 'bg-ch-gold/10 text-ch-gold border-ch-gold/30',
+  colaborador:  'bg-amber-500/10 text-amber-400 border-amber-400/30',
+  cliente:      'bg-purple-500/10 text-purple-400 border-purple-400/30',
 }
 
 interface Props {
@@ -197,12 +199,14 @@ export default function GestorUsuarios({ usuarios, selfId }: Props) {
   // Agrupar por rol para visual clarity
   const admins       = usuarios.filter(u => u.rol === 'admin')
   const productores  = usuarios.filter(u => u.rol === 'productor')
+  const contables    = usuarios.filter(u => u.rol === 'contabilidad')
   const colaboradors = usuarios.filter(u => u.rol === 'colaborador')
   const clientes     = usuarios.filter(u => u.rol === 'cliente')
 
   const grupos: { label: string; items: Profile[] }[] = [
     { label: 'Administradores',  items: admins },
     { label: 'Productores',      items: productores },
+    { label: 'Contabilidad',     items: contables },
     { label: 'Colaboradores',    items: colaboradors },
     { label: 'Clientes',         items: clientes },
   ].filter(g => g.items.length > 0)

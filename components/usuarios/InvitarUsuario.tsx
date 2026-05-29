@@ -5,10 +5,11 @@ import { invitarUsuario } from '@/app/actions/usuarios'
 import type { Rol } from '@/types'
 
 const ROLES: { value: Rol; label: string }[] = [
-  { value: 'productor',   label: 'Productor' },
-  { value: 'colaborador', label: 'Colaborador' },
-  { value: 'cliente',     label: 'Cliente' },
-  { value: 'admin',       label: 'Administrador' },
+  { value: 'productor',    label: 'Productor' },
+  { value: 'contabilidad', label: 'Contabilidad' },
+  { value: 'colaborador',  label: 'Colaborador' },
+  { value: 'cliente',      label: 'Cliente' },
+  { value: 'admin',        label: 'Administrador' },
 ]
 
 export default function InvitarUsuario() {

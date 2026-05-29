@@ -21,7 +21,7 @@ export default async function FinancieroPage({ searchParams }: Props) {
 
   const { data: profile } = await supabase
     .from('profiles').select('rol').eq('id', user.id).single()
-  if (profile?.rol !== 'admin') redirect('/dashboard')
+  if (profile?.rol !== 'admin' && profile?.rol !== 'contabilidad') redirect('/dashboard')
 
   const { mes: mesParam } = await searchParams
   const mes = mesParam ?? periodoActual()
