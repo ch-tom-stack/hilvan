@@ -1041,6 +1041,7 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
   const [nombre, setNombre] = useState('')
   const [rol, setRol] = useState('')
   const [telefono, setTelefono] = useState('')
+  const [email, setEmail] = useState('')
 
   const handleAgregar = async () => {
     if (!nombre.trim()) return
@@ -1053,10 +1054,12 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
         nombre: nombre.trim(),
         rol: rol.trim() || null,
         telefono: telefono.trim() || null,
+        email: email.trim() || null,
       })
       setNombre('')
       setRol('')
       setTelefono('')
+      setEmail('')
       setMostrarForm(false)
       onPersonaAgregada()
     } finally {
@@ -1105,6 +1108,13 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
               className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1.5 text-xs text-ch-cream focus:outline-none focus:border-ch-muted placeholder:text-ch-subtle"
             />
           </div>
+          <input
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="Email (para citaciones)"
+            type="email"
+            className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1.5 text-xs text-ch-cream focus:outline-none focus:border-ch-muted placeholder:text-ch-subtle"
+          />
           <div className="flex gap-2">
             <button
               onClick={handleAgregar}
