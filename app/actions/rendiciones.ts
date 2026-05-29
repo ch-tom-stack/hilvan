@@ -186,7 +186,7 @@ export async function crearGasto(payload: {
       const quienRinde = (data.colaborador as any)?.nombre || payload.nombre_libre || 'Externo'
       await sendEmail({
         from: 'Hilván <noreply@casahiedra.com>',
-        to: 'admin@casahiedra.com',
+        to: 'tomas@casahiedra.com',
         subject: `Nuevo gasto: ${quienRinde} · ${cotNombre}`,
         html: `<p><strong>${quienRinde}</strong> agregó un gasto.</p>
           <ul>
