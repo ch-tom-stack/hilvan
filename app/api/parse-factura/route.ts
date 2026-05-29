@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import pdfParse from 'pdf-parse'
 
 export const runtime = 'nodejs'
 export const maxDuration = 15
@@ -163,6 +162,9 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'Sin archivo' }, { status: 400 })
 
     const buffer = Buffer.from(await file.arrayBuffer())
+    // Import dinámico: pdf-parse tiene un side-effect al cargarse que lee
+    // un PDF de test y rompe el build de Next.js si se importa a nivel de módulo.
+    const pdfParse = (await import('pdf-parse')).default
     const pdf = await pdfParse(buffer, { max: 3 } as any)
     const resultado = parsearFacturaSII(pdf.text)
 
