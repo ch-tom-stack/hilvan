@@ -2,6 +2,7 @@ import { getMaletas } from '@/app/actions/maletas'
 import Link from 'next/link'
 import type { Maleta } from '@/types'
 import EstadoVacio from '@/components/ui/EstadoVacio'
+import MaletaAcciones from './MaletaAcciones'
 
 export default async function MaletasPage() {
   const maletas = await getMaletas() as Maleta[]
@@ -67,6 +68,7 @@ export default async function MaletasPage() {
                     Editar
                   </Link>
                 </div>
+                <MaletaAcciones maletaId={maleta.id} maletaNombre={maleta.nombre} />
               </div>
             </div>
           ))}

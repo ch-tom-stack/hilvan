@@ -100,6 +100,61 @@ export async function getMaletas() {
   return data || []
 }
 
+export async function eliminarMaleta(id: string) {
+  const supabase = await createClient()
+  await supabase.from('maleta_items').delete().eq('maleta_id', id)
+  await supabase.from('maleta_notas').delete().eq('maleta_id', id)
+  const { error } = await supabase.from('maletas').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/equipos/maletas')
+  return { success: true }
+}
+
+export async function convertirMaletaABundle(id: string) {
+  const supabase = await createClient()
+
+  // Cargar maleta con sus ítems
+  const { data: maleta, error: eMaleta } = await supabase
+    .from('maletas')
+    .select('*, items:maleta_items(equipo_id, cantidad)')
+    .eq('id', id)
+    .single()
+
+  if (eMaleta || !maleta) return { error: 'Maleta no encontrada' }
+
+  // Crear el bundle con los datos de la maleta
+  const { data: bundle, error: eBundle } = await supabase
+    .from('bundles')
+    .insert({
+      codigo: maleta.codigo,
+      nombre: maleta.nombre,
+      descripcion: maleta.descripcion || null,
+      fisico: true,
+      precio_jornada: null,
+      fotos: maleta.foto_empaque ? [maleta.foto_empaque] : [],
+    })
+    .select()
+    .single()
+
+  if (eBundle) return { error: eBundle.code === '23505' ? 'Ya existe un bundle con ese código' : eBundle.message }
+
+  // Migrar ítems
+  if (maleta.items?.length > 0) {
+    await supabase.from('bundle_items').insert(
+      maleta.items.map((item: { equipo_id: string; cantidad: number }) => ({
+        bundle_id: bundle.id,
+        equipo_id: item.equipo_id,
+        bundle_hijo_id: null,
+        cantidad: item.cantidad,
+      }))
+    )
+  }
+
+  revalidatePath('/equipos/maletas')
+  revalidatePath('/equipos/bundles')
+  return { success: true, bundleId: bundle.id, bundleCodigo: bundle.codigo }
+}
+
 export async function getMaleta(codigo: string) {
   const supabase = await createClient()
   const { data } = await supabase
