@@ -33,9 +33,13 @@ export default function CatalogoCliente({ equipos, categorias }: Props) {
   const cantidadEnCarrito = (id: string) => carrito.find(i => i.equipo.id === id)?.cantidad ?? 0
 
   const agregar = (eq: Equipo & { categoria?: CategoriaEquipo }) => {
+    const stock = eq.cantidad ?? 1
     setCarrito(prev => {
       const existe = prev.find(i => i.equipo.id === eq.id)
-      if (existe) return prev.map(i => i.equipo.id === eq.id ? { ...i, cantidad: i.cantidad + 1 } : i)
+      if (existe) {
+        if (existe.cantidad >= stock) return prev  // tope de stock
+        return prev.map(i => i.equipo.id === eq.id ? { ...i, cantidad: i.cantidad + 1 } : i)
+      }
       return [...prev, { equipo: eq, cantidad: 1 }]
     })
   }
@@ -156,11 +160,17 @@ export default function CatalogoCliente({ equipos, categorias }: Props) {
                     {eq.descripcion && (
                       <p className="font-body text-xs text-ch-muted leading-relaxed mb-3 line-clamp-2">{eq.descripcion}</p>
                     )}
-                    <p className="font-body text-xs text-ch-muted mb-4">
+                    <p className="font-body text-xs text-ch-muted mb-1">
                       {eq.precio_jornada && eq.precio_jornada > 0
                         ? `$${eq.precio_jornada.toLocaleString('es-CL')} / jornada`
                         : 'Precio a consultar'}
                     </p>
+                    {eq.cantidad != null && eq.cantidad > 1 && (
+                      <p className="font-body text-[10px] text-ch-subtle mb-3">
+                        {eq.cantidad} unidades disponibles
+                      </p>
+                    )}
+                    {(eq.cantidad == null || eq.cantidad <= 1) && <div className="mb-3" />}
 
                     <div className="mt-auto">
                       {disponible ? (
@@ -175,7 +185,11 @@ export default function CatalogoCliente({ equipos, categorias }: Props) {
                           <div className="flex items-center border border-ch-green">
                             <button onClick={() => quitar(eq.id)} className="px-4 py-2.5 text-ch-green hover:bg-ch-green/10 transition-colors font-body text-sm">−</button>
                             <span className="flex-1 text-center font-body text-xs text-ch-cream">{enCarrito}</span>
-                            <button onClick={() => agregar(eq)} className="px-4 py-2.5 text-ch-green hover:bg-ch-green/10 transition-colors font-body text-sm">+</button>
+                            <button
+                              onClick={() => agregar(eq)}
+                              disabled={enCarrito >= (eq.cantidad ?? 1)}
+                              className="px-4 py-2.5 text-ch-green hover:bg-ch-green/10 transition-colors font-body text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                            >+</button>
                           </div>
                         )
                       ) : (
