@@ -5,6 +5,14 @@ import { crearGasto } from '@/app/actions/rendiciones'
 import type { RendicionGasto, TipoRendicion, TipoDocRendicion } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 
+interface DatosFactura {
+  rut_emisor: string | null
+  razon_social: string | null
+  monto: number | null
+  folio: string | null
+  fecha: string | null
+}
+
 const TIPOS: { value: TipoRendicion; label: string }[] = [
   { value: 'honorarios', label: 'Honorarios' },
   { value: 'transporte', label: 'Transporte' },
@@ -39,6 +47,8 @@ export default function FormularioGasto({
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [subiendo, setSubiendo] = useState(false)
+  const [parseando, setParseando] = useState(false)
+  const [datosDetectados, setDatosDetectados] = useState<DatosFactura | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const tipoInicial = itemTipo ? (TIPO_ITEM_A_RENDICION[itemTipo] || 'otro') : ''
@@ -79,8 +89,43 @@ export default function FormularioGasto({
   const comprobanteOk = true
   const puedeGuardar = form.tipo && form.monto && comprobanteOk && !subiendo && !isPending
 
+  const parsearPDF = async (file: File) => {
+    setParseando(true)
+    setDatosDetectados(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/parse-factura', { method: 'POST', body: fd })
+      if (!res.ok) return
+      const datos: DatosFactura = await res.json()
+      // Solo mostrar si encontramos algo útil
+      if (datos.rut_emisor || datos.razon_social || datos.monto) {
+        setDatosDetectados(datos)
+      }
+    } catch {
+      // Silencioso — el parse es best-effort
+    } finally {
+      setParseando(false)
+    }
+  }
+
+  const aplicarDatosDetectados = () => {
+    if (!datosDetectados) return
+    setForm(prev => ({
+      ...prev,
+      tipo_documento: 'factura' as TipoDocRendicion,
+      rut_emisor:          datosDetectados.rut_emisor          ?? prev.rut_emisor,
+      razon_social_emisor: datosDetectados.razon_social        ?? prev.razon_social_emisor,
+      monto:               datosDetectados.monto != null ? String(datosDetectados.monto) : prev.monto,
+    }))
+    setDatosDetectados(null)
+  }
+
   const subirArchivo = async (file: File) => {
     setSubiendo(true)
+    // Si es PDF, intentar parsear en paralelo
+    const esPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    if (esPDF) parsearPDF(file)
     try {
       const supabase = createClient()
       const ext = file.name.split('.').pop()
@@ -104,6 +149,7 @@ export default function FormularioGasto({
     setFotoPreview(null)
     setArchivoNombre(null)
     setInputEsBruto(false)
+    setDatosDetectados(null)
   }
 
   const guardar = (continuar = false) => {
@@ -264,6 +310,47 @@ export default function FormularioGasto({
           </button>
         )}
       </div>
+
+      {/* Banner de datos detectados por parser PDF */}
+      {parseando && (
+        <p className="font-body text-[10px] text-ch-muted animate-pulse">
+          Analizando factura…
+        </p>
+      )}
+      {datosDetectados && !parseando && (
+        <div className="border border-ch-green/40 bg-ch-green/5 p-3 space-y-1.5">
+          <p className="font-body text-[9px] uppercase tracking-[0.35em] text-ch-green mb-2">
+            Datos detectados en el PDF
+          </p>
+          {datosDetectados.rut_emisor && (
+            <p className="font-body text-xs text-ch-cream font-mono">RUT: {datosDetectados.rut_emisor}</p>
+          )}
+          {datosDetectados.razon_social && (
+            <p className="font-body text-xs text-ch-cream">{datosDetectados.razon_social}</p>
+          )}
+          {datosDetectados.monto && (
+            <p className="font-body text-xs text-ch-cream font-mono">
+              Total: ${datosDetectados.monto.toLocaleString('es-CL')}
+            </p>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={aplicarDatosDetectados}
+              className="font-body text-[9px] uppercase tracking-[0.3em] bg-ch-green text-ch-black px-3 py-1.5 hover:bg-ch-green-light transition-colors"
+            >
+              Aplicar
+            </button>
+            <button
+              type="button"
+              onClick={() => setDatosDetectados(null)}
+              className="font-body text-[9px] text-ch-muted hover:text-ch-cream transition-colors px-2"
+            >
+              Ignorar
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && <p className="font-body text-[10px] text-red-400 border border-red-500/30 px-3 py-2">{error}</p>}
 
