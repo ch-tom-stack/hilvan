@@ -54,7 +54,8 @@ Eres el asistente de desarrollo de **Hilván**, la plataforma de gestión intern
 | 5 | Rendiciones | ✓ Activo | `/rendiciones` |
 | 6 | Financiero | ✓ Activo | `/financiero` — solo admin |
 | 7 | Clientes | ✓ Activo | `/clientes` |
-| 8 | Calendario | 🔜 En construcción | `/calendario` |
+| 8 | Calendario | ✓ Activo | `/calendario` |
+| 9 | Rental | ✓ Activo | `/rental` |
 | — | Perfil | ✓ Activo | `/perfil` |
 | — | Usuarios | ✓ Activo | `/usuarios` — solo admin |
 
@@ -63,18 +64,18 @@ Eres el asistente de desarrollo de **Hilván**, la plataforma de gestión intern
 ## Sidebar — navItems actuales
 
 ```typescript
-{ label: 'Dashboard',     href: '/dashboard',    disponible: true  }
-{ label: 'Cotizaciones',  href: '/cotizaciones', disponible: true  }
-{ label: 'Rodajes',       href: '/rodaje',        disponible: true  }
-{ label: 'Rendiciones',   href: '/rendiciones',  disponible: true  }
-{ label: 'Financiero',    href: '/financiero',   disponible: false, soloAdmin: true }
-{ label: 'Equipos',       href: '/equipos',      disponible: true  }
-{ label: 'Colaboradores', href: '/colaboradores',disponible: true  }
-{ label: 'Clientes',      href: '/clientes',     disponible: true  }
-{ label: 'Usuarios',      href: '/usuarios',     disponible: false, soloAdmin: true }
+{ label: 'Dashboard',     href: '/dashboard',     disponible: true,  rolesPermitidos: null,              ocultarPara: null }
+{ label: 'Cotizaciones',  href: '/cotizaciones',  disponible: true,  rolesPermitidos: null,              ocultarPara: null }
+{ label: 'Rodajes',       href: '/rodaje',         disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
+{ label: 'Rendiciones',   href: '/rendiciones',   disponible: true,  rolesPermitidos: null,              ocultarPara: null }
+{ label: 'Financiero',    href: '/financiero',    disponible: false, rolesPermitidos: ['admin', 'contabilidad'], ocultarPara: null }
+{ label: 'Equipos',       href: '/equipos',       disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
+{ label: 'Colaboradores', href: '/colaboradores', disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
+{ label: 'Clientes',      href: '/clientes',      disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
+{ label: 'Usuarios',      href: '/usuarios',      disponible: false, rolesPermitidos: ['admin'],         ocultarPara: null }
+{ label: 'Calendario',    href: '/calendario',    disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
+{ label: 'Rental',        href: '/rental',        disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
 ```
-
-> Calendario se agrega al terminar CH-8.
 
 ---
 
@@ -101,13 +102,16 @@ Eres el asistente de desarrollo de **Hilván**, la plataforma de gestión intern
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
-RESEND_API_KEY
 NEXT_PUBLIC_APP_URL
-CRON_SECRET
+CRON_SECRET                    ← en Vercel; localmente usar cualquier string en .env.local
+GMAIL_USER                     ← natalia@casahiedra.com (emisor de correos transaccionales)
+GMAIL_APP_PASSWORD             ← contraseña de aplicación Gmail (nodemailer SMTP)
 GOOGLE_SERVICE_ACCOUNT_EMAIL   ← hilvan-calendar@hilvan-casahiedra.iam.gserviceaccount.com
 GOOGLE_CALENDAR_ID             ← estudiocasahiedra@gmail.com
 GOOGLE_SERVICE_ACCOUNT_KEY     ← JSON completo de la service account
 ```
+
+> **Email:** se usa Gmail SMTP vía nodemailer (reemplazó a Resend). No hay `RESEND_API_KEY`.
 
 ---
 
@@ -115,6 +119,7 @@ GOOGLE_SERVICE_ACCOUNT_KEY     ← JSON completo de la service account
 
 ### CH-0 Base
 - `profiles` — RLS activado
+- Roles: `admin`, `productor`, `contabilidad` (acceso a cotizaciones, rendiciones y financiero; oculto en rodajes/equipos/colaboradores/clientes/rental/calendario)
 
 ### CH-1 Equipos
 - `categorias_equipo`, `equipos`, `bundles`, `bundle_items`
@@ -140,30 +145,38 @@ GOOGLE_SERVICE_ACCOUNT_KEY     ← JSON completo de la service account
 
 ### CH-5 Rendiciones
 - `rendiciones`, `rendicion_gastos`, `rendiciones_links_temporales`
-- Campos nuevos en `rendicion_gastos`: `rut_emisor`, `razon_social_emisor`, `factura_casa_hiedra`
-- `/rendiciones/mensual` — gastos operacionales mensuales
-- `rendicion_mensual_gastos` tiene los mismos campos extra: `rut_emisor`, `razon_social_emisor`, `factura_casa_hiedra`
-- `CATEGORIAS_RENDICION_MENSUAL` (types/index.ts): Transporte, Alimentación, Artículos de oficina, Insumos de rodaje, **Suscripciones**, Otros
+- Campos en `rendicion_gastos`: incluye `rut_emisor`, `razon_social_emisor`, `factura_casa_hiedra`
+- `/rendiciones/mensual` — gastos operacionales mensuales (no asociados a proyecto)
+- `rendicion_mensual_gastos`: mismos campos extra que `rendicion_gastos`
+- `CATEGORIAS_RENDICION_MENSUAL` (types/index.ts): Transporte, Alimentación, Artículos de oficina, Insumos de rodaje, Suscripciones, Otros
 - `cargado_por` es NOT NULL en `rendicion_mensual_gastos` — siempre incluirlo en inserts directos
-- Export Santander: `.xlsx` real 13 columnas (librería `xlsx` instalada)
+- **Parser de facturas SII**: `POST /api/parse-factura` — recibe PDF, devuelve `{rut_emisor, razon_social, folio, fecha, monto}`. Usa `pdf-parse` con import dinámico (no importar a nivel de módulo o rompe el build). Cubre dos familias de DTE chileno.
+- **Export Santander**: `GET /api/rendiciones/santander-export` — genera `.xlsx` con template real (13 columnas). Librería `exceljs` instalada.
 - Storage: comprobantes de gastos
 
-### CH-6 Financiero — solo admin
+### CH-6 Financiero — solo admin/contabilidad
 - `gastos_fijos`, `gastos_fijos_cuotas`
 - `flujo_caja_manual`, `inversiones`
 - `configuracion_financiero` — key/value store. Claves activas: `ppm_tasa`, `previred_mensual`, `iusc_mensual`, `nomina_personas` (JSON)
-- **RLS**: `configuracion_financiero` no tiene SELECT policy → usar siempre `createAdminClient()` en getters
-- **Estado de Resultados** incluye: IUSC editable (igual que Previred), sección Nómina con 4 personas configurables
+- **RLS**: `configuracion_financiero` no tiene SELECT policy → usar siempre `createAdminClient()` en getters y setters
+- **Estado de Resultados**: base devengada (facturado, no cobrado). Incluye PPM, Previred, IUSC (todos editables), sección Nómina con personas configurables, Inversiones en columna separada
 - `getNomina()` / `setNomina()` en `app/actions/financiero.ts` — default: Tomás M. $550k, Natalia $550k, Simón $250k BH, Josué $250k BH
 - **Créditos vigentes** en `gastos_fijos`: BancoEstado Emprende Plus ($3.107.000, 48 cuotas ~$84k, vence ago 2028) + Forum/CORFO ($2.031.064, 36 cuotas ~$56-254k, vence jun 2028)
 - Vistas: `/financiero`, `/financiero/cobrar`, `/financiero/flujo`, `/financiero/inversiones`, `/financiero/creditos`
 
-### CH-8 Calendario (en construcción)
-- `rental_reservas` — una reserva = un equipo OR una maleta, no múltiples
-- `eventos_calendario` — eventos importados de GCal
+### CH-8 Calendario
+- `eventos_calendario` — eventos importados de GCal (clasificacion: sin_clasificar | rodaje | reunion | ignorar)
 - Google Calendar: proyecto `hilvan-casahiedra`, service account `hilvan-calendar@hilvan-casahiedra.iam.gserviceaccount.com`
-- Variables en Vercel y .env.local ✓
-- `npm install googleapis` pendiente
+- Sync cron: `0 8 * * *` en Vercel → `/api/cron/sync-gcal` (rango: -30 días a +90 días)
+- Clasificación manual desde InboxGCal (solo admin/productor)
+- FullCalendar v6.1.20 con dynamic import (`ssr: false`) — CSS bundleado con JS, no importar por separado
+- Tema `.fc-hilvan` definido en `globals.css`
+
+### CH-9 Rental
+- `rental_reservas` — una reserva = un equipo OR una maleta, no múltiples
+- `rental_cotizaciones`, `rental_cotizacion_items` — cotizaciones de arriendo
+- Módulo completo: catálogo, reservas y cotizaciones
+- Equipos marcados como rentables desde `/equipos` (toggle inline)
 
 ---
 
@@ -230,9 +243,5 @@ proxy.ts                   ← middleware + rutas públicas
 
 ## Pendientes anotados
 
-- **CH-8 Calendario**: implementación en curso — `npm install googleapis` pendiente
-- CH-6: PDF parsing facturas SII pendiente de decisión
-- Citación `/citacion/[token]`: migrar zinc → ch-tokens
-- Página 404 personalizada
-- **Export Santander**: implementado, pendiente validar con rendiciones aprobadas reales (template en `public/templates/santander_masivo.xlsx`, API route en `/api/rendiciones/santander-export`)
-- **OTT\* NT AT HOME**: gasto recurrente en tarjeta (~$10.100/mes) — servicio sin identificar, pendiente agregar a suscripciones
+- **Export Santander**: pendiente validar con rendiciones aprobadas reales (template en `public/templates/santander_masivo.xlsx`, API route en `/api/rendiciones/santander-export`)
+- **OTT\* NT AT HOME**: gasto recurrente en tarjeta (~$10.100/mes) — servicio sin identificar, pendiente agregar a suscripciones en rendición mensual
