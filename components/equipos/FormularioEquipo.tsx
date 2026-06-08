@@ -141,7 +141,6 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
             onChange={e => { setCodigo(e.target.value); setCodigoAuto(false) }}
             placeholder="CH-CAM-001"
             className={inputClass}
-            readOnly={esEdicion}
           />
         </div>
       </div>

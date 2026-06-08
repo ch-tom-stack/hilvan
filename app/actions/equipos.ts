@@ -35,6 +35,7 @@ export async function actualizarEquipo(id: string, formData: FormData) {
   const supabase = await createClient()
 
   const data = {
+    codigo:          formData.get('codigo') as string,
     nombre:          formData.get('nombre') as string,
     categoria_codigo: formData.get('categoria_codigo') as string,
     descripcion:     formData.get('descripcion') as string || null,
