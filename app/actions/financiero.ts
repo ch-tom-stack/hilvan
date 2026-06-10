@@ -1,30 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { requireRol } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calcularRetencion } from '@/types'
 import { mesAnterior, mismoMesAñoAnterior } from '@/lib/periodos'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AUTH HELPER
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Verifica que hay una sesión activa y que el usuario tiene alguno de los roles
- * indicados. Lanza Error('Sin permisos') si no se cumple alguna condición.
- * Usa createClient() (respeta RLS en profiles) — no el admin client.
- */
-async function requireRol(roles: string[]): Promise<void> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Sin permisos')
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('rol')
-    .eq('id', user.id)
-    .single()
-  if (!profile || !roles.includes(profile.rol)) throw new Error('Sin permisos')
-}
 
 // const PPM_TASA = 0.016 // fallback — reemplazado por configuracion_financiero
 

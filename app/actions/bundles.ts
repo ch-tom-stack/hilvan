@@ -1,19 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { requireSesion } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AUTH HELPER
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Verifica que hay una sesión activa. Lanza Error('Sin permisos') si no. */
-async function requireSesion(): Promise<void> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Sin permisos')
-}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 

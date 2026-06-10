@@ -1,24 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { requireRol } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Inversion, CategoriaInversion } from '@/types'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AUTH HELPER
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function requireRol(roles: string[]): Promise<void> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Sin permisos')
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('rol')
-    .eq('id', user.id)
-    .single()
-  if (!profile || !roles.includes(profile.rol)) throw new Error('Sin permisos')
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // READ
