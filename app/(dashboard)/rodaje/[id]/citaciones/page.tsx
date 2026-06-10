@@ -173,7 +173,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
 
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-xs text-zinc-500">Mensaje de citación</label>
+                            <label className="text-xs text-ch-muted">Mensaje de citación</label>
                             <button onClick={() => setMensajeEditando({ id: citacion.id, texto: mensajeActual })} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">
                               Editar
                             </button>
@@ -215,7 +215,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
                           )}
                           <button
                             onClick={() => startTransition(async () => { await marcarWhatsappEnviado(citacion.id, id); recargar() })}
-                            className={`text-xs border px-3 py-1.5 rounded-[2px] transition-colors ${citacion.whatsapp_enviado ? 'border-emerald-800 text-emerald-500 bg-emerald-950/30' : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'}`}
+                            className={`text-xs border px-3 py-1.5 rounded-[2px] transition-colors ${citacion.whatsapp_enviado ? 'border-emerald-800 text-emerald-500 bg-emerald-950/30' : 'border-ch-border text-ch-muted hover:border-ch-muted'}`}
                           >
                             {citacion.whatsapp_enviado ? '✓ WA enviado' : 'Marcar WA enviado'}
                           </button>
@@ -223,7 +223,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
                             <button
                               onClick={() => startTransition(async () => { await enviarEmailCitacion(citacion.id, id); recargar() })}
                               disabled={isPending}
-                              className={`text-xs border px-3 py-1.5 rounded-[2px] transition-colors ${citacion.email_enviado_at ? 'border-emerald-800 text-emerald-500 bg-emerald-950/30' : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
+                              className={`text-xs border px-3 py-1.5 rounded-[2px] transition-colors ${citacion.email_enviado_at ? 'border-emerald-800 text-emerald-500 bg-emerald-950/30' : 'border-ch-border text-ch-muted hover:border-ch-muted hover:text-ch-cream'}`}
                             >
                               {citacion.email_enviado_at ? '✓ Email enviado' : 'Enviar email'}
                             </button>

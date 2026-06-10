@@ -64,21 +64,21 @@ export function ImagenUploader({ rodajeId, campo, valorActual, label, onSubida, 
 
   return (
     <div>
-      <label className="block text-xs text-zinc-400 mb-1.5">{label}</label>
+      <label className="block text-xs text-ch-muted mb-1.5">{label}</label>
 
       {preview ? (
         <div className="flex items-center gap-3">
           <img
             src={preview}
             alt={label}
-            className="h-16 w-auto object-contain rounded-[2px] bg-zinc-800 p-1"
+            className="h-16 w-auto object-contain rounded-[2px] bg-ch-surface p-1"
             style={invertOnDark ? { filter: 'invert(1)' } : undefined}
           />
           <div className="flex flex-col gap-1">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+              className="text-xs text-ch-muted hover:text-ch-cream transition-colors"
             >
               Cambiar imagen
             </button>
@@ -96,7 +96,7 @@ export function ImagenUploader({ rodajeId, campo, valorActual, label, onSubida, 
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={subiendo}
-          className="w-full border border-dashed border-zinc-700 rounded-[2px] px-4 py-4 text-xs text-zinc-600 hover:border-zinc-500 hover:text-zinc-400 transition-colors disabled:opacity-50 text-center"
+          className="w-full border border-dashed border-ch-border rounded-[2px] px-4 py-4 text-xs text-ch-border hover:border-ch-muted hover:text-ch-muted transition-colors disabled:opacity-50 text-center"
         >
           {subiendo ? 'Subiendo...' : '+ Subir imagen'}
         </button>

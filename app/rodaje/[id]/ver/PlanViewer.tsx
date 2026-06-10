@@ -178,8 +178,8 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
                     )}
                   </div>
                   <span className="text-xs text-ch-muted pt-0.5">{bloque.character_num || ''}</span>
-                  <span className="text-xs text-zinc-500 text-center pt-0.5">{bloque.dia_noche || 'D'}</span>
-                  <span className="text-xs text-zinc-500 text-center pt-0.5">{bloque.interior_exterior || 'I'}</span>
+                  <span className="text-xs text-ch-muted text-center pt-0.5">{bloque.dia_noche || 'D'}</span>
+                  <span className="text-xs text-ch-muted text-center pt-0.5">{bloque.interior_exterior || 'I'}</span>
                   <span className="text-xs font-mono text-ch-muted text-center pt-0.5">
                     {casc.inicio_min !== undefined ? minutosAHora(casc.inicio_min) : '—'}
                   </span>
