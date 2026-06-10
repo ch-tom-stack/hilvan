@@ -15,11 +15,16 @@ CREATE TABLE IF NOT EXISTS public.email_log (
 
 ALTER TABLE public.email_log ENABLE ROW LEVEL SECURITY;
 
--- Solo admin puede leer los registros (vía service_role o política)
+-- Solo admin puede leer los registros. La tabla guarda direcciones de
+-- destinatarios, así que la lectura se restringe al rol 'admin' (no a
+-- cualquier usuario autenticado). El insert lo hace sendEmail con service_role,
+-- que bypassa RLS, así que no necesita política de INSERT.
 CREATE POLICY "admin read email_log"
   ON public.email_log
   FOR SELECT
-  USING (true);
+  USING (
+    (SELECT rol FROM public.profiles WHERE id = auth.uid()) = 'admin'
+  );
 
 -- GRANTs — service_role necesita INSERT para registrar desde sendEmail
 GRANT SELECT, INSERT ON public.email_log TO service_role;
