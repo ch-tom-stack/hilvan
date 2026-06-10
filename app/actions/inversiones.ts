@@ -1,7 +1,24 @@
 'use server'
 
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Inversion, CategoriaInversion } from '@/types'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function requireRol(roles: string[]): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Sin permisos')
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('rol')
+    .eq('id', user.id)
+    .single()
+  if (!profile || !roles.includes(profile.rol)) throw new Error('Sin permisos')
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // READ
@@ -11,6 +28,7 @@ export async function getInversiones(filtros?: {
   categoria?: CategoriaInversion
   año?: number
 }): Promise<Inversion[]> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = createAdminClient()
 
   let query = supabase
@@ -45,6 +63,7 @@ export async function getInversiones(filtros?: {
 export async function crearInversion(
   data: Omit<Inversion, 'id' | 'created_at' | 'created_by'>
 ): Promise<{ error?: string; data?: Inversion }> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = createAdminClient()
 
   const { data: created, error } = await supabase
@@ -69,6 +88,7 @@ export async function editarInversion(
   id: string,
   data: Partial<Omit<Inversion, 'id' | 'created_at' | 'created_by'>>
 ): Promise<{ error?: string }> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = createAdminClient()
 
   const { error } = await supabase
@@ -91,6 +111,7 @@ export async function editarInversion(
 export async function eliminarInversion(
   id: string
 ): Promise<{ error?: string }> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = createAdminClient()
 
   const { error } = await supabase

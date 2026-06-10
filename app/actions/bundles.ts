@@ -1,7 +1,19 @@
 'use server'
 
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Verifica que hay una sesión activa. Lanza Error('Sin permisos') si no. */
+async function requireSesion(): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Sin permisos')
+}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -95,6 +107,7 @@ export async function crearBundle(data: {
   fisico: boolean
   precio_jornada?: number
 }): Promise<{ error?: string }> {
+  await requireSesion()
   const supabase = createAdminClient()
   const { error } = await supabase.from('bundles').insert({
     codigo: data.codigo,
@@ -119,6 +132,7 @@ export async function actualizarBundle(
     precio_jornada: number
   }>
 ): Promise<{ error?: string }> {
+  await requireSesion()
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('bundles')
@@ -130,6 +144,7 @@ export async function actualizarBundle(
 }
 
 export async function eliminarBundle(id: string): Promise<{ error?: string }> {
+  await requireSesion()
   const supabase = createAdminClient()
   // Eliminar items primero (por si no hay CASCADE)
   await supabase.from('bundle_items').delete().eq('bundle_id', id)
@@ -144,6 +159,7 @@ export async function agregarEquipoABundle(
   equipo_id: string,
   cantidad: number
 ): Promise<{ error?: string }> {
+  await requireSesion()
   const supabase = createAdminClient()
   const { error } = await supabase.from('bundle_items').insert({
     bundle_id,
@@ -161,6 +177,7 @@ export async function agregarBundleABundle(
   bundle_hijo_id: string,
   cantidad: number
 ): Promise<{ error?: string }> {
+  await requireSesion()
   const supabase = createAdminClient()
   const { error } = await supabase.from('bundle_items').insert({
     bundle_id,
@@ -174,6 +191,7 @@ export async function agregarBundleABundle(
 }
 
 export async function eliminarItemBundle(item_id: string): Promise<{ error?: string }> {
+  await requireSesion()
   const supabase = createAdminClient()
   const { error } = await supabase.from('bundle_items').delete().eq('id', item_id)
   if (error) return { error: error.message }
