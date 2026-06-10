@@ -197,7 +197,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
                 ) : (
                   <span
                     key={item.href}
-                    className="flex items-center px-4 py-3 font-body text-sm text-ch-subtle/40 cursor-default select-none mb-0.5"
+                    className="flex items-center px-4 py-3 font-body text-sm text-ch-subtle cursor-default select-none mb-0.5"
                   >
                     {item.label}
                   </span>
