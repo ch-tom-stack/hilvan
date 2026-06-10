@@ -227,9 +227,15 @@ docs/context.md            ← contexto completo del proyecto
 docs/design-context.md     ← sistema de diseño detallado
 docs/auditoria/            ← auditoría jun 2026: plan de correcciones T01-T15
 sql/grants.sql             ← todos los GRANTs documentados
-types/index.ts             ← tipos canónicos
+types/index.ts             ← tipos canónicos (solo tipos/constantes + reexports desde lib/ tras T12)
+lib/cotizaciones-calc.ts   ← cálculos cotización/rental + formatCLP (T12)
+lib/rendiciones-calc.ts    ← calcularRetencion (T12)
+lib/rodaje-helpers.ts      ← helpers de rodaje/citaciones (T12)
+lib/fechas.ts              ← helpers centralizados de fechas (T10)
 proxy.ts                   ← middleware + rutas públicas
 ```
+
+> **T12:** `types/index.ts` reexporta la lógica de negocio desde `lib/` para no romper los ~100 imports existentes. Código nuevo: importar cálculos/helpers directamente desde los módulos `lib/*` correspondientes.
 
 ---
 

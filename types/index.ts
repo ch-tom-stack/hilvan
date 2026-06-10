@@ -1,6 +1,14 @@
 // types/index.ts
-// Importamos parseFechaLocal desde lib/fechas para evitar el parche T12:00:00 directo
-import { parseFechaLocal } from '@/lib/fechas'
+//
+// Archivo canónico de TIPOS de Hilván. La lógica de negocio (cálculos de
+// cotización/rental, retención de rendiciones y helpers de rodaje) vive en
+// lib/*-calc.ts y lib/rodaje-helpers.ts desde T12. Aquí solo se REEXPORTA
+// para no romper los ~100 imports existentes desde '@/types'.
+//
+// Reexports al final del archivo:
+//   - lib/cotizaciones-calc  → calcularBruto, subtotalItem, ..., formatCLP, rental
+//   - lib/rendiciones-calc   → calcularRetencion
+//   - lib/rodaje-helpers     → horaAMinutos, calcularCascada, generarMensajeCitacion, ...
 
 // ============================================================
 // AUTH / USUARIOS
@@ -345,102 +353,11 @@ export interface CotizacionItem {
 }
 
 // ============================================================
-// HELPERS DE CÁLCULO
+// HELPERS DE CÁLCULO + FORMATO CLP
 // ============================================================
-
-// Calcula precio_bruto desde neto con boleta
-// Bruto = Neto / (1 - tasa)
-export function calcularBruto(neto: number, tasa: number = 0.153): number {
-  return Math.round(neto / (1 - tasa))
-}
-
-// Subtotal de un ítem al cliente
-export function subtotalItem(item: CotizacionItem): number {
-  if (item.incluido) return 0
-  const base = item.precio_cliente * item.cantidad * item.dias
-  if (item.descuento_item_tipo === 'porcentaje') {
-    return Math.round(base * (1 - item.descuento_item / 100))
-  }
-  return Math.round(base - item.descuento_item)
-}
-
-// Subtotal de un sub-grupo al cliente
-export function subtotalSubgrupo(sg: CotizacionSubgrupo): number {
-  return (sg.items ?? []).reduce((acc, i) => acc + subtotalItem(i), 0)
-}
-
-// Subtotal de un departamento al cliente
-export function subtotalDepartamento(dep: CotizacionDepartamento): number {
-  const deSubs = (dep.subgrupos ?? []).reduce(
-    (acc, sg) => acc + subtotalSubgrupo(sg),
-    0
-  )
-  const directos = (dep.items ?? []).reduce(
-    (acc, i) => acc + subtotalItem(i),
-    0
-  )
-  return deSubs + directos
-}
-
-// Totales generales
-export interface TotalesCotizacion {
-  neto: number
-  descuento_global_monto: number
-  neto_con_descuento: number
-  iva: number
-  total: number
-  costo_real: number
-  margen: number
-}
-
-export function calcularTotales(cotizacion: Cotizacion): TotalesCotizacion {
-  const deps = cotizacion.departamentos ?? []
-
-  const neto = deps.reduce((acc, d) => acc + subtotalDepartamento(d), 0)
-
-  const todosItems = deps.flatMap(d => [
-    ...(d.items ?? []),
-    ...(d.subgrupos ?? []).flatMap(sg => sg.items ?? []),
-  ])
-
-  const costo_real = todosItems.reduce(
-    (acc, i) => acc + Math.round(i.precio_bruto * i.cantidad * i.dias),
-    0
-  )
-
-  let descuento_global_monto = 0
-  if (cotizacion.descuento_global > 0) {
-    if (cotizacion.descuento_global_tipo === 'porcentaje') {
-      descuento_global_monto = Math.round(
-        (neto * cotizacion.descuento_global) / 100
-      )
-    } else {
-      descuento_global_monto = cotizacion.descuento_global
-    }
-  }
-
-  const neto_con_descuento = neto - descuento_global_monto
-  const iva = cotizacion.con_iva ? Math.round(neto_con_descuento * 0.19) : 0
-  const total = neto_con_descuento + iva
-  const margen = total - costo_real
-
-  return {
-    neto,
-    descuento_global_monto,
-    neto_con_descuento,
-    iva,
-    total,
-    costo_real,
-    margen,
-  }
-}
-
-// ============================================================
-// FORMATO CLP
-// ============================================================
-export function formatCLP(n: number): string {
-  return '$' + Math.round(n).toLocaleString('es-CL')
-}
+// Movidos a lib/cotizaciones-calc.ts (T12). Reexportados al final del archivo:
+//   calcularBruto, subtotalItem, subtotalSubgrupo, subtotalDepartamento,
+//   calcularTotales, TotalesCotizacion, formatCLP.
 
 // ─── RODAJE ───────────────────────────────────────
 export type EstadoRodaje = 'borrador' | 'confirmado' | 'completado'
@@ -633,19 +550,7 @@ export interface RendicionMensualGasto {
   created_at: string
 }
 
-const RETENCION_BOLETA = 0.154
-
-export function calcularRetencion(rendicion: { monto: number; tipo_documento?: string | null }) {
-  if (rendicion.tipo_documento === 'boleta') {
-    const retencion = Math.round(rendicion.monto * RETENCION_BOLETA)
-    return { bruto: rendicion.monto, retencion, neto: rendicion.monto - retencion, sinDocumento: false }
-  }
-  if (rendicion.tipo_documento === 'sin_documento') {
-    return { bruto: rendicion.monto, retencion: 0, neto: rendicion.monto, sinDocumento: true }
-  }
-  // factura, exenta — pago bruto completo
-  return { bruto: rendicion.monto, retencion: 0, neto: rendicion.monto, sinDocumento: false }
-}
+// calcularRetencion movido a lib/rendiciones-calc.ts (T12) — reexportado al final.
 
 export interface RodajeEquipoTecnico {
   id: string
@@ -697,47 +602,9 @@ export interface RodajeCitacion {
   rodaje?: Rodaje
 }
 
-export function resolverHoraLlamado(persona: RodajeEquipoTecnico, rodaje: Rodaje): string | undefined {
-  if (persona.hora_llamado_individual) return persona.hora_llamado_individual
-  if (persona.departamento?.hora_llamado) return persona.departamento.hora_llamado
-  return rodaje.hora_llamado_general
-}
-
-export function formatHora(hora?: string): string {
-  if (!hora) return '—'
-  return hora.slice(0, 5)
-}
-
-export function generarMensajeCitacion(persona: RodajeEquipoTecnico, rodaje: Rodaje, linkCitacion: string): string {
-  const hora = formatHora(resolverHoraLlamado(persona, rodaje))
-  const fecha = rodaje.fecha
-    ? parseFechaLocal(rodaje.fecha).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })
-    : 'fecha por confirmar'
-  return `Hola ${persona.nombre}! 👋\n\nTe citamos para el rodaje *${rodaje.nombre}*.\n\n📅 ${fecha}\n⏰ Hora de llegada: *${hora}*\n📍 ${rodaje.locacion_nombre || 'Locación por confirmar'}${rodaje.locacion_direccion ? '\n' + rodaje.locacion_direccion : ''}\n\nPor favor confirma tu asistencia y déjanos saber si tienes restricciones alimentarias:\n${linkCitacion}\n\n¡Nos vemos! 🎬`
-}
-
-export function generarLinkCalendar(rodaje: Rodaje): string {
-  const base = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
-  const title = encodeURIComponent(`Rodaje: ${rodaje.nombre}`)
-  const fecha = rodaje.fecha ? rodaje.fecha.replace(/-/g, '') : ''
-  const dates = fecha ? `${fecha}/${fecha}` : ''
-  const location = encodeURIComponent(rodaje.locacion_direccion || rodaje.locacion_nombre || '')
-  const details = encodeURIComponent(`Hora de llamado general: ${formatHora(rodaje.hora_llamado_general)}\n${rodaje.notas_generales || ''}`)
-  return `${base}&text=${title}&dates=${dates}&location=${location}&details=${details}`
-}
-
-export function generarLinkUber(rodaje: Rodaje): string | undefined {
-  if (!rodaje.locacion_lat || !rodaje.locacion_lng) return undefined
-  return `https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${rodaje.locacion_lat}&dropoff[longitude]=${rodaje.locacion_lng}&dropoff[nickname]=${encodeURIComponent(rodaje.locacion_nombre || 'Locación')}`
-}
-
-export function estadoCitacion(citacion: RodajeCitacion): { label: string; color: 'gray' | 'yellow' | 'green' | 'red' } {
-  if (citacion.confirmada === true) return { label: 'Confirmado', color: 'green' }
-  if (citacion.confirmada === false) return { label: 'No puede', color: 'red' }
-  if (citacion.respondida_at) return { label: 'Respondió', color: 'yellow' }
-  if (citacion.whatsapp_enviado || citacion.email_enviado_at) return { label: 'Enviado', color: 'yellow' }
-  return { label: 'Sin enviar', color: 'gray' }
-}
+// Helpers de citación/horas movidos a lib/rodaje-helpers.ts (T12) —
+// reexportados al final: resolverHoraLlamado, formatHora, generarMensajeCitacion,
+// generarLinkCalendar, generarLinkUber, estadoCitacion.
 
 export interface RodajeLocacion {
   id: string
@@ -786,60 +653,9 @@ export interface RodajeBloque {
   hijos?: RodajeBloque[]
 }
 
-export function horaAMinutos(hora: string): number {
-  const [h, m] = hora.split(':').map(Number)
-  return h * 60 + m
-}
-
-export function minutosAHora(minutos: number): string {
-  const h = Math.floor(minutos / 60) % 24
-  const m = minutos % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
-export function calcularCascada(bloques: RodajeBloque[]): Array<{ id: string; inicio_min: number | undefined; fin_min: number | undefined; duracion_min: number }> {
-  const result: Array<{ id: string; inicio_min: number | undefined; fin_min: number | undefined; duracion_min: number }> = []
-  let cursor_fin: number | undefined = undefined
-  let cursor_inicio: number | undefined = undefined
-  for (const bloque of bloques) {
-    const dur = bloque.duracion_min ?? 0
-    let inicio: number | undefined
-    if (bloque.hora_inicio_fija) {
-      inicio = horaAMinutos(bloque.hora_inicio_fija)
-      cursor_fin = inicio + dur
-      cursor_inicio = inicio
-    } else if (bloque.es_paralelo) {
-      inicio = cursor_inicio
-    } else {
-      inicio = cursor_fin
-      if (inicio !== undefined) { cursor_fin = inicio + dur; cursor_inicio = inicio }
-    }
-    result.push({ id: bloque.id, inicio_min: inicio, fin_min: inicio !== undefined ? inicio + dur : undefined, duracion_min: dur })
-  }
-  return result
-}
-
-export function aplicarCambioTiempo(bloques: RodajeBloque[], bloqueId: string, campo: 'inicio' | 'fin' | 'duracion', valorMin: number): RodajeBloque[] {
-  const idx = bloques.findIndex(b => b.id === bloqueId)
-  if (idx === -1) return bloques
-  return bloques.map((b, i) => {
-    if (i !== idx) return b
-    const b2 = { ...b }
-    if (campo === 'inicio') { b2.hora_inicio_fija = minutosAHora(valorMin); b2.es_anclado = true; if (b2.duracion_min) b2.hora_fin = minutosAHora(valorMin + b2.duracion_min) }
-    else if (campo === 'fin') { const ini = b2.hora_inicio_fija ? horaAMinutos(b2.hora_inicio_fija) : undefined; if (ini !== undefined) { b2.duracion_min = valorMin - ini; b2.hora_fin = minutosAHora(valorMin) } }
-    else if (campo === 'duracion') { b2.duracion_min = valorMin; if (b2.hora_inicio_fija) b2.hora_fin = minutosAHora(horaAMinutos(b2.hora_inicio_fija) + valorMin) }
-    return b2
-  })
-}
-
-export function duracionTotalDia(bloques: RodajeBloque[]): number {
-  return bloques.filter(b => !b.es_paralelo && !b.padre_id).reduce((acc, b) => acc + (b.duracion_min ?? 0), 0)
-}
-
-export function uberLinkLocacion(loc: RodajeLocacion): string | undefined {
-  if (!loc.lat || !loc.lng) return undefined
-  return `https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${loc.lat}&dropoff[longitude]=${loc.lng}&dropoff[nickname]=${encodeURIComponent(loc.nombre)}`
-}
+// Helpers de cascada/tiempo de bloques movidos a lib/rodaje-helpers.ts (T12) —
+// reexportados al final: horaAMinutos, minutosAHora, calcularCascada,
+// aplicarCambioTiempo, duracionTotalDia, uberLinkLocacion.
 
 // ============================================================
 // MÓDULO FINANCIERO
@@ -1025,40 +841,8 @@ export interface RentalCotizacionItem {
   created_at: string
 }
 
-export function subtotalRentalItem(item: RentalCotizacionItem): number {
-  if (item.incluido) return 0
-  const base = item.precio_unitario * item.cantidad * item.dias
-  if (item.descuento_tipo === 'porcentaje') {
-    return Math.round(base * (1 - item.descuento / 100))
-  }
-  return Math.round(base - item.descuento)
-}
-
-export function calcularTotalesRental(cotizacion: RentalCotizacion): {
-  neto: number
-  descuento_global_monto: number
-  neto_con_descuento: number
-  iva: number
-  total: number
-} {
-  const secciones = cotizacion.secciones ?? []
-  const neto = secciones.reduce(
-    (acc, s) => acc + (s.items ?? []).reduce((a, i) => a + subtotalRentalItem(i), 0),
-    0,
-  )
-  let descuento_global_monto = 0
-  if (cotizacion.descuento_global > 0) {
-    if (cotizacion.descuento_global_tipo === 'porcentaje') {
-      descuento_global_monto = Math.round(neto * cotizacion.descuento_global / 100)
-    } else {
-      descuento_global_monto = cotizacion.descuento_global
-    }
-  }
-  const neto_con_descuento = neto - descuento_global_monto
-  const iva = cotizacion.con_iva ? Math.round(neto_con_descuento * 0.19) : 0
-  const total = neto_con_descuento + iva
-  return { neto, descuento_global_monto, neto_con_descuento, iva, total }
-}
+// subtotalRentalItem y calcularTotalesRental movidos a lib/cotizaciones-calc.ts
+// (T12) — reexportados al final.
 
 export const CLASIFICACION_LABELS: Record<ClasificacionEvento, string> = {
   sin_clasificar: 'Sin clasificar',
@@ -1084,3 +868,39 @@ export const PLANTILLAS_BLOQUES: Array<{ label: string; titulo: string; tipo: Ti
   { label: 'DESMONTAJE', titulo: 'Desmontaje de set',     tipo: 'montaje',  duracion_min: 30, scenes_color: '#353135', dia_noche: 'D', interior_exterior: 'I' },
   { label: 'CIERRE',     titulo: 'Cierre jornada',        tipo: 'otro',     duracion_min: 0,  scenes_color: '#353135', dia_noche: 'D', interior_exterior: '-' },
 ]
+
+// ============================================================
+// REEXPORTS DE LÓGICA DE NEGOCIO (T12)
+// ============================================================
+// Las funciones de cálculo y helpers viven ahora en lib/. Se reexportan aquí
+// para no romper los ~100 imports existentes desde '@/types'. El código nuevo
+// debería importar directamente desde los módulos lib/ correspondientes.
+
+export {
+  calcularBruto,
+  subtotalItem,
+  subtotalSubgrupo,
+  subtotalDepartamento,
+  calcularTotales,
+  formatCLP,
+  subtotalRentalItem,
+  calcularTotalesRental,
+  type TotalesCotizacion,
+} from '@/lib/cotizaciones-calc'
+
+export { calcularRetencion } from '@/lib/rendiciones-calc'
+
+export {
+  resolverHoraLlamado,
+  formatHora,
+  generarMensajeCitacion,
+  generarLinkCalendar,
+  generarLinkUber,
+  estadoCitacion,
+  horaAMinutos,
+  minutosAHora,
+  calcularCascada,
+  aplicarCambioTiempo,
+  duracionTotalDia,
+  uberLinkLocacion,
+} from '@/lib/rodaje-helpers'
