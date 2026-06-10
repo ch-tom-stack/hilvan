@@ -1055,14 +1055,14 @@ function FacturaPagoBar({
   }
 
   return (
-    <div className="border-t border-ch-border/30 px-4 py-3 flex items-start gap-6 flex-wrap bg-zinc-950/40">
+    <div className="border-t border-ch-border/30 px-4 py-3 flex items-start gap-6 flex-wrap bg-ch-black/40">
       <label className="flex items-center gap-2 cursor-pointer select-none group">
         <button
           type="button"
           role="checkbox"
           aria-checked={rendicion.factura_emitida}
           onClick={() => onToggleFactura(!rendicion.factura_emitida)}
-          className={`w-8 h-4 rounded-full transition-colors relative ${rendicion.factura_emitida ? 'bg-ch-green' : 'bg-zinc-700'}`}
+          className={`w-8 h-4 rounded-full transition-colors relative ${rendicion.factura_emitida ? 'bg-ch-green' : 'bg-ch-border'}`}
         >
           <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${rendicion.factura_emitida ? 'left-[18px]' : 'left-0.5'}`} />
         </button>
@@ -1079,7 +1079,7 @@ function FacturaPagoBar({
               {nombreCorto(url)}
             </a>
             <button onClick={() => onEliminarArchivo(url)}
-              className="text-zinc-700 hover:text-red-400 transition-colors text-xs leading-none ml-0.5">×</button>
+              className="text-ch-border hover:text-red-400 transition-colors text-xs leading-none ml-0.5">×</button>
           </div>
         ))}
         <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFile} className="hidden" />
@@ -1097,7 +1097,7 @@ function FacturaPagoBar({
           role="checkbox"
           aria-checked={rendicion.pago_recibido}
           onClick={() => onTogglePago(!rendicion.pago_recibido)}
-          className={`w-8 h-4 rounded-full transition-colors relative ${rendicion.pago_recibido ? 'bg-ch-green' : 'bg-zinc-700'}`}
+          className={`w-8 h-4 rounded-full transition-colors relative ${rendicion.pago_recibido ? 'bg-ch-green' : 'bg-ch-border'}`}
         >
           <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${rendicion.pago_recibido ? 'left-[18px]' : 'left-0.5'}`} />
         </button>
