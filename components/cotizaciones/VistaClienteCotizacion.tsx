@@ -3,6 +3,7 @@
 
 import { useState, useTransition } from 'react'
 import { responderCotizacion } from '@/app/actions/cotizaciones'
+import { toastError } from '@/lib/toast'
 import {
   numeroCotizacion,
   calcularTotales,
@@ -37,9 +38,13 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
   async function handleRespuesta(respuesta: 'aprobada' | 'rechazada') {
     startTransition(async () => {
       if (!token) return
-      await responderCotizacion(token, respuesta, comentario || undefined)
-      setEstadoLocal(respuesta)
-      setRespondido(true)
+      try {
+        await responderCotizacion(token, respuesta, comentario || undefined)
+        setEstadoLocal(respuesta)
+        setRespondido(true)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al enviar respuesta')
+      }
     })
   }
 

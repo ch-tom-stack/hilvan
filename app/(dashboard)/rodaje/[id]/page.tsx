@@ -4,6 +4,7 @@ import { use, useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getRodaje, actualizarEstadoRodaje } from '@/app/actions/rodaje'
+import { toastError, toastOk } from '@/lib/toast'
 import {
   getBloques, getLocaciones, crearBloque, crearBloqueDesdePlantilla,
   guardarBloques, eliminarBloque, dividirBloque, getClima, actualizarImagenBloque,
@@ -189,6 +190,8 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     try {
       await guardarBloques(id, bloques.map(b => ({ ...b })))
       setCambiosSinGuardar(false)
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al guardar')
     } finally {
       setGuardando(false)
     }
@@ -286,8 +289,12 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
   const cambiarEstado = async () => {
     const idx = ESTADO_CICLO.indexOf(rodaje.estado)
     const siguiente = ESTADO_CICLO[(idx + 1) % ESTADO_CICLO.length]
-    await actualizarEstadoRodaje(id, siguiente)
-    setRodaje((r: any) => ({ ...r, estado: siguiente }))
+    try {
+      await actualizarEstadoRodaje(id, siguiente)
+      setRodaje((r: any) => ({ ...r, estado: siguiente }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al cambiar estado')
+    }
   }
 
   if (loading) return <div className="p-6 text-ch-subtle text-sm">Cargando...</div>
@@ -469,7 +476,13 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
             onEliminar={async (bloqueId) => {
               const sinEl = bloques.filter(b => b.id !== bloqueId)
               actualizarBloques(sinEl)
-              if (!bloqueId.startsWith('temp-')) await eliminarBloque(bloqueId, id)
+              if (!bloqueId.startsWith('temp-')) {
+                try {
+                  await eliminarBloque(bloqueId, id)
+                } catch (e) {
+                  toastError(e instanceof Error ? e.message : 'Error al eliminar bloque')
+                }
+              }
             }}
           />
         </div>
@@ -538,15 +551,21 @@ function TablaPlan({
         await actualizarImagenBloque(bloqueId, rodajeId, url)
         onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: url } : b))
       }
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al subir imagen')
     } finally {
       setSubiendoImagen(null)
     }
   }
 
   const handleEliminarImagen = async (bloqueId: string, url: string) => {
-    await eliminarImagenBloque(url)
-    await actualizarImagenBloque(bloqueId, rodajeId, null)
-    onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: undefined } : b))
+    try {
+      await eliminarImagenBloque(url)
+      await actualizarImagenBloque(bloqueId, rodajeId, null)
+      onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: undefined } : b))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al eliminar imagen')
+    }
   }
 
   const actualizarCelda = (bloqueId: string, campo: string, valor: any) => {
@@ -1049,19 +1068,22 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      await supabase.from('rodaje_equipo_tecnico').insert({
+      const { error } = await supabase.from('rodaje_equipo_tecnico').insert({
         rodaje_id: rodajeId,
         nombre: nombre.trim(),
         rol: rol.trim() || null,
         telefono: telefono.trim() || null,
         email: email.trim() || null,
       })
+      if (error) throw error
       setNombre('')
       setRol('')
       setTelefono('')
       setEmail('')
       setMostrarForm(false)
       onPersonaAgregada()
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al agregar persona')
     } finally {
       setGuardando(false)
     }

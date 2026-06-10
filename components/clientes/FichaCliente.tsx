@@ -10,6 +10,7 @@ import {
   eliminarContacto,
   toggleTarea,
 } from '@/app/actions/clientes'
+import { toastError } from '@/lib/toast'
 import type { Cliente, Proyecto, ClienteContacto, ProyectoTarea, EstadoProyecto } from '@/types'
 import { ESTADO_PROYECTO_LABELS, ESTADO_PROYECTO_ACTIVOS, formatCLP } from '@/types'
 
@@ -95,24 +96,28 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
   // ─── Guardar cliente ──────────────────────────────────────────────────────
   function guardarCliente() {
     startTransition(async () => {
-      await actualizarCliente(cliente.id, {
-        nombre: formCliente.nombre.trim(),
-        empresa: formCliente.empresa.trim() || undefined,
-        email: formCliente.email.trim() || undefined,
-        telefono: formCliente.telefono.trim() || undefined,
-        rut: formCliente.rut.trim() || undefined,
-        direccion: formCliente.direccion.trim() || undefined,
-        ciudad: formCliente.ciudad.trim() || null,
-        pais: formCliente.pais.trim() || 'Chile',
-        parent_id: formCliente.parent_id || null,
-        notas: formCliente.notas.trim() || null,
-      })
-      setCliente(c => ({ ...c, ...formCliente,
-        empresa: formCliente.empresa || undefined,
-        email: formCliente.email || undefined,
-        parent_id: formCliente.parent_id || null,
-      }))
-      setEditando(false)
+      try {
+        await actualizarCliente(cliente.id, {
+          nombre: formCliente.nombre.trim(),
+          empresa: formCliente.empresa.trim() || undefined,
+          email: formCliente.email.trim() || undefined,
+          telefono: formCliente.telefono.trim() || undefined,
+          rut: formCliente.rut.trim() || undefined,
+          direccion: formCliente.direccion.trim() || undefined,
+          ciudad: formCliente.ciudad.trim() || null,
+          pais: formCliente.pais.trim() || 'Chile',
+          parent_id: formCliente.parent_id || null,
+          notas: formCliente.notas.trim() || null,
+        })
+        setCliente(c => ({ ...c, ...formCliente,
+          empresa: formCliente.empresa || undefined,
+          email: formCliente.email || undefined,
+          parent_id: formCliente.parent_id || null,
+        }))
+        setEditando(false)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al guardar cliente')
+      }
     })
   }
 
@@ -120,15 +125,19 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
   function crearNuevoProyecto() {
     if (!formProyecto.nombre.trim()) return
     startTransition(async () => {
-      const nuevo = await crearProyecto({
-        nombre: formProyecto.nombre.trim(),
-        estado: formProyecto.estado,
-        cliente_id: cliente.id,
-        created_by: undefined,
-      })
-      setProyectos(p => [nuevo, ...p])
-      setFormProyecto({ nombre: '', estado: 'activo' })
-      setMostrarFormProyecto(false)
+      try {
+        const nuevo = await crearProyecto({
+          nombre: formProyecto.nombre.trim(),
+          estado: formProyecto.estado,
+          cliente_id: cliente.id,
+          created_by: undefined,
+        })
+        setProyectos(p => [nuevo, ...p])
+        setFormProyecto({ nombre: '', estado: 'activo' })
+        setMostrarFormProyecto(false)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al crear proyecto')
+      }
     })
   }
 
@@ -136,33 +145,37 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
   function guardarContacto() {
     if (!formContacto.nombre.trim()) return
     startTransition(async () => {
-      if (editandoContacto) {
-        await actualizarContacto(editandoContacto.id, cliente.id, {
-          nombre: formContacto.nombre.trim(),
-          cargo: formContacto.cargo.trim() || null,
-          email: formContacto.email.trim() || null,
-          telefono: formContacto.telefono.trim() || null,
-          area: formContacto.area.trim() || null,
-          notas: formContacto.notas.trim() || null,
-        })
-        setContactos(cs => cs.map(c => c.id === editandoContacto.id
-          ? { ...c, ...formContacto }
-          : c
-        ))
-        setEditandoContacto(null)
-      } else {
-        const nuevo = await crearContacto(cliente.id, {
-          nombre: formContacto.nombre.trim(),
-          cargo: formContacto.cargo.trim() || null,
-          email: formContacto.email.trim() || null,
-          telefono: formContacto.telefono.trim() || null,
-          area: formContacto.area.trim() || null,
-          notas: formContacto.notas.trim() || null,
-        })
-        setContactos(cs => [...cs, nuevo])
-        setMostrarFormContacto(false)
+      try {
+        if (editandoContacto) {
+          await actualizarContacto(editandoContacto.id, cliente.id, {
+            nombre: formContacto.nombre.trim(),
+            cargo: formContacto.cargo.trim() || null,
+            email: formContacto.email.trim() || null,
+            telefono: formContacto.telefono.trim() || null,
+            area: formContacto.area.trim() || null,
+            notas: formContacto.notas.trim() || null,
+          })
+          setContactos(cs => cs.map(c => c.id === editandoContacto.id
+            ? { ...c, ...formContacto }
+            : c
+          ))
+          setEditandoContacto(null)
+        } else {
+          const nuevo = await crearContacto(cliente.id, {
+            nombre: formContacto.nombre.trim(),
+            cargo: formContacto.cargo.trim() || null,
+            email: formContacto.email.trim() || null,
+            telefono: formContacto.telefono.trim() || null,
+            area: formContacto.area.trim() || null,
+            notas: formContacto.notas.trim() || null,
+          })
+          setContactos(cs => [...cs, nuevo])
+          setMostrarFormContacto(false)
+        }
+        setFormContacto({ nombre: '', cargo: '', email: '', telefono: '', area: '', notas: '' })
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al guardar contacto')
       }
-      setFormContacto({ nombre: '', cargo: '', email: '', telefono: '', area: '', notas: '' })
     })
   }
 
@@ -181,17 +194,25 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
 
   function borrarContacto(id: string) {
     startTransition(async () => {
-      await eliminarContacto(id, cliente.id)
-      setContactos(cs => cs.filter(c => c.id !== id))
-      setConfirmBorrarContacto(null)
+      try {
+        await eliminarContacto(id, cliente.id)
+        setContactos(cs => cs.filter(c => c.id !== id))
+        setConfirmBorrarContacto(null)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al eliminar contacto')
+      }
     })
   }
 
   // ─── Toggle tarea ─────────────────────────────────────────────────────────
   function handleToggleTarea(tarea: TareaConProyecto) {
     startTransition(async () => {
-      await toggleTarea(tarea.id, !tarea.completada, tarea.proyecto_id)
-      setTareas(ts => ts.map(t => t.id === tarea.id ? { ...t, completada: !t.completada } : t))
+      try {
+        await toggleTarea(tarea.id, !tarea.completada, tarea.proyecto_id)
+        setTareas(ts => ts.map(t => t.id === tarea.id ? { ...t, completada: !t.completada } : t))
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al actualizar tarea')
+      }
     })
   }
 

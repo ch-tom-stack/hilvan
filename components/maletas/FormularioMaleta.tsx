@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { subirFotoMaleta } from '@/lib/supabase/storage-maletas'
 import { crearMaleta, actualizarMaleta } from '@/app/actions/maletas'
+import { toastError } from '@/lib/toast'
 import type { Maleta, Equipo } from '@/types'
 
 interface ItemForm {
@@ -40,10 +41,15 @@ export default function FormularioMaleta({ equipos, maleta }: Props) {
     const file = e.target.files?.[0]
     if (!file) return
     setSubiendo(true)
-    const tempId = maleta?.id || `temp-${Date.now()}`
-    const url = await subirFotoMaleta(file, tempId)
-    if (url) setFotoEmpaque(url)
-    setSubiendo(false)
+    try {
+      const tempId = maleta?.id || `temp-${Date.now()}`
+      const url = await subirFotoMaleta(file, tempId)
+      if (url) setFotoEmpaque(url)
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al subir foto')
+    } finally {
+      setSubiendo(false)
+    }
   }
 
   function agregarItem() {

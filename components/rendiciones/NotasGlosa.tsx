@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { getNotasGlosa, crearNotaGlosa } from '@/app/actions/rendiciones'
+import { toastError } from '@/lib/toast'
 import type { RendicionNotaGlosa } from '@/types'
 
 interface Props {
@@ -28,9 +29,13 @@ export default function NotasGlosa({ cotizacionItemId }: Props) {
   const agregar = () => {
     if (!nueva.trim()) return
     startTransition(async () => {
-      const n = await crearNotaGlosa(cotizacionItemId, nueva.trim())
-      setNotas(prev => [n, ...(prev ?? [])])
-      setNueva('')
+      try {
+        const n = await crearNotaGlosa(cotizacionItemId, nueva.trim())
+        setNotas(prev => [n, ...(prev ?? [])])
+        setNueva('')
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al agregar nota')
+      }
     })
   }
 

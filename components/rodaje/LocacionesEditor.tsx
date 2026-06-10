@@ -8,6 +8,7 @@ import {
   eliminarLocacion,
   geocodificarDireccion,
 } from '@/app/actions/rodaje-plan'
+import { toastError } from '@/lib/toast'
 import { RodajeLocacion } from '@/types'
 
 interface Props {
@@ -200,9 +201,13 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
                 inicial={loc}
                 onGuardar={(data) => {
                   startTransition(async () => {
-                    await actualizarLocacion(loc.id, rodajeId, data)
-                    setEditando(null)
-                    onActualizar()
+                    try {
+                      await actualizarLocacion(loc.id, rodajeId, data)
+                      setEditando(null)
+                      onActualizar()
+                    } catch (e) {
+                      toastError(e instanceof Error ? e.message : 'Error al actualizar locación')
+                    }
                   })
                 }}
                 onCancelar={() => setEditando(null)}
@@ -243,8 +248,12 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
                     onClick={async () => {
                       if (!await confirm(`¿Eliminar "${loc.nombre}"?`)) return
                       startTransition(async () => {
-                        await eliminarLocacion(loc.id, rodajeId)
-                        onActualizar()
+                        try {
+                          await eliminarLocacion(loc.id, rodajeId)
+                          onActualizar()
+                        } catch (e) {
+                          toastError(e instanceof Error ? e.message : 'Error al eliminar locación')
+                        }
                       })
                     }}
                     className="text-xs text-zinc-700 hover:text-red-400 transition-colors"
@@ -267,9 +276,13 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
         <FormLocacion
           onGuardar={(data) => {
             startTransition(async () => {
-              await crearLocacion(rodajeId, data)
-              setAgregando(false)
-              onActualizar()
+              try {
+                await crearLocacion(rodajeId, data)
+                setAgregando(false)
+                onActualizar()
+              } catch (e) {
+                toastError(e instanceof Error ? e.message : 'Error al crear locación')
+              }
             })
           }}
           onCancelar={() => setAgregando(false)}

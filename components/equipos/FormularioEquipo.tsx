@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { subirFotoEquipo } from '@/lib/supabase/storage'
 import { crearEquipo, actualizarEquipo, getSiguienteCodigo } from '@/app/actions/equipos'
+import { toastError } from '@/lib/toast'
 import type { Equipo, CategoriaEquipo, EstadoEquipo } from '@/types'
 
 interface Props {
@@ -55,14 +56,19 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
     setSubiendo(true)
-    const tempId = equipo?.id || `temp-${Date.now()}`
-    const urls: string[] = []
-    for (const file of files) {
-      const url = await subirFotoEquipo(file, tempId)
-      if (url) urls.push(url)
+    try {
+      const tempId = equipo?.id || `temp-${Date.now()}`
+      const urls: string[] = []
+      for (const file of files) {
+        const url = await subirFotoEquipo(file, tempId)
+        if (url) urls.push(url)
+      }
+      setFotos(prev => [...prev, ...urls])
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al subir fotos')
+    } finally {
+      setSubiendo(false)
     }
-    setFotos(prev => [...prev, ...urls])
-    setSubiendo(false)
   }
 
   function eliminarFoto(url: string) {
