@@ -3,6 +3,8 @@ import { renderToBuffer } from "@react-pdf/renderer"
 import path from "path"
 import fs from "fs"
 import { getCotizacion } from "@/app/actions/cotizaciones"
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import CotizacionPDF from "@/components/cotizaciones/CotizacionPDF"
 import { createElement } from "react"
 
@@ -12,6 +14,40 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+
+    // Autorización: token correcto (acceso público del cliente) O sesión válida
+    // (descarga interna desde el dashboard). Sin ninguno → 401.
+    // NO altera la tabla cotizaciones: solo lee el token para compararlo.
+    const token = request.nextUrl.searchParams.get("token")
+
+    let autorizado = false
+
+    if (token) {
+      // El token es el secreto que el cliente ya posee vía /cotizacion/[token].
+      // Se compara contra el de esta cotización con el cliente admin para no
+      // depender de las políticas RLS de lectura anónima.
+      const admin = createAdminClient()
+      const { data } = await admin
+        .from("cotizaciones")
+        .select("token")
+        .eq("id", id)
+        .single()
+      if (data?.token && data.token === token) {
+        autorizado = true
+      }
+    }
+
+    if (!autorizado) {
+      // Sin token válido: exigir sesión autenticada (descarga interna).
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) autorizado = true
+    }
+
+    if (!autorizado) {
+      return new NextResponse("No autorizado", { status: 401 })
+    }
+
     const cotizacion = await getCotizacion(id)
 
     if (!cotizacion) {

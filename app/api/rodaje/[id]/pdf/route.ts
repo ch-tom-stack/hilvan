@@ -23,6 +23,15 @@ export async function GET(
   const { id } = await params
   const supabase = await createClient()
 
+  // Autorización: la hoja de llamados solo se descarga desde el dashboard
+  // interno (botón "PDF" en /rodaje/[id]). El viewer público /rodaje/[id]/ver
+  // y los emails de citación (/citacion/[token]) NO enlazan a este PDF, así
+  // que exigir sesión no rompe ningún flujo de compartición existente.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   const { data: rodaje, error } = await supabase
     .from('rodajes')
     .select(`*, proyecto:proyectos(nombre), equipo_tecnico:rodaje_equipo_tecnico(*, departamento:rodaje_departamentos(nombre))`)
