@@ -5,9 +5,34 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { calcularRetencion } from '@/types'
 import { mesAnterior, mismoMesAñoAnterior } from '@/lib/periodos'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Verifica que hay una sesión activa y que el usuario tiene alguno de los roles
+ * indicados. Lanza Error('Sin permisos') si no se cumple alguna condición.
+ * Usa createClient() (respeta RLS en profiles) — no el admin client.
+ */
+async function requireRol(roles: string[]): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Sin permisos')
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('rol')
+    .eq('id', user.id)
+    .single()
+  if (!profile || !roles.includes(profile.rol)) throw new Error('Sin permisos')
+}
+
 // const PPM_TASA = 0.016 // fallback — reemplazado por configuracion_financiero
 
-export async function getPPMTasa(): Promise<number> {
+// ── Lecturas internas de configuracion_financiero (sin check de rol) ──────────
+// Estas funciones se usan desde getDatosFinancieros (que ya validó el rol).
+// Las versiones exportadas públicas añaden requireRol encima.
+
+async function _getPPMTasa(): Promise<number> {
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('configuracion_financiero')
@@ -17,15 +42,7 @@ export async function getPPMTasa(): Promise<number> {
   return data ? parseFloat(data.valor) : 0.05
 }
 
-export async function setPPMTasa(tasa: number): Promise<{ error?: string }> {
-  const supabase = createAdminClient()
-  const { error } = await supabase
-    .from('configuracion_financiero')
-    .upsert({ clave: 'ppm_tasa', valor: String(tasa), updated_at: new Date().toISOString() })
-  return error ? { error: error.message } : {}
-}
-
-export async function getPreviredMensual(): Promise<number> {
+async function _getPreviredMensual(): Promise<number> {
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('configuracion_financiero')
@@ -35,15 +52,7 @@ export async function getPreviredMensual(): Promise<number> {
   return data ? parseInt(data.valor, 10) : 0
 }
 
-export async function setPreviredMensual(monto: number): Promise<{ error?: string }> {
-  const supabase = createAdminClient()
-  const { error } = await supabase
-    .from('configuracion_financiero')
-    .upsert({ clave: 'previred_mensual', valor: String(Math.round(monto)), updated_at: new Date().toISOString() })
-  return error ? { error: error.message } : {}
-}
-
-export async function getIUSCMensual(): Promise<number> {
+async function _getIUSCMensual(): Promise<number> {
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('configuracion_financiero')
@@ -53,7 +62,54 @@ export async function getIUSCMensual(): Promise<number> {
   return data ? parseInt(data.valor, 10) : 0
 }
 
+async function _getNomina(): Promise<PersonaNomina[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('configuracion_financiero')
+    .select('valor')
+    .eq('clave', 'nomina_personas')
+    .single()
+  if (!data?.valor) return NOMINA_DEFAULT
+  try { return JSON.parse(data.valor) } catch { return NOMINA_DEFAULT }
+}
+
+// ── Versiones públicas (exportadas) con validación de rol ─────────────────────
+
+export async function getPPMTasa(): Promise<number> {
+  await requireRol(['admin', 'contabilidad'])
+  return _getPPMTasa()
+}
+
+export async function setPPMTasa(tasa: number): Promise<{ error?: string }> {
+  await requireRol(['admin'])
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('configuracion_financiero')
+    .upsert({ clave: 'ppm_tasa', valor: String(tasa), updated_at: new Date().toISOString() })
+  return error ? { error: error.message } : {}
+}
+
+export async function getPreviredMensual(): Promise<number> {
+  await requireRol(['admin', 'contabilidad'])
+  return _getPreviredMensual()
+}
+
+export async function setPreviredMensual(monto: number): Promise<{ error?: string }> {
+  await requireRol(['admin'])
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('configuracion_financiero')
+    .upsert({ clave: 'previred_mensual', valor: String(Math.round(monto)), updated_at: new Date().toISOString() })
+  return error ? { error: error.message } : {}
+}
+
+export async function getIUSCMensual(): Promise<number> {
+  await requireRol(['admin', 'contabilidad'])
+  return _getIUSCMensual()
+}
+
 export async function setIUSCMensual(monto: number): Promise<{ error?: string }> {
+  await requireRol(['admin'])
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('configuracion_financiero')
@@ -75,17 +131,12 @@ const NOMINA_DEFAULT: PersonaNomina[] = [
 ]
 
 export async function getNomina(): Promise<PersonaNomina[]> {
-  const supabase = createAdminClient()
-  const { data } = await supabase
-    .from('configuracion_financiero')
-    .select('valor')
-    .eq('clave', 'nomina_personas')
-    .single()
-  if (!data?.valor) return NOMINA_DEFAULT
-  try { return JSON.parse(data.valor) } catch { return NOMINA_DEFAULT }
+  await requireRol(['admin', 'contabilidad'])
+  return _getNomina()
 }
 
 export async function setNomina(personas: PersonaNomina[]): Promise<{ error?: string }> {
+  await requireRol(['admin'])
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('configuracion_financiero')
@@ -251,12 +302,13 @@ export interface ResumenPeriodo {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getDatosFinancieros(mes: string, ppmTasa?: number, previredEmpleador?: number, iuscMensual?: number, nominaPersonas?: PersonaNomina[]): Promise<DatosFinancieros> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = await createClient()
   const [PPM_TASA, PREVIRED, IUSC, NOMINA] = await Promise.all([
-    ppmTasa !== undefined ? Promise.resolve(ppmTasa) : getPPMTasa(),
-    previredEmpleador !== undefined ? Promise.resolve(previredEmpleador) : getPreviredMensual(),
-    iuscMensual !== undefined ? Promise.resolve(iuscMensual) : getIUSCMensual(),
-    nominaPersonas !== undefined ? Promise.resolve(nominaPersonas) : getNomina(),
+    ppmTasa !== undefined ? Promise.resolve(ppmTasa) : _getPPMTasa(),
+    previredEmpleador !== undefined ? Promise.resolve(previredEmpleador) : _getPreviredMensual(),
+    iuscMensual !== undefined ? Promise.resolve(iuscMensual) : _getIUSCMensual(),
+    nominaPersonas !== undefined ? Promise.resolve(nominaPersonas) : _getNomina(),
   ])
   const inicio = inicioPeriodo(mes)
   const fin = finPeriodo(mes)
@@ -462,6 +514,7 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
 }
 
 export async function getResumenPeriodo(mes: string): Promise<ResumenPeriodo> {
+  await requireRol(['admin', 'contabilidad'])
   const d = await getDatosFinancieros(mes)
   return {
     facturado: d.totales.ingresos_facturados,
@@ -510,6 +563,7 @@ export interface DatosCobrar {
 }
 
 export async function getCuentasPorCobrar(): Promise<DatosCobrar> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = await createClient()
   const hoy = new Date()
 
@@ -614,6 +668,7 @@ function addDays(d: Date, n: number): Date {
 }
 
 export async function getDatosFlujo(): Promise<DatosFlujo> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = await createClient()
 
   const hoy = new Date()
@@ -774,6 +829,7 @@ export async function getDatosFlujo(): Promise<DatosFlujo> {
 // ── Mutaciones ────────────────────────────────────────────────────────────────
 
 export async function upsertAperturaCaja(periodo: string, saldo_apertura: number): Promise<void> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   const { error } = await supabase.from('caja_periodos').upsert(
     { periodo, saldo_apertura, updated_at: new Date().toISOString() },
@@ -785,6 +841,7 @@ export async function upsertAperturaCaja(periodo: string, saldo_apertura: number
 export async function cerrarPeriodoCaja(
   periodo: string, saldo_cierre_real: number, notas_cierre: string
 ): Promise<void> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   const { error } = await supabase.from('caja_periodos').upsert(
     { periodo, cerrado: true, saldo_cierre_real, notas_cierre, updated_at: new Date().toISOString() },
@@ -799,6 +856,7 @@ export async function agregarMovimientoFlujo(data: {
   monto: number
   fecha: string
 }): Promise<MovimientoFlujo> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   const { data: row, error } = await supabase.from('flujo_caja_manual')
     .insert({ ...data, created_by: (await supabase.auth.getUser()).data.user?.id ?? null })
@@ -813,6 +871,7 @@ export async function editarMovimientoFlujo(id: string, data: {
   monto: number
   fecha: string
 }): Promise<MovimientoFlujo> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   const { data: row, error } = await supabase.from('flujo_caja_manual')
     .update(data).eq('id', id).select('*').single()
@@ -821,6 +880,7 @@ export async function editarMovimientoFlujo(id: string, data: {
 }
 
 export async function eliminarMovimientoFlujo(id: string): Promise<void> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   const { error } = await supabase.from('flujo_caja_manual').delete().eq('id', id)
   if (error) throw error
@@ -833,6 +893,7 @@ export async function eliminarMovimientoFlujo(id: string): Promise<void> {
 import type { GastoFijo, GastoFijoCuota, TipoGastoFijo } from '@/types'
 
 export async function getGastosFijos(): Promise<GastoFijo[]> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('gastos_fijos')
@@ -865,6 +926,7 @@ export async function crearGastoFijo(data: {
   fecha_inicio: string
   tasa_interes: number | null
 }): Promise<GastoFijo> {
+  await requireRol(['admin'])
   const supabase = await createClient()
 
   const { data: gasto, error } = await supabase
@@ -908,6 +970,7 @@ export async function crearGastoFijo(data: {
 }
 
 export async function eliminarGastoFijo(id: string): Promise<void> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   // cuotas se eliminan por CASCADE en la DB; si no, borrar primero
   await supabase.from('gastos_fijos_cuotas').delete().eq('gasto_fijo_id', id)
@@ -916,12 +979,14 @@ export async function eliminarGastoFijo(id: string): Promise<void> {
 }
 
 export async function toggleGastoFijoActivo(id: string, activo: boolean): Promise<void> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   const { error } = await supabase.from('gastos_fijos').update({ activo }).eq('id', id)
   if (error) throw error
 }
 
 export async function marcarCuotaPagada(id: string, fecha_pago: string): Promise<GastoFijoCuota> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('gastos_fijos_cuotas')
@@ -934,6 +999,7 @@ export async function marcarCuotaPagada(id: string, fecha_pago: string): Promise
 }
 
 export async function desmarcarCuotaPagada(id: string): Promise<GastoFijoCuota> {
+  await requireRol(['admin'])
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('gastos_fijos_cuotas')
@@ -997,6 +1063,7 @@ function calcularCamposContador(monto: number, tipo_documento: string | null, fa
 }
 
 export async function getResumenContador(mes: number, año: number): Promise<ResumenContador> {
+  await requireRol(['admin', 'contabilidad'])
   const supabase = await createClient()
 
   const mesStr = String(mes).padStart(2, '0')
