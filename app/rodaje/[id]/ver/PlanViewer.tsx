@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RodajeBloque, calcularCascada, minutosAHora } from '@/types'
 import SunCalc from 'suncalc'
+import { parseFechaLocal } from '@/lib/fechas'
 
 interface Props {
   id: string
@@ -55,7 +56,7 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
   const sol = solInicial
 
   const fecha = rodaje.fecha
-    ? new Date(rodaje.fecha + 'T12:00:00').toLocaleDateString('es-CL', {
+    ? parseFechaLocal(rodaje.fecha).toLocaleDateString('es-CL', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       })
     : null

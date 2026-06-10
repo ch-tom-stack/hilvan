@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs'
 import { getResumenContador } from '@/app/actions/financiero'
 import type { GastoContador, InversionContador } from '@/app/actions/financiero'
 import { CATEGORIAS_INVERSION } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ function formatFechaExcel(iso: string): string {
 }
 
 function nombreArchivo(fecha: string, descripcion: string, url: string): string {
-  const d = new Date(fecha + 'T12:00:00')
+  const d = parseFechaLocal(fecha)
   const ddmm = `${String(d.getDate()).padStart(2,'0')}${String(d.getMonth()+1).padStart(2,'0')}`
   const slug = descripcion
     .toLowerCase()

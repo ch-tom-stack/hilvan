@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import SunCalc from 'suncalc'
 import PlanViewer from './PlanViewer'
+import { parseFechaLocal } from '@/lib/fechas'
 
 export default async function RodajeVerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -31,7 +32,7 @@ export default async function RodajeVerPage({ params }: { params: Promise<{ id: 
 
   let sol = null
   if (rodaje.locacion_lat && rodaje.locacion_lng && rodaje.fecha) {
-    const fechaObj = new Date(rodaje.fecha + 'T12:00:00')
+    const fechaObj = parseFechaLocal(rodaje.fecha)
     const times = SunCalc.getTimes(fechaObj, rodaje.locacion_lat, rodaje.locacion_lng)
     const fmt = (d: Date) => new Intl.DateTimeFormat('es-CL', {
       hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago',

@@ -5,6 +5,7 @@ import { requireRol } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calcularRetencion } from '@/types'
 import { mesAnterior, mismoMesAñoAnterior } from '@/lib/periodos'
+import { parseFechaLocal } from '@/lib/fechas'
 
 
 // const PPM_TASA = 0.016 // fallback — reemplazado por configuracion_financiero
@@ -719,7 +720,7 @@ export async function getDatosFlujo(): Promise<DatosFlujo> {
 
   // 1. Cobros estimados (entradas automáticas)
   for (const cot of (cotPorCobrar ?? [])) {
-    const fechaEst = toDateStr(addDays(new Date((cot as any).fecha_factura_emitida + 'T12:00:00'), 30))
+    const fechaEst = toDateStr(addDays(parseFechaLocal((cot as any).fecha_factura_emitida), 30))
     if (fechaEst >= hoyStr && fechaEst <= fin60Str) {
       movimientos.push({
         id: `cobro_${(cot as any).id}`,

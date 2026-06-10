@@ -2,7 +2,7 @@ import React from 'react'
 import {
   Document, Page, View, Text, Image, StyleSheet, Font,
 } from '@react-pdf/renderer'
-import { calcularTotalesRental, subtotalRentalItem } from '@/types'
+import { calcularTotalesRental, subtotalRentalItem, formatCLP } from '@/types'
 import type { RentalCotizacion, RentalCotizacionSeccion, RentalCotizacionItem } from '@/types'
 
 const CREAM  = '#f5f0e8'
@@ -69,9 +69,7 @@ const s = StyleSheet.create({
   footerText: { fontSize: 7, color: SUBTLE },
 })
 
-function fmtCLP(n: number) {
-  return '$' + Math.round(n).toLocaleString('es-CL')
-}
+const fmtCLP = formatCLP
 
 interface Props {
   cotizacion: RentalCotizacion & {

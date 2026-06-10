@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { crearRentalCotizacion } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
 import type { Cliente } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 
 interface Props {
   clientes: Cliente[]
@@ -80,9 +81,9 @@ export default function NuevaCotizacionForm({ clientes, reservaId, reservaData }
             {item.codigo} · {item.nombre}
           </p>
           <p className="font-body text-xs text-ch-muted">
-            {new Date(reservaData.fecha_inicio + 'T12:00:00').toLocaleDateString('es-CL')}
+            {parseFechaLocal(reservaData.fecha_inicio).toLocaleDateString('es-CL')}
             {' → '}
-            {new Date(reservaData.fecha_fin + 'T12:00:00').toLocaleDateString('es-CL')}
+            {parseFechaLocal(reservaData.fecha_fin).toLocaleDateString('es-CL')}
           </p>
         </div>
       )}

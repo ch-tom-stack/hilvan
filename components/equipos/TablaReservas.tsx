@@ -8,6 +8,7 @@ import {
 } from '@/app/actions/rental'
 import type { EstadoRental, RentalReserva } from '@/types'
 import EstadoVacio from '@/components/ui/EstadoVacio'
+import { parseFechaLocal } from '@/lib/fechas'
 
 type ReservaConJoins = RentalReserva & {
   equipo?: { codigo: string; nombre: string } | null
@@ -40,7 +41,7 @@ interface Props {
 }
 
 function formatFecha(iso: string) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('es-CL', {
+  return parseFechaLocal(iso).toLocaleDateString('es-CL', {
     day: '2-digit', month: 'short', year: 'numeric',
   })
 }

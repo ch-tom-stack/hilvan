@@ -1,6 +1,7 @@
 import { getCitacionPublica, responderCitacion } from '@/app/actions/rodaje'
 import { formatHora, resolverHoraLlamado, generarLinkUber, Rodaje, RodajeEquipoTecnico } from '@/types'
 import { notFound } from 'next/navigation'
+import { parseFechaLocal } from '@/lib/fechas'
 
 export default async function CitacionPublicaPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -18,7 +19,7 @@ export default async function CitacionPublicaPage({ params }: { params: Promise<
   const yaRespondio = !!citacion.respondida_at
 
   const fecha = rodaje.fecha
-    ? new Date(rodaje.fecha + 'T12:00:00').toLocaleDateString('es-CL', {
+    ? parseFechaLocal(rodaje.fecha).toLocaleDateString('es-CL', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       })
     : null

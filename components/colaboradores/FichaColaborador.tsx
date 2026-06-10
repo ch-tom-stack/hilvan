@@ -9,6 +9,7 @@ import {
   crearLinkTemporal, getLinksPorColaborador, crearLinkOnboarding,
 } from '@/app/actions/colaboradores'
 import type { Colaborador, ColaboradorTarifa, ContratoGenerado, RendicionGasto } from '@/types'
+import { formatCLP } from '@/types'
 
 const BANCOS = [
   'Banco de Chile', 'BancoEstado', 'Santander', 'BCI', 'Itaú', 'Scotiabank',
@@ -429,7 +430,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
                 <div key={t.id} className="flex items-center justify-between px-4 py-3">
                   <div>
                     <span className="font-body text-sm text-ch-cream">
-                      ${t.monto_dia.toLocaleString('es-CL')}
+                      {formatCLP(t.monto_dia)}
                       <span className="text-ch-muted text-xs">/día</span>
                     </span>
                     {t.rol && <span className="font-body text-xs text-ch-muted ml-3">{t.rol}</span>}
@@ -473,7 +474,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
                       {g.estado}
                     </span>
                   </div>
-                  <p className="font-body text-sm text-ch-cream font-mono mt-1">${g.monto.toLocaleString('es-CL')}</p>
+                  <p className="font-body text-sm text-ch-cream font-mono mt-1">{formatCLP(g.monto)}</p>
                 </div>
               ))}
             </div>

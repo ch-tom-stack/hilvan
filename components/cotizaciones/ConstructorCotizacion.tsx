@@ -40,6 +40,7 @@ import {
   type TipoItem,
   type UnidadItem,
 } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
 
@@ -520,7 +521,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                 <div className="space-y-1">
                   <p className="font-body text-xs text-ch-green">✓ Factura emitida</p>
                   <p className="font-body text-xs text-ch-muted">
-                    {new Date(cot.fecha_factura_emitida + 'T12:00:00').toLocaleDateString('es-CL')}
+                    {parseFechaLocal(cot.fecha_factura_emitida).toLocaleDateString('es-CL')}
                     {cot.numero_factura && ` · Folio ${cot.numero_factura}`}
                   </p>
                 </div>
@@ -554,7 +555,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                   <div className="space-y-1 border-t border-ch-border/40 pt-3">
                     <p className="font-body text-xs text-ch-green">✓ Pago recibido</p>
                     <p className="font-body text-xs text-ch-muted">
-                      {new Date(cot.fecha_pago_recibido + 'T12:00:00').toLocaleDateString('es-CL')}
+                      {parseFechaLocal(cot.fecha_pago_recibido).toLocaleDateString('es-CL')}
                     </p>
                   </div>
                 ) : (

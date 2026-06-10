@@ -6,6 +6,7 @@ import { actualizarEstadoReserva, eliminarReserva } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
 import type { RentalReserva, EstadoRental } from '@/types'
 import EstadoVacio from '@/components/ui/EstadoVacio'
+import { parseFechaLocal } from '@/lib/fechas'
 
 type ReservaConJoins = RentalReserva & {
   equipo?: { codigo: string; nombre: string } | null
@@ -60,8 +61,8 @@ function FilaReserva({
 
   const solicitanteLabel = reserva.solicitante?.nombre ?? reserva.cliente?.nombre ?? '—'
 
-  const fechaInicio = new Date(reserva.fecha_inicio + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
-  const fechaFin    = new Date(reserva.fecha_fin + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
+  const fechaInicio = parseFechaLocal(reserva.fecha_inicio).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
+  const fechaFin    = parseFechaLocal(reserva.fecha_fin).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
 
   function cambiarEstado(estado: EstadoRental) {
     startTransition(async () => {

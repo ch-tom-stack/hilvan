@@ -14,6 +14,7 @@ import {
   calcularTotalesRental,
   ESTADO_RENTAL_COT_LABELS,
 } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 import type {
   RentalCotizacion,
   RentalCotizacionSeccion,
@@ -262,9 +263,9 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
                 {reserva.equipo?.nombre ?? reserva.maleta?.nombre ?? '—'}
               </p>
               <p className="font-body text-xs text-ch-muted">
-                {new Date(reserva.fecha_inicio + 'T12:00:00').toLocaleDateString('es-CL')}
+                {parseFechaLocal(reserva.fecha_inicio).toLocaleDateString('es-CL')}
                 {' → '}
-                {new Date(reserva.fecha_fin + 'T12:00:00').toLocaleDateString('es-CL')}
+                {parseFechaLocal(reserva.fecha_fin).toLocaleDateString('es-CL')}
               </p>
             </div>
           </div>

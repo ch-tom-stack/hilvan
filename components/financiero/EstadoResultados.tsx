@@ -7,12 +7,12 @@ import { setPPMTasa, setPreviredMensual, setIUSCMensual, setNomina } from '@/app
 import type { PersonaNomina } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
 import { toastOk, toastError } from '@/lib/toast'
+import { parseFechaLocal } from '@/lib/fechas'
+import { formatCLP } from '@/types'
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
-function clp(n: number) {
-  return '$' + Math.round(n).toLocaleString('es-CL')
-}
+const clp = formatCLP
 
 function formatMes(mes: string) {
   const [y, m] = mes.split('-')
@@ -22,7 +22,7 @@ function formatMes(mes: string) {
 
 function formatFecha(iso: string | null | undefined) {
   if (!iso) return '—'
-  return new Date(iso + 'T12:00:00').toLocaleDateString('es-CL')
+  return parseFechaLocal(iso).toLocaleDateString('es-CL')
 }
 
 function variacion(actual: number, anterior: number): { pct: number; color: string; flecha: string } | null {

@@ -8,11 +8,12 @@ import {
 import { toastError } from '@/lib/toast'
 import type { DatosFlujo, MovimientoFlujo, CierreMesAnterior } from '@/app/actions/financiero'
 import { formatCLP } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatFechaCorta(iso: string): string {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('es-CL', {
+  return parseFechaLocal(iso).toLocaleDateString('es-CL', {
     day: 'numeric', month: 'short',
   })
 }

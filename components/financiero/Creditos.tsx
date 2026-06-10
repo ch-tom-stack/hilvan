@@ -8,6 +8,7 @@ import {
 import { toastError } from '@/lib/toast'
 import type { GastoFijo, GastoFijoCuota, TipoGastoFijo } from '@/types'
 import { formatCLP } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ const TIPO_LABEL: Record<TipoGastoFijo, string> = {
 const TIPOS_ORDEN: TipoGastoFijo[] = ['credito_bancario', 'prestamo_socio', 'otro']
 
 function formatFecha(iso: string) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('es-CL', {
+  return parseFechaLocal(iso).toLocaleDateString('es-CL', {
     day: 'numeric', month: 'short', year: 'numeric',
   })
 }
