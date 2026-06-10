@@ -245,9 +245,10 @@ export async function crearRentalReserva(payload: {
             </ul>
             <p><a href="${APP_URL}/rental/reservas">Ver en Hilván Rental →</a></p>
           `,
+          contexto: 'rental:nueva_reserva',
         })
       }
-    } catch { /* email no crítico */ }
+    } catch (e) { console.error('[email] rental:nueva_reserva:', e) }
 
     return { ok: true, id: nueva.id }
   } catch (e: any) {
@@ -355,9 +356,10 @@ export async function actualizarEstadoReserva(
           </ul>
           <p><a href="${APP_URL}/rental/reservas">Ver mis reservas →</a></p>
         `,
+        contexto: 'rental:estado_reserva',
       })
     }
-  } catch { /* email no crítico */ }
+  } catch (e) { console.error('[email] rental:estado_reserva:', e) }
 
   return { ok: true }
 }

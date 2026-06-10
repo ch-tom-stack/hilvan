@@ -425,6 +425,7 @@ export async function enviarEmailCitacion(id: string, rodajeId: string) {
   await sendEmail({
     to: persona.email!,
     subject: `Citación — ${rodaje.nombre}`,
+    contexto: 'rodaje:citacion',
     html: `
       <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; color: #111;">
         <h2 style="margin-bottom: 4px;">Hola ${persona.nombre} 👋</h2>
@@ -548,6 +549,7 @@ export async function enviarRecordatorios() {
         await sendEmail({
           to: persona.email,
           subject: `Recordatorio — ${rodaje.nombre} es mañana`,
+          contexto: 'rodaje:recordatorio_citacion',
           html: `
             <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111;">
               <h2>Recordatorio 🎬</h2>
