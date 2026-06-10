@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { createElement } from 'react'
 import { obtenerRentalCotizacion } from '@/app/actions/rental'
+import { createClient } from '@/lib/supabase/server'
 import RentalCotizacionPDF from '@/components/rental/RentalCotizacionPDF'
 
 export async function GET(
@@ -12,6 +13,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+
+    // Autorización: esta cotización de arriendo solo se descarga desde el
+    // dashboard interno (/rental/cotizaciones/[id], página con sesión). No hay
+    // flujo público que enlace a este PDF, así que se exige sesión válida.
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return new NextResponse('No autorizado', { status: 401 })
+    }
+
     const cotizacion = await obtenerRentalCotizacion(id)
 
     if (!cotizacion) {
