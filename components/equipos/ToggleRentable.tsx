@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toggleRentable } from '@/app/actions/equipos'
-import { toast } from '@/lib/toast'
+import { toastError } from '@/lib/toast'
 
 interface Props {
   id: string
@@ -20,7 +20,7 @@ export default function ToggleRentable({ id, rentable: initialRentable }: Props)
       const res = await toggleRentable(id, nuevo)
       if (res?.error) {
         setActivo(!nuevo) // revert
-        toast.error('No se pudo actualizar')
+        toastError('No se pudo actualizar')
       }
     })
   }

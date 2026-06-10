@@ -5,6 +5,7 @@ import {
   upsertAperturaCaja, cerrarPeriodoCaja,
   agregarMovimientoFlujo, editarMovimientoFlujo, eliminarMovimientoFlujo,
 } from '@/app/actions/financiero'
+import { toastError } from '@/lib/toast'
 import type { DatosFlujo, MovimientoFlujo, CierreMesAnterior } from '@/app/actions/financiero'
 import { formatCLP } from '@/types'
 
@@ -88,13 +89,17 @@ export default function FlujoCaja({ datos }: Props) {
       setMovimientos(prev => prev.map(m => m.id === id ? { ...m, ...payload } : m))
       cerrarForm()
       startTransition(async () => {
-        await editarMovimientoFlujo(id, payload)
+        try { await editarMovimientoFlujo(id, payload) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al editar movimiento') }
       })
     } else {
       cerrarForm()
       startTransition(async () => {
-        const nuevo = await agregarMovimientoFlujo(payload)
-        setMovimientos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+        try {
+          const nuevo = await agregarMovimientoFlujo(payload)
+          setMovimientos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+        } catch (e) {
+          toastError(e instanceof Error ? e.message : 'Error al agregar movimiento')
+        }
       })
     }
   }
@@ -102,7 +107,9 @@ export default function FlujoCaja({ datos }: Props) {
   const eliminarMovimiento = (id: string) => {
     setConfirmarEliminar(null)
     setMovimientos(prev => prev.filter(m => m.id !== id))
-    startTransition(() => eliminarMovimientoFlujo(id))
+    startTransition(async () => {
+      try { await eliminarMovimientoFlujo(id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar movimiento') }
+    })
   }
 
   // ── Saldo acumulado ─────────────────────────────────────────────────────────
@@ -128,6 +135,8 @@ export default function FlujoCaja({ datos }: Props) {
     try {
       await cerrarPeriodoCaja(cierre.periodo, val, cierreNotas)
       setCierre(prev => ({ ...prev, cerrado: true, saldo_cierre_real: val, notas_cierre: cierreNotas }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al guardar cierre')
     } finally {
       setGuardandoCierre(false)
     }

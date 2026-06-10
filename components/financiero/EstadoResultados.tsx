@@ -6,7 +6,7 @@ import type { DatosFinancieros, ResumenPeriodo, FilaCotizacion, FilaGasto, FilaC
 import { setPPMTasa, setPreviredMensual, setIUSCMensual, setNomina } from '@/app/actions/financiero'
 import type { PersonaNomina } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
-import { toast } from 'sonner'
+import { toastOk, toastError } from '@/lib/toast'
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -169,11 +169,11 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
     startNominaTransition(async () => {
       const result = await setNomina(nominaEdit)
       if (result.error) {
-        toast.error(result.error)
+        toastError(result.error)
       } else {
         setNominaLocal(nominaEdit)
         setEditandoNomina(false)
-        toast.success('Nómina actualizada')
+        toastOk('Nómina actualizada')
       }
     })
   }
@@ -181,17 +181,17 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
   function handleGuardarPrevired() {
     const nuevo = parseInt(previredInput.replace(/\./g, '').replace(',', ''), 10)
     if (isNaN(nuevo) || nuevo < 0) {
-      toast.error('Monto inválido')
+      toastError('Monto inválido')
       return
     }
     startPreviredTransition(async () => {
       const result = await setPreviredMensual(nuevo)
       if (result.error) {
-        toast.error(result.error)
+        toastError(result.error)
       } else {
         setPreviredLocal(nuevo)
         setEditandoPrevired(false)
-        toast.success('Monto Previred actualizado')
+        toastOk('Monto Previred actualizado')
       }
     })
   }
@@ -199,17 +199,17 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
   function handleGuardarIUSC() {
     const nuevo = parseInt(iuscInput.replace(/\./g, '').replace(',', ''), 10)
     if (isNaN(nuevo) || nuevo < 0) {
-      toast.error('Monto inválido')
+      toastError('Monto inválido')
       return
     }
     startIUSCTransition(async () => {
       const result = await setIUSCMensual(nuevo)
       if (result.error) {
-        toast.error(result.error)
+        toastError(result.error)
       } else {
         setIuscLocal(nuevo)
         setEditandoIUSC(false)
-        toast.success('Monto IUSC actualizado')
+        toastOk('Monto IUSC actualizado')
       }
     })
   }
@@ -217,18 +217,18 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
   function handleGuardarPPM() {
     const nueva = parseFloat(ppmInput.replace(',', '.'))
     if (isNaN(nueva) || nueva < 0 || nueva > 100) {
-      toast.error('Tasa inválida (0–100%)')
+      toastError('Tasa inválida (0–100%)')
       return
     }
     const tasaDecimal = nueva / 100
     startPPMTransition(async () => {
       const result = await setPPMTasa(tasaDecimal)
       if (result.error) {
-        toast.error(result.error)
+        toastError(result.error)
       } else {
         setPpmTasaLocal(tasaDecimal)
         setEditandoPPM(false)
-        toast.success('Tasa PPM actualizada')
+        toastOk('Tasa PPM actualizada')
       }
     })
   }

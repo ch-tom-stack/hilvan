@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { crearInversion, editarInversion } from '@/app/actions/inversiones'
+import { toastError } from '@/lib/toast'
 import { formatCLP, CATEGORIAS_INVERSION } from '@/types'
 import type { Inversion, CategoriaInversion, TratamientoContable, TipoDocInversion } from '@/types'
 
@@ -90,6 +91,7 @@ export default function FormularioInversion({ inversion, onGuardado, onCancelar 
     fd.append('carpeta', 'inversiones')
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      if (!res.ok) { toastError('Error al subir comprobante'); setUploading(false); return }
       const json = await res.json()
       if (json.url) set('comprobante_url', json.url)
       else setError('Error subiendo comprobante')

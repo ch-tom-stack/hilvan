@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { toast } from 'sonner'
+import { toastOk, toastError } from '@/lib/toast'
 import EstadoVacio from '@/components/ui/EstadoVacio'
 import {
   aprobarGasto, rechazarGasto, aprobarPagoGasto,
@@ -116,34 +116,50 @@ export default function AdminRendiciones({
 
   const eliminarGastoLocal = (rendicionId: string, gastoId: string) => {
     startTransition(async () => {
-      setRendiciones(prev => prev.map(r => r.id !== rendicionId ? r : {
-        ...r, gastos: (r.gastos || []).filter(g => g.id !== gastoId),
-      }))
-      await eliminarGasto(gastoId)
+      try {
+        setRendiciones(prev => prev.map(r => r.id !== rendicionId ? r : {
+          ...r, gastos: (r.gastos || []).filter(g => g.id !== gastoId),
+        }))
+        await eliminarGasto(gastoId)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al eliminar gasto')
+      }
     })
   }
 
   const aprobarContenido = (rendicionId: string, gastoId: string) => {
     startTransition(async () => {
-      actualizarGasto(rendicionId, gastoId, { estado: 'aprobada' })
-      await aprobarGasto(gastoId)
+      try {
+        actualizarGasto(rendicionId, gastoId, { estado: 'aprobada' })
+        await aprobarGasto(gastoId)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al aprobar gasto')
+      }
     })
   }
 
   const rechazar = (rendicionId: string, gastoId: string) => {
     if (!motivo.trim()) return
     startTransition(async () => {
-      actualizarGasto(rendicionId, gastoId, { estado: 'rechazada', motivo_rechazo: motivo })
-      await rechazarGasto(gastoId, motivo)
-      setModalRechazo(null)
-      setMotivo('')
+      try {
+        actualizarGasto(rendicionId, gastoId, { estado: 'rechazada', motivo_rechazo: motivo })
+        await rechazarGasto(gastoId, motivo)
+        setModalRechazo(null)
+        setMotivo('')
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al rechazar gasto')
+      }
     })
   }
 
   const aprobarPago = (rendicionId: string, gastoId: string, comprobante?: string) => {
     startTransition(async () => {
-      actualizarGasto(rendicionId, gastoId, { estado: 'pago_aprobado', comprobante_pago_url: comprobante })
-      await aprobarPagoGasto(gastoId, comprobante)
+      try {
+        actualizarGasto(rendicionId, gastoId, { estado: 'pago_aprobado', comprobante_pago_url: comprobante })
+        await aprobarPagoGasto(gastoId, comprobante)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al aprobar pago')
+      }
     })
   }
 
@@ -220,29 +236,41 @@ export default function AdminRendiciones({
 
   const handleToggleFactura = (rendicionId: string, valor: boolean) => {
     actualizarRendicion(rendicionId, { factura_emitida: valor })
-    startTransition(() => toggleFacturaEmitida(rendicionId, valor))
+    startTransition(async () => {
+      try { await toggleFacturaEmitida(rendicionId, valor) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al actualizar') }
+    })
   }
 
   const handleTogglePago = (rendicionId: string, valor: boolean) => {
     actualizarRendicion(rendicionId, { pago_recibido: valor })
-    startTransition(() => togglePagoRecibido(rendicionId, valor))
+    startTransition(async () => {
+      try { await togglePagoRecibido(rendicionId, valor) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al actualizar') }
+    })
   }
 
   const handleAgregarArchivoFactura = async (rendicionId: string, file: File) => {
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('carpeta', 'facturas')
-    const res = await fetch('/api/upload', { method: 'POST', body: fd })
-    if (!res.ok) { toast.error('Error al subir archivo'); return }
-    const { url } = await res.json()
-    toast.success('Archivo subido')
-    const archivos = await agregarArchivoFactura(rendicionId, url)
-    actualizarRendicion(rendicionId, { factura_archivos: archivos })
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('carpeta', 'facturas')
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      if (!res.ok) { toastError('Error al subir archivo'); return }
+      const { url } = await res.json()
+      toastOk('Archivo subido')
+      const archivos = await agregarArchivoFactura(rendicionId, url)
+      actualizarRendicion(rendicionId, { factura_archivos: archivos })
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al subir archivo')
+    }
   }
 
   const handleEliminarArchivoFactura = async (rendicionId: string, url: string) => {
-    const archivos = await eliminarArchivoFactura(rendicionId, url)
-    actualizarRendicion(rendicionId, { factura_archivos: archivos })
+    try {
+      const archivos = await eliminarArchivoFactura(rendicionId, url)
+      actualizarRendicion(rendicionId, { factura_archivos: archivos })
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al eliminar archivo')
+    }
   }
 
   return (
@@ -725,7 +753,9 @@ function ItemGlosaSection({
 
   const handleToggleCompletado = (v: boolean) => {
     setCompletado(v)
-    startTransitionLocal(async () => { await toggleItemCompletado(item.id, v) })
+    startTransitionLocal(async () => {
+      try { await toggleItemCompletado(item.id, v) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al actualizar') }
+    })
   }
 
   return (
@@ -834,6 +864,8 @@ function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechazar, onE
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('rendiciones').getPublicUrl(path)
       setComprobantePago({ url: publicUrl, nombre: file.name })
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al subir comprobante')
     } finally {
       setSubiendoPago(false)
     }

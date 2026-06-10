@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { toast } from 'sonner'
+import { toastOk, toastError } from '@/lib/toast'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { formatCLP } from '@/types'
 import type { Bundle, BundleItem } from '@/app/actions/bundles'
@@ -211,9 +211,9 @@ function AgregarItemForm({
         result = await agregarBundleABundle(bundleId, selectedId, cant)
       }
       if (result.error) {
-        toast.error(result.error)
+        toastError(result.error)
       } else {
-        toast.success(tipo === 'equipo' ? 'Equipo agregado' : 'Sub-bundle agregado')
+        toastOk(tipo === 'equipo' ? 'Equipo agregado' : 'Sub-bundle agregado')
         onDone()
       }
     })
@@ -290,9 +290,9 @@ function BundleCard({
         precio_jornada: form.precio_jornada ? parseInt(form.precio_jornada) : undefined,
       })
       if (result.error) {
-        toast.error(result.error)
+        toastError(result.error)
       } else {
-        toast.success('Bundle actualizado')
+        toastOk('Bundle actualizado')
         setEditando(false)
       }
     })
@@ -303,8 +303,8 @@ function BundleCard({
     if (!ok) return
     startTransition(async () => {
       const result = await eliminarItemBundle(itemId)
-      if (result.error) toast.error(result.error)
-      else toast.success('Item eliminado')
+      if (result.error) toastError(result.error)
+      else toastOk('Item eliminado')
     })
   }
 
@@ -500,9 +500,9 @@ export default function BundlesManager({ bundles: initialBundles, equipos }: Pro
         precio_jornada: form.precio_jornada ? parseInt(form.precio_jornada) : undefined,
       })
       if (result.error) {
-        toast.error(result.error)
+        toastError(result.error)
       } else {
-        toast.success('Bundle creado')
+        toastOk('Bundle creado')
         setMostrarFormNuevo(false)
         // El server revalida la ruta; el componente padre se re-renderiza
         window.location.reload()
@@ -516,9 +516,9 @@ export default function BundlesManager({ bundles: initialBundles, equipos }: Pro
     startTransition(async () => {
       const result = await eliminarBundle(id)
       if (result.error) {
-        toast.error(result.error)
+        toastError(result.error)
       } else {
-        toast.success('Bundle eliminado')
+        toastOk('Bundle eliminado')
         window.location.reload()
       }
     })

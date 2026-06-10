@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { toastError } from '@/lib/toast'
 import {
   agregarGastoMensual,
   eliminarGastoMensual,
@@ -144,16 +145,24 @@ export default function RendicionMensualView({
 
   async function handleEliminar(id: string) {
     startTransition(async () => {
-      await eliminarGastoMensual(id)
-      setRendicion(r => r ? { ...r, gastos: (r.gastos ?? []).filter(g => g.id !== id) } : r)
+      try {
+        await eliminarGastoMensual(id)
+        setRendicion(r => r ? { ...r, gastos: (r.gastos ?? []).filter(g => g.id !== id) } : r)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al eliminar gasto')
+      }
     })
   }
 
   async function handleEstado(estado: EstadoRendicionMensual) {
     if (!rendicion) return
     startTransition(async () => {
-      await actualizarEstadoRendicionMensual(rendicion.id, estado)
-      setRendicion(r => r ? { ...r, estado } : r)
+      try {
+        await actualizarEstadoRendicionMensual(rendicion.id, estado)
+        setRendicion(r => r ? { ...r, estado } : r)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al actualizar estado')
+      }
     })
   }
 

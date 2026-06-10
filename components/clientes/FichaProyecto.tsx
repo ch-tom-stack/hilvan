@@ -10,6 +10,7 @@ import {
   vincularContactoProyecto,
   desvincularContactoProyecto,
 } from '@/app/actions/clientes'
+import { toastError } from '@/lib/toast'
 import type {
   Proyecto,
   ProyectoTarea,
@@ -108,24 +109,28 @@ export default function FichaProyecto({
   // ─── Guardar proyecto ─────────────────────────────────────────────────────
   function guardar() {
     startTransition(async () => {
-      await actualizarProyecto(proyecto.id, {
-        nombre: form.nombre.trim(),
-        estado: form.estado,
-        descripcion: form.descripcion.trim() || null,
-        notas: form.notas.trim() || null,
-        fecha_inicio: form.fecha_inicio || null,
-        fecha_cierre: form.fecha_cierre || null,
-      })
-      setProyecto(p => ({
-        ...p,
-        nombre: form.nombre.trim(),
-        estado: form.estado,
-        descripcion: form.descripcion.trim() || null,
-        notas: form.notas.trim() || null,
-        fecha_inicio: form.fecha_inicio || null,
-        fecha_cierre: form.fecha_cierre || null,
-      }))
-      setEditando(false)
+      try {
+        await actualizarProyecto(proyecto.id, {
+          nombre: form.nombre.trim(),
+          estado: form.estado,
+          descripcion: form.descripcion.trim() || null,
+          notas: form.notas.trim() || null,
+          fecha_inicio: form.fecha_inicio || null,
+          fecha_cierre: form.fecha_cierre || null,
+        })
+        setProyecto(p => ({
+          ...p,
+          nombre: form.nombre.trim(),
+          estado: form.estado,
+          descripcion: form.descripcion.trim() || null,
+          notas: form.notas.trim() || null,
+          fecha_inicio: form.fecha_inicio || null,
+          fecha_cierre: form.fecha_cierre || null,
+        }))
+        setEditando(false)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al guardar proyecto')
+      }
     })
   }
 
@@ -133,24 +138,36 @@ export default function FichaProyecto({
   function agregarTarea() {
     if (!textoTarea.trim()) return
     startTransition(async () => {
-      const nueva = await crearTarea(proyecto.id, textoTarea.trim())
-      setTareas(ts => [...ts, nueva])
-      setTextoTarea('')
+      try {
+        const nueva = await crearTarea(proyecto.id, textoTarea.trim())
+        setTareas(ts => [...ts, nueva])
+        setTextoTarea('')
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al agregar tarea')
+      }
     })
   }
 
   function handleToggle(tarea: ProyectoTarea) {
     startTransition(async () => {
-      await toggleTarea(tarea.id, !tarea.completada, proyecto.id)
-      setTareas(ts => ts.map(t => t.id === tarea.id ? { ...t, completada: !t.completada } : t))
+      try {
+        await toggleTarea(tarea.id, !tarea.completada, proyecto.id)
+        setTareas(ts => ts.map(t => t.id === tarea.id ? { ...t, completada: !t.completada } : t))
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al actualizar tarea')
+      }
     })
   }
 
   function handleBorrarTarea(id: string) {
     startTransition(async () => {
-      await eliminarTarea(id, proyecto.id)
-      setTareas(ts => ts.filter(t => t.id !== id))
-      setConfirmBorrarTarea(null)
+      try {
+        await eliminarTarea(id, proyecto.id)
+        setTareas(ts => ts.filter(t => t.id !== id))
+        setConfirmBorrarTarea(null)
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al eliminar tarea')
+      }
     })
   }
 
@@ -159,24 +176,32 @@ export default function FichaProyecto({
 
   function handleVincular(contactoId: string) {
     startTransition(async () => {
-      await vincularContactoProyecto(proyecto.id, contactoId)
-      const contacto = contactosCliente.find(c => c.id === contactoId)
-      if (contacto) {
-        setContactosProyecto(cs => [...cs, {
-          id: crypto.randomUUID(),
-          proyecto_id: proyecto.id,
-          contacto_id: contactoId,
-          contacto,
-          rol_en_proyecto: null,
-        }])
+      try {
+        await vincularContactoProyecto(proyecto.id, contactoId)
+        const contacto = contactosCliente.find(c => c.id === contactoId)
+        if (contacto) {
+          setContactosProyecto(cs => [...cs, {
+            id: crypto.randomUUID(),
+            proyecto_id: proyecto.id,
+            contacto_id: contactoId,
+            contacto,
+            rol_en_proyecto: null,
+          }])
+        }
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al vincular contacto')
       }
     })
   }
 
   function handleDesvincular(contactoId: string) {
     startTransition(async () => {
-      await desvincularContactoProyecto(proyecto.id, contactoId)
-      setContactosProyecto(cs => cs.filter(cp => cp.contacto_id !== contactoId))
+      try {
+        await desvincularContactoProyecto(proyecto.id, contactoId)
+        setContactosProyecto(cs => cs.filter(cp => cp.contacto_id !== contactoId))
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al desvincular contacto')
+      }
     })
   }
 

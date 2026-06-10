@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { agregarNota } from '@/app/actions/maletas'
+import { toastError } from '@/lib/toast'
 import type { MaletaNota } from '@/types'
 
 interface Props {
@@ -27,10 +28,15 @@ export default function NotasMaleta({ maletaId, notas, usuarioLogueado, nombreUs
   async function handleEnviar() {
     if (!texto.trim()) return
     setGuardando(true)
-    await agregarNota(maletaId, texto.trim(), nombreUsuario)
-    setTexto('')
-    setGuardando(false)
-    router.refresh()
+    try {
+      await agregarNota(maletaId, texto.trim(), nombreUsuario)
+      setTexto('')
+      router.refresh()
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al guardar nota')
+    } finally {
+      setGuardando(false)
+    }
   }
 
   return (

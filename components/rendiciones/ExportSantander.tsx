@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toastError } from '@/lib/toast'
 import { calcularRetencion } from '@/types'
 import type { RendicionGasto } from '@/types'
 
@@ -103,29 +104,33 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
   }, 0)
 
   const descargar = async () => {
-    const filas = rendiciones.map(r => buildFila(r, cuentaOrigen))
-    const nombre = cotizaciones.find(c => c.id === cotizacionFiltro)?.nombre || 'export'
+    try {
+      const filas = rendiciones.map(r => buildFila(r, cuentaOrigen))
+      const nombre = cotizaciones.find(c => c.id === cotizacionFiltro)?.nombre || 'export'
 
-    const res = await fetch('/api/rendiciones/santander-export', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filas, nombre }),
-    })
+      const res = await fetch('/api/rendiciones/santander-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filas, nombre }),
+      })
 
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: 'Error desconocido' }))
-      console.error('[santander-export]', error)
-      return
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Error desconocido' }))
+        toastError(error || 'Error al generar archivo')
+        return
+      }
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1]
+        ?? `santander_${nombre}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al descargar')
     }
-
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1]
-      ?? `santander_${nombre}_${new Date().toISOString().slice(0, 10)}.xlsx`
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   return (

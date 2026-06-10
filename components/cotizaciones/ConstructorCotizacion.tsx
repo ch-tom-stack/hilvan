@@ -3,7 +3,7 @@
 import { useState, useTransition, useCallback } from 'react'
 import { useConfirm, usePrompt } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import { toastOk, toastError } from '@/lib/toast'
 import {
   actualizarCotizacion,
   enviarCotizacion,
@@ -115,6 +115,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
         numero_factura: facturaForm.numero_factura,
       })
       setCot(c => ({ ...c, fecha_factura_emitida: facturaForm.fecha_factura_emitida, numero_factura: facturaForm.numero_factura }))
+      toastOk('Factura registrada')
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al registrar factura')
     } finally {
       setGuardandoFactura(false)
     }
@@ -126,6 +129,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     try {
       await registrarPagoCotizacion(cot.id, facturaForm.fecha_pago_recibido)
       setCot(c => ({ ...c, fecha_pago_recibido: facturaForm.fecha_pago_recibido }))
+      toastOk('Pago registrado')
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al registrar pago')
     } finally {
       setGuardandoFactura(false)
     }
@@ -157,9 +163,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
       setLinkCopiado(true)
       setCot(c => ({ ...c, estado: 'enviada', token }))
       setTimeout(() => setLinkCopiado(false), 3000)
-      toast.success('Cotización enviada')
-    } catch (e: any) {
-      toast.error('Error al enviar: ' + e.message)
+      toastOk('Cotización enviada')
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al enviar')
     }
   }
 
@@ -177,28 +183,40 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     const nombre = await prompt('Nombre del departamento:')
     if (!nombre?.trim()) return
     const orden = (cot.departamentos?.length ?? 0)
-    const data = await agregarDepartamento(cot.id, nombre.trim(), orden)
-    setCot(c => ({
-      ...c,
-      departamentos: [...(c.departamentos ?? []), { ...data, subgrupos: [], items: [] }],
-    }))
+    try {
+      const data = await agregarDepartamento(cot.id, nombre.trim(), orden)
+      setCot(c => ({
+        ...c,
+        departamentos: [...(c.departamentos ?? []), { ...data, subgrupos: [], items: [] }],
+      }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al agregar departamento')
+    }
   }
 
   async function handleRenombrarDep(dep: CotizacionDepartamento) {
     const nombre = await prompt('Nuevo nombre:', dep.nombre)
     if (!nombre?.trim() || nombre === dep.nombre) return
-    await actualizarDepartamento(dep.id, cot.id, { nombre: nombre.trim() })
-    actualizarDepLocal(dep.id, d => ({ ...d, nombre: nombre.trim() }))
+    try {
+      await actualizarDepartamento(dep.id, cot.id, { nombre: nombre.trim() })
+      actualizarDepLocal(dep.id, d => ({ ...d, nombre: nombre.trim() }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al renombrar departamento')
+    }
   }
 
   async function handleEliminarDep(dep: CotizacionDepartamento) {
     if (!await confirm(`¿Eliminar "${dep.nombre}" y todos sus ítems?`)) return
-    await eliminarDepartamento(dep.id, cot.id)
-    toast.success('Eliminado')
-    setCot(c => ({
-      ...c,
-      departamentos: c.departamentos?.filter(d => d.id !== dep.id),
-    }))
+    try {
+      await eliminarDepartamento(dep.id, cot.id)
+      toastOk('Eliminado')
+      setCot(c => ({
+        ...c,
+        departamentos: c.departamentos?.filter(d => d.id !== dep.id),
+      }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al eliminar departamento')
+    }
   }
 
   // ── SUB-GRUPOS ──────────────────────────────────────────────────────────────
@@ -207,78 +225,98 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     const nombre = await prompt('Nombre del sub-grupo:')
     if (!nombre?.trim()) return
     const orden = (dep.subgrupos?.length ?? 0)
-    const data = await agregarSubgrupo(cot.id, dep.id, nombre.trim(), orden)
-    actualizarDepLocal(dep.id, d => ({
-      ...d,
-      subgrupos: [...(d.subgrupos ?? []), { ...data, items: [] }],
-    }))
+    try {
+      const data = await agregarSubgrupo(cot.id, dep.id, nombre.trim(), orden)
+      actualizarDepLocal(dep.id, d => ({
+        ...d,
+        subgrupos: [...(d.subgrupos ?? []), { ...data, items: [] }],
+      }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al agregar sub-grupo')
+    }
   }
 
   async function handleRenombrarSg(dep: CotizacionDepartamento, sg: CotizacionSubgrupo) {
     const nombre = await prompt('Nuevo nombre:', sg.nombre)
     if (!nombre?.trim() || nombre === sg.nombre) return
-    await actualizarSubgrupo(sg.id, cot.id, { nombre: nombre.trim() })
-    actualizarSgLocal(dep.id, sg.id, s => ({ ...s, nombre: nombre.trim() }))
+    try {
+      await actualizarSubgrupo(sg.id, cot.id, { nombre: nombre.trim() })
+      actualizarSgLocal(dep.id, sg.id, s => ({ ...s, nombre: nombre.trim() }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al renombrar sub-grupo')
+    }
   }
 
   async function handleEliminarSg(dep: CotizacionDepartamento, sg: CotizacionSubgrupo) {
     if (!await confirm(`¿Eliminar "${sg.nombre}" y todos sus ítems?`)) return
-    await eliminarSubgrupo(sg.id, cot.id)
-    toast.success('Eliminado')
-    actualizarDepLocal(dep.id, d => ({
-      ...d,
-      subgrupos: d.subgrupos?.filter(s => s.id !== sg.id),
-    }))
+    try {
+      await eliminarSubgrupo(sg.id, cot.id)
+      toastOk('Eliminado')
+      actualizarDepLocal(dep.id, d => ({
+        ...d,
+        subgrupos: d.subgrupos?.filter(s => s.id !== sg.id),
+      }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al eliminar sub-grupo')
+    }
   }
 
   // ── ÍTEMS ───────────────────────────────────────────────────────────────────
 
   async function handleGuardarItem(itemData: Omit<CotizacionItem, 'id' | 'created_at' | 'subtotal_cliente' | 'costo_real' | 'margen'>) {
-    if (itemModal?.mode === 'nuevo') {
-      const data = await agregarItem(itemData)
-      if (itemModal.sgId) {
-        actualizarSgLocal(itemModal.depId, itemModal.sgId, sg => ({
-          ...sg,
-          items: [...(sg.items ?? []), data],
-        }))
-      } else {
-        actualizarDepLocal(itemModal.depId, d => ({
-          ...d,
-          items: [...(d.items ?? []), data],
-        }))
+    try {
+      if (itemModal?.mode === 'nuevo') {
+        const data = await agregarItem(itemData)
+        if (itemModal.sgId) {
+          actualizarSgLocal(itemModal.depId, itemModal.sgId, sg => ({
+            ...sg,
+            items: [...(sg.items ?? []), data],
+          }))
+        } else {
+          actualizarDepLocal(itemModal.depId, d => ({
+            ...d,
+            items: [...(d.items ?? []), data],
+          }))
+        }
+      } else if (itemModal?.mode === 'editar' && itemModal.item) {
+        await actualizarItem(itemModal.item.id, cot.id, itemData)
+        const updatedItem = { ...itemModal.item, ...itemData }
+        if (itemModal.sgId) {
+          actualizarSgLocal(itemModal.depId, itemModal.sgId, sg => ({
+            ...sg,
+            items: sg.items?.map(i => i.id === itemModal.item!.id ? updatedItem : i),
+          }))
+        } else {
+          actualizarDepLocal(itemModal.depId, d => ({
+            ...d,
+            items: d.items?.map(i => i.id === itemModal.item!.id ? updatedItem : i),
+          }))
+        }
       }
-    } else if (itemModal?.mode === 'editar' && itemModal.item) {
-      await actualizarItem(itemModal.item.id, cot.id, itemData)
-      const updatedItem = { ...itemModal.item, ...itemData }
-      if (itemModal.sgId) {
-        actualizarSgLocal(itemModal.depId, itemModal.sgId, sg => ({
-          ...sg,
-          items: sg.items?.map(i => i.id === itemModal.item!.id ? updatedItem : i),
-        }))
-      } else {
-        actualizarDepLocal(itemModal.depId, d => ({
-          ...d,
-          items: d.items?.map(i => i.id === itemModal.item!.id ? updatedItem : i),
-        }))
-      }
+      setItemModal(null)
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al guardar ítem')
     }
-    setItemModal(null)
   }
 
   async function handleEliminarItem(item: CotizacionItem, depId: string, sgId?: string) {
     if (!await confirm(`¿Eliminar "${item.nombre}"?`)) return
-    await eliminarItem(item.id, cot.id)
-    toast.success('Eliminado')
-    if (sgId) {
-      actualizarSgLocal(depId, sgId, sg => ({
-        ...sg,
-        items: sg.items?.filter(i => i.id !== item.id),
-      }))
-    } else {
-      actualizarDepLocal(depId, d => ({
-        ...d,
-        items: d.items?.filter(i => i.id !== item.id),
-      }))
+    try {
+      await eliminarItem(item.id, cot.id)
+      toastOk('Eliminado')
+      if (sgId) {
+        actualizarSgLocal(depId, sgId, sg => ({
+          ...sg,
+          items: sg.items?.filter(i => i.id !== item.id),
+        }))
+      } else {
+        actualizarDepLocal(depId, d => ({
+          ...d,
+          items: d.items?.filter(i => i.id !== item.id),
+        }))
+      }
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al eliminar ítem')
     }
   }
 
@@ -305,8 +343,12 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                 onBlur={async e => {
                   const val = e.target.value.trim()
                   if (val && val !== cot.nombre) {
-                    await actualizarCotizacion(cot.id, { nombre: val })
-                    setCot(c => ({ ...c, nombre: val }))
+                    try {
+                      await actualizarCotizacion(cot.id, { nombre: val })
+                      setCot(c => ({ ...c, nombre: val }))
+                    } catch (e) {
+                      toastError(e instanceof Error ? e.message : 'Error al guardar nombre')
+                    }
                   }
                   setEditandoNombre(false)
                 }}
@@ -344,8 +386,13 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                         onClick={async () => {
                           setEstadoOpen(false)
                           startTransition(async () => {
-                            const res = await cambiarEstadoCotizacion(cot.id, key)
-                            if (!res.error) setCot(c => ({ ...c, estado: key as typeof c.estado }))
+                            try {
+                              const res = await cambiarEstadoCotizacion(cot.id, key)
+                              if (res.error) toastError(res.error)
+                              else setCot(c => ({ ...c, estado: key as typeof c.estado }))
+                            } catch (e) {
+                              toastError(e instanceof Error ? e.message : 'Error al cambiar estado')
+                            }
                           })
                         }}
                         className={`w-full text-left px-3 py-2 font-body text-xs ${color} hover:bg-ch-border/20 transition-colors disabled:opacity-50 ${
@@ -367,7 +414,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           {/* Versiones */}
           <div className="flex items-center gap-1 border border-ch-border rounded overflow-hidden">
             <button
-              onClick={() => startTransition(() => nuevaVersion(cot.id))}
+              onClick={() => startTransition(async () => {
+                try { await nuevaVersion(cot.id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear versión') }
+              })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
             >
@@ -375,7 +424,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             </button>
             <span className="w-px h-4 bg-ch-border" />
             <button
-              onClick={() => startTransition(() => nuevaVariante(cot.id))}
+              onClick={() => startTransition(async () => {
+                try { await nuevaVariante(cot.id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear variante') }
+              })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
             >
@@ -383,7 +434,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             </button>
             <span className="w-px h-4 bg-ch-border" />
             <button
-              onClick={() => startTransition(() => duplicarCotizacion(cot.id))}
+              onClick={() => startTransition(async () => {
+                try { await duplicarCotizacion(cot.id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al duplicar') }
+              })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
             >

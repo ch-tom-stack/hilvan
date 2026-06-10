@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import { toastOk, toastError } from '@/lib/toast'
 import {
   actualizarColaborador, eliminarColaborador, crearTarifa, eliminarTarifa,
   crearLinkTemporal, getLinksPorColaborador, crearLinkOnboarding,
@@ -56,10 +56,14 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
 
   const guardar = () => {
     startTransition(async () => {
-      await actualizarColaborador(colaborador.id, form)
-      setGuardado(true)
-      setTimeout(() => setGuardado(false), 2000)
-      toast.success('Cambios guardados')
+      try {
+        await actualizarColaborador(colaborador.id, form)
+        setGuardado(true)
+        setTimeout(() => setGuardado(false), 2000)
+        toastOk('Cambios guardados')
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al guardar')
+      }
     })
   }
 
@@ -71,14 +75,18 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
   const agregarTarifa = () => {
     if (!nuevaTarifa.monto_dia) return
     startTransition(async () => {
-      await crearTarifa({
-        colaborador_id: colaborador.id,
-        rodaje_id: nuevaTarifa.rodaje_id || undefined,
-        rol: nuevaTarifa.rol || undefined,
-        monto_dia: parseInt(nuevaTarifa.monto_dia),
-      })
-      setNuevaTarifa({ rodaje_id: '', rol: '', monto_dia: '' })
-      router.refresh()
+      try {
+        await crearTarifa({
+          colaborador_id: colaborador.id,
+          rodaje_id: nuevaTarifa.rodaje_id || undefined,
+          rol: nuevaTarifa.rol || undefined,
+          monto_dia: parseInt(nuevaTarifa.monto_dia),
+        })
+        setNuevaTarifa({ rodaje_id: '', rol: '', monto_dia: '' })
+        router.refresh()
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al agregar tarifa')
+      }
     })
   }
 
@@ -89,6 +97,8 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
       const url = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.casahiedra.com'}/r/${link.token}`
       setLinkGenerado(url)
       await navigator.clipboard.writeText(url).catch(() => {})
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al generar link')
     } finally {
       setGenerandoLink(false)
     }
@@ -101,6 +111,8 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
       const url = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.casahiedra.com'}/col/${link.token}`
       setLinkOnboarding(url)
       await navigator.clipboard.writeText(url).catch(() => {})
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al generar link de onboarding')
     } finally {
       setGenerandoLinkOnboarding(false)
     }
@@ -108,24 +120,25 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
 
   const generarContrato = async (tipo: string) => {
     startTransition(async () => {
-      const res = await fetch(`/api/contratos/generar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ colaborador_id: colaborador.id, tipo }),
-      })
-      if (!res.ok) {
-        toast.error('Error al generar contrato')
-        return
+      try {
+        const res = await fetch(`/api/contratos/generar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ colaborador_id: colaborador.id, tipo }),
+        })
+        if (!res.ok) { toastError('Error al generar contrato'); return }
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${tipo}-${colaborador.nombre.replace(/\s+/g, '-').toLowerCase()}.docx`
+        a.click()
+        URL.revokeObjectURL(url)
+        toastOk('Contrato generado')
+        router.refresh()
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al generar contrato')
       }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${tipo}-${colaborador.nombre.replace(/\s+/g, '-').toLowerCase()}.docx`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast.success('Contrato generado')
-      router.refresh()
     })
   }
 
@@ -423,8 +436,10 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
                     {t.rodaje && <span className="font-body text-[10px] text-ch-muted ml-2">· {(t.rodaje as any).nombre}</span>}
                   </div>
                   <button onClick={() => startTransition(async () => {
-                    await eliminarTarifa(t.id, colaborador.id)
-                    setTarifas(prev => prev.filter(x => x.id !== t.id))
+                    try {
+                      await eliminarTarifa(t.id, colaborador.id)
+                      setTarifas(prev => prev.filter(x => x.id !== t.id))
+                    } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar tarifa') }
                   })} className="text-ch-muted hover:text-red-400 font-body text-xs transition-colors">
                     ✕
                   </button>
@@ -474,10 +489,12 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
             {isPending ? 'Guardando...' : guardado ? 'Guardado ✓' : 'Guardar cambios'}
           </button>
           <button onClick={() => startTransition(async () => {
-            if (!await confirm('¿Eliminar este colaborador?')) return
-            await eliminarColaborador(colaborador.id)
-            toast.success('Colaborador eliminado')
-            router.push('/colaboradores')
+            try {
+              if (!await confirm('¿Eliminar este colaborador?')) return
+              await eliminarColaborador(colaborador.id)
+              toastOk('Colaborador eliminado')
+              router.push('/colaboradores')
+            } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar colaborador') }
           })} className="text-ch-muted hover:text-red-400 font-body text-xs transition-colors">
             Eliminar
           </button>

@@ -5,6 +5,7 @@ import {
   crearGastoFijo, eliminarGastoFijo, toggleGastoFijoActivo,
   marcarCuotaPagada, desmarcarCuotaPagada,
 } from '@/app/actions/financiero'
+import { toastError } from '@/lib/toast'
 import type { GastoFijo, GastoFijoCuota, TipoGastoFijo } from '@/types'
 import { formatCLP } from '@/types'
 
@@ -60,22 +61,26 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
   const handleCrear = () => {
     if (!formValido) return
     startTransition(async () => {
-      const nuevo = await crearGastoFijo({
-        nombre: form.nombre.trim(),
-        tipo: form.tipo,
-        acreedor: form.acreedor.trim(),
-        descripcion: form.descripcion.trim(),
-        monto_total: Number(form.monto_total) || 0,
-        monto_cuota: Number(form.monto_cuota),
-        n_cuotas: Number(form.n_cuotas),
-        dia_vencimiento: Number(form.dia_vencimiento),
-        fecha_inicio: form.fecha_inicio,
-        tasa_interes: form.tasa_interes ? Number(form.tasa_interes) : null,
-      })
-      setGastos(prev => [...prev, nuevo])
-      setForm(FORM_VACIO)
-      setFormAbierto(false)
-      setExpandidos(p => ({ ...p, [nuevo.id]: true }))
+      try {
+        const nuevo = await crearGastoFijo({
+          nombre: form.nombre.trim(),
+          tipo: form.tipo,
+          acreedor: form.acreedor.trim(),
+          descripcion: form.descripcion.trim(),
+          monto_total: Number(form.monto_total) || 0,
+          monto_cuota: Number(form.monto_cuota),
+          n_cuotas: Number(form.n_cuotas),
+          dia_vencimiento: Number(form.dia_vencimiento),
+          fecha_inicio: form.fecha_inicio,
+          tasa_interes: form.tasa_interes ? Number(form.tasa_interes) : null,
+        })
+        setGastos(prev => [...prev, nuevo])
+        setForm(FORM_VACIO)
+        setFormAbierto(false)
+        setExpandidos(p => ({ ...p, [nuevo.id]: true }))
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al crear crédito')
+      }
     })
   }
 
@@ -83,13 +88,17 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
   const handleEliminar = (id: string) => {
     setConfirmarEliminar(null)
     setGastos(prev => prev.filter(g => g.id !== id))
-    startTransition(() => eliminarGastoFijo(id))
+    startTransition(async () => {
+      try { await eliminarGastoFijo(id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar') }
+    })
   }
 
   // ── Toggle activo ─────────────────────────────────────────────────────────
   const handleToggleActivo = (id: string, activo: boolean) => {
     setGastos(prev => prev.map(g => g.id === id ? { ...g, activo } : g))
-    startTransition(() => toggleGastoFijoActivo(id, activo))
+    startTransition(async () => {
+      try { await toggleGastoFijoActivo(id, activo) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al actualizar') }
+    })
   }
 
   // ── Marcar cuota pagada ───────────────────────────────────────────────────
@@ -98,21 +107,29 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
     const fecha = pagando.fecha
     setPagando(null)
     startTransition(async () => {
-      const updated = await marcarCuotaPagada(cuotaId, fecha)
-      setGastos(prev => prev.map(g => g.id !== gastoId ? g : {
-        ...g,
-        cuotas: (g.cuotas ?? []).map(c => c.id === cuotaId ? updated : c),
-      }))
+      try {
+        const updated = await marcarCuotaPagada(cuotaId, fecha)
+        setGastos(prev => prev.map(g => g.id !== gastoId ? g : {
+          ...g,
+          cuotas: (g.cuotas ?? []).map(c => c.id === cuotaId ? updated : c),
+        }))
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al marcar cuota')
+      }
     })
   }
 
   const handleDesmarcar = (cuotaId: string, gastoId: string) => {
     startTransition(async () => {
-      const updated = await desmarcarCuotaPagada(cuotaId)
-      setGastos(prev => prev.map(g => g.id !== gastoId ? g : {
-        ...g,
-        cuotas: (g.cuotas ?? []).map(c => c.id === cuotaId ? updated : c),
-      }))
+      try {
+        const updated = await desmarcarCuotaPagada(cuotaId)
+        setGastos(prev => prev.map(g => g.id !== gastoId ? g : {
+          ...g,
+          cuotas: (g.cuotas ?? []).map(c => c.id === cuotaId ? updated : c),
+        }))
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al desmarcar cuota')
+      }
     })
   }
 
