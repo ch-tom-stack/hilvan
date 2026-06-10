@@ -1,4 +1,6 @@
 // types/index.ts
+// Importamos parseFechaLocal desde lib/fechas para evitar el parche T12:00:00 directo
+import { parseFechaLocal } from '@/lib/fechas'
 
 // ============================================================
 // AUTH / USUARIOS
@@ -709,7 +711,7 @@ export function formatHora(hora?: string): string {
 export function generarMensajeCitacion(persona: RodajeEquipoTecnico, rodaje: Rodaje, linkCitacion: string): string {
   const hora = formatHora(resolverHoraLlamado(persona, rodaje))
   const fecha = rodaje.fecha
-    ? new Date(rodaje.fecha + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })
+    ? parseFechaLocal(rodaje.fecha).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })
     : 'fecha por confirmar'
   return `Hola ${persona.nombre}! 👋\n\nTe citamos para el rodaje *${rodaje.nombre}*.\n\n📅 ${fecha}\n⏰ Hora de llegada: *${hora}*\n📍 ${rodaje.locacion_nombre || 'Locación por confirmar'}${rodaje.locacion_direccion ? '\n' + rodaje.locacion_direccion : ''}\n\nPor favor confirma tu asistencia y déjanos saber si tienes restricciones alimentarias:\n${linkCitacion}\n\n¡Nos vemos! 🎬`
 }

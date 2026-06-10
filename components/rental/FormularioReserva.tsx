@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { crearRentalReserva, verificarDisponibilidad } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
 import type { Equipo, Maleta, Cliente } from '@/types'
+import { formatCLP } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 
 interface Props {
   equipos: (Equipo & { categoria?: { nombre: string } })[]
@@ -181,7 +183,7 @@ export default function FormularioReserva({
               <p className="font-body text-xs text-ch-muted">
                 {selectedEquipo.nombre}
                 {selectedEquipo.precio_jornada && selectedEquipo.precio_jornada > 0
-                  ? ` · $${selectedEquipo.precio_jornada.toLocaleString('es-CL')} / jornada`
+                  ? ` · ${formatCLP(selectedEquipo.precio_jornada)} / jornada`
                   : ''}
                 {selectedEquipo.cantidad != null && selectedEquipo.cantidad > 1
                   ? ` · Stock: ${selectedEquipo.cantidad} unidades`
@@ -256,7 +258,7 @@ export default function FormularioReserva({
                     <ul className="text-red-400/70 text-[10px] font-body space-y-0.5">
                       {disponibilidad.conflictos.map((c, i) => (
                         <li key={i}>
-                          Reservado del {new Date(c.fecha_inicio + 'T12:00:00').toLocaleDateString('es-CL')} al {new Date(c.fecha_fin + 'T12:00:00').toLocaleDateString('es-CL')}
+                          Reservado del {parseFechaLocal(c.fecha_inicio).toLocaleDateString('es-CL')} al {parseFechaLocal(c.fecha_fin).toLocaleDateString('es-CL')}
                         </li>
                       ))}
                     </ul>

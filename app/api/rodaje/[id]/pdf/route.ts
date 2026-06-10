@@ -6,6 +6,7 @@ import { HojaLlamadosPDF } from '@/components/rodaje/HojaLlamadosPDF'
 import SunCalc from 'suncalc'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { parseFechaLocal } from '@/lib/fechas'
 
 export const maxDuration = 30
 
@@ -61,7 +62,7 @@ export async function GET(
 
   let sol = null
   if (rodaje.locacion_lat && rodaje.locacion_lng && rodaje.fecha) {
-    const fecha = new Date(rodaje.fecha + 'T12:00:00')
+    const fecha = parseFechaLocal(rodaje.fecha)
     const times = SunCalc.getTimes(fecha, rodaje.locacion_lat, rodaje.locacion_lng)
     const fmt = (d: Date) => new Intl.DateTimeFormat('es-CL', {
       hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago',

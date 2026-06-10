@@ -16,6 +16,7 @@ import {
   resolverHoraLlamado,
   formatHora,
 } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -413,7 +414,7 @@ export async function enviarEmailCitacion(id: string, rodajeId: string) {
 
   const hora = formatHora(resolverHoraLlamado(persona, rodaje))
   const fecha = rodaje.fecha
-    ? new Date(rodaje.fecha + 'T12:00:00').toLocaleDateString('es-CL', {
+    ? parseFechaLocal(rodaje.fecha).toLocaleDateString('es-CL', {
         weekday: 'long', day: 'numeric', month: 'long',
       })
     : 'Fecha por confirmar'

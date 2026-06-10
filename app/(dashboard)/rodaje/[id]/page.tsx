@@ -18,6 +18,7 @@ import {
   estadoCitacion, generarLinkCalendar,
 } from '@/types'
 import SunCalc from 'suncalc'
+import { parseFechaLocal } from '@/lib/fechas'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     setHistoriaIdx(0)
 
     if (r?.locacion_lat && r?.locacion_lng && r?.fecha) {
-      const fecha = new Date(r.fecha + 'T12:00:00')
+      const fecha = parseFechaLocal(r.fecha)
       const times = SunCalc.getTimes(fecha, r.locacion_lat, r.locacion_lng)
       const fmt = (d: Date) => new Intl.DateTimeFormat('es-CL', {
         hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago',
@@ -311,7 +312,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
   const puedeRedo = historiaIdx < historia.length - 1
 
   const fecha = rodaje.fecha
-    ? new Date(rodaje.fecha + 'T12:00:00').toLocaleDateString('es-CL', {
+    ? parseFechaLocal(rodaje.fecha).toLocaleDateString('es-CL', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       })
     : null

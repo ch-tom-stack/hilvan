@@ -10,7 +10,8 @@ import {
   getOCrearRendicionMensual,
   exportarCSVGastosMensual,
 } from '@/app/actions/rendiciones_mensuales'
-import { RendicionMensual, RendicionMensualGasto, CATEGORIAS_RENDICION_MENSUAL, EstadoRendicionMensual } from '@/types'
+import { RendicionMensual, RendicionMensualGasto, CATEGORIAS_RENDICION_MENSUAL, EstadoRendicionMensual, formatCLP } from '@/types'
+import { parseFechaLocal } from '@/lib/fechas'
 
 const TIPO_DOC_OPCIONES = [
   { value: 'boleta', label: 'Boleta' },
@@ -42,13 +43,10 @@ interface Props {
 }
 
 function formatPeriodo(iso: string) {
-  const d = new Date(iso + 'T12:00:00')
-  return d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+  return parseFechaLocal(iso).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
 }
 
-function formatMonto(n: number) {
-  return `$${n.toLocaleString('es-CL')}`
-}
+const formatMonto = formatCLP
 
 export default function RendicionMensualView({
   rendicionActual: rendicionInicial,
@@ -477,7 +475,7 @@ function GastoRow({ gasto, onEliminar, isPending, esAdmin, usuarioId }: {
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <span className="font-mono text-sm text-ch-cream">${gasto.monto.toLocaleString('es-CL')}</span>
+        <span className="font-mono text-sm text-ch-cream">{formatMonto(gasto.monto)}</span>
         {puedeEliminar && (
           <button onClick={() => onEliminar(gasto.id)} disabled={isPending}
             className="text-ch-subtle hover:text-red-400 transition-colors text-sm disabled:opacity-50">

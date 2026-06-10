@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getRodajes } from '@/app/actions/rodaje'
 import { EstadoRodaje } from '@/types'
 import EstadoVacio from '@/components/ui/EstadoVacio'
+import { parseFechaLocal } from '@/lib/fechas'
 
 const ESTADO_CONFIG: Record<EstadoRodaje, { label: string; clase: string }> = {
   borrador:   { label: 'Borrador',   clase: 'bg-ch-surface text-ch-muted' },
@@ -37,7 +38,7 @@ export default async function RodajePage() {
           {rodajes.map((r: any) => {
             const cfg = ESTADO_CONFIG[r.estado as EstadoRodaje]
             const fecha = r.fecha
-              ? new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-CL', {
+              ? parseFechaLocal(r.fecha).toLocaleDateString('es-CL', {
                   weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
                 })
               : null
