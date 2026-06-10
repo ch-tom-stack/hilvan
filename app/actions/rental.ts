@@ -197,14 +197,20 @@ export async function crearRentalReserva(payload: {
       .single<{ id: string }>()
 
     if (res1.error) {
-      // Columna created_by no existe aún — fallback
-      const res2 = await admin
-        .from('rental_reservas')
-        .insert({ ...payload, estado: 'pendiente' })
-        .select('id')
-        .single<{ id: string }>()
-      nueva = res2.data
-      insertError = res2.error
+      // Fallback SOLO si la columna created_by no existe (Postgres 42703 = undefined_column).
+      // Cualquier otro error (FK inválida, constraint, etc.) se propaga tal cual,
+      // en vez de reintentar a ciegas y enmascarar el problema real.
+      if (res1.error.code === '42703') {
+        const res2 = await admin
+          .from('rental_reservas')
+          .insert({ ...payload, estado: 'pendiente' })
+          .select('id')
+          .single<{ id: string }>()
+        nueva = res2.data
+        insertError = res2.error
+      } else {
+        insertError = res1.error
+      }
     } else {
       nueva = res1.data
     }

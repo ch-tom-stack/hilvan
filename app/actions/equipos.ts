@@ -3,8 +3,35 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+/**
+ * Parsea un precio en CLP del FormData.
+ * - Vacío/ausente → { value: null } (campo opcional)
+ * - Numérico válido (acepta decimales, por eso parseFloat) → { value }
+ * - Inválido → { error } para abortar, en vez de convertirlo en null silencioso.
+ */
+function parsearPrecio(raw: FormDataEntryValue | null): { value: number | null } | { error: string } {
+  const s = (raw as string | null)?.trim()
+  if (!s) return { value: null }
+  const n = parseFloat(s)
+  if (!Number.isFinite(n) || n < 0) return { error: 'Precio por jornada inválido' }
+  return { value: n }
+}
+
+/** Parsea fotos (JSON array) del FormData; [] si falta o es inválido. */
+function parsearFotos(raw: FormDataEntryValue | null): string[] {
+  try {
+    const parsed = JSON.parse((raw as string) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
 export async function crearEquipo(formData: FormData) {
   const supabase = await createClient()
+
+  const precio = parsearPrecio(formData.get('precio_jornada'))
+  if ('error' in precio) return { error: precio.error }
 
   const data = {
     codigo:          formData.get('codigo') as string,
@@ -15,10 +42,8 @@ export async function crearEquipo(formData: FormData) {
     cantidad:        parseInt(formData.get('cantidad') as string) || 1,
     rentable:        formData.get('rentable') === 'true',
     estado:          formData.get('estado') as string || 'disponible',
-    precio_jornada:  formData.get('precio_jornada')
-                       ? parseInt(formData.get('precio_jornada') as string)
-                       : null,
-    fotos:           (() => { try { return JSON.parse(formData.get('fotos') as string || '[]') } catch { return [] } })(),
+    precio_jornada:  precio.value,
+    fotos:           parsearFotos(formData.get('fotos')),
   }
 
   const { error } = await supabase.from('equipos').insert(data)
@@ -34,6 +59,9 @@ export async function crearEquipo(formData: FormData) {
 export async function actualizarEquipo(id: string, formData: FormData) {
   const supabase = await createClient()
 
+  const precio = parsearPrecio(formData.get('precio_jornada'))
+  if ('error' in precio) return { error: precio.error }
+
   const data = {
     codigo:          formData.get('codigo') as string,
     nombre:          formData.get('nombre') as string,
@@ -43,10 +71,8 @@ export async function actualizarEquipo(id: string, formData: FormData) {
     cantidad:        parseInt(formData.get('cantidad') as string) || 1,
     rentable:        formData.get('rentable') === 'true',
     estado:          formData.get('estado') as string,
-    precio_jornada:  formData.get('precio_jornada')
-                       ? parseInt(formData.get('precio_jornada') as string)
-                       : null,
-    fotos:           (() => { try { return JSON.parse(formData.get('fotos') as string || '[]') } catch { return [] } })(),
+    precio_jornada:  precio.value,
+    fotos:           parsearFotos(formData.get('fotos')),
   }
 
   const { error } = await supabase.from('equipos').update(data).eq('id', id)

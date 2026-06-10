@@ -146,8 +146,10 @@ export async function actualizarBundle(
 export async function eliminarBundle(id: string): Promise<{ error?: string }> {
   await requireSesion()
   const supabase = createAdminClient()
-  // Eliminar items primero (por si no hay CASCADE)
-  await supabase.from('bundle_items').delete().eq('bundle_id', id)
+  // Eliminar items primero (por si no hay CASCADE) — verificar error antes de seguir,
+  // para no dejar items huérfanos si el delete del bundle falla después.
+  const { error: eItems } = await supabase.from('bundle_items').delete().eq('bundle_id', id)
+  if (eItems) return { error: eItems.message }
   const { error } = await supabase.from('bundles').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/equipos/bundles')

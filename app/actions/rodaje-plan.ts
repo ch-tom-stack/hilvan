@@ -212,13 +212,24 @@ export async function guardarBloques(
   const reales = bloques.filter(b => !b.id.startsWith('temp-'))
   if (reales.length === 0) { revalidatePath(`/rodaje/${rodajeId}`); return }
 
-  await Promise.all(
+  const resultados = await Promise.allSettled(
     reales.map(({ id, ...resto }) =>
-      supabase.from('rodaje_bloques').update(resto).eq('id', id)
+      supabase
+        .from('rodaje_bloques')
+        .update(resto)
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) throw new Error(error.message)
+        })
     )
   )
 
   revalidatePath(`/rodaje/${rodajeId}`)
+
+  const fallidos = resultados.filter((r) => r.status === 'rejected')
+  if (fallidos.length > 0) {
+    throw new Error(`No se pudieron guardar ${fallidos.length} de ${reales.length} bloques. Recarga e intenta de nuevo.`)
+  }
 }
 
 export async function eliminarBloque(id: string, rodajeId: string) {
