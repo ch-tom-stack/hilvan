@@ -13,11 +13,18 @@ export default async function DashboardLayout({
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single<Profile>()
+
+  if (!profile) {
+    console.error('[DashboardLayout] No se pudo cargar el perfil del usuario', {
+      userId: user.id,
+      error: profileError?.message,
+    })
+  }
 
   return (
     <div className="flex min-h-screen bg-ch-dark">
