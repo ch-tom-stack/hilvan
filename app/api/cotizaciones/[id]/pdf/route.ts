@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import path from "path"
 import fs from "fs"
-import { getCotizacion } from "@/app/actions/cotizaciones"
+import { getCotizacion, getCotizacionPorToken } from "@/app/actions/cotizaciones"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import CotizacionPDF from "@/components/cotizaciones/CotizacionPDF"
 import { createElement } from "react"
 
@@ -20,35 +19,23 @@ export async function GET(
     // NO altera la tabla cotizaciones: solo lee el token para compararlo.
     const token = request.nextUrl.searchParams.get("token")
 
-    let autorizado = false
+    let cotizacion = null
 
     if (token) {
       // El token es el secreto que el cliente ya posee vía /cotizacion/[token].
-      // Se compara contra el de esta cotización con el cliente admin para no
-      // depender de las políticas RLS de lectura anónima.
-      const admin = createAdminClient()
-      const { data } = await admin
-        .from("cotizaciones")
-        .select("token")
-        .eq("id", id)
-        .single()
-      if (data?.token && data.token === token) {
-        autorizado = true
-      }
+      // getCotizacionPorToken valida y carga con admin client (el visitante
+      // anónimo no pasa las políticas RLS). Verificar que el id coincide.
+      const porToken = await getCotizacionPorToken(token)
+      if (porToken && porToken.id === id) cotizacion = porToken
     }
 
-    if (!autorizado) {
+    if (!cotizacion) {
       // Sin token válido: exigir sesión autenticada (descarga interna).
       const supabase = await createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) autorizado = true
+      if (!user) return new NextResponse("No autorizado", { status: 401 })
+      cotizacion = await getCotizacion(id)
     }
-
-    if (!autorizado) {
-      return new NextResponse("No autorizado", { status: 401 })
-    }
-
-    const cotizacion = await getCotizacion(id)
 
     if (!cotizacion) {
       return new NextResponse("Cotización no encontrada", { status: 404 })

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type {
@@ -123,7 +124,10 @@ export async function getCotizacion(id: string) {
 }
 
 export async function getCotizacionPorToken(token: string) {
-  const supabase = await createClient()
+  // Ruta pública (/cotizacion/[token]): el token ES la autorización.
+  // Admin client porque el visitante anónimo no pasa las políticas RLS
+  // (regla del proyecto: rutas públicas usan createAdminClient).
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('cotizaciones')
     .select(`
