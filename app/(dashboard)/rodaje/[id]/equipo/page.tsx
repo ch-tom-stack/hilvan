@@ -325,7 +325,7 @@ function DepartamentoCard({ dept, rodajeId, onEditDept, onEditPersona, onDelete,
         </div>
         <div className="flex gap-2">
           <button onClick={onEditDept} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">Editar</button>
-          <button onClick={onDelete} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Eliminar</button>
+          <button onClick={onDelete} className="text-xs text-ch-border hover:text-red-400 transition-colors">Eliminar</button>
         </div>
       </div>
       {miembros.length === 0 ? (
@@ -366,7 +366,7 @@ function PersonaRow({ persona, onEdit, onDelete }: any) {
         </div>
         <div className="flex gap-2">
           <button onClick={onEdit} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">Editar</button>
-          <button onClick={onDelete} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Quitar</button>
+          <button onClick={onDelete} className="text-xs text-ch-border hover:text-red-400 transition-colors">Quitar</button>
         </div>
       </div>
     </div>

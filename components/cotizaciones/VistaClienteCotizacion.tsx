@@ -183,7 +183,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
 
         {/* Notas al cliente */}
         {cotizacion.notas_cliente && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="bg-gray-50 border border-gray-200 rounded-[2px] p-4">
             <p className="text-xs font-sans font-semibold text-gray-500 uppercase tracking-wider mb-2">
               Notas
             </p>
@@ -195,7 +195,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
 
         {/* Respuesta del cliente */}
         {!preview && respondido ? (
-          <div className={`rounded-lg p-5 border text-center ${
+          <div className={`rounded-[2px] p-5 border text-center ${
             estadoLocal === 'aprobada'
               ? 'bg-green-50 border-green-200'
               : 'bg-red-50 border-red-200'
@@ -209,7 +209,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
             </p>
           </div>
         ) : !preview && cotizacion.estado === 'enviada' ? (
-          <div className="border border-gray-200 rounded-lg p-5 space-y-4 bg-white">
+          <div className="border border-gray-200 rounded-[2px] p-5 space-y-4 bg-white">
             <p className="text-sm font-sans font-semibold text-gray-700">
               ¿Deseas aprobar esta cotización?
             </p>
@@ -218,20 +218,20 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
               onChange={e => setComentario(e.target.value)}
               placeholder="Comentario opcional (correcciones, consultas...)"
               rows={3}
-              className="w-full border border-gray-200 rounded px-3 py-2 text-sm font-sans text-gray-700 placeholder-gray-300 focus:outline-none focus:border-gray-400 resize-none"
+              className="w-full border border-gray-200 rounded-[2px] px-3 py-2 text-sm font-sans text-gray-700 placeholder-gray-300 focus:outline-none focus:border-gray-400 resize-none"
             />
             <div className="flex gap-3">
               <button
                 onClick={() => handleRespuesta('aprobada')}
                 disabled={isPending}
-                className="flex-1 py-2.5 bg-gray-900 text-white font-sans text-sm font-medium rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 bg-gray-900 text-white font-sans text-sm font-medium rounded-[2px] hover:bg-gray-700 transition-colors disabled:opacity-50"
               >
                 {isPending ? 'Enviando...' : 'Aprobar cotización'}
               </button>
               <button
                 onClick={() => handleRespuesta('rechazada')}
                 disabled={isPending}
-                className="px-5 py-2.5 border border-gray-300 text-gray-500 font-sans text-sm rounded hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 border border-gray-300 text-gray-500 font-sans text-sm rounded-[2px] hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-50"
               >
                 Rechazar
               </button>

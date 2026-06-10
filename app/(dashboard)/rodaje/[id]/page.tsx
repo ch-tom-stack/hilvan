@@ -813,7 +813,7 @@ function TablaPlan({
                   {/* IMG */}
                   <div className="flex items-center justify-center px-0.5" onClick={e => e.stopPropagation()}>
                     {subiendoImagen === bloque.id ? (
-                      <span className="text-[10px] text-zinc-600">...</span>
+                      <span className="text-[10px] text-ch-border">...</span>
                     ) : bloque.imagen_url ? (
                       <div className="relative group/img">
                         <img
@@ -1172,7 +1172,7 @@ function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregada }: {
                 <div className="text-right shrink-0">
                   <p className="text-sm font-mono text-ch-muted">{horaEfectiva ? formatHora(horaEfectiva) : '—'}</p>
                   {estado && (
-                    <span className={`text-xs ${estado.color === 'green' ? 'text-emerald-400' : estado.color === 'red' ? 'text-red-400' : estado.color === 'yellow' ? 'text-amber-400' : 'text-zinc-600'}`}>
+                    <span className={`text-xs ${estado.color === 'green' ? 'text-emerald-400' : estado.color === 'red' ? 'text-red-400' : estado.color === 'yellow' ? 'text-amber-400' : 'text-ch-border'}`}>
                       {estado.label}
                     </span>
                   )}

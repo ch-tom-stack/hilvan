@@ -275,7 +275,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
 
           {/* Por facturar */}
           <div>
-            <SeccionHeader titulo="Por facturar" total={totalPorFacturar} color="text-zinc-400" />
+            <SeccionHeader titulo="Por facturar" total={totalPorFacturar} color="text-ch-muted" />
             {ingresos.por_facturar.length === 0
               ? <p className="font-body text-xs text-ch-subtle border border-dashed border-ch-border rounded-[2px] px-4 py-3 text-center">Sin cotizaciones pendientes</p>
               : ingresos.por_facturar.map(c => (
@@ -284,7 +284,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                     <p className="font-body text-xs text-ch-cream truncate">{c.nombre}</p>
                     <p className="font-body text-[9px] text-ch-muted">{c.cliente}</p>
                   </div>
-                  <span className="font-mono text-xs text-zinc-400 shrink-0">{clp(c.total)}</span>
+                  <span className="font-mono text-xs text-ch-muted shrink-0">{clp(c.total)}</span>
                 </div>
               ))
             }
