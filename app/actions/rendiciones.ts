@@ -119,10 +119,13 @@ export async function purgarYCrearRendicion(cotizacionId: string): Promise<Rendi
     .select('id')
     .eq('cotizacion_id', cotizacionId)
   if (existentes && existentes.length > 0) {
-    for (const r of existentes) {
-      // CASCADE elimina gastos y links automáticamente
-      await admin.from('rendiciones').delete().eq('id', r.id)
-    }
+    // CASCADE elimina gastos y links automáticamente. Un solo delete por .in()
+    // y verificamos el error para no insertar encima de una rendición no borrada.
+    const { error: eDel } = await admin
+      .from('rendiciones')
+      .delete()
+      .in('id', existentes.map(r => r.id))
+    if (eDel) throw new Error(eDel.message)
     // Pequeña espera para que Supabase propague el delete antes del insert
     await new Promise(r => setTimeout(r, 300))
   }

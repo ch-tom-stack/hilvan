@@ -307,12 +307,22 @@ export async function actualizarEscena(id: string, rodajeId: string, formData: F
 
 export async function reordenarEscenas(rodajeId: string, ordenIds: string[]) {
   const supabase = await createClient()
-  await Promise.all(
+  const resultados = await Promise.allSettled(
     ordenIds.map((id, index) =>
-      supabase.from('rodaje_escenas').update({ orden: index }).eq('id', id)
+      supabase
+        .from('rodaje_escenas')
+        .update({ orden: index })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) throw new Error(error.message)
+        })
     )
   )
   revalidatePath(`/rodaje/${rodajeId}/plan`)
+  const fallidos = resultados.filter((r) => r.status === 'rejected')
+  if (fallidos.length > 0) {
+    throw new Error(`No se pudo reordenar ${fallidos.length} de ${ordenIds.length} escenas. Recarga e intenta de nuevo.`)
+  }
 }
 
 export async function eliminarEscena(id: string, rodajeId: string) {

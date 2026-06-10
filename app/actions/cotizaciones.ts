@@ -570,7 +570,10 @@ export async function responderCotizacion(
   comentario?: string
 ) {
   const supabase = await createClient()
-  const { error } = await supabase
+  // El filtro .eq('estado','enviada') hace la transición idempotente: una segunda
+  // respuesta del cliente no afecta filas. Con .select() detectamos si REALMENTE
+  // hubo transición — solo entonces auto-creamos el proyecto, evitando doble creación.
+  const { data: actualizadas, error } = await supabase
     .from('cotizaciones')
     .update({
       estado: respuesta,
@@ -579,20 +582,17 @@ export async function responderCotizacion(
     })
     .eq('token', token)
     .eq('estado', 'enviada')
+    .select('id, nombre, cliente_id')
 
   if (error) throw new Error(error.message)
   revalidatePath(`/cotizacion/${token}`)
 
-  // Auto-crear proyecto al aprobar
-  if (respuesta === 'aprobada') {
-    const { data: cot } = await supabase
-      .from('cotizaciones')
-      .select('id, nombre, cliente_id')
-      .eq('token', token)
-      .single()
-    if (cot) {
-      await autoCrearProyectoDesdeAprobacion(cot.id, cot.nombre ?? 'Proyecto', cot.cliente_id ?? null)
-    }
+  // Solo si esta llamada fue la que efectuó la transición (1 fila actualizada).
+  const cot = actualizadas?.[0]
+  if (respuesta === 'aprobada' && cot) {
+    // autoCrearProyectoDesdeAprobacion además verifica proyecto_id existente,
+    // así que la creación de proyecto está doblemente protegida.
+    await autoCrearProyectoDesdeAprobacion(cot.id, cot.nombre ?? 'Proyecto', cot.cliente_id ?? null)
   }
 }
 
@@ -738,12 +738,30 @@ export async function reordenarItems(
   items: Array<{ id: string; orden: number }>
 ) {
   const supabase = await createClient()
-  await Promise.all(
+
+  // Updates individuales (Supabase JS no permite upsert masivo con distinto orden
+  // por fila sin tocar el resto de columnas). Con allSettled reportamos cualquier
+  // fallo en vez de dejar el orden inconsistente en silencio.
+  const resultados = await Promise.allSettled(
     items.map(({ id, orden }) =>
-      supabase.from('cotizacion_items').update({ orden }).eq('id', id)
+      supabase
+        .from('cotizacion_items')
+        .update({ orden })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) throw new Error(error.message)
+        })
     )
   )
+
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
+
+  const fallidos = resultados.filter((r) => r.status === 'rejected')
+  if (fallidos.length > 0) {
+    throw new Error(
+      `No se pudo reordenar ${fallidos.length} de ${items.length} ítems. Recarga e intenta de nuevo.`
+    )
+  }
 }
 
 // ============================================================
