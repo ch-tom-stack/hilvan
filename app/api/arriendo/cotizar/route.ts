@@ -128,11 +128,13 @@ export async function POST(request: NextRequest) {
         to: 'rental@casahiedra.com',
         subject: `Solicitud de arriendo — ${nombre}`,
         html: htmlInterno,
+        contexto: 'arriendo:cotizacion_interna',
       }),
       sendEmail({
         to: email,
         subject: 'Tu solicitud de arriendo · Casa Hiedra',
         html: htmlCliente,
+        contexto: 'arriendo:cotizacion_cliente',
       }),
     ])
 

@@ -199,8 +199,9 @@ export async function crearGasto(payload: {
             <li>Monto: $${data.monto.toLocaleString('es-CL')}</li>
           </ul>
           <p><a href="${APP_URL}/rendiciones/admin">Ver en Hilván →</a></p>`,
+        contexto: 'rendiciones:nuevo_gasto',
       })
-    } catch { /* email no crítico */ }
+    } catch (e) { console.error('[email] nuevo_gasto:', e) }
   }
 
   return data as RendicionGasto
@@ -224,8 +225,9 @@ export async function aprobarGasto(id: string): Promise<RendicionGasto> {
         to: col.email,
         subject: 'Gasto aprobado · Hilván',
         html: `<p>Hola ${col.nombre},</p><p>Tu gasto de $${data.monto.toLocaleString('es-CL')} fue <strong>aprobado</strong>.</p><p>Casa Hiedra</p>`,
+        contexto: 'rendiciones:gasto_aprobado',
       })
-    } catch { /* email no crítico */ }
+    } catch (e) { console.error('[email] gasto_aprobado:', e) }
   }
   return data as RendicionGasto
 }
@@ -248,8 +250,9 @@ export async function rechazarGasto(id: string, motivo: string): Promise<Rendici
         to: col.email,
         subject: 'Gasto rechazado · Hilván',
         html: `<p>Hola ${col.nombre},</p><p>Tu gasto fue <strong>rechazado</strong>.</p><p>Motivo: ${motivo}</p><p>Puedes corregirlo y volver a enviarlo.</p><p>Casa Hiedra</p>`,
+        contexto: 'rendiciones:gasto_rechazado',
       })
-    } catch { /* email no crítico */ }
+    } catch (e) { console.error('[email] gasto_rechazado:', e) }
   }
   return data as RendicionGasto
 }
@@ -329,8 +332,9 @@ export async function generarLinkTemporalExterno(payload: {
           <p><a href="${url}" style="display:inline-block;background:#4ade80;color:#000;padding:10px 20px;text-decoration:none;font-family:monospace;">Ingresar mis gastos →</a></p>
           <p style="color:#888;font-size:12px;">Este link expira en ${dias_expiracion} días.</p>
           <p>Casa Hiedra</p>`,
+        contexto: 'rendiciones:link_creado',
       })
-    } catch { /* email no crítico */ }
+    } catch (e) { console.error('[email] link_creado:', e) }
   }
 
   return { url }
@@ -461,6 +465,7 @@ export async function reenviarEmailLink(id: string): Promise<void> {
       <p><a href="${url}" style="display:inline-block;background:#4ade80;color:#000;padding:10px 20px;text-decoration:none;font-family:monospace;">Ingresar mis gastos →</a></p>
       <p style="color:#888;font-size:12px;">Este link ${diasRestantes > 0 ? `vence en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}` : 'vence hoy'}.</p>
       <p>Casa Hiedra</p>`,
+    contexto: 'rendiciones:recordatorio_link',
   })
 }
 
