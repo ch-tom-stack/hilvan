@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server"
 import CotizacionPDF from "@/components/cotizaciones/CotizacionPDF"
 import { createElement } from "react"
 
+export const maxDuration = 30
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

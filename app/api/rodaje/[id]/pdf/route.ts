@@ -7,6 +7,8 @@ import SunCalc from 'suncalc'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
+export const maxDuration = 30
+
 function getLogoBase64(): string {
   try {
     const path = join(process.cwd(), 'public', 'logos', 'logo-pdf.png')

@@ -7,6 +7,8 @@ import { obtenerRentalCotizacion } from '@/app/actions/rental'
 import { createClient } from '@/lib/supabase/server'
 import RentalCotizacionPDF from '@/components/rental/RentalCotizacionPDF'
 
+export const maxDuration = 30
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

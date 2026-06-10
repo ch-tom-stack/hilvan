@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
-export const maxDuration = 15
+export const maxDuration = 30
+
+// ── Límites de validación ──────────────────────────────────────────────────
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -160,6 +163,22 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'Sin archivo' }, { status: 400 })
+
+    // ── Validar tipo MIME ──────────────────────────────────────────────────
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      return NextResponse.json(
+        { error: 'El archivo debe ser un PDF válido' },
+        { status: 400 }
+      )
+    }
+
+    // ── Validar tamaño ────────────────────────────────────────────────────
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `PDF excede el límite de ${Math.round(MAX_FILE_SIZE / 1024 / 1024)} MB` },
+        { status: 413 }
+      )
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer())
     // Import dinámico: pdf-parse tiene un side-effect al cargarse que lee
