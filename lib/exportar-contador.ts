@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { getResumenContador } from '@/app/actions/financiero'
 import type { GastoContador, InversionContador } from '@/app/actions/financiero'
 import { CATEGORIAS_INVERSION } from '@/types'
@@ -43,13 +43,13 @@ function nombreArchivo(fecha: string, descripcion: string, url: string): string 
 
 type Fila = (string | number | null)[]
 
-function construirExcel(
+async function construirExcel(
   mes: number,
   año: number,
   gastosProyectos: GastoContador[],
   gastosOperacionales: GastoContador[],
   inversiones: InversionContador[],
-): ArrayBuffer {
+): Promise<Uint8Array> {
   const mesLabel = `${MESES_ES[mes - 1]} ${año}`
   const ahora = new Date().toLocaleString('es-CL')
 
@@ -145,30 +145,35 @@ function construirExcel(
   ]
   filas.push(subtotal('TOTAL PERÍODO', todasFilas))
 
-  // Construir workbook
-  const ws = XLSX.utils.aoa_to_sheet(filas)
+  // Construir workbook con ExcelJS
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet(`Resumen ${mesLabel}`)
 
-  // Anchos de columna
-  ws['!cols'] = [
-    { wch: 12 }, // Fecha
-    { wch: 22 }, // Tipo
-    { wch: 38 }, // Descripción
-    { wch: 22 }, // Proyecto
-    { wch: 18 }, // Documento
-    { wch: 14 }, // RUT
-    { wch: 28 }, // Razón Social
-    { wch: 14 }, // Bruto
-    { wch: 14 }, // Neto
-    { wch: 12 }, // IVA
-    { wch: 14 }, // Crédito Fiscal
-    { wch: 14 }, // Retención
-    { wch: 16 }, // Tratamiento
+  // Agregar filas al worksheet
+  filas.forEach(fila => {
+    ws.addRow(fila)
+  })
+
+  // Definir anchos de columna
+  ws.columns = [
+    { width: 12 }, // Fecha
+    { width: 22 }, // Tipo
+    { width: 38 }, // Descripción
+    { width: 22 }, // Proyecto
+    { width: 18 }, // Documento
+    { width: 14 }, // RUT
+    { width: 28 }, // Razón Social
+    { width: 14 }, // Bruto
+    { width: 14 }, // Neto
+    { width: 12 }, // IVA
+    { width: 14 }, // Crédito Fiscal
+    { width: 14 }, // Retención
+    { width: 16 }, // Tratamiento
   ]
 
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, `Resumen ${mesLabel}`)
-
-  return XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
+  // Serializar a Uint8Array (compatible con jszip)
+  const buffer = await wb.xlsx.writeBuffer()
+  return new Uint8Array(buffer as ArrayBuffer)
 }
 
 // ─── Fetch comprobantes ────────────────────────────────────────────────────────
@@ -197,7 +202,7 @@ export async function generarZIPContador(mes: number, año: number): Promise<voi
   const { gastosProyectos, gastosOperacionales, inversiones } = await getResumenContador(mes, año)
 
   // 2. Construir Excel
-  const excelBuffer = construirExcel(mes, año, gastosProyectos, gastosOperacionales, inversiones)
+  const excelBuffer = await construirExcel(mes, año, gastosProyectos, gastosOperacionales, inversiones)
 
   // 3. Crear ZIP
   const zip = new JSZip()
