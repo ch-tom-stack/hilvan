@@ -225,6 +225,7 @@ ch-gold-light:  #dfc078   hover dorado
 ```
 docs/context.md            ← contexto completo del proyecto
 docs/design-context.md     ← sistema de diseño detallado
+docs/auditoria/            ← auditoría jun 2026: plan de correcciones T01-T15
 sql/grants.sql             ← todos los GRANTs documentados
 types/index.ts             ← tipos canónicos
 proxy.ts                   ← middleware + rutas públicas
@@ -238,6 +239,31 @@ proxy.ts                   ← middleware + rutas públicas
 - Fechas: formato local `es-CL`
 - Moneda: CLP — usar `formatCLP()` de `types/index.ts`
 - Commits: `feat: descripción` / `fix: descripción`
+
+---
+
+## Reglas de la auditoría (jun 2026) — obligatorias para código nuevo
+
+Hallazgos sistemáticos de la auditoría completa (plan de corrección en `docs/auditoria/`). Todo código nuevo debe cumplirlas:
+
+### Seguridad
+- **Toda server action que muta datos verifica sesión** (`supabase.auth.getUser()`), y rol si el módulo es restringido. Patrón de referencia: `app/actions/usuarios.ts:32-42`. `createAdminClient()` NUNCA exime del check — se valida ANTES de usarlo.
+- **Todo API route handler se defiende solo**: no asumir que `proxy.ts` ya autenticó. Validar sesión y propiedad del recurso (ej: que el `contrato_id` pertenezca al `colaborador_id` recibido).
+- **Endpoints que reciben archivos**: lista blanca de extensiones + límite de tamaño (15 MB general, 5 MB para parse-factura) + sanitizar nombres de carpeta (`[a-z0-9_-]+`).
+- **Links públicos nuevos siempre con token (crypto.randomUUID)** — nunca solo el ID del recurso. Con `expires_at` si son de un solo uso (onboarding, rendiciones). EXCEPCIÓN decidida por el dueño: los links de cotización para clientes son PERMANENTES — no agregarles expiración.
+
+### Robustez en actions
+- `JSON.parse` siempre en try-catch.
+- Dinero con `parseFloat` + `Number.isFinite` — nunca `parseInt` para precios (trunca decimales).
+- En operaciones multi-paso (delete + insert): parsear/validar TODO antes de la primera escritura y verificar `error` de cada paso. Para flujos críticos, RPC de Postgres.
+- Fallos de email no abortan la operación, pero SE REGISTRAN (no `catch {}` vacío).
+
+### Frontend
+- Toda mutación invocada desde un componente cliente lleva try-catch + `toastError` de `lib/toast.ts` (no `toast` de sonner directo).
+- Todo `fetch` valida `res.ok` antes de `res.json()`.
+- Fechas planas `YYYY-MM-DD`: nunca `new Date(str)` directo (se corre un día por UTC). Usar el helper central (`lib/fechas.ts` cuando exista T10; mientras tanto, el patrón `+ 'T12:00:00'`).
+- Montos siempre con `formatCLP()` — nunca `.toLocaleString('es-CL')` a mano.
+- **Sidebar móvil**: el drawer debe renderizar los ítems no disponibles igual que desktop (`text-ch-subtle`, NO `/40` — quedan invisibles sobre fondo negro). Ver T15.
 
 ---
 
