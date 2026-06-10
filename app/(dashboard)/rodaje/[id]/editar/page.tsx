@@ -41,17 +41,17 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
     cargar()
   }, [id])
 
-  if (loading) return <div className="p-6 text-zinc-600 text-sm">Cargando...</div>
-  if (!rodaje) return <div className="p-6 text-zinc-600 text-sm">Rodaje no encontrado.</div>
+  if (loading) return <div className="p-6 text-ch-muted text-sm">Cargando...</div>
+  if (!rodaje) return <div className="p-6 text-ch-muted text-sm">Rodaje no encontrado.</div>
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="mb-8">
-        <Link href={`/rodaje/${id}`} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+        <Link href={`/rodaje/${id}`} className="text-xs text-ch-muted hover:text-ch-cream transition-colors">
           ← Volver al rodaje
         </Link>
-        <h1 className="text-lg font-medium text-zinc-100 mt-3">Editar rodaje</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">{rodaje.nombre}</p>
+        <h1 className="text-lg font-medium text-ch-cream mt-3">Editar rodaje</h1>
+        <p className="text-sm text-ch-muted mt-0.5">{rodaje.nombre}</p>
       </div>
 
       <form
@@ -65,24 +65,24 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
       >
         {/* Nombre */}
         <div>
-          <label className="block text-xs text-zinc-400 mb-1.5">Nombre de la producción *</label>
+          <label className="block text-xs text-ch-muted mb-1.5">Nombre de la producción *</label>
           <input
             name="nombre"
             required
             defaultValue={rodaje.nombre}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+            className="w-full bg-ch-black border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
           />
         </div>
 
         {/* Fecha */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-zinc-400 mb-1.5">Fecha</label>
+            <label className="block text-xs text-ch-muted mb-1.5">Fecha</label>
             <input
               name="fecha"
               type="date"
               defaultValue={rodaje.fecha || ''}
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+              className="w-full bg-ch-black border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
             />
           </div>
           <div className="flex items-end pb-2">
@@ -94,18 +94,18 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
                 defaultChecked={rodaje.fecha_confirmada}
                 className="accent-[#E6E2ED]"
               />
-              <span className="text-sm text-zinc-400">Fecha confirmada</span>
+              <span className="text-sm text-ch-muted">Fecha confirmada</span>
             </label>
           </div>
         </div>
 
         {/* Estado */}
         <div>
-          <label className="block text-xs text-zinc-400 mb-1.5">Estado</label>
+          <label className="block text-xs text-ch-muted mb-1.5">Estado</label>
           <select
             name="estado"
             defaultValue={rodaje.estado}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+            className="w-full bg-ch-black border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
           >
             <option value="borrador">Borrador</option>
             <option value="confirmado">Confirmado</option>
@@ -115,11 +115,11 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
 
         {/* Proyecto */}
         <div>
-          <label className="block text-xs text-zinc-400 mb-1.5">Proyecto asociado</label>
+          <label className="block text-xs text-ch-muted mb-1.5">Proyecto asociado</label>
           <select
             name="proyecto_id"
             defaultValue={rodaje.proyecto_id || ''}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+            className="w-full bg-ch-black border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
           >
             <option value="">Sin proyecto</option>
             {proyectos.map((p: any) => (
@@ -130,22 +130,22 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
 
         {/* Hora llamado */}
         <div>
-          <label className="block text-xs text-zinc-400 mb-1.5">Hora de llamado general</label>
+          <label className="block text-xs text-ch-muted mb-1.5">Hora de llamado general</label>
           <input
             name="hora_llamado_general"
             type="time"
             defaultValue={rodaje.hora_llamado_general?.slice(0, 5) || ''}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+            className="w-full bg-ch-black border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
           />
         </div>
 
         {/* Visibilidad plan */}
         <div>
-          <label className="block text-xs text-zinc-400 mb-1.5">Visibilidad del plan en citaciones</label>
+          <label className="block text-xs text-ch-muted mb-1.5">Visibilidad del plan en citaciones</label>
           <select
             name="visibilidad_plan"
             defaultValue={rodaje.visibilidad_plan || 'completo'}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+            className="w-full bg-ch-black border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream focus:outline-none focus:border-ch-muted"
           >
             <option value="ninguna">No mostrar el plan</option>
             <option value="completo">Mostrar todo el plan</option>
@@ -155,24 +155,24 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
 
         {/* Notas */}
         <div>
-          <label className="block text-xs text-zinc-400 mb-1.5">Notas generales</label>
+          <label className="block text-xs text-ch-muted mb-1.5">Notas generales</label>
           <textarea
             name="notas_generales"
             rows={3}
             defaultValue={rodaje.notas_generales || ''}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
+            className="w-full bg-ch-black border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream placeholder:text-ch-border focus:outline-none focus:border-ch-muted resize-none"
           />
         </div>
 
         {/* Chiste texto */}
-        <div className="pt-2 border-t border-zinc-800">
-          <label className="block text-xs text-zinc-400 mb-1.5">Chiste / cita del día</label>
+        <div className="pt-2 border-t border-ch-dark">
+          <label className="block text-xs text-ch-muted mb-1.5">Chiste / cita del día</label>
           <textarea
             name="chiste_texto"
             rows={2}
             defaultValue={rodaje.chiste_texto || ''}
             placeholder='"Ay ay ay im ur little butterfly" — Carolina Herrera, probably'
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-[2px] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
+            className="w-full bg-ch-black border border-ch-border rounded-[2px] px-3 py-2 text-sm text-ch-cream placeholder:text-ch-border focus:outline-none focus:border-ch-muted resize-none"
           />
         </div>
 
@@ -186,19 +186,19 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
           <button
             type="submit"
             disabled={isPending}
-            className="bg-[#E6E2ED] text-zinc-900 text-sm font-medium px-5 py-2 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
+            className="bg-[#E6E2ED] text-ch-black text-sm font-medium px-5 py-2 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
           >
             {isPending ? 'Guardando...' : 'Guardar cambios'}
           </button>
-          <Link href={`/rodaje/${id}`} className="text-sm text-zinc-500 px-4 py-2 hover:text-zinc-300 transition-colors">
+          <Link href={`/rodaje/${id}`} className="text-sm text-ch-muted px-4 py-2 hover:text-ch-cream transition-colors">
             Cancelar
           </Link>
         </div>
       </form>
 
       {/* Imágenes — fuera del form, se guardan directamente en Supabase */}
-      <div className="mt-8 pt-8 border-t border-zinc-800 space-y-6">
-        <h2 className="text-xs text-zinc-600 uppercase tracking-wider">Imágenes</h2>
+      <div className="mt-8 pt-8 border-t border-ch-dark space-y-6">
+        <h2 className="text-xs text-ch-border uppercase tracking-wider">Imágenes</h2>
 
         <ImagenUploader
           rodajeId={id}
@@ -219,7 +219,7 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Locaciones */}
-      <div className="mt-8 pt-8 border-t border-zinc-800">
+      <div className="mt-8 pt-8 border-t border-ch-dark">
         <LocacionesEditor
           rodajeId={id}
           locaciones={locaciones}
@@ -228,8 +228,8 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Zona de peligro */}
-      <div className="mt-12 pt-8 border-t border-zinc-800">
-        <h2 className="text-xs text-zinc-600 uppercase tracking-wider mb-4">Zona de peligro</h2>
+      <div className="mt-12 pt-8 border-t border-ch-dark">
+        <h2 className="text-xs text-ch-border uppercase tracking-wider mb-4">Zona de peligro</h2>
         {!confirmEliminar ? (
           <button
             onClick={() => setConfirmEliminar(true)}
@@ -252,7 +252,7 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
               </button>
               <button
                 onClick={() => setConfirmEliminar(false)}
-                className="text-sm text-zinc-500 px-4 py-2 hover:text-zinc-300 transition-colors"
+                className="text-sm text-ch-muted px-4 py-2 hover:text-ch-cream transition-colors"
               >
                 Cancelar
               </button>
