@@ -37,6 +37,7 @@ export async function POST(req: Request) {
     razon_social_emisor,
     factura_casa_hiedra,
     archivo_url,
+    fecha_documento,
   } = body ?? {}
 
   // ── Validaciones ──────────────────────────────────────────────────────────
@@ -52,6 +53,9 @@ export async function POST(req: Request) {
   const monto = parseFloat(montoRaw)
   if (!Number.isFinite(monto) || monto <= 0) {
     return NextResponse.json({ error: 'monto inválido' }, { status: 400 })
+  }
+  if (fecha_documento != null && (typeof fecha_documento !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(fecha_documento))) {
+    return NextResponse.json({ error: 'fecha_documento inválida (formato YYYY-MM-DD)' }, { status: 400 })
   }
   if (!rendicion_id && !cotizacion_item_id) {
     return NextResponse.json({ error: 'Falta rendicion_id o cotizacion_item_id' }, { status: 400 })
@@ -92,13 +96,16 @@ export async function POST(req: Request) {
   }
 
   // ── Bruto: persistimos SIEMPRE el bruto (tasa por año, Ley 21.133) ────────
-  const tasa = tasaRetencionBoleta()
+  // La tasa depende del año de la boleta: usar el año de `fecha_documento` si
+  // viene; si no, el año actual.
+  const year = fecha_documento ? Number(fecha_documento.slice(0, 4)) : new Date().getFullYear()
+  const tasa = tasaRetencionBoleta(year)
   const montoBruto =
     tipo_documento === 'boleta' && monto_es === 'neto'
       ? Math.round(monto / (1 - tasa))
       : Math.round(monto)
 
-  const { retencion, neto } = calcularRetencion({ monto: montoBruto, tipo_documento })
+  const { retencion, neto } = calcularRetencion({ monto: montoBruto, tipo_documento, year })
 
   const descripcionFinal =
     (typeof descripcion === 'string' && descripcion.trim()) || TIPO_LABEL[tipo] || 'Gasto'
@@ -116,6 +123,7 @@ export async function POST(req: Request) {
     razon_social_emisor: razon_social_emisor || null,
     factura_casa_hiedra: factura_casa_hiedra ?? false,
     foto_url: archivo_url || null,
+    fecha_documento: fecha_documento || null,
   }
 
   const { data, error } = await admin

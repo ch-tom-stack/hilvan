@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   let proyQuery = admin
     .from('rendicion_gastos')
     .select(
-      'id,monto,tipo,tipo_documento,estado,rut_emisor,razon_social_emisor,descripcion,created_at,' +
+      'id,monto,tipo,tipo_documento,estado,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,' +
         'rendicion:rendiciones(estado,cotizacion:cotizaciones(grupo:cotizacion_grupos(numero_base)))',
     )
     .order('created_at', { ascending: false })
@@ -48,11 +48,18 @@ export async function GET(req: Request) {
   if (tipo_documento) proyQuery = proyQuery.eq('tipo_documento', tipo_documento)
   if (estado) proyQuery = proyQuery.eq('estado', estado)
   if (periodo) {
-    // created_at entre el primer y último día del mes (UTC)
+    // El período se cuadra por el mes TRIBUTARIO: usar `fecha_documento` cuando
+    // exista, con fallback a `created_at`. En PostgREST: la fila cae en el mes si
+    // fecha_documento está en rango, O (fecha_documento es null Y created_at lo está).
     const [yy, mm] = periodo.split('-').map(Number)
-    const desde = `${periodo}-01T00:00:00.000Z`
-    const hasta = new Date(Date.UTC(yy, mm, 1)).toISOString() // primer día del mes siguiente
-    proyQuery = proyQuery.gte('created_at', desde).lt('created_at', hasta)
+    const desde = `${periodo}-01`
+    const hastaDoc = new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 10) // primer día del mes siguiente
+    const desdeTs = `${periodo}-01T00:00:00.000Z`
+    const hastaTs = new Date(Date.UTC(yy, mm, 1)).toISOString()
+    proyQuery = proyQuery.or(
+      `and(fecha_documento.gte.${desde},fecha_documento.lt.${hastaDoc}),` +
+        `and(fecha_documento.is.null,created_at.gte.${desdeTs},created_at.lt.${hastaTs})`,
+    )
   }
 
   const { data: proyData, error: proyError } = await proyQuery
@@ -64,7 +71,7 @@ export async function GET(req: Request) {
   let mensQuery = admin
     .from('rendicion_mensual_gastos')
     .select(
-      'id,monto,categoria,tipo_documento,rut_emisor,razon_social_emisor,descripcion,created_at,' +
+      'id,monto,categoria,tipo_documento,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,' +
         'rendicion_mensual:rendiciones_mensuales(periodo)',
     )
     .order('created_at', { ascending: false })
@@ -74,8 +81,19 @@ export async function GET(req: Request) {
   if (tipo_documento) mensQuery = mensQuery.eq('tipo_documento', tipo_documento)
   // (sin filtro de estado: la tabla mensual no tiene esa columna)
   if (periodo) {
-    // filtra por el campo `periodo` de la tabla padre (= YYYY-MM-01)
-    mensQuery = mensQuery.eq('rendicion_mensual.periodo', `${periodo}-01`)
+    // Mismo cuadre tributario que en proyecto: usar `fecha_documento` del gasto
+    // cuando exista, con fallback a `created_at`. (Antes filtraba solo por el
+    // campo `periodo` del padre; con fecha_documento el gasto puede ser de un mes
+    // tributario distinto al de la rendición en que se cargó.)
+    const [yy, mm] = periodo.split('-').map(Number)
+    const desde = `${periodo}-01`
+    const hastaDoc = new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 10)
+    const desdeTs = `${periodo}-01T00:00:00.000Z`
+    const hastaTs = new Date(Date.UTC(yy, mm, 1)).toISOString()
+    mensQuery = mensQuery.or(
+      `and(fecha_documento.gte.${desde},fecha_documento.lt.${hastaDoc}),` +
+        `and(fecha_documento.is.null,created_at.gte.${desdeTs},created_at.lt.${hastaTs})`,
+    )
   }
 
   const { data: mensData, error: mensError } = await mensQuery
@@ -95,6 +113,7 @@ export async function GET(req: Request) {
     estado: string | null
     retencion: number
     neto: number
+    fecha_documento: string | null
     created_at: string
   }
 
@@ -104,7 +123,7 @@ export async function GET(req: Request) {
     const { retencion, neto } = calcularRetencion({
       monto: g.monto ?? 0,
       tipo_documento: g.tipo_documento,
-      fecha: g.created_at,
+      fecha: g.fecha_documento ?? g.created_at,
     })
     return {
       origen: 'proyecto',
@@ -119,6 +138,7 @@ export async function GET(req: Request) {
       estado: g.estado ?? null,
       retencion,
       neto,
+      fecha_documento: g.fecha_documento ?? null,
       created_at: g.created_at,
     }
   })
@@ -130,7 +150,7 @@ export async function GET(req: Request) {
     const { retencion, neto } = calcularRetencion({
       monto: g.monto ?? 0,
       tipo_documento: g.tipo_documento,
-      fecha: g.created_at,
+      fecha: g.fecha_documento ?? g.created_at,
     })
     return {
       origen: 'mensual',
@@ -145,6 +165,7 @@ export async function GET(req: Request) {
       estado: null,
       retencion,
       neto,
+      fecha_documento: g.fecha_documento ?? null,
       created_at: g.created_at,
     }
   })

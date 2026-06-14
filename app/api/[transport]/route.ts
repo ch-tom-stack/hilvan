@@ -162,6 +162,10 @@ const baseHandler = createMcpHandler(
           razon_social_emisor: z.string().optional(),
           factura_casa_hiedra: z.boolean().optional(),
           archivo_url: z.string().optional(),
+          fecha_documento: z
+            .string()
+            .optional()
+            .describe('YYYY-MM-DD — fecha real de la boleta/documento (para cuadre por mes y retención por año)'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/gasto-mensual', args)),
@@ -184,6 +188,10 @@ const baseHandler = createMcpHandler(
           rut_emisor: z.string().optional(),
           razon_social_emisor: z.string().optional(),
           archivo_url: z.string().optional(),
+          fecha_documento: z
+            .string()
+            .optional()
+            .describe('YYYY-MM-DD — fecha real de la boleta/documento (para cuadre por mes y retención por año)'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/gasto-proyecto', args)),
