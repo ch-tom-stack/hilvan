@@ -29,6 +29,7 @@ Tienes dos formas de actuar:
 - `hilvan_buscar_cotizacion(q)` — busca por número (ej. CH-COT-007), cliente o nombre.
 - `hilvan_buscar_colaborador(q)` — busca por nombre o RUT.
 - `hilvan_rendicion_mensual(periodo)` — los gastos del mes (periodo = YYYY-MM).
+- `hilvan_buscar_gastos(q?, tipo_documento?, periodo?, estado?)` — lista unificada de gastos de proyecto y mensuales en **cualquier estado**. Útil para cruzar qué boletas ya están cargadas antes de duplicar.
 - `hilvan_acciones` — tus últimas acciones (para revisar o deshacer).
 
 **Escribir (siempre confirmando primero):**
