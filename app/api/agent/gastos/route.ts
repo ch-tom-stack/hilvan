@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 
   // ── Construir filtros de texto (ilike) ────────────────────────────────────
   const qFilter = q
-    ? `rut_emisor.ilike.*${q}*,razon_social_emisor.ilike.*${q}*,descripcion.ilike.*${q}*`
+    ? `rut_emisor.ilike.*${q}*,razon_social_emisor.ilike.*${q}*,descripcion.ilike.*${q}*,folio.ilike.*${q}*`
     : null
 
   // ── 1. rendicion_gastos (PROYECTO) ────────────────────────────────────────
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   let proyQuery = admin
     .from('rendicion_gastos')
     .select(
-      'id,monto,tipo,tipo_documento,estado,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,' +
+      'id,monto,tipo,tipo_documento,estado,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,folio,' +
         'rendicion:rendiciones(estado,cotizacion:cotizaciones(grupo:cotizacion_grupos(numero_base)))',
     )
     .order('created_at', { ascending: false })
@@ -71,7 +71,7 @@ export async function GET(req: Request) {
   let mensQuery = admin
     .from('rendicion_mensual_gastos')
     .select(
-      'id,monto,categoria,tipo_documento,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,' +
+      'id,monto,categoria,tipo_documento,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,folio,' +
         'rendicion_mensual:rendiciones_mensuales(periodo)',
     )
     .order('created_at', { ascending: false })
@@ -110,6 +110,7 @@ export async function GET(req: Request) {
     monto: number
     rut_emisor: string | null
     razon_social_emisor: string | null
+    folio: string | null
     estado: string | null
     retencion: number
     neto: number
@@ -135,6 +136,7 @@ export async function GET(req: Request) {
       monto: g.monto ?? 0,
       rut_emisor: g.rut_emisor ?? null,
       razon_social_emisor: g.razon_social_emisor ?? null,
+      folio: g.folio ?? null,
       estado: g.estado ?? null,
       retencion,
       neto,
@@ -162,6 +164,7 @@ export async function GET(req: Request) {
       monto: g.monto ?? 0,
       rut_emisor: g.rut_emisor ?? null,
       razon_social_emisor: g.razon_social_emisor ?? null,
+      folio: g.folio ?? null,
       estado: null,
       retencion,
       neto,

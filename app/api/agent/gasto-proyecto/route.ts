@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { calcularRetencion, tasaRetencionBoleta } from '@/lib/rendiciones-calc'
+import { calcularMontoBruto, yearParaRetencion } from '@/lib/agent-gastos'
 import { registrarAccion } from '@/lib/agent-audit'
 
 export const runtime = 'nodejs'
@@ -38,6 +38,7 @@ export async function POST(req: Request) {
     factura_casa_hiedra,
     archivo_url,
     fecha_documento,
+    folio,
   } = body ?? {}
 
   // ── Validaciones ──────────────────────────────────────────────────────────
@@ -98,14 +99,8 @@ export async function POST(req: Request) {
   // ── Bruto: persistimos SIEMPRE el bruto (tasa por año, Ley 21.133) ────────
   // La tasa depende del año de la boleta: usar el año de `fecha_documento` si
   // viene; si no, el año actual.
-  const year = fecha_documento ? Number(fecha_documento.slice(0, 4)) : new Date().getFullYear()
-  const tasa = tasaRetencionBoleta(year)
-  const montoBruto =
-    tipo_documento === 'boleta' && monto_es === 'neto'
-      ? Math.round(monto / (1 - tasa))
-      : Math.round(monto)
-
-  const { retencion, neto } = calcularRetencion({ monto: montoBruto, tipo_documento, year })
+  const year = yearParaRetencion(fecha_documento)
+  const { montoBruto, retencion, neto } = calcularMontoBruto({ monto, monto_es, tipo_documento, year })
 
   const descripcionFinal =
     (typeof descripcion === 'string' && descripcion.trim()) || TIPO_LABEL[tipo] || 'Gasto'
@@ -124,6 +119,7 @@ export async function POST(req: Request) {
     factura_casa_hiedra: factura_casa_hiedra ?? false,
     foto_url: archivo_url || null,
     fecha_documento: fecha_documento || null,
+    folio: folio || null,
   }
 
   const { data, error } = await admin
