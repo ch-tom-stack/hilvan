@@ -18,6 +18,11 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
 //  - 'generar-citaciones': borra SOLO las citaciones creadas (payload.citacion_ids),
 //    no el rodaje ni el equipo.
 //  - 'gasto-fecha': UPDATE fecha_documento al valor anterior (payload.fecha_anterior).
+//  - 'crear-gastos-bulk': borra cada fila creada (payload.creados: [{tabla,id}]).
+//    NO usa resultado_tabla/_id (es multi-fila).
+//  - 'registrar-factura-emitida': UPDATE cotizaciones restaurando
+//    fecha_factura_emitida y numero_factura previos (payload.fecha_anterior /
+//    numero_anterior). NO toca fecha_pago_recibido.
 //  - Otras herramientas de gastos (insert): DELETE de la fila.
 //  - Pago de cotización (update): set fecha_pago_recibido = null.
 // Marca la acción como deshecha.
@@ -40,13 +45,51 @@ export async function POST(req: Request) {
   const accion = await obtenerAccion(accion_id)
   if (!accion) return NextResponse.json({ error: 'Acción no encontrada' }, { status: 404 })
   if (accion.deshecha) return NextResponse.json({ error: 'La acción ya fue deshecha' }, { status: 400 })
+
+  const admin = createAdminClient()
+
+  // ── Bulk: no usa resultado_tabla/_id; revierte por payload.creados ─────────
+  // Se trata ANTES del guard de resultado_tabla/_id porque la carga masiva es
+  // multi-fila y no tiene una única fila/tabla de resultado.
+  if (accion.herramienta === 'crear-gastos-bulk') {
+    if (!accion.ok) {
+      return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })
+    }
+    const payload = accion.payload as { creados?: { tabla: string; id: string }[] } | null
+    const creados = Array.isArray(payload?.creados) ? payload!.creados : []
+    for (const c of creados) {
+      if (!c?.tabla || !c?.id || !TABLAS_DELETE.includes(c.tabla)) continue
+      const { error } = await admin.from(c.tabla).delete().eq('id', c.id)
+      if (error) {
+        return NextResponse.json(
+          { error: `Error borrando ${c.tabla} ${c.id}: ${error.message}` },
+          { status: 500 },
+        )
+      }
+    }
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, borrados: creados.length })
+  }
+
   if (!accion.ok || !accion.resultado_tabla || !accion.resultado_id) {
     return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })
   }
 
-  const admin = createAdminClient()
-
-  if (accion.herramienta === 'sembrar-rodaje') {
+  if (accion.herramienta === 'registrar-factura-emitida') {
+    // Restaurar los valores PREVIOS de factura (nunca a ciegas null).
+    // No toca fecha_pago_recibido. Va ANTES de la rama genérica de cotizaciones.
+    const payload = accion.payload as
+      | { fecha_anterior?: string | null; numero_anterior?: string | null }
+      | null
+    const { error } = await admin
+      .from('cotizaciones')
+      .update({
+        fecha_factura_emitida: payload?.fecha_anterior ?? null,
+        numero_factura: payload?.numero_anterior ?? null,
+      })
+      .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'sembrar-rodaje') {
     // Borrar el rodaje COMPLETO. Primero los hijos (por las FKs), luego el rodaje.
     // Orden: citaciones → equipo → bloques → escenas → departamentos → locaciones → rodaje.
     const rodajeId = accion.resultado_id

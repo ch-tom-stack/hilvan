@@ -166,6 +166,7 @@ const baseHandler = createMcpHandler(
             .string()
             .optional()
             .describe('YYYY-MM-DD — fecha real de la boleta/documento (para cuadre por mes y retención por año)'),
+          folio: z.string().optional().describe('folio del documento SII (para deduplicar por RUT+folio)'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/gasto-mensual', args)),
@@ -192,6 +193,7 @@ const baseHandler = createMcpHandler(
             .string()
             .optional()
             .describe('YYYY-MM-DD — fecha real de la boleta/documento (para cuadre por mes y retención por año)'),
+          folio: z.string().optional().describe('folio del documento SII (para deduplicar por RUT+folio)'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/gasto-proyecto', args)),
@@ -211,6 +213,62 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/pago-recibido', args)),
+    )
+
+    server.registerTool(
+      'hilvan_registrar_factura_emitida',
+      {
+        title: 'Registrar factura emitida',
+        description:
+          'Marca la factura EMITIDA de una cotización (fecha_factura_emitida + número opcional), separado del pago. NO toca la fecha de pago. Útil para registrar las ventas del RCV. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          cotizacion_id: z.string(),
+          fecha_factura_emitida: z.string().describe('YYYY-MM-DD'),
+          numero_factura: z.string().optional(),
+        },
+      },
+      async (args, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'POST', '/registrar-factura-emitida', args)),
+    )
+
+    server.registerTool(
+      'hilvan_crear_gastos_bulk',
+      {
+        title: 'Crear gastos en bloque',
+        description:
+          'Carga masiva de boletas/facturas (RCV del SII). Recibe un array `gastos` donde cada fila YA viene clasificada con su `origen`: "mensual" (gasto operacional del mes) o "proyecto" (asociado a un cotizacion_item_id). Valida TODAS las filas antes de escribir; si una es inválida no inserta ninguna. Reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar (las filas ya deben venir clasificadas y las dudosas resueltas).',
+        inputSchema: {
+          gastos: z
+            .array(
+              z.object({
+                origen: z.enum(['mensual', 'proyecto']).describe('clasificación de la fila'),
+                tipo_documento: z
+                  .string()
+                  .describe('boleta | factura | boleta_consumo | exenta | sin_documento'),
+                monto: z.number(),
+                monto_es: z.enum(['neto', 'bruto']),
+                descripcion: z.string(),
+                // mensual:
+                periodo: z.string().optional().describe('YYYY-MM (requerido si origen=mensual)'),
+                categoria: z.string().optional().describe('requerido si origen=mensual'),
+                // proyecto:
+                cotizacion_item_id: z
+                  .string()
+                  .optional()
+                  .describe('UUID del ítem de cotización (requerido si origen=proyecto)'),
+                tipo: z.string().optional().describe('tipo de gasto de proyecto'),
+                // comunes opcionales:
+                rut_emisor: z.string().optional(),
+                razon_social_emisor: z.string().optional(),
+                folio: z.string().optional().describe('folio del documento SII'),
+                fecha_documento: z.string().optional().describe('YYYY-MM-DD'),
+                factura_casa_hiedra: z.boolean().optional(),
+              }),
+            )
+            .describe('filas de gastos ya clasificadas'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crear-gastos-bulk', args)),
     )
 
     server.registerTool(
