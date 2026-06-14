@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { obtenerAccion } from '@/lib/agent-audit'
+import { esMatchTablaValida, patchRestaurar } from '@/lib/agent-conciliacion'
 
 export const runtime = 'nodejs'
 
@@ -20,6 +21,11 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
 //  - 'gasto-fecha': UPDATE fecha_documento al valor anterior (payload.fecha_anterior).
 //  - 'crear-gastos-bulk': borra cada fila creada (payload.creados: [{tabla,id}]).
 //    NO usa resultado_tabla/_id (es multi-fila).
+//  - 'importar-movimientos': borra cada movimiento creado (payload.creados), pero
+//    ABORTA (400) si alguno ya está conciliado (primero deshacer la conciliación).
+//    NO usa resultado_tabla/_id (es multi-fila).
+//  - 'conciliar': restaura el estado PREVIO de la fila match (payload.previo, según
+//    payload.match_tabla) y vuelve el movimiento a conciliado=false. Nunca a ciegas.
 //  - 'registrar-factura-emitida': UPDATE cotizaciones restaurando
 //    fecha_factura_emitida y numero_factura previos (payload.fecha_anterior /
 //    numero_anterior). NO toca fecha_pago_recibido.
@@ -69,6 +75,44 @@ export async function POST(req: Request) {
     }
     await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
     return NextResponse.json({ ok: true, borrados: creados.length })
+  }
+
+  // ── Importar movimientos: revierte por payload.creados (multi-fila) ─────────
+  // Va ANTES del guard de resultado_tabla/_id, como crear-gastos-bulk.
+  // GUARD: si ALGÚN movimiento creado ya está conciliado, no se puede borrar
+  // (primero hay que deshacer la conciliación de ese movimiento).
+  if (accion.herramienta === 'importar-movimientos') {
+    if (!accion.ok) {
+      return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })
+    }
+    const payload = accion.payload as { creados?: { tabla: string; id: string }[] } | null
+    const creados = Array.isArray(payload?.creados) ? payload!.creados : []
+    const ids = creados
+      .filter((c) => c?.tabla === 'movimientos_bancarios' && c?.id)
+      .map((c) => c.id)
+
+    if (ids.length > 0) {
+      const { data: conciliados, error: eChk } = await admin
+        .from('movimientos_bancarios')
+        .select('id')
+        .in('id', ids)
+        .eq('conciliado', true)
+      if (eChk) return NextResponse.json({ error: eChk.message }, { status: 500 })
+      if (conciliados && conciliados.length > 0) {
+        return NextResponse.json(
+          {
+            error: `deshaz primero la conciliación del movimiento ${conciliados[0].id}`,
+          },
+          { status: 400 },
+        )
+      }
+
+      const { error } = await admin.from('movimientos_bancarios').delete().in('id', ids)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, borrados: ids.length })
   }
 
   if (!accion.ok || !accion.resultado_tabla || !accion.resultado_id) {
@@ -132,6 +176,32 @@ export async function POST(req: Request) {
       .update({ fecha_documento: fecha_anterior })
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'conciliar') {
+    // Conciliación: restaurar el estado PREVIO de la fila match (payload.previo,
+    // según payload.match_tabla) y volver el movimiento a no conciliado.
+    // Nunca a ciegas: usa el estado guardado al conciliar.
+    const payload = accion.payload as
+      | { match_tabla?: string; match_id?: string; previo?: Record<string, unknown> | null }
+      | null
+    const matchTabla = payload?.match_tabla
+    const matchId = payload?.match_id
+    if (!esMatchTablaValida(matchTabla) || !matchId) {
+      return NextResponse.json(
+        { error: 'La acción de conciliación no tiene match_tabla/match_id válidos para revertir' },
+        { status: 400 },
+      )
+    }
+    const { error: eRestaurar } = await admin
+      .from(matchTabla)
+      .update(patchRestaurar(matchTabla, payload?.previo ?? null))
+      .eq('id', matchId)
+    if (eRestaurar) return NextResponse.json({ error: eRestaurar.message }, { status: 500 })
+
+    const { error: eMov } = await admin
+      .from('movimientos_bancarios')
+      .update({ conciliado: false, conciliado_tabla: null, conciliado_id: null })
+      .eq('id', accion.resultado_id)
+    if (eMov) return NextResponse.json({ error: eMov.message }, { status: 500 })
   } else if (TABLAS_DELETE.includes(accion.resultado_tabla)) {
     // Creación de gasto: eliminar la fila insertada.
     const { error } = await admin

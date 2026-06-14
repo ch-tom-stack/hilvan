@@ -117,3 +117,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.caja_periodos TO service_role;
 -- CREATE POLICY "admin full access" ON public.inversiones FOR ALL USING (true) WITH CHECK (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inversiones TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inversiones TO service_role;
+
+-- Conciliación bancaria — movimientos de tarjeta/cuenta (ver sql/conciliacion.sql)
+-- CREATE TABLE IF NOT EXISTS movimientos_bancarios (...)  ← schema en sql/conciliacion.sql
+-- ALTER TABLE movimientos_bancarios ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "admin_all_movimientos_bancarios" ON movimientos_bancarios FOR ALL TO authenticated USING (true) WITH CHECK (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.movimientos_bancarios TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.movimientos_bancarios TO service_role;
