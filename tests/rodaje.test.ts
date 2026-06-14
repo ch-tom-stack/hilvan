@@ -11,6 +11,7 @@ import {
   type RodajeEquipoTecnico,
   type Rodaje,
 } from '@/types'
+import { esRolPersona } from '@/lib/rodaje-helpers'
 
 function bloque(overrides: Partial<RodajeBloque> = {}): RodajeBloque {
   return {
@@ -262,5 +263,44 @@ describe('formatHora', () => {
 
   it('undefined → guion', () => {
     expect(formatHora(undefined)).toBe('—')
+  })
+})
+
+describe('esRolPersona', () => {
+  it('reconoce roles de persona del crew/cast', () => {
+    const personas = [
+      'Director',
+      'Dirección de Fotografía',
+      'Asistente de Cámara',
+      'Director de Arte (Ornamenta)',
+      'Coordinador de Muestras',
+      'Modelo de Calce (Solo pies)',
+      'Gaffer',
+      'Maquilladora',
+      'Sonidista directo',
+    ]
+    for (const p of personas) expect(esRolPersona(p), p).toBe(true)
+  })
+
+  it('descarta arriendos, servicios y presupuesto aunque mencionen partes de rol', () => {
+    const noPersonas = [
+      'Cámaras Sony A7sIII + A7IV — Equipos CH',
+      'Maleta de lentes NISI ATHENA — Equipos CH',
+      'Ronin RS3 + Monitores — Equipos CH',
+      'Aputure con Modificador Elipsoidal — CH/JPF',
+      'Transporte de Equipos',
+      'Catering Equipo — Mantención + Almuerzo',
+      'Montaje Audiovisual 15-30s con gráficas',
+      'Postproducción de Color — Grade + exportación',
+      'Postproducción de Sonido — Musicalización + normalización',
+      'Caja de Producción',
+    ]
+    for (const x of noPersonas) expect(esRolPersona(x), x).toBe(false)
+  })
+
+  it('vacío o desconocido → false', () => {
+    expect(esRolPersona('')).toBe(false)
+    expect(esRolPersona('   ')).toBe(false)
+    expect(esRolPersona('Algo random sin rol')).toBe(false)
   })
 })

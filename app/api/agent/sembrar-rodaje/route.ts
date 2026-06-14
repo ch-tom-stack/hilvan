@@ -3,11 +3,9 @@ import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
 import { PLANTILLAS_BLOQUES } from '@/types'
+import { esRolPersona } from '@/lib/rodaje-helpers'
 
 export const runtime = 'nodejs'
-
-// Tipos de ítem de cotización que representan PERSONAS del crew (no equipos/servicios).
-const TIPOS_PERSONA = new Set(['rol', 'cast'])
 
 // Plan esqueleto: labels de PLANTILLAS_BLOQUES en el orden que arma una jornada base.
 const PLAN_ESQUELETO = ['CALL', 'PRE SET', 'ALMUERZO', 'DESMONTAJE', 'CIERRE']
@@ -16,7 +14,7 @@ const PLAN_ESQUELETO = ['CALL', 'PRE SET', 'ALMUERZO', 'DESMONTAJE', 'CIERRE']
 // Crea un BORRADOR de rodaje a partir de una cotización:
 //   - rodajes (estado 'borrador', proyecto_id + cotizacion_id heredados)
 //   - rodaje_departamentos desde cotizacion_departamentos
-//   - rodaje_equipo_tecnico desde los ítems persona (tipo rol/cast)
+//   - rodaje_equipo_tecnico desde los ítems que parecen personas (heurística esRolPersona)
 //   - rodaje_bloques: plan esqueleto desde PLANTILLAS_BLOQUES
 // Mejor esfuerzo: el humano refina después. Reversible con /deshacer (borra el rodaje completo).
 export async function POST(req: Request) {
@@ -145,9 +143,11 @@ export async function POST(req: Request) {
       (sg) => (sg.items as any[]) ?? [],
     )
     for (const item of [...itemsDirectos, ...itemsSubgrupos]) {
-      if (!TIPOS_PERSONA.has(item.tipo)) continue
       const nombreItem = (item.nombre as string | null)?.trim()
       if (!nombreItem) continue
+      // El `tipo` de la cotización no es confiable (se setea en bloque): clasificamos
+      // por el nombre del ítem (esRolPersona). El humano refina en la UI.
+      if (!esRolPersona(nombreItem)) continue
       // nombre del item = rol; nombre del miembro queda como el rol (placeholder
       // editable por el humano, ya que la cotización no trae nombre de persona).
       miembros.push({

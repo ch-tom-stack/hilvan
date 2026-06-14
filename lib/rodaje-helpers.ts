@@ -113,3 +113,54 @@ export function uberLinkLocacion(loc: RodajeLocacion): string | undefined {
   if (!loc.lat || !loc.lng) return undefined
   return `https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${loc.lat}&dropoff[longitude]=${loc.lng}&dropoff[nickname]=${encodeURIComponent(loc.nombre)}`
 }
+
+// Normaliza un texto para matching: minúsculas, sin acentos, espacios colapsados.
+function normalizar(texto: string): string {
+  return texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Marcas/equipos/servicios/presupuesto: si el nombre contiene alguno, NO es persona.
+// (Tiene prioridad sobre los positivos: "Asistente de Cámara" es persona, pero
+// "Cámaras Sony" o "Postproducción de Sonido" no, aunque "camara"/"sonido" aparezcan.)
+const MARCADORES_NO_PERSONA = [
+  // gear / marcas
+  'camaras', 'sony', 'canon', 'nikon', 'blackmagic', 'arri', 'red ', 'ronin', 'dji',
+  'aputure', 'nanlite', 'godox', 'ikan', 'nisi', 'athena', 'lente', 'lentes', 'maleta',
+  'monitor', 'modificador', 'tamizador', 'bandera', 'tripode', 'slider', 'gimbal',
+  'luces', 'kit ', 'bateria', 'tarjeta', 'estabilizador',
+  // servicios / presupuesto / logística
+  'caja', 'transporte', 'catering', 'alimentacion', 'montaje', 'postproduccion',
+  'post-produccion', 'post produccion', 'grade', 'exportacion', 'graficas',
+  'musicalizacion', 'normalizacion', 'arriendo', 'seguro', 'combustible', 'viatico',
+  'equipos ch', 'equipos', 'insumo', 'consumible', 'locacion', 'ppto',
+]
+
+// Roles de persona del crew/cast (AV chileno). Si el nombre contiene alguno (y ningún
+// marcador no-persona), se trata como persona.
+const MARCADORES_PERSONA = [
+  'director', 'directora', 'direccion de fotografia', 'dop', 'fotografo', 'fotografa',
+  'asistente', 'ayudante', 'gaffer', 'electrico', 'electricista', 'grip', 'foquista',
+  'operador', 'camarografo', 'productor', 'productora', 'jefe de produccion',
+  'coordinador', 'coordinadora', 'ambientador', 'ambientadora', 'utilero', 'utileria',
+  'escenografo', 'set dresser', 'vestuario', 'vestuarista', 'maquillaje', 'maquillador',
+  'maquillista', 'peinado', 'estilista', 'stylist', 'sonidista', 'microfonista',
+  'modelo', 'actor', 'actriz', 'talento', 'extra', 'doble', 'dronista', 'piloto',
+  'script', 'continuista', 'foto fija', 'fotofija', 'colorista',
+]
+
+// Heurística (mejor esfuerzo): ¿el nombre de un ítem de cotización representa una
+// PERSONA del equipo (crew/cast) y no un arriendo/servicio/presupuesto?
+// Se usa al sembrar un rodaje porque el campo `tipo` de la cotización no es confiable
+// (se setea en bloque por cotización: unas marcan todo 'rol', otras todo 'servicio').
+// El humano refina después en la UI.
+export function esRolPersona(nombre: string): boolean {
+  const n = normalizar(nombre)
+  if (!n) return false
+  if (MARCADORES_NO_PERSONA.some((m) => n.includes(m))) return false
+  return MARCADORES_PERSONA.some((m) => n.includes(m))
+}
