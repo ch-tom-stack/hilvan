@@ -148,6 +148,7 @@ Cowork (en tu Mac) → MCP de Hilván (local, guarda el token) → HTTPS → app
 | GET | `/api/agent/cotizaciones?q=` | `[{id, numero, cliente, estado, total, fecha_factura_emitida, fecha_pago_recibido}]` |
 | GET | `/api/agent/colaboradores?q=` | `[{id, nombre, rut}]` |
 | GET | `/api/agent/rendicion-mensual?periodo=YYYY-MM` | `{id, periodo, estado, gastos:[...]}` |
+| GET | `/api/agent/gastos?q=&tipo_documento=&periodo=&estado=` | `[{origen, id, contexto, descripcion, tipo, tipo_documento, monto, rut_emisor, razon_social_emisor, estado, retencion, neto, created_at}]` — lista unificada de gastos de proyecto y mensuales en cualquier estado (máx 200, desc por fecha) |
 | GET | `/api/agent/estado-financiero?periodo=YYYY-MM` | `{por_facturar, por_cobrar, obligaciones}` |
 | GET | `/api/agent/acciones` | log de auditoría del agente |
 
@@ -168,7 +169,7 @@ Cowork (en tu Mac) → MCP de Hilván (local, guarda el token) → HTTPS → app
 **Regla de la capa write:** `monto_es` permite mandar neto o bruto; el server calcula y **persiste el bruto** + retención (usa `calcularRetencion`, tasa por año (2026: 15,25%)). Todo write inserta en `agente_acciones` con archivo fuente y resumen.
 
 ### Herramientas MCP (1:1 con los endpoints)
-`hilvan_por_cobrar`, `hilvan_buscar_cotizacion`, `hilvan_buscar_colaborador`, `hilvan_rendicion_mensual`, `hilvan_estado_financiero`, `hilvan_parse_documento`, `hilvan_subir_archivo`, `hilvan_crear_gasto_mensual`, `hilvan_crear_gasto_proyecto`, `hilvan_registrar_pago`, `hilvan_deshacer`.
+`hilvan_por_cobrar`, `hilvan_buscar_cotizacion`, `hilvan_buscar_colaborador`, `hilvan_rendicion_mensual`, `hilvan_buscar_gastos`, `hilvan_estado_financiero`, `hilvan_parse_documento`, `hilvan_subir_archivo`, `hilvan_crear_gasto_mensual`, `hilvan_crear_gasto_proyecto`, `hilvan_registrar_pago`, `hilvan_deshacer`.
 
 ## Investigación — qué pueden hacer agentes de IA en Hilván
 

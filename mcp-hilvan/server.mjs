@@ -126,6 +126,28 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {} },
     run: () => api('GET', '/acciones'),
   },
+  {
+    name: 'hilvan_buscar_gastos',
+    description: 'Busca/lista gastos y boletas (de proyecto y mensuales, en CUALQUIER estado) por texto/RUT, tipo de documento o período. Útil para cruzar qué boletas ya están cargadas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        q: { type: 'string', description: 'texto libre sobre RUT, razón social o descripción' },
+        tipo_documento: { type: 'string', description: 'boleta | factura | boleta_consumo | exenta | sin_documento' },
+        periodo: { type: 'string', description: 'YYYY-MM' },
+        estado: { type: 'string', description: 'estado exacto del gasto' },
+      },
+    },
+    run: (a) => {
+      const params = new URLSearchParams()
+      if (a.q) params.set('q', a.q)
+      if (a.tipo_documento) params.set('tipo_documento', a.tipo_documento)
+      if (a.periodo) params.set('periodo', a.periodo)
+      if (a.estado) params.set('estado', a.estado)
+      const qs = params.toString()
+      return api('GET', `/gastos${qs ? `?${qs}` : ''}`)
+    },
+  },
 ]
 
 const server = new Server({ name: 'hilvan-mcp', version: '0.1.0' }, { capabilities: { tools: {} } })

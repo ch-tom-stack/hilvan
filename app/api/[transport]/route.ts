@@ -206,6 +206,33 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_buscar_gastos',
+      {
+        title: 'Buscar gastos',
+        description:
+          'Busca/lista gastos y boletas (de proyecto y mensuales, en CUALQUIER estado) por texto/RUT, tipo de documento o período. Útil para cruzar qué boletas ya están cargadas.',
+        inputSchema: {
+          q: z.string().optional().describe('texto libre sobre RUT, razón social o descripción'),
+          tipo_documento: z
+            .string()
+            .optional()
+            .describe('boleta | factura | boleta_consumo | exenta | sin_documento'),
+          periodo: z.string().optional().describe('YYYY-MM'),
+          estado: z.string().optional().describe('estado exacto del gasto'),
+        },
+      },
+      async ({ q, tipo_documento, periodo, estado }, extra) => {
+        const params = new URLSearchParams()
+        if (q) params.set('q', q)
+        if (tipo_documento) params.set('tipo_documento', tipo_documento)
+        if (periodo) params.set('periodo', periodo)
+        if (estado) params.set('estado', estado)
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/gastos${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
       'hilvan_deshacer',
       {
         title: 'Deshacer acción',
