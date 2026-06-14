@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     razon_social_emisor,
     factura_casa_hiedra,
     archivo_url,
+    fecha_documento,
   } = body ?? {}
 
   // ── Validaciones ──────────────────────────────────────────────────────────
@@ -56,6 +57,9 @@ export async function POST(req: Request) {
   }
   if (periodo && !/^\d{4}-\d{2}$/.test(periodo)) {
     return NextResponse.json({ error: 'periodo inválido (formato YYYY-MM)' }, { status: 400 })
+  }
+  if (fecha_documento != null && (typeof fecha_documento !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(fecha_documento))) {
+    return NextResponse.json({ error: 'fecha_documento inválida (formato YYYY-MM-DD)' }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -83,8 +87,13 @@ export async function POST(req: Request) {
   }
 
   // ── Calcular bruto: persistimos SIEMPRE el bruto ──────────────────────────
-  // La tasa de retención depende del año del período (Ley 21.133).
-  const year = periodo ? Number(periodo.slice(0, 4)) : new Date().getFullYear()
+  // La tasa de retención depende del año de la boleta (Ley 21.133): usar el
+  // año de `fecha_documento` si viene; si no, el del período; si no, el actual.
+  const year = fecha_documento
+    ? Number(fecha_documento.slice(0, 4))
+    : periodo
+      ? Number(periodo.slice(0, 4))
+      : new Date().getFullYear()
   const tasa = tasaRetencionBoleta(year)
   const montoBruto =
     tipo_documento === 'boleta' && monto_es === 'neto'
@@ -105,6 +114,7 @@ export async function POST(req: Request) {
     razon_social_emisor: razon_social_emisor || null,
     factura_casa_hiedra: factura_casa_hiedra ?? false,
     archivo_url: archivo_url || null,
+    fecha_documento: fecha_documento || null,
   }
 
   const { data, error } = await admin

@@ -63,6 +63,7 @@ export default function FormularioGasto({
     rut_emisor: '',
     razon_social_emisor: '',
     factura_casa_hiedra: false,
+    fecha_documento: '',
   })
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null)
@@ -73,15 +74,21 @@ export default function FormularioGasto({
 
   const esBoleta = form.tipo_documento === 'boleta'
 
+  // La tasa de retención depende del año de la boleta (Ley 21.133): usar el año
+  // de `fecha_documento` si está; si no, el año actual.
+  const tasa = form.fecha_documento
+    ? tasaRetencionBoleta(Number(form.fecha_documento.slice(0, 4)))
+    : TASA
+
   const calcularMontos = (raw: string) => {
     const val = parseInt(raw)
     if (isNaN(val) || val <= 0) return null
     if (!esBoleta) return { bruto: val, retencion: 0, neto: val }
     if (inputEsBruto) {
-      const retencion = Math.round(val * TASA)
+      const retencion = Math.round(val * tasa)
       return { bruto: val, retencion, neto: val - retencion }
     } else {
-      const bruto = Math.round(val / (1 - TASA))
+      const bruto = Math.round(val / (1 - tasa))
       return { bruto, retencion: bruto - val, neto: val }
     }
   }
@@ -146,7 +153,7 @@ export default function FormularioGasto({
   }
 
   const resetForm = () => {
-    setForm({ tipo: tipoInicial as TipoRendicion | '', monto: '', descripcion: '', tipo_documento: '' as TipoDocRendicion | '', foto_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false })
+    setForm({ tipo: tipoInicial as TipoRendicion | '', monto: '', descripcion: '', tipo_documento: '' as TipoDocRendicion | '', foto_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false, fecha_documento: '' })
     setFotoPreview(null)
     setArchivoNombre(null)
     setInputEsBruto(false)
@@ -173,6 +180,7 @@ export default function FormularioGasto({
           rut_emisor: form.rut_emisor || null,
           razon_social_emisor: form.razon_social_emisor || null,
           factura_casa_hiedra: form.factura_casa_hiedra,
+          fecha_documento: form.fecha_documento || null,
         })
         if (continuar) {
           onSuccess(nuevo, true)
@@ -264,11 +272,19 @@ export default function FormularioGasto({
         {montos && esBoleta && (
           <p className="mt-1 font-body text-[10px] text-ch-muted font-mono">
             {inputEsBruto
-              ? `Retención ${(TASA * 100).toFixed(2).replace(/\.?0+$/, '')}% = $${montos.retencion.toLocaleString('es-CL')} · Neto = $${montos.neto.toLocaleString('es-CL')}`
+              ? `Retención ${(tasa * 100).toFixed(2).replace(/\.?0+$/, '')}% = $${montos.retencion.toLocaleString('es-CL')} · Neto = $${montos.neto.toLocaleString('es-CL')}`
               : `Bruto = $${montos.bruto.toLocaleString('es-CL')} · Retención = $${montos.retencion.toLocaleString('es-CL')}`
             }
           </p>
         )}
+      </div>
+
+      {/* Fecha del documento */}
+      <div>
+        <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Fecha del documento (opcional)</label>
+        <input value={form.fecha_documento} onChange={e => set('fecha_documento', e.target.value)}
+          type="date" className="input-ch w-full" />
+        <p className="mt-1 font-body text-[10px] text-ch-subtle">Fecha real de la boleta/documento — define el mes y el año de retención.</p>
       </div>
 
       {/* Descripción */}

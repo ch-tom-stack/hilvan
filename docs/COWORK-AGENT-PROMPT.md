@@ -36,6 +36,7 @@ Tienes dos formas de actuar:
 **Escribir (siempre confirmando primero):**
 - `hilvan_crear_gasto_mensual` — boleta/gasto operacional del mes (no atado a proyecto). Para honorarios: `tipo_documento="boleta"`, `categoria="Honorarios"`, y `monto_es` = "neto" o "bruto" (di cuál te dieron).
 - `hilvan_crear_gasto_proyecto` — gasto asociado al ítem de una cotización.
+- **Siempre que cargues un gasto, pasa `fecha_documento` (YYYY-MM-DD)** = la fecha real de la boleta/documento. Sirve para cuadrar el gasto en su **mes tributario** correcto (puede diferir del mes en que lo cargas) y para calcular la **retención con el año de la boleta** (la tasa sube cada año, Ley 21.133). Si no la pasas, se usa el año actual.
 - `hilvan_registrar_pago` — marca una cotización como pagada (fecha de pago, opcional folio/fecha de factura).
 - `hilvan_deshacer(accion_id)` — revierte una de tus escrituras.
 

@@ -77,6 +77,7 @@ export default function RendicionMensualView({
     rut_emisor: '',
     razon_social_emisor: '',
     factura_casa_hiedra: false,
+    fecha_documento: '',
   })
   const [uploadingFile, setUploadingFile] = useState(false)
   const [formError, setFormError] = useState('')
@@ -85,14 +86,19 @@ export default function RendicionMensualView({
   // Boleta de honorarios: el monto puede ingresarse como neto o bruto.
   // Internamente SIEMPRE se guarda el bruto (igual que en gastos de proyecto).
   const esBoleta = form.tipo_documento === 'boleta'
+  // La tasa de retención depende del año de la boleta (Ley 21.133): usar el año
+  // de `fecha_documento` si está; si no, el año actual.
+  const tasaBoleta = form.fecha_documento
+    ? tasaRetencionBoleta(Number(form.fecha_documento.slice(0, 4)))
+    : TASA_BOLETA
   const montosBoleta = (() => {
     const val = parseInt(form.monto.replace(/\D/g, ''), 10)
     if (!esBoleta || !val || val <= 0) return null
     if (inputEsBruto) {
-      const retencion = Math.round(val * TASA_BOLETA)
+      const retencion = Math.round(val * tasaBoleta)
       return { bruto: val, retencion, neto: val - retencion }
     }
-    const bruto = Math.round(val / (1 - TASA_BOLETA))
+    const bruto = Math.round(val / (1 - tasaBoleta))
     return { bruto, retencion: bruto - val, neto: val }
   })()
 
@@ -150,9 +156,10 @@ export default function RendicionMensualView({
           rut_emisor: form.rut_emisor || null,
           razon_social_emisor: form.razon_social_emisor || null,
           factura_casa_hiedra: form.factura_casa_hiedra,
+          fecha_documento: form.fecha_documento || null,
         })
         setRendicion(r => r ? { ...r, gastos: [...(r.gastos ?? []), gasto] } : r)
-        setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false })
+        setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false, fecha_documento: '' })
         setInputEsBruto(false)
         setModalAbierto(false)
         router.refresh()
@@ -337,6 +344,17 @@ export default function RendicionMensualView({
               </div>
 
               <div>
+                <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Fecha del documento (opcional)</label>
+                <input
+                  type="date"
+                  value={form.fecha_documento}
+                  onChange={e => setForm(f => ({ ...f, fecha_documento: e.target.value }))}
+                  className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green"
+                />
+                <p className="mt-1 font-body text-[10px] text-ch-subtle">Fecha real de la boleta/documento — define el mes y el año de retención.</p>
+              </div>
+
+              <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-[10px] tracking-widest uppercase text-ch-muted">Monto *</label>
                   {esBoleta && (
@@ -363,7 +381,7 @@ export default function RendicionMensualView({
                 {montosBoleta && (
                   <p className="mt-1 font-body text-[10px] text-ch-muted font-mono">
                     {inputEsBruto
-                      ? `Retención ${(TASA_BOLETA * 100).toFixed(2).replace(/\.?0+$/, '')}% = ${formatCLP(montosBoleta.retencion)} · Neto = ${formatCLP(montosBoleta.neto)}`
+                      ? `Retención ${(tasaBoleta * 100).toFixed(2).replace(/\.?0+$/, '')}% = ${formatCLP(montosBoleta.retencion)} · Neto = ${formatCLP(montosBoleta.neto)}`
                       : `Bruto = ${formatCLP(montosBoleta.bruto)} · Retención = ${formatCLP(montosBoleta.retencion)}`}
                   </p>
                 )}
