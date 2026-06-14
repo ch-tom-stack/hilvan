@@ -12,9 +12,12 @@ import {
 } from '@/app/actions/rendiciones_mensuales'
 import { RendicionMensual, RendicionMensualGasto, CATEGORIAS_RENDICION_MENSUAL, EstadoRendicionMensual, formatCLP } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
+import { calcularRetencion } from '@/lib/rendiciones-calc'
+
+const TASA_BOLETA = 0.154
 
 const TIPO_DOC_OPCIONES = [
-  { value: 'boleta', label: 'Boleta' },
+  { value: 'boleta', label: 'Boleta de honorarios' },
   { value: 'factura', label: 'Factura' },
   { value: 'boleta_consumo', label: 'Boleta de consumo' },
   { value: 'exenta', label: 'Exenta' },
@@ -77,6 +80,21 @@ export default function RendicionMensualView({
   })
   const [uploadingFile, setUploadingFile] = useState(false)
   const [formError, setFormError] = useState('')
+  const [inputEsBruto, setInputEsBruto] = useState(false)
+
+  // Boleta de honorarios: el monto puede ingresarse como neto o bruto.
+  // Internamente SIEMPRE se guarda el bruto (igual que en gastos de proyecto).
+  const esBoleta = form.tipo_documento === 'boleta'
+  const montosBoleta = (() => {
+    const val = parseInt(form.monto.replace(/\D/g, ''), 10)
+    if (!esBoleta || !val || val <= 0) return null
+    if (inputEsBruto) {
+      const retencion = Math.round(val * TASA_BOLETA)
+      return { bruto: val, retencion, neto: val - retencion }
+    }
+    const bruto = Math.round(val / (1 - TASA_BOLETA))
+    return { bruto, retencion: bruto - val, neto: val }
+  })()
 
   async function iniciarRendicion() {
     setInicializando(true)
@@ -112,9 +130,11 @@ export default function RendicionMensualView({
     setFormError('')
 
     const categoriaFinal = form.categoria === 'Otros' ? (form.categoriaOtros.trim() || 'Otros') : form.categoria
-    const monto = parseInt(form.monto.replace(/\D/g, ''), 10)
+    const montoIngresado = parseInt(form.monto.replace(/\D/g, ''), 10)
     if (!form.descripcion.trim()) return setFormError('La descripción es requerida')
-    if (!monto || monto <= 0) return setFormError('El monto debe ser mayor a 0')
+    if (!montoIngresado || montoIngresado <= 0) return setFormError('El monto debe ser mayor a 0')
+    // Boleta: persistir SIEMPRE el bruto (retención se calcula a partir de él).
+    const monto = montosBoleta ? montosBoleta.bruto : montoIngresado
 
     startTransition(async () => {
       try {
@@ -133,6 +153,7 @@ export default function RendicionMensualView({
         })
         setRendicion(r => r ? { ...r, gastos: [...(r.gastos ?? []), gasto] } : r)
         setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false })
+        setInputEsBruto(false)
         setModalAbierto(false)
         router.refresh()
       } catch (err: any) {
@@ -316,15 +337,36 @@ export default function RendicionMensualView({
               </div>
 
               <div>
-                <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Monto *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] tracking-widest uppercase text-ch-muted">Monto *</label>
+                  {esBoleta && (
+                    <div className="flex">
+                      <button type="button" onClick={() => setInputEsBruto(false)}
+                        className={`font-body text-[9px] px-2.5 py-1 border transition-colors ${!inputEsBruto ? 'border-ch-green text-ch-cream bg-ch-green/10' : 'border-ch-border text-ch-muted'}`}>
+                        Neto
+                      </button>
+                      <button type="button" onClick={() => setInputEsBruto(true)}
+                        className={`font-body text-[9px] px-2.5 py-1 border border-l-0 transition-colors ${inputEsBruto ? 'border-ch-green text-ch-cream bg-ch-green/10' : 'border-ch-border text-ch-muted'}`}>
+                        Bruto
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <input
                   type="number"
                   value={form.monto}
                   onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
-                  placeholder="0"
+                  placeholder={esBoleta && !inputEsBruto ? 'Ej: 126900 (lo que recibe)' : '0'}
                   min="1"
                   className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green placeholder:text-ch-subtle"
                 />
+                {montosBoleta && (
+                  <p className="mt-1 font-body text-[10px] text-ch-muted font-mono">
+                    {inputEsBruto
+                      ? `Retención ${(TASA_BOLETA * 100).toFixed(1)}% = ${formatCLP(montosBoleta.retencion)} · Neto = ${formatCLP(montosBoleta.neto)}`
+                      : `Bruto = ${formatCLP(montosBoleta.bruto)} · Retención = ${formatCLP(montosBoleta.retencion)}`}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -360,7 +402,7 @@ export default function RendicionMensualView({
                 <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Tipo de documento</label>
                 <select
                   value={form.tipo_documento}
-                  onChange={e => setForm(f => ({ ...f, tipo_documento: e.target.value }))}
+                  onChange={e => { setForm(f => ({ ...f, tipo_documento: e.target.value })); setInputEsBruto(false) }}
                   className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green"
                 >
                   <option value="">— Sin especificar</option>
@@ -370,30 +412,32 @@ export default function RendicionMensualView({
                 </select>
               </div>
 
-              {/* Campos de factura */}
-              {form.tipo_documento === 'factura' && (
+              {/* Datos del emisor — para boleta de honorarios y factura */}
+              {(form.tipo_documento === 'factura' || form.tipo_documento === 'boleta') && (
                 <div className="space-y-3 border-l-2 border-ch-green/30 pl-3">
                   <div>
                     <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">RUT Emisor</label>
                     <input type="text" value={form.rut_emisor}
                       onChange={e => setForm(f => ({ ...f, rut_emisor: e.target.value }))}
-                      placeholder="Ej: 76.123.456-7"
+                      placeholder="Ej: 16.123.456-7"
                       className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green placeholder:text-ch-subtle" />
                   </div>
                   <div>
-                    <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">Razón Social</label>
+                    <label className="block text-[10px] tracking-widest uppercase text-ch-muted mb-1">{form.tipo_documento === 'boleta' ? 'Nombre del emisor' : 'Razón Social'}</label>
                     <input type="text" value={form.razon_social_emisor}
                       onChange={e => setForm(f => ({ ...f, razon_social_emisor: e.target.value }))}
-                      placeholder="Nombre del emisor"
+                      placeholder={form.tipo_documento === 'boleta' ? 'Ej: Josué de la Fuente' : 'Nombre del emisor'}
                       className="w-full bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green placeholder:text-ch-subtle" />
                   </div>
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <input type="checkbox" checked={form.factura_casa_hiedra}
-                      onChange={e => setForm(f => ({ ...f, factura_casa_hiedra: e.target.checked }))}
-                      className="w-4 h-4 accent-ch-green" />
-                    <span className="text-xs text-ch-cream">Factura emitida a nombre de Casa Hiedra</span>
-                    <span className="text-[9px] text-ch-muted">(crédito fiscal IVA)</span>
-                  </label>
+                  {form.tipo_documento === 'factura' && (
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input type="checkbox" checked={form.factura_casa_hiedra}
+                        onChange={e => setForm(f => ({ ...f, factura_casa_hiedra: e.target.checked }))}
+                        className="w-4 h-4 accent-ch-green" />
+                      <span className="text-xs text-ch-cream">Factura emitida a nombre de Casa Hiedra</span>
+                      <span className="text-[9px] text-ch-muted">(crédito fiscal IVA)</span>
+                    </label>
+                  )}
                 </div>
               )}
 
@@ -475,7 +519,13 @@ function GastoRow({ gasto, onEliminar, isPending, esAdmin, usuarioId }: {
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <span className="font-mono text-sm text-ch-cream">{formatMonto(gasto.monto)}</span>
+        <div className="text-right">
+          <span className="font-mono text-sm text-ch-cream">{formatMonto(gasto.monto)}</span>
+          {gasto.tipo_documento === 'boleta' && (() => {
+            const r = calcularRetencion({ monto: gasto.monto, tipo_documento: gasto.tipo_documento })
+            return <p className="font-body text-[9px] text-ch-subtle font-mono">ret. {formatMonto(r.retencion)} · neto {formatMonto(r.neto)}</p>
+          })()}
+        </div>
         {puedeEliminar && (
           <button onClick={() => onEliminar(gasto.id)} disabled={isPending}
             className="text-ch-subtle hover:text-red-400 transition-colors text-sm disabled:opacity-50">

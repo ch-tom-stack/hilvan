@@ -515,6 +515,7 @@ export interface ContratoGenerado {
 export type EstadoRendicionMensual = 'pendiente' | 'aprobado' | 'pagado'
 
 export const CATEGORIAS_RENDICION_MENSUAL = [
+  'Honorarios',
   'Transporte',
   'Alimentación',
   'Artículos de oficina',
