@@ -155,7 +155,7 @@ const baseHandler = createMcpHandler(
           categoria: z.string().describe('Honorarios, Transporte, etc.'),
           tipo_documento: z
             .string()
-            .describe('boleta | factura | boleta_consumo | exenta | sin_documento'),
+            .describe('boleta | factura | boleta_consumo | exenta | sin_documento | nota_credito'),
           monto: z.number(),
           monto_es: z.enum(['neto', 'bruto']),
           rut_emisor: z.string().optional(),
@@ -244,7 +244,7 @@ const baseHandler = createMcpHandler(
                 origen: z.enum(['mensual', 'proyecto']).describe('clasificación de la fila'),
                 tipo_documento: z
                   .string()
-                  .describe('boleta | factura | boleta_consumo | exenta | sin_documento'),
+                  .describe('boleta | factura | boleta_consumo | exenta | sin_documento | nota_credito'),
                 monto: z.number(),
                 monto_es: z.enum(['neto', 'bruto']),
                 descripcion: z.string(),
@@ -282,7 +282,7 @@ const baseHandler = createMcpHandler(
           tipo_documento: z
             .string()
             .optional()
-            .describe('boleta | factura | boleta_consumo | exenta | sin_documento'),
+            .describe('boleta | factura | boleta_consumo | exenta | sin_documento | nota_credito'),
           periodo: z.string().optional().describe('YYYY-MM'),
           estado: z.string().optional().describe('estado exacto del gasto'),
         },
@@ -401,6 +401,48 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/gasto-fecha', args)),
+    )
+
+    server.registerTool(
+      'hilvan_crear_nota_credito',
+      {
+        title: 'Crear nota de crédito',
+        description:
+          'Registra una NOTA DE CRÉDITO (NC, Tipo Doc 61 del SII): un documento que RESTA una factura previa. Se guarda como un gasto con monto NEGATIVO (entrega el valor ABSOLUTO en `monto`, >0) y tipo_documento="nota_credito"; NO aplica retención. Para origen="mensual" pasa periodo+categoria; para origen="proyecto" pasa cotizacion_item_id. Usa referencia_folio para dejar trazabilidad de la factura que anula/reduce. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          origen: z.enum(['mensual', 'proyecto']).describe('mensual | proyecto'),
+          monto: z.number().describe('valor ABSOLUTO de la NC (>0); se persiste negativo'),
+          descripcion: z.string(),
+          folio: z.string().optional().describe('folio de la nota de crédito'),
+          fecha_documento: z.string().optional().describe('YYYY-MM-DD'),
+          rut_emisor: z.string().optional(),
+          razon_social_emisor: z.string().optional(),
+          referencia_folio: z.string().optional().describe('folio de la factura que la NC anula/reduce'),
+          periodo: z.string().optional().describe('YYYY-MM (requerido si origen=mensual)'),
+          categoria: z.string().optional().describe('requerido si origen=mensual'),
+          cotizacion_item_id: z.string().optional().describe('UUID del ítem (requerido si origen=proyecto)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crear-nota-credito', args)),
+    )
+
+    server.registerTool(
+      'hilvan_editar_gasto',
+      {
+        title: 'Editar tipo/folio de gasto',
+        description:
+          'Corrige el tipo_documento y/o el folio de un gasto ya cargado (no recalcula el monto). Obtén gasto_id y origen con hilvan_buscar_gastos. Debe venir al menos uno de tipo_documento/folio. Reversible con hilvan_deshacer (restaura los valores previos, no borra el gasto). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          gasto_id: z.string(),
+          origen: z.enum(['proyecto', 'mensual']),
+          tipo_documento: z
+            .string()
+            .optional()
+            .describe('boleta | boleta_consumo | factura | exenta | sin_documento | nota_credito'),
+          folio: z.string().optional().describe('folio del documento SII'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/editar-gasto', args)),
     )
 
     // ── Conciliación bancaria ────────────────────────────────────────────────

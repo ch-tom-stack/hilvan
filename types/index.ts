@@ -448,7 +448,7 @@ export interface ColaboradorLinkTemporal {
 
 export type TipoRendicion = 'honorarios' | 'arte' | 'transporte' | 'alimentacion' | 'insumos' | 'servicios' | 'viaticos' | 'otro'
 export type EstadoRendicion = 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'pago_aprobado'
-export type TipoDocRendicion = 'boleta' | 'boleta_consumo' | 'factura' | 'exenta' | 'sin_documento'
+export type TipoDocRendicion = 'boleta' | 'boleta_consumo' | 'factura' | 'exenta' | 'sin_documento' | 'nota_credito'
 
 export interface Rendicion {
   id: string

@@ -19,6 +19,8 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
 //  - 'generar-citaciones': borra SOLO las citaciones creadas (payload.citacion_ids),
 //    no el rodaje ni el equipo.
 //  - 'gasto-fecha': UPDATE fecha_documento al valor anterior (payload.fecha_anterior).
+//  - 'editar-gasto': UPDATE tipo_documento y folio a los valores previos
+//    (payload.previo). Restaura, no borra la fila.
 //  - 'crear-gastos-bulk': borra cada fila creada (payload.creados: [{tabla,id}]).
 //    NO usa resultado_tabla/_id (es multi-fila).
 //  - 'importar-movimientos': borra cada movimiento creado (payload.creados), pero
@@ -174,6 +176,21 @@ export async function POST(req: Request) {
     const { error } = await admin
       .from(accion.resultado_tabla)
       .update({ fecha_documento: fecha_anterior })
+      .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'editar-gasto') {
+    // Edición de metadata (tipo_documento/folio): restaurar los valores PREVIOS.
+    // Nunca borrar la fila ni restaurar a ciegas: usa payload.previo guardado al editar.
+    const payload = accion.payload as
+      | { previo?: { tipo_documento?: string | null; folio?: string | null } | null }
+      | null
+    const previo = payload?.previo ?? null
+    const { error } = await admin
+      .from(accion.resultado_tabla)
+      .update({
+        tipo_documento: previo?.tipo_documento ?? null,
+        folio: previo?.folio ?? null,
+      })
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'conciliar') {
