@@ -14,8 +14,7 @@
 // segmentos estáticos hermanos (/api/agent/*, /api/upload, /api/parse-factura,
 // etc.) tienen prioridad de routing en Next.js y NO se ven afectados.
 
-import { createMcpHandler, withMcpAuth } from 'mcp-handler'
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js'
+import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
 
 export const runtime = 'nodejs'
@@ -226,17 +225,29 @@ const baseHandler = createMcpHandler(
 )
 
 // Verificación del token estático del agente (mismo HILVAN_AGENT_TOKEN que
-// usa /api/agent/*). required:true → 401 si el header falta o no calza.
-function verifyToken(_req: Request, bearer?: string): AuthInfo | undefined {
+// usa /api/agent/*). Se acepta por header `Authorization: Bearer <token>` O por
+// query string `?key=<token>` (o `?token=`). El query permite usarlo como
+// "URL con llave" en conectores que no tienen campo para un header (ej. el
+// conector personalizado de Claude/Cowork, que solo pide URL y OAuth opcional).
+function tokenOk(req: Request): boolean {
   const expected = process.env.HILVAN_AGENT_TOKEN
-  if (!expected || !bearer || bearer !== expected) return undefined
-  return {
-    token: bearer,
-    clientId: 'hilvan-agent',
-    scopes: ['agent'],
-  }
+  if (!expected) return false
+  const header = req.headers.get('authorization') ?? ''
+  const fromHeader = header.startsWith('Bearer ') ? header.slice(7).trim() : ''
+  const url = new URL(req.url)
+  const fromQuery = (url.searchParams.get('key') ?? url.searchParams.get('token') ?? '').trim()
+  const provided = fromHeader || fromQuery
+  return provided.length > 0 && provided === expected
 }
 
-const handler = withMcpAuth(baseHandler, verifyToken, { required: true })
+async function handler(req: Request): Promise<Response> {
+  if (!tokenOk(req)) {
+    return new Response(JSON.stringify({ error: 'No autorizado' }), {
+      status: 401,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+  return baseHandler(req)
+}
 
 export { handler as GET, handler as POST }
