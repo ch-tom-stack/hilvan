@@ -889,7 +889,7 @@ export {
   type TotalesCotizacion,
 } from '@/lib/cotizaciones-calc'
 
-export { calcularRetencion } from '@/lib/rendiciones-calc'
+export { calcularRetencion, tasaRetencionBoleta } from '@/lib/rendiciones-calc'
 
 export {
   resolverHoraLlamado,

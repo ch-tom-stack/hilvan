@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   calcularRetencion,
+  tasaRetencionBoleta,
   formatCLP,
   subtotalRentalItem,
   calcularTotalesRental,
@@ -8,22 +9,47 @@ import {
   type RentalCotizacionItem,
 } from '@/types'
 
+// ── tasaRetencionBoleta ───────────────────────────────────────────────────────
+// Aumento gradual de la Ley 21.133 (hasta 17% en 2028).
+describe('tasaRetencionBoleta', () => {
+  it('devuelve la tasa por año', () => {
+    expect(tasaRetencionBoleta(2024)).toBe(0.1375)
+    expect(tasaRetencionBoleta(2025)).toBe(0.145)
+    expect(tasaRetencionBoleta(2026)).toBe(0.1525)
+    expect(tasaRetencionBoleta(2027)).toBe(0.16)
+    expect(tasaRetencionBoleta(2028)).toBe(0.17)
+  })
+  it('2029+ usa el tope (17%); años previos a 2020 usan 2020', () => {
+    expect(tasaRetencionBoleta(2030)).toBe(0.17)
+    expect(tasaRetencionBoleta(2019)).toBe(0.1075)
+  })
+})
+
 // ── calcularRetencion ─────────────────────────────────────────────────────────
-// Tasa vigente en el código: RETENCION_BOLETA = 0.154 (constante hardcodeada en types).
 describe('calcularRetencion', () => {
-  it('boleta: retiene 15.4% (tasa actual del código)', () => {
-    const r = calcularRetencion({ monto: 100000, tipo_documento: 'boleta' })
-    expect(r.retencion).toBe(15400)
+  it('boleta 2026: retiene 15,25% (Ley 21.133)', () => {
+    const r = calcularRetencion({ monto: 100000, tipo_documento: 'boleta', year: 2026 })
+    expect(r.retencion).toBe(15250)
     expect(r.bruto).toBe(100000)
-    expect(r.neto).toBe(84600)
+    expect(r.neto).toBe(84750)
     expect(r.sinDocumento).toBe(false)
   })
 
-  it('boleta: redondea la retención', () => {
-    // 33333 * 0.154 = 5133.282 → 5133
-    const r = calcularRetencion({ monto: 33333, tipo_documento: 'boleta' })
-    expect(r.retencion).toBe(5133)
-    expect(r.neto).toBe(33333 - 5133)
+  it('boleta 2025: retiene 14,5%', () => {
+    const r = calcularRetencion({ monto: 100000, tipo_documento: 'boleta', year: 2025 })
+    expect(r.retencion).toBe(14500)
+  })
+
+  it('boleta: deriva el año desde fecha YYYY-MM-DD', () => {
+    const r = calcularRetencion({ monto: 100000, tipo_documento: 'boleta', fecha: '2026-06-14' })
+    expect(r.retencion).toBe(15250)
+  })
+
+  it('boleta 2026: redondea la retención', () => {
+    // 33333 * 0.1525 = 5083.28 → 5083
+    const r = calcularRetencion({ monto: 33333, tipo_documento: 'boleta', year: 2026 })
+    expect(r.retencion).toBe(5083)
+    expect(r.neto).toBe(33333 - 5083)
   })
 
   it('sin_documento: sin retención, marca sinDocumento', () => {

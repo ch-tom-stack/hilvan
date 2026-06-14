@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { calcularRetencion } from '@/lib/rendiciones-calc'
+import { calcularRetencion, tasaRetencionBoleta } from '@/lib/rendiciones-calc'
 import { registrarAccion } from '@/lib/agent-audit'
 
 export const runtime = 'nodejs'
-
-const RETENCION_BOLETA = 0.154
 
 // POST /api/agent/gasto-mensual (JSON)
 // Crea un gasto operacional mensual. Acepta `periodo` (YYYY-MM) o
@@ -85,13 +83,15 @@ export async function POST(req: Request) {
   }
 
   // ── Calcular bruto: persistimos SIEMPRE el bruto ──────────────────────────
-  // Para boleta con monto neto, el bruto = neto / (1 - 0.154).
+  // La tasa de retención depende del año del período (Ley 21.133).
+  const year = periodo ? Number(periodo.slice(0, 4)) : new Date().getFullYear()
+  const tasa = tasaRetencionBoleta(year)
   const montoBruto =
     tipo_documento === 'boleta' && monto_es === 'neto'
-      ? Math.round(monto / (1 - RETENCION_BOLETA))
+      ? Math.round(monto / (1 - tasa))
       : Math.round(monto)
 
-  const { retencion, neto } = calcularRetencion({ monto: montoBruto, tipo_documento })
+  const { retencion, neto } = calcularRetencion({ monto: montoBruto, tipo_documento, year })
 
   // ── Insertar gasto ────────────────────────────────────────────────────────
   const insert = {

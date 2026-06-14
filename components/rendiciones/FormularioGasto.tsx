@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import { crearGasto } from '@/app/actions/rendiciones'
 import type { RendicionGasto, TipoRendicion, TipoDocRendicion } from '@/types'
 import { createClient } from '@/lib/supabase/client'
+import { tasaRetencionBoleta } from '@/lib/rendiciones-calc'
 
 interface DatosFactura {
   rut_emisor: string | null
@@ -40,7 +41,7 @@ interface Props {
   onCancel: () => void
 }
 
-const TASA = 0.154
+const TASA = tasaRetencionBoleta() // tasa del año actual (Ley 21.133)
 
 export default function FormularioGasto({
   rendicionId, cotizacionItemId, itemTipo, colaboradorId, esExterno = false, onSuccess, onCancel,
@@ -263,7 +264,7 @@ export default function FormularioGasto({
         {montos && esBoleta && (
           <p className="mt-1 font-body text-[10px] text-ch-muted font-mono">
             {inputEsBruto
-              ? `Retención ${(TASA * 100).toFixed(1)}% = $${montos.retencion.toLocaleString('es-CL')} · Neto = $${montos.neto.toLocaleString('es-CL')}`
+              ? `Retención ${(TASA * 100).toFixed(2).replace(/\.?0+$/, '')}% = $${montos.retencion.toLocaleString('es-CL')} · Neto = $${montos.neto.toLocaleString('es-CL')}`
               : `Bruto = $${montos.bruto.toLocaleString('es-CL')} · Retención = $${montos.retencion.toLocaleString('es-CL')}`
             }
           </p>

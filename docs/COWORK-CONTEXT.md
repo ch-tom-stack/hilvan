@@ -27,7 +27,7 @@ Idioma: todo en español. Moneda: peso chileno (CLP), sin decimales. Fechas: for
 - **Cotización:** presupuesto que Casa Hiedra envía a un cliente. Tiene versiones y un flujo de estados (borrador → enviada → aprobada → en producción → cerrada).
 - **Factura:** documento tributario que Casa Hiedra **emite al cliente** para cobrar. Tiene un folio (número SII).
 - **Pago recibido:** cuando el cliente efectivamente paga la factura. Es lo que el agente registrará seguido.
-- **Boleta de honorarios:** documento que un **freelancer/colaborador emite a Casa Hiedra** por su trabajo. En Chile lleva una **retención de impuesto** (actualmente **15,4%**): Casa Hiedra paga el neto al colaborador y retiene ese % para el SII.
+- **Boleta de honorarios:** documento que un **freelancer/colaborador emite a Casa Hiedra** por su trabajo. En Chile lleva una **retención de impuesto** (sube por año; 2026: **15,25%**): Casa Hiedra paga el neto al colaborador y retiene ese % para el SII.
 - **Retención:** el % que se descuenta de una boleta de honorarios. Bruto − retención = neto (lo que recibe la persona).
 - **Rendición / Centro de costos:** el módulo donde se cargan los **gastos** de un proyecto o del mes (boletas, facturas de proveedores, transporte, etc.). Ojo: el módulo se llama **"Centro de costos"** en el menú y vive en la ruta `/costos`, pero internamente cada documento de gasto sigue llamándose "rendición".
 - **Glosa / ítem:** cada línea de una cotización (ej. "Director", "2 Cámaras") contra la que se cargan gastos.
@@ -110,7 +110,7 @@ Idioma: todo en español. Moneda: peso chileno (CLP), sin decimales. Fechas: for
 
 ### Reglas
 - El **monto siempre se guarda como bruto** internamente; por eso importa elegir bien Neto/Bruto.
-- La retención (15,4%) se calcula sola para tipo "Boleta de honorarios". No calcularla a mano.
+- La retención (15,25% en 2026) se calcula sola para tipo "Boleta de honorarios". No calcularla a mano.
 - Adjuntar siempre el comprobante cuando exista. "Sin documento" requiere justificación y es excepcional.
 
 ---
@@ -137,7 +137,7 @@ Los colaboradores pueden cargar **sus propias** boletas sin cuenta, mediante un 
 - Hilván corre en `app.casahiedra.com` (Next.js + Supabase, hosteado en Vercel).
 - No hay API externa de escritura; la operación es por UI. Si en el futuro se quiere una integración más robusta (que el agente registre pagos vía API/MCP en vez de clickear), habría que exponer endpoints autenticados — es un desarrollo aparte.
 - El módulo "Centro de costos" usa la ruta `/costos`; los enlaces viejos `/rendiciones` redirigen solos.
-- Tasa de retención de honorarios vigente: **15,4%** (definida en el código; si el SII la cambia, la ajusta un desarrollador).
+- Tasa de retención de honorarios: por año (Ley 21.133; 2026: 15,25%), centralizada en lib/rendiciones-calc.ts (tasaRetencionBoleta).
 
 ---
 

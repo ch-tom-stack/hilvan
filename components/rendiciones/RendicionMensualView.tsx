@@ -12,9 +12,9 @@ import {
 } from '@/app/actions/rendiciones_mensuales'
 import { RendicionMensual, RendicionMensualGasto, CATEGORIAS_RENDICION_MENSUAL, EstadoRendicionMensual, formatCLP } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
-import { calcularRetencion } from '@/lib/rendiciones-calc'
+import { calcularRetencion, tasaRetencionBoleta } from '@/lib/rendiciones-calc'
 
-const TASA_BOLETA = 0.154
+const TASA_BOLETA = tasaRetencionBoleta() // tasa del año actual (Ley 21.133)
 
 const TIPO_DOC_OPCIONES = [
   { value: 'boleta', label: 'Boleta de honorarios' },
@@ -363,7 +363,7 @@ export default function RendicionMensualView({
                 {montosBoleta && (
                   <p className="mt-1 font-body text-[10px] text-ch-muted font-mono">
                     {inputEsBruto
-                      ? `Retención ${(TASA_BOLETA * 100).toFixed(1)}% = ${formatCLP(montosBoleta.retencion)} · Neto = ${formatCLP(montosBoleta.neto)}`
+                      ? `Retención ${(TASA_BOLETA * 100).toFixed(2).replace(/\.?0+$/, '')}% = ${formatCLP(montosBoleta.retencion)} · Neto = ${formatCLP(montosBoleta.neto)}`
                       : `Bruto = ${formatCLP(montosBoleta.bruto)} · Retención = ${formatCLP(montosBoleta.retencion)}`}
                   </p>
                 )}

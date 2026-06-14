@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { calcularRetencion } from '@/lib/rendiciones-calc'
+import { calcularRetencion, tasaRetencionBoleta } from '@/lib/rendiciones-calc'
 import { registrarAccion } from '@/lib/agent-audit'
 
 export const runtime = 'nodejs'
-
-const RETENCION_BOLETA = 0.154
 
 const TIPO_LABEL: Record<string, string> = {
   honorarios: 'Honorarios', transporte: 'Transporte', alimentacion: 'Alimentación',
@@ -93,10 +91,11 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── Bruto: persistimos SIEMPRE el bruto ──────────────────────────────────
+  // ── Bruto: persistimos SIEMPRE el bruto (tasa por año, Ley 21.133) ────────
+  const tasa = tasaRetencionBoleta()
   const montoBruto =
     tipo_documento === 'boleta' && monto_es === 'neto'
-      ? Math.round(monto / (1 - RETENCION_BOLETA))
+      ? Math.round(monto / (1 - tasa))
       : Math.round(monto)
 
   const { retencion, neto } = calcularRetencion({ monto: montoBruto, tipo_documento })

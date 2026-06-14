@@ -165,7 +165,7 @@ Cowork (en tu Mac) → MCP de Hilván (local, guarda el token) → HTTPS → app
 | POST | `/api/agent/pago-recibido` | `{cotizacion_id, fecha_pago_recibido, fecha_factura_emitida?, numero_factura?}` | `{ok, cotizacion}` |
 | POST | `/api/agent/deshacer` | `{accion_id}` | revierte la última escritura registrada |
 
-**Regla de la capa write:** `monto_es` permite mandar neto o bruto; el server calcula y **persiste el bruto** + retención (usa `calcularRetencion`, 15,4%). Todo write inserta en `agente_acciones` con archivo fuente y resumen.
+**Regla de la capa write:** `monto_es` permite mandar neto o bruto; el server calcula y **persiste el bruto** + retención (usa `calcularRetencion`, tasa por año (2026: 15,25%)). Todo write inserta en `agente_acciones` con archivo fuente y resumen.
 
 ### Herramientas MCP (1:1 con los endpoints)
 `hilvan_por_cobrar`, `hilvan_buscar_cotizacion`, `hilvan_buscar_colaborador`, `hilvan_rendicion_mensual`, `hilvan_estado_financiero`, `hilvan_parse_documento`, `hilvan_subir_archivo`, `hilvan_crear_gasto_mensual`, `hilvan_crear_gasto_proyecto`, `hilvan_registrar_pago`, `hilvan_deshacer`.
