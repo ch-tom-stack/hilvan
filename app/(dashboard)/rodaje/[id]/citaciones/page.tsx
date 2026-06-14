@@ -159,7 +159,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
                 {isExpanded && (
                   <div className="border-t border-ch-border px-4 py-4 space-y-4">
                     {!citacion ? (
-                      <p className="text-xs text-ch-subtle">Presiona "Generar citaciones" para crear el link de esta persona.</p>
+                      <p className="text-xs text-ch-subtle">Presiona &quot;Generar citaciones&quot; para crear el link de esta persona.</p>
                     ) : (
                       <>
                         {citacion.confirmada !== undefined && citacion.confirmada !== null && (

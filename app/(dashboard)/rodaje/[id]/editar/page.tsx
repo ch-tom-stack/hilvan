@@ -240,7 +240,7 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
         ) : (
           <div className="bg-red-950/20 border border-red-900 rounded-[2px] p-4">
             <p className="text-sm text-red-400 mb-3">
-              ¿Eliminar "{rodaje.nombre}"? Esta acción no se puede deshacer.
+              ¿Eliminar &quot;{rodaje.nombre}&quot;? Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3">
               <button

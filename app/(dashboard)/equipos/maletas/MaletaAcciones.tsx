@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { eliminarMaleta, convertirMaletaABundle } from '@/app/actions/maletas'
 
 interface Props {
@@ -40,12 +41,12 @@ export default function MaletaAcciones({ maletaId, maletaNombre }: Props) {
     return (
       <div className="mt-3 bg-ch-green/10 border border-ch-green/30 px-3 py-2 text-center space-y-1">
         <p className="font-body text-[10px] text-ch-green">✓ Bundle creado</p>
-        <a
+        <Link
           href="/equipos/bundles"
           className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-muted hover:text-ch-cream transition-colors"
         >
           Ver bundles →
-        </a>
+        </Link>
       </div>
     )
   }
@@ -54,7 +55,7 @@ export default function MaletaAcciones({ maletaId, maletaNombre }: Props) {
   if (confirmando === 'eliminar') {
     return (
       <div className="mt-2 border border-red-400/30 p-3 space-y-2">
-        <p className="font-body text-[10px] text-ch-cream text-center">¿Eliminar "{maletaNombre}"?</p>
+        <p className="font-body text-[10px] text-ch-cream text-center">¿Eliminar &quot;{maletaNombre}&quot;?</p>
         <p className="font-body text-[9px] text-ch-subtle text-center">Esta acción no se puede deshacer</p>
         <div className="flex gap-2">
           <button

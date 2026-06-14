@@ -31,6 +31,7 @@ import {
   type TarifaBase,
   type Equipo,
 } from '@/types'
+import Link from 'next/link'
 import ItemModal from './ItemModal'
 import PanelFacturacion from './PanelFacturacion'
 import DepBlock from './BloquesDepartamento'
@@ -271,9 +272,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
       {/* ── HEADER ── */}
       <div className="border-b border-ch-border px-6 py-4 flex items-center justify-between gap-4 bg-ch-dark sticky top-0 z-20">
         <div className="flex items-center gap-4 min-w-0">
-          <a href="/cotizaciones" className="text-ch-muted hover:text-ch-cream transition-colors text-sm font-body shrink-0">
+          <Link href="/cotizaciones" className="text-ch-muted hover:text-ch-cream transition-colors text-sm font-body shrink-0">
             ← Cotizaciones
-          </a>
+          </Link>
           <span className="text-ch-subtle">|</span>
           <div className="flex items-center gap-3 min-w-0">
             <span className="font-body text-xs text-ch-muted shrink-0">{numVisible}</span>

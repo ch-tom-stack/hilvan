@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { crearCotizacion, crearCliente } from '@/app/actions/cotizaciones'
 import type { Cliente, Proyecto } from '@/types'
 
@@ -195,12 +196,12 @@ export default function NuevaCotizacionForm({ clientes, proyectos }: Props) {
         >
           {isPending ? 'Creando...' : 'Crear cotización'}
         </button>
-        <a
+        <Link
           href="/cotizaciones"
           className="px-6 py-3 border border-ch-border text-ch-muted font-body text-sm rounded hover:text-ch-cream hover:border-ch-cream/40 transition-colors"
         >
           Cancelar
-        </a>
+        </Link>
       </div>
     </form>
   )

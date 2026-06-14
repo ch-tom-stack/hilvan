@@ -58,7 +58,7 @@ export async function listarBundles(): Promise<Bundle[]> {
     .flatMap((b: any) => (b.items ?? []).map((i: any) => i.bundle_hijo_id))
     .filter(Boolean) as string[]
 
-  let hijosMap: Record<string, { codigo: string; nombre: string; precio_jornada: number | null }> = {}
+  const hijosMap: Record<string, { codigo: string; nombre: string; precio_jornada: number | null }> = {}
 
   if (hijoIds.length > 0) {
     const { data: hijos } = await supabase

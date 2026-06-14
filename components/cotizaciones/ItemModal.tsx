@@ -293,7 +293,7 @@ export default function ItemModal({
                 onChange={e => setIncluido(e.target.checked)}
                 className="accent-ch-cream"
               />
-              <span className="font-body text-xs text-ch-muted">Marcar como "Incluida"</span>
+              <span className="font-body text-xs text-ch-muted">Marcar como &quot;Incluida&quot;</span>
             </label>
           </div>
 
