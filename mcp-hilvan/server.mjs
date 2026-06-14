@@ -148,6 +148,24 @@ const TOOLS = [
       return api('GET', `/gastos${qs ? `?${qs}` : ''}`)
     },
   },
+  {
+    name: 'hilvan_items_cotizacion',
+    description: 'Lista los ítems (con sus IDs) de una cotización por número (ej. CH-COT-005) o id. Necesario para cargar un gasto de proyecto, que requiere cotizacion_item_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        numero: { type: 'string', description: 'número del grupo, ej. CH-COT-005' },
+        cotizacion_id: { type: 'string', description: 'UUID de la cotización' },
+      },
+    },
+    run: (a) => {
+      const params = new URLSearchParams()
+      if (a.numero) params.set('numero', a.numero)
+      if (a.cotizacion_id) params.set('cotizacion_id', a.cotizacion_id)
+      const qs = params.toString()
+      return api('GET', `/cotizacion-items${qs ? `?${qs}` : ''}`)
+    },
+  },
 ]
 
 const server = new Server({ name: 'hilvan-mcp', version: '0.1.0' }, { capabilities: { tools: {} } })

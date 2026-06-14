@@ -243,6 +243,26 @@ const baseHandler = createMcpHandler(
       async ({ accion_id }, extra) =>
         ok(await callAgent(extra as ToolExtra, 'POST', '/deshacer', { accion_id })),
     )
+
+    server.registerTool(
+      'hilvan_items_cotizacion',
+      {
+        title: 'Ítems de cotización',
+        description:
+          'Lista los ítems (con sus IDs) de una cotización por número (ej. CH-COT-005) o id. Necesario para cargar un gasto de proyecto, que requiere cotizacion_item_id.',
+        inputSchema: {
+          numero: z.string().optional().describe('número del grupo, ej. CH-COT-005'),
+          cotizacion_id: z.string().optional().describe('UUID de la cotización'),
+        },
+      },
+      async ({ numero, cotizacion_id }, extra) => {
+        const params = new URLSearchParams()
+        if (numero) params.set('numero', numero)
+        if (cotizacion_id) params.set('cotizacion_id', cotizacion_id)
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/cotizacion-items${qs ? `?${qs}` : ''}`))
+      },
+    )
   },
   {},
   {
