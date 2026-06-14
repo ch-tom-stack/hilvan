@@ -85,6 +85,10 @@ export function calcularTotales(cotizacion: Cotizacion): TotalesCotizacion {
     }
   }
 
+  // El descuento global nunca puede superar el neto (evita totales negativos).
+  // Un descuento negativo ya queda en 0 por el guard `> 0` de arriba.
+  descuento_global_monto = Math.min(descuento_global_monto, neto)
+
   const neto_con_descuento = neto - descuento_global_monto
   const iva = cotizacion.con_iva ? Math.round(neto_con_descuento * 0.19) : 0
   const total = neto_con_descuento + iva

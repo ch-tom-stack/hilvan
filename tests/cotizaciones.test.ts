@@ -262,7 +262,7 @@ describe('calcularTotales', () => {
     expect(t.total).toBe(357000)
   })
 
-  it('DUDOSO: descuento_global negativo se ignora (guard > 0), no suma', () => {
+  it('descuento_global negativo se ignora (guard > 0), no suma', () => {
     const t = calcularTotales(cotizacion({
       descuento_global: -5000,
       descuento_global_tipo: 'monto',
@@ -273,5 +273,19 @@ describe('calcularTotales', () => {
     }))
     expect(t.descuento_global_monto).toBe(0)
     expect(t.neto_con_descuento).toBe(100000)
+  })
+
+  it('descuento_global mayor que el neto se topa en el neto (total nunca negativo)', () => {
+    const t = calcularTotales(cotizacion({
+      descuento_global: 999999,
+      descuento_global_tipo: 'monto',
+      departamentos: [{
+        id: 'd', cotizacion_id: 'c', nombre: 'Dep', orden: 0,
+        items: [item({ precio_cliente: 100000 })],
+      }],
+    }))
+    expect(t.descuento_global_monto).toBe(100000)
+    expect(t.neto_con_descuento).toBe(0)
+    expect(t.total).toBeGreaterThanOrEqual(0)
   })
 })

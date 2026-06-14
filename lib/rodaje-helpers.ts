@@ -92,7 +92,14 @@ export function aplicarCambioTiempo(bloques: RodajeBloque[], bloqueId: string, c
     if (i !== idx) return b
     const b2 = { ...b }
     if (campo === 'inicio') { b2.hora_inicio_fija = minutosAHora(valorMin); b2.es_anclado = true; if (b2.duracion_min) b2.hora_fin = minutosAHora(valorMin + b2.duracion_min) }
-    else if (campo === 'fin') { const ini = b2.hora_inicio_fija ? horaAMinutos(b2.hora_inicio_fija) : undefined; if (ini !== undefined) { b2.duracion_min = valorMin - ini; b2.hora_fin = minutosAHora(valorMin) } }
+    else if (campo === 'fin') {
+      // Inicio efectivo: hora fija si la hay; si no, el que resuelve la cascada
+      // (el bloque parte donde termina el anterior). Así editar el "fin" ajusta
+      // la duración aunque el bloque no esté anclado.
+      let ini = b2.hora_inicio_fija ? horaAMinutos(b2.hora_inicio_fija) : undefined
+      if (ini === undefined) ini = calcularCascada(bloques).find(c => c.id === bloqueId)?.inicio_min
+      if (ini !== undefined && valorMin > ini) { b2.duracion_min = valorMin - ini; b2.hora_fin = minutosAHora(valorMin) }
+    }
     else if (campo === 'duracion') { b2.duracion_min = valorMin; if (b2.hora_inicio_fija) b2.hora_fin = minutosAHora(horaAMinutos(b2.hora_inicio_fija) + valorMin) }
     return b2
   })

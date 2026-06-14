@@ -33,6 +33,7 @@ export function esNombreEmpresa(l: string): boolean {
   if (/^(FACTURA|BOLETA|NOTA DE|LIQUIDACI|GUÍA|GUIA|S\.I\.I|SII\b)/i.test(l)) return false
   if (/^(ELECTRONICA|ELECTRÓNICA|AFECTA|EXENTA)/i.test(l)) return false
   if (/^(SEÑOR|SEÑORES|CLIENTE|RECEPTOR)/i.test(l)) return false
+  if (/^(CONTADO|CR[EÉ]DITO|CREDITO|CONTRA FACTURA|A \d+ D[IÍ]AS?)$/i.test(l)) return false // condición de pago, no nombre
   if (l.length > 80) return false                  // demasiado largo → párrafo
   return true
 }
@@ -152,8 +153,9 @@ export function parsearFacturaSII(text: string): FacturaParseResult {
   //    "Total48.603"  →  48603   (Copec / PIMENISA style)
   //    "Total 48.603" →  48603
   //    "Total  $196.990" → también cubierto
+  //    "Total 500"    →  500   (monto < 1.000 sin separador de miles)
   if (!monto) {
-    const totalInlineMatch = fullText.match(/\bTotal\s*\$?\s*(\d{1,3}(?:\.\d{3})+)/i)
+    const totalInlineMatch = fullText.match(/\bTotal\s*\$?\s*(\d{1,3}(?:\.\d{3})+|\d+)/i)
     if (totalInlineMatch) {
       const parsed = parsearMontoCLP(totalInlineMatch[1])
       if (parsed && parsed > 100) monto = parsed

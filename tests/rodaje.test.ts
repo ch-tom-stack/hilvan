@@ -147,9 +147,19 @@ describe('aplicarCambioTiempo', () => {
     expect(res[0].hora_fin).toBe('10:00')
   })
 
-  it('DUDOSO: campo fin sin hora_inicio_fija → no hace nada (no setea duracion ni fin)', () => {
+  it('campo fin sin hora_inicio_fija: deriva el inicio desde la cascada y ajusta la duración', () => {
+    const bloques = [
+      bloque({ id: 'a', hora_inicio_fija: '08:00', duracion_min: 60 }), // termina 09:00 (=540)
+      bloque({ id: 'b', duracion_min: 30 }),                            // inicio cascada = 540
+    ]
+    const res = aplicarCambioTiempo(bloques, 'b', 'fin', 600) // fin 10:00
+    expect(res[1].duracion_min).toBe(60)  // 600 - 540
+    expect(res[1].hora_fin).toBe('10:00')
+  })
+
+  it('campo fin en primer bloque sin inicio derivable → no hace nada (no hay referencia de inicio)', () => {
     const res = aplicarCambioTiempo([bloque({ id: 'a', duracion_min: 30 })], 'a', 'fin', 600)
-    expect(res[0].duracion_min).toBe(30) // sin cambios
+    expect(res[0].duracion_min).toBe(30)
     expect(res[0].hora_fin).toBeUndefined()
   })
 

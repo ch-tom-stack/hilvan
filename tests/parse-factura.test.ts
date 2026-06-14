@@ -130,23 +130,20 @@ describe('parsearFacturaSII', () => {
     expect(r.folio).toBe('9988')
     expect(r.fecha).toBe('01/06/2026')
     expect(r.monto).toBe(196990)
-    // razon_social: P2 toma la primera candidata antes del RUT (ver test DUDOSO).
-    // "SEÑOR(ES): CASA HIEDRA" tiene ':' → descartada; "CONTADO" es la primera válida.
-    expect(r.razon_social).toBe('CONTADO')
+    // razon_social: P2 descarta "SEÑOR(ES): CASA HIEDRA" (tiene ':') y "CONTADO"
+    // (condición de pago) → toma el nombre real del emisor.
+    expect(r.razon_social).toBe('PROVEEDORES IIA LTDA')
   })
 
-  it('DUDOSO: "CONTADO" antes del RUT es tomado como razón social por P2', () => {
-    // esNombreEmpresa('CONTADO') === true (6 chars, sin ':', no es encabezado conocido).
-    // Si la condición de pago precede al nombre real del emisor y ambos están
-    // antes del primer R.U.T.:, P2 toma la PRIMERA candidata → "CONTADO".
-    // Comportamiento actual, no corregido.
+  it('"CONTADO" antes del RUT NO se toma como razón social (es condición de pago)', () => {
+    // esNombreEmpresa('CONTADO') === false → P2 lo salta y toma el nombre real.
     const text = [
       'CONTADO',
       'PROVEEDORES IIA LTDA',
       'R.U.T.: 76.111.222-3',
     ].join('\n')
     const r = parsearFacturaSII(text)
-    expect(r.razon_social).toBe('CONTADO')
+    expect(r.razon_social).toBe('PROVEEDORES IIA LTDA')
   })
 
   it('label explícito "Razón Social:" tiene prioridad', () => {
@@ -167,10 +164,9 @@ describe('parsearFacturaSII', () => {
     expect(r.monto).toBeNull()
   })
 
-  it('DUDOSO: total inline exige separador de miles — "Total 500" (sin punto) no matchea', () => {
+  it('total inline detecta montos < 1.000 sin separador de miles — "Total 500" → 500', () => {
     const text = ['EMPRESA CHICA LTDA', 'R.U.T.: 76.000.000-0', 'Total 500'].join('\n')
     const r = parsearFacturaSII(text)
-    // El regex T2 requiere (?:\.\d{3})+ → montos < 1.000 sin punto quedan sin detectar
-    expect(r.monto).toBeNull()
+    expect(r.monto).toBe(500)
   })
 })
