@@ -9,7 +9,7 @@ const BASE_NAV_ITEMS = [
   { label: 'Dashboard',     href: '/dashboard',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },
   { label: 'Cotizaciones',  href: '/cotizaciones',  disponible: true,  rolesPermitidos: null,              ocultarPara: null },
   { label: 'Rodajes',       href: '/rodaje',        disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
-  { label: 'Rendiciones',   href: '/rendiciones',   disponible: true,  rolesPermitidos: null,              ocultarPara: null },
+  { label: 'Centro de costos', href: '/costos',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },
   { label: 'Financiero',    href: '/financiero',    disponible: false, rolesPermitidos: ['admin', 'contabilidad'], ocultarPara: null },
   { label: 'Equipos',       href: '/equipos',       disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
   { label: 'Colaboradores', href: '/colaboradores', disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },

@@ -3,7 +3,7 @@ export default function LoadingAdmin() {
     <div className="p-6 lg:p-10">
       <div className="flex items-end justify-between mb-10">
         <div>
-          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Rendiciones · Admin</p>
+          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Centro de costos · Admin</p>
           <div className="h-12 w-48 bg-ch-surface/40 animate-pulse" />
         </div>
         <div className="flex items-center gap-3">
