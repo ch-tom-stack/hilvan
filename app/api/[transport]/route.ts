@@ -402,6 +402,103 @@ const baseHandler = createMcpHandler(
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/gasto-fecha', args)),
     )
+
+    // ── Conciliación bancaria ────────────────────────────────────────────────
+    server.registerTool(
+      'hilvan_importar_movimientos',
+      {
+        title: 'Importar movimientos bancarios',
+        description:
+          'Importa movimientos de tarjeta/cuenta (extracto). Recibe un array `movimientos`, cada uno con fecha (YYYY-MM-DD), monto (>0), tipo ("cargo"=salida | "abono"=entrada) y opcionalmente descripcion/fuente/referencia. Valida TODAS las filas antes de escribir; reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          movimientos: z
+            .array(
+              z.object({
+                fecha: z.string().describe('YYYY-MM-DD'),
+                monto: z.number().describe('monto positivo'),
+                tipo: z.enum(['cargo', 'abono']).describe('cargo=salida | abono=entrada'),
+                descripcion: z.string().optional(),
+                fuente: z.string().optional().describe('ej. tarjeta, cuenta corriente'),
+                referencia: z.string().optional(),
+              }),
+            )
+            .describe('movimientos del extracto'),
+        },
+      },
+      async (args, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'POST', '/importar-movimientos', args)),
+    )
+
+    server.registerTool(
+      'hilvan_movimientos',
+      {
+        title: 'Listar movimientos bancarios',
+        description:
+          'Lista los movimientos bancarios importados, con filtros. Útil para ver los cargos/abonos sin conciliar y cruzarlos con Hilván.',
+        inputSchema: {
+          conciliado: z.enum(['true', 'false']).optional().describe('filtra por estado de conciliación'),
+          tipo: z.enum(['cargo', 'abono']).optional(),
+          fuente: z.string().optional(),
+          desde: z.string().optional().describe('YYYY-MM-DD'),
+          hasta: z.string().optional().describe('YYYY-MM-DD'),
+          q: z.string().optional().describe('texto sobre descripcion/referencia'),
+        },
+      },
+      async ({ conciliado, tipo, fuente, desde, hasta, q }, extra) => {
+        const params = new URLSearchParams()
+        if (conciliado) params.set('conciliado', conciliado)
+        if (tipo) params.set('tipo', tipo)
+        if (fuente) params.set('fuente', fuente)
+        if (desde) params.set('desde', desde)
+        if (hasta) params.set('hasta', hasta)
+        if (q) params.set('q', q)
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/movimientos${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_conciliar',
+      {
+        title: 'Conciliar movimiento',
+        description:
+          'Cruza un movimiento bancario con una fila de Hilván y MARCA PAGADA la obligación. match_tabla indica qué se paga: "cotizaciones" (un abono = pago recibido, setea fecha_pago_recibido), "rendicion_gastos"/"rendicion_mensual_gastos" (un cargo = gasto pagado), "gastos_fijos_cuotas" (un cargo = cuota de crédito pagada). match_id es el UUID de esa fila. Reversible con hilvan_deshacer (restaura el estado previo). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          movimiento_id: z.string().describe('UUID del movimiento bancario'),
+          match_tabla: z
+            .enum([
+              'rendicion_gastos',
+              'rendicion_mensual_gastos',
+              'gastos_fijos_cuotas',
+              'cotizaciones',
+            ])
+            .describe('qué obligación se paga'),
+          match_id: z.string().describe('UUID de la fila en match_tabla'),
+          fecha_pago: z.string().optional().describe('YYYY-MM-DD; por defecto la fecha del movimiento'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/conciliar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_cuotas_credito',
+      {
+        title: 'Cuotas de crédito',
+        description:
+          'Lista las cuotas de créditos / gastos fijos con su crédito (nombre/acreedor). Por defecto solo pendientes. Útil para cruzar pagos de crédito con movimientos bancarios (luego conciliar con match_tabla="gastos_fijos_cuotas").',
+        inputSchema: {
+          pagada: z.enum(['true', 'false']).optional().describe('default false → solo pendientes'),
+        },
+      },
+      async ({ pagada }, extra) =>
+        ok(
+          await callAgent(
+            extra as ToolExtra,
+            'GET',
+            `/cuotas-credito${pagada ? `?pagada=${pagada}` : ''}`,
+          ),
+        ),
+    )
   },
   {},
   {

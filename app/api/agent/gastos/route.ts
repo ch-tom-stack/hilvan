@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   let proyQuery = admin
     .from('rendicion_gastos')
     .select(
-      'id,monto,tipo,tipo_documento,estado,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,folio,' +
+      'id,monto,tipo,tipo_documento,estado,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,folio,pagado,fecha_pago,' +
         'rendicion:rendiciones(estado,cotizacion:cotizaciones(grupo:cotizacion_grupos(numero_base)))',
     )
     .order('created_at', { ascending: false })
@@ -71,7 +71,7 @@ export async function GET(req: Request) {
   let mensQuery = admin
     .from('rendicion_mensual_gastos')
     .select(
-      'id,monto,categoria,tipo_documento,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,folio,' +
+      'id,monto,categoria,tipo_documento,rut_emisor,razon_social_emisor,descripcion,created_at,fecha_documento,folio,pagado,fecha_pago,' +
         'rendicion_mensual:rendiciones_mensuales(periodo)',
     )
     .order('created_at', { ascending: false })
@@ -112,6 +112,8 @@ export async function GET(req: Request) {
     razon_social_emisor: string | null
     folio: string | null
     estado: string | null
+    pagado: boolean
+    fecha_pago: string | null
     retencion: number
     neto: number
     fecha_documento: string | null
@@ -138,6 +140,8 @@ export async function GET(req: Request) {
       razon_social_emisor: g.razon_social_emisor ?? null,
       folio: g.folio ?? null,
       estado: g.estado ?? null,
+      pagado: g.pagado ?? false,
+      fecha_pago: g.fecha_pago ?? null,
       retencion,
       neto,
       fecha_documento: g.fecha_documento ?? null,
@@ -166,6 +170,8 @@ export async function GET(req: Request) {
       razon_social_emisor: g.razon_social_emisor ?? null,
       folio: g.folio ?? null,
       estado: null,
+      pagado: g.pagado ?? false,
+      fecha_pago: g.fecha_pago ?? null,
       retencion,
       neto,
       fecha_documento: g.fecha_documento ?? null,

@@ -265,6 +265,85 @@ const TOOLS = [
     },
     run: (a) => api('POST', '/gasto-fecha', a),
   },
+  {
+    name: 'hilvan_importar_movimientos',
+    description: 'Importa movimientos de tarjeta/cuenta (extracto). Recibe un array `movimientos`, cada uno con fecha (YYYY-MM-DD), monto (>0), tipo ("cargo"=salida | "abono"=entrada) y opcionalmente descripcion/fuente/referencia. Valida TODAS las filas antes de escribir; reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        movimientos: {
+          type: 'array',
+          description: 'movimientos del extracto',
+          items: {
+            type: 'object',
+            properties: {
+              fecha: { type: 'string', description: 'YYYY-MM-DD' },
+              monto: { type: 'number', description: 'monto positivo' },
+              tipo: { type: 'string', description: 'cargo=salida | abono=entrada' },
+              descripcion: { type: 'string' },
+              fuente: { type: 'string', description: 'ej. tarjeta, cuenta corriente' },
+              referencia: { type: 'string' },
+            },
+            required: ['fecha', 'monto', 'tipo'],
+          },
+        },
+      },
+      required: ['movimientos'],
+    },
+    run: (a) => api('POST', '/importar-movimientos', a),
+  },
+  {
+    name: 'hilvan_movimientos',
+    description: 'Lista los movimientos bancarios importados, con filtros. Útil para ver los cargos/abonos sin conciliar y cruzarlos con Hilván.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        conciliado: { type: 'string', description: 'true | false' },
+        tipo: { type: 'string', description: 'cargo | abono' },
+        fuente: { type: 'string' },
+        desde: { type: 'string', description: 'YYYY-MM-DD' },
+        hasta: { type: 'string', description: 'YYYY-MM-DD' },
+        q: { type: 'string', description: 'texto sobre descripcion/referencia' },
+      },
+    },
+    run: (a) => {
+      const params = new URLSearchParams()
+      if (a.conciliado) params.set('conciliado', a.conciliado)
+      if (a.tipo) params.set('tipo', a.tipo)
+      if (a.fuente) params.set('fuente', a.fuente)
+      if (a.desde) params.set('desde', a.desde)
+      if (a.hasta) params.set('hasta', a.hasta)
+      if (a.q) params.set('q', a.q)
+      const qs = params.toString()
+      return api('GET', `/movimientos${qs ? `?${qs}` : ''}`)
+    },
+  },
+  {
+    name: 'hilvan_conciliar',
+    description: 'Cruza un movimiento bancario con una fila de Hilván y MARCA PAGADA la obligación. match_tabla indica qué se paga: "cotizaciones" (un abono = pago recibido, setea fecha_pago_recibido), "rendicion_gastos"/"rendicion_mensual_gastos" (un cargo = gasto pagado), "gastos_fijos_cuotas" (un cargo = cuota de crédito pagada). match_id es el UUID de esa fila. Reversible con hilvan_deshacer (restaura el estado previo). CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        movimiento_id: { type: 'string', description: 'UUID del movimiento bancario' },
+        match_tabla: { type: 'string', description: 'rendicion_gastos | rendicion_mensual_gastos | gastos_fijos_cuotas | cotizaciones' },
+        match_id: { type: 'string', description: 'UUID de la fila en match_tabla' },
+        fecha_pago: { type: 'string', description: 'YYYY-MM-DD; por defecto la fecha del movimiento' },
+      },
+      required: ['movimiento_id', 'match_tabla', 'match_id'],
+    },
+    run: (a) => api('POST', '/conciliar', a),
+  },
+  {
+    name: 'hilvan_cuotas_credito',
+    description: 'Lista las cuotas de créditos / gastos fijos con su crédito (nombre/acreedor). Por defecto solo pendientes. Útil para cruzar pagos de crédito con movimientos bancarios (luego conciliar con match_tabla="gastos_fijos_cuotas").',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pagada: { type: 'string', description: 'true | false (default false → solo pendientes)' },
+      },
+    },
+    run: (a) => api('GET', `/cuotas-credito${a.pagada ? `?pagada=${a.pagada}` : ''}`),
+  },
 ]
 
 const server = new Server({ name: 'hilvan-mcp', version: '0.1.0' }, { capabilities: { tools: {} } })

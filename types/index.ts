@@ -481,6 +481,8 @@ export interface RendicionGasto {
   rut_emisor: string | null
   razon_social_emisor: string | null
   factura_casa_hiedra: boolean
+  pagado?: boolean
+  fecha_pago?: string | null
   created_at: string
   updated_at: string
   colaborador?: { id: string; nombre: string; email: string; banco?: string; tipo_cuenta?: string; numero_cuenta?: string; rut?: string } | null
@@ -548,6 +550,8 @@ export interface RendicionMensualGasto {
   rut_emisor: string | null
   razon_social_emisor: string | null
   factura_casa_hiedra: boolean
+  pagado?: boolean
+  fecha_pago?: string | null
   created_at: string
 }
 
@@ -702,6 +706,26 @@ export interface FlujoCajaManual {
   tipo: TipoFlujoCaja
   created_at: string
   created_by: string | null
+}
+
+// ============================================================
+// CONCILIACIÓN BANCARIA
+// ============================================================
+
+export type TipoMovimientoBancario = 'cargo' | 'abono'
+
+export interface MovimientoBancario {
+  id: string
+  fecha: string
+  descripcion: string | null
+  monto: number
+  tipo: TipoMovimientoBancario
+  fuente: string | null
+  referencia: string | null
+  conciliado: boolean
+  conciliado_tabla: string | null
+  conciliado_id: string | null
+  created_at: string
 }
 
 // ============================================================
