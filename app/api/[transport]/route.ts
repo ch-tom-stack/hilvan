@@ -272,6 +272,64 @@ const baseHandler = createMcpHandler(
       },
     )
 
+    // ── Rodaje ─────────────────────────────────────────────────────────────
+    server.registerTool(
+      'hilvan_listar_rodajes',
+      {
+        title: 'Listar rodajes',
+        description:
+          'Lista/busca rodajes por nombre, estado o número de cotización. Devuelve id, nombre, fecha, estado y número de la cotización asociada.',
+        inputSchema: { q: z.string().optional().describe('texto de búsqueda') },
+      },
+      async ({ q }, extra) =>
+        ok(
+          await callAgent(
+            extra as ToolExtra,
+            'GET',
+            `/rodajes${q ? `?q=${encodeURIComponent(q)}` : ''}`,
+          ),
+        ),
+    )
+
+    server.registerTool(
+      'hilvan_rodaje',
+      {
+        title: 'Detalle de rodaje',
+        description:
+          'Detalle de un rodaje: metadata, departamentos, equipo, bloques (con hora calculada) y nº de citaciones. Útil para inspeccionar un borrador sembrado.',
+        inputSchema: { id: z.string().describe('UUID del rodaje') },
+      },
+      async ({ id }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/rodaje?id=${encodeURIComponent(id)}`)),
+    )
+
+    server.registerTool(
+      'hilvan_sembrar_rodaje',
+      {
+        title: 'Sembrar rodaje (borrador)',
+        description:
+          'Crea un BORRADOR de rodaje desde una cotización: metadata (proyecto, cotización) + departamentos + equipo (roles) + un plan esqueleto de bloques (CALL, PRE SET, ALMUERZO, DESMONTAJE, CIERRE). Es un punto de partida que el humano refina. NO envía nada. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          cotizacion_id: z.string().describe('UUID de la cotización aprobada'),
+          nombre: z.string().optional().describe('nombre del rodaje; por defecto el de la cotización'),
+          fecha: z.string().optional().describe('YYYY-MM-DD'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/sembrar-rodaje', args)),
+    )
+
+    server.registerTool(
+      'hilvan_generar_citaciones',
+      {
+        title: 'Generar citaciones (links)',
+        description:
+          'Crea los links de citación (token único) para cada persona del equipo de un rodaje que aún no tenga citación. NO envía email ni WhatsApp: el envío lo hace siempre un humano desde la app. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: { rodaje_id: z.string().describe('UUID del rodaje') },
+      },
+      async (args, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'POST', '/generar-citaciones', args)),
+    )
+
     server.registerTool(
       'hilvan_set_fecha_documento',
       {

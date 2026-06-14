@@ -151,6 +151,8 @@ Cowork (en tu Mac) → MCP de Hilván (local, guarda el token) → HTTPS → app
 | GET | `/api/agent/gastos?q=&tipo_documento=&periodo=&estado=` | `[{origen, id, contexto, descripcion, tipo, tipo_documento, monto, rut_emisor, razon_social_emisor, estado, retencion, neto, fecha_documento, created_at}]` — lista unificada de gastos de proyecto y mensuales en cualquier estado (máx 200, desc por fecha). El filtro `periodo` cuadra por **mes tributario**: usa `fecha_documento` cuando existe, con fallback a `created_at`. La `retencion`/`neto` del display se calculan con el año de `fecha_documento ?? created_at`. |
 | GET | `/api/agent/cotizacion-items?numero=CH-COT-005` | `[{cotizacion_id, numero, version, variante, departamento, subgrupo, item_id, nombre, tipo}]` — ítems planos de todas las versiones del grupo; o `?cotizacion_id=<uuid>` para una cotización específica. Necesario para obtener `cotizacion_item_id` antes de llamar a `gasto-proyecto`. |
 | GET | `/api/agent/estado-financiero?periodo=YYYY-MM` | `{por_facturar, por_cobrar, obligaciones}` |
+| GET | `/api/agent/rodajes?q=` | `[{id, nombre, fecha, estado, cotizacion_numero}]` — lista/busca rodajes (máx 50). |
+| GET | `/api/agent/rodaje?id=<uuid>` | `{id, nombre, fecha, estado, proyecto_id, cotizacion_id, cotizacion_numero, locacion_nombre, hora_llamado_general, departamentos:[...], equipo:[{nombre, rol, departamento, ...}], bloques:[{orden, titulo, duracion_min, hora_inicio, hora_fin, ...}], citaciones:N}` — detalle con horas de bloques calculadas vía cascada. |
 | GET | `/api/agent/acciones` | log de auditoría del agente |
 
 ### Procesar archivo
@@ -166,12 +168,16 @@ Cowork (en tu Mac) → MCP de Hilván (local, guarda el token) → HTTPS → app
 | POST | `/api/agent/gasto-proyecto` | `{cotizacion_item_id, tipo, descripcion, tipo_documento, monto, monto_es, rut_emisor?, razon_social_emisor?, archivo_url?, fecha_documento?:"YYYY-MM-DD"}` (crea la rendición si falta) | gasto creado |
 | POST | `/api/agent/gasto-fecha` | `{gasto_id, origen:"proyecto"\|"mensual", fecha_documento:"YYYY-MM-DD"}` | `{ok, gasto_id, fecha_documento, fecha_anterior}` — edita la fecha real de un gasto existente; reversible (deshacer restaura fecha_anterior, no borra la fila) |
 | POST | `/api/agent/pago-recibido` | `{cotizacion_id, fecha_pago_recibido, fecha_factura_emitida?, numero_factura?}` | `{ok, cotizacion}` |
-| POST | `/api/agent/deshacer` | `{accion_id}` | revierte la última escritura registrada — ramifica por herramienta: `gasto-fecha` → UPDATE fecha_anterior; creaciones de gasto → DELETE; pago → null |
+| POST | `/api/agent/sembrar-rodaje` | `{cotizacion_id, nombre?, fecha?:"YYYY-MM-DD"}` | `{rodaje_id, estado:"borrador", creado:{departamentos, equipo, bloques}, url}` — crea un borrador de rodaje desde una cotización: rodaje + departamentos (de `cotizacion_departamentos`) + equipo (ítems tipo `rol`/`cast`, nombre=rol) + plan esqueleto de bloques (CALL, PRE SET, ALMUERZO, DESMONTAJE, CIERRE de `PLANTILLAS_BLOQUES`). Reversible: deshacer borra el rodaje completo. |
+| POST | `/api/agent/generar-citaciones` | `{rodaje_id}` | `{creadas:N, citaciones:[{persona, token, url:"/citacion/<token>"}]}` — crea una citación (token UUID) por persona del equipo sin citación. **NO envía email/WhatsApp.** Reversible: deshacer borra solo las citaciones creadas (`payload.citacion_ids`). |
+| POST | `/api/agent/deshacer` | `{accion_id}` | revierte la última escritura registrada — ramifica por herramienta: `sembrar-rodaje` → borra el rodaje completo (hijos primero: citaciones, equipo, bloques, escenas, departamentos, locaciones; luego `rodajes`); `generar-citaciones` → borra solo `payload.citacion_ids`; `gasto-fecha` → UPDATE fecha_anterior; creaciones de gasto → DELETE; pago → null |
 
 **Regla de la capa write:** `monto_es` permite mandar neto o bruto; el server calcula y **persiste el bruto** + retención (usa `calcularRetencion`, tasa por año (2026: 15,25%)). `fecha_documento` (opcional, YYYY-MM-DD) es la fecha real de la boleta/documento: define el año usado para la tasa de retención (fallback: año del período en mensual, o año actual) y permite cuadrar el gasto por su mes tributario. Todo write inserta en `agente_acciones` con archivo fuente y resumen.
 
 ### Herramientas MCP (1:1 con los endpoints)
-`hilvan_por_cobrar`, `hilvan_buscar_cotizacion`, `hilvan_buscar_colaborador`, `hilvan_rendicion_mensual`, `hilvan_buscar_gastos`, `hilvan_items_cotizacion`, `hilvan_estado_financiero`, `hilvan_parse_documento`, `hilvan_subir_archivo`, `hilvan_crear_gasto_mensual`, `hilvan_crear_gasto_proyecto`, `hilvan_set_fecha_documento`, `hilvan_registrar_pago`, `hilvan_deshacer`.
+`hilvan_por_cobrar`, `hilvan_buscar_cotizacion`, `hilvan_buscar_colaborador`, `hilvan_rendicion_mensual`, `hilvan_buscar_gastos`, `hilvan_items_cotizacion`, `hilvan_estado_financiero`, `hilvan_listar_rodajes`, `hilvan_rodaje`, `hilvan_parse_documento`, `hilvan_subir_archivo`, `hilvan_crear_gasto_mensual`, `hilvan_crear_gasto_proyecto`, `hilvan_set_fecha_documento`, `hilvan_registrar_pago`, `hilvan_sembrar_rodaje`, `hilvan_generar_citaciones`, `hilvan_deshacer`.
+
+> **Rodaje (escritura):** `hilvan_sembrar_rodaje` y `hilvan_generar_citaciones` son de **mejor esfuerzo** y crean siempre en estado borrador; el humano refina. El agente **nunca envía** citaciones — solo genera los links.
 
 ## Investigación — qué pueden hacer agentes de IA en Hilván
 
