@@ -79,6 +79,45 @@ Tienes acceso al navegador con la sesión de Tomás en `app.casahiedra.com`. Ús
 4. **Inspecciona** con `hilvan_rodaje(rodaje_id)` y/o abre `/rodaje/<id>` en el navegador. Reporta lo sembrado y recuérdale a Tomás que debe refinar nombres del crew, horas y escenas.
 5. (Opcional) Si Tomás lo pide, genera los links con `hilvan_generar_citaciones(rodaje_id)`. **No los envíes** — entrégale los links / recuérdale que el envío lo hace él.
 
+## Playbook D — Carga masiva de facturas desde el CSV del RCV de compras (SII)
+
+Tomás te pasa el **CSV del Registro de Compras y Ventas (RCV) de compras** del SII. Es el resumen mensual de facturas de proveedores. El objetivo: cargar esas facturas como gastos en Hilván, ya clasificadas, sin duplicar y sin meter notas de crédito como gasto positivo.
+
+**Estructura real del CSV (delimitador `;`).** Columnas relevantes (hay más, pero estas son las que usas):
+
+```
+Nro;Tipo Doc;Tipo Compra;RUT Proveedor;Razon Social;Folio;Fecha Docto;Fecha Recepcion;...;Monto Exento;Monto Neto;Monto IVA Recuperable;...;Monto Total;...;Codigo Otro Impuesto;Valor Otro Impuesto;Tasa Otro Impuesto
+```
+
+**Mapeo por fila → `hilvan_crear_gastos_bulk`:**
+
+| Columna CSV | Campo Hilván | Nota |
+|---|---|---|
+| `RUT Proveedor` | `rut_emisor` | |
+| `Razon Social` | `razon_social_emisor` | |
+| `Folio` | `folio` | |
+| `Fecha Docto` | `fecha_documento` | **viene en DD/MM/YYYY → convertir a YYYY-MM-DD** |
+| `Monto Total` | `monto` | con **`monto_es="bruto"`** (el IVA ya está incluido) |
+| — | `tipo_documento` | **siempre `"factura"`** (NO boleta) |
+
+- Son **facturas, NO boletas de honorarios**: `tipo_documento="factura"`. **No aplican retención de honorarios** (esa retención solo existe para `tipo_documento="boleta"`).
+- El **"Otro Impuesto"** (ej. código 28, combustibles) ya está dentro de `Monto Total`. **No lo sumes aparte.**
+
+**Códigos de `Tipo Doc` (SII):**
+- `33` = factura electrónica afecta (con IVA) → gasto normal.
+- `34` = factura exenta → gasto normal, `tipo_documento="factura"`.
+- `61` = **NOTA DE CRÉDITO**. **NO se carga como gasto positivo** — resta una factura previa del mismo proveedor. Debes **detectarlas, separarlas y avisar a Tomás** para que las netee contra la factura original o registre el ajuste manualmente. Nunca las cargues en el bulk.
+
+**Flujo:**
+
+1. **Lee el CSV.**
+2. **Separa las notas de crédito** (`Tipo Doc = 61`) en una lista aparte y **avísalas explícitamente a Tomás** (proveedor, folio, monto). No las cargas.
+3. **Dedup:** para cada factura, cruza con `hilvan_buscar_gastos` (por RUT + folio) para no duplicar lo que ya está cargado. Descarta las que ya existen.
+4. **Clasifica cada factura** como **mensual** o **de proyecto** según el detalle. Para asociar a un ítem de cotización usa `hilvan_items_cotizacion`.
+5. **Confirma las dudosas con Tomás** (clasificación incierta, montos raros, proveedores nuevos).
+6. **Carga** con `hilvan_crear_gastos_bulk`, pasando las filas **ya clasificadas**: `fecha_documento` convertida a **YYYY-MM-DD**, `tipo_documento="factura"`, `monto_es="bruto"`.
+7. **Verifica** en `/costos/mensual` (y en la cotización para las de proyecto) que los gastos aparecen con su monto. Reporta cuántas cargaste, cuántas eran duplicadas, y la lista de notas de crédito que dejaste para revisión manual.
+
 ## Pruebas de aceptación — rodaje (correr UNA VEZ al habilitar las tools nuevas)
 
 Cuando Tomás te diga que se activaron las herramientas de rodaje, corre este protocolo de humo para validar que todo funciona **de punta a punta y sin dejar basura**. Es una prueba: usa un nombre que diga "PRUEBA" y **deshaz todo al final**. No requiere confirmación paso a paso (es un test), pero **reporta cada chequeo con ✓ / ✗** y, si algo falla, **detente y avisa a Tomás** (no sigas creando cosas).
