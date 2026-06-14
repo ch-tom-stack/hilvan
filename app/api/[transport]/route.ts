@@ -271,6 +271,21 @@ const baseHandler = createMcpHandler(
         return ok(await callAgent(extra as ToolExtra, 'GET', `/cotizacion-items${qs ? `?${qs}` : ''}`))
       },
     )
+
+    server.registerTool(
+      'hilvan_set_fecha_documento',
+      {
+        title: 'Editar fecha de documento',
+        description:
+          'Edita la fecha real del documento (fecha_documento) de un gasto ya cargado. Obtén gasto_id y origen con hilvan_buscar_gastos. Reversible con hilvan_deshacer (restaura la fecha anterior, no borra el gasto). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          gasto_id: z.string(),
+          origen: z.enum(['proyecto', 'mensual']),
+          fecha_documento: z.string().describe('YYYY-MM-DD'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/gasto-fecha', args)),
+    )
   },
   {},
   {
