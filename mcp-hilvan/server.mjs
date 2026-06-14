@@ -169,6 +169,38 @@ const TOOLS = [
     },
   },
   {
+    name: 'hilvan_listar_rodajes',
+    description: 'Lista/busca rodajes por nombre, estado o número de cotización. Devuelve id, nombre, fecha, estado y número de la cotización asociada.',
+    inputSchema: { type: 'object', properties: { q: { type: 'string', description: 'texto de búsqueda' } } },
+    run: (a) => api('GET', `/rodajes${a.q ? `?q=${encodeURIComponent(a.q)}` : ''}`),
+  },
+  {
+    name: 'hilvan_rodaje',
+    description: 'Detalle de un rodaje: metadata, departamentos, equipo, bloques (con hora calculada) y nº de citaciones. Útil para inspeccionar un borrador sembrado.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'UUID del rodaje' } }, required: ['id'] },
+    run: (a) => api('GET', `/rodaje?id=${encodeURIComponent(a.id)}`),
+  },
+  {
+    name: 'hilvan_sembrar_rodaje',
+    description: 'Crea un BORRADOR de rodaje desde una cotización: metadata (proyecto, cotización) + departamentos + equipo (roles) + un plan esqueleto de bloques (CALL, PRE SET, ALMUERZO, DESMONTAJE, CIERRE). Es un punto de partida que el humano refina. NO envía nada. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cotizacion_id: { type: 'string', description: 'UUID de la cotización aprobada' },
+        nombre: { type: 'string', description: 'nombre del rodaje; por defecto el de la cotización' },
+        fecha: { type: 'string', description: 'YYYY-MM-DD' },
+      },
+      required: ['cotizacion_id'],
+    },
+    run: (a) => api('POST', '/sembrar-rodaje', a),
+  },
+  {
+    name: 'hilvan_generar_citaciones',
+    description: 'Crea los links de citación (token único) para cada persona del equipo de un rodaje que aún no tenga citación. NO envía email ni WhatsApp: el envío lo hace siempre un humano desde la app. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: { type: 'object', properties: { rodaje_id: { type: 'string', description: 'UUID del rodaje' } }, required: ['rodaje_id'] },
+    run: (a) => api('POST', '/generar-citaciones', a),
+  },
+  {
     name: 'hilvan_set_fecha_documento',
     description: 'Edita la fecha real del documento (fecha_documento) de un gasto ya cargado. Obtén gasto_id y origen con hilvan_buscar_gastos. Reversible con hilvan_deshacer (restaura la fecha anterior, no borra el gasto). CONFIRMA con el usuario antes de llamar.',
     inputSchema: {
