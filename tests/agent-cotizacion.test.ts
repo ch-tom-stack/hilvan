@@ -75,7 +75,10 @@ describe('validarCotizacion — departamentos / subgrupos / ítems', () => {
     expect(item.cantidad).toBe(1)
     expect(item.dias).toBe(1)
     expect(item.unidad).toBe('día')
-    expect(item.incluido).toBe(true)
+    // línea facturable: incluido=false (incluido=true contaría como $0)
+    expect(item.incluido).toBe(false)
+    // al dar un precio_cliente directo, se marca personalizado para que cuente
+    expect(item.precio_cliente_personalizado).toBe(true)
     expect(item.con_boleta).toBe(false)
     expect(item.tasa_boleta).toBe(0)
     expect(item.descuento_item).toBe(0)

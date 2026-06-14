@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       rut: str(body.rut),
       direccion: str(body.direccion),
       ciudad: str(body.ciudad),
-      pais: str(body.pais),
+      pais: str(body.pais) ?? 'Chile',
       notas: str(body.notas),
       created_by: perfil.id,
     })

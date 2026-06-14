@@ -208,12 +208,20 @@ function validarItem(
       tasa_boleta: tasa_boleta!,
       precio_neto_proveedor: precio_neto_proveedor!,
       precio_bruto: precio_bruto!,
-      precio_cliente_personalizado: boolConDefault(raw.precio_cliente_personalizado, false),
+      // Si el agente entrega un precio_cliente directo (recreando una cotización
+      // antigua con su precio final), se marca personalizado para que ese precio
+      // CUENTE en los totales (igual que cuando un usuario escribe el precio a mano).
+      precio_cliente_personalizado: boolConDefault(
+        raw.precio_cliente_personalizado,
+        precio_cliente != null && precio_cliente > 0,
+      ),
       precio_cliente: precio_cliente!,
       cantidad: cantidad!,
       dias: dias!,
       unidad,
-      incluido: boolConDefault(raw.incluido, true),
+      // OJO: `incluido=true` significa "incluido SIN costo" → subtotalItem lo cuenta
+      // como 0. Una línea facturable normal es incluido=false (default correcto).
+      incluido: boolConDefault(raw.incluido, false),
       descuento_item: descuento_item!,
       descuento_item_tipo: descTipo,
       orden: orden!,
