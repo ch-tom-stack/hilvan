@@ -79,6 +79,26 @@ Tienes acceso al navegador con la sesión de Tomás en `app.casahiedra.com`. Ús
 4. **Inspecciona** con `hilvan_rodaje(rodaje_id)` y/o abre `/rodaje/<id>` en el navegador. Reporta lo sembrado y recuérdale a Tomás que debe refinar nombres del crew, horas y escenas.
 5. (Opcional) Si Tomás lo pide, genera los links con `hilvan_generar_citaciones(rodaje_id)`. **No los envíes** — entrégale los links / recuérdale que el envío lo hace él.
 
+## Pruebas de aceptación — rodaje (correr UNA VEZ al habilitar las tools nuevas)
+
+Cuando Tomás te diga que se activaron las herramientas de rodaje, corre este protocolo de humo para validar que todo funciona **de punta a punta y sin dejar basura**. Es una prueba: usa un nombre que diga "PRUEBA" y **deshaz todo al final**. No requiere confirmación paso a paso (es un test), pero **reporta cada chequeo con ✓ / ✗** y, si algo falla, **detente y avisa a Tomás** (no sigas creando cosas).
+
+Necesitas una **cotización aprobada real** con departamentos y roles (pídele a Tomás un número, ej. `CH-COT-005`, o búscala con `hilvan_buscar_cotizacion`).
+
+1. **Tools disponibles.** Confirma que ves `hilvan_listar_rodajes`, `hilvan_rodaje`, `hilvan_sembrar_rodaje` y `hilvan_generar_citaciones`. Si falta alguna → ✗ y avisa (hay que refrescar el conector).
+2. **Lectura.** `hilvan_listar_rodajes()` responde una lista (puede venir vacía) sin error. ✓ si responde.
+3. **Sembrar.** `hilvan_sembrar_rodaje(cotizacion_id, nombre="PRUEBA rodaje — borrar")`. Espera `estado: "borrador"` y `creado` con **departamentos > 0**, **bloques = 5** (CALL, PRE SET, ALMUERZO, DESMONTAJE, CIERRE) y **equipo ≥ 1**. Guarda el `rodaje_id`.
+4. **Inspección + heurística de equipo.** `hilvan_rodaje(rodaje_id)`. Verifica:
+   - Los departamentos coinciden con los de la cotización.
+   - El **equipo son roles de PERSONA** (Director, Asistente, Modelo, etc.) y **NO** aparecen arriendos/servicios (cámaras, lentes, transporte, catering, postproducción, "Caja de Producción"). Si se coló un servicio o falta un rol obvio, anótalo — es "mejor esfuerzo", Tomás lo ajusta en la app; solo es ✗ si el equipo viene vacío o lleno de equipos.
+   - `citaciones: 0`.
+5. **Generar citaciones.** `hilvan_generar_citaciones(rodaje_id)`. Espera `creadas` = nº de personas del equipo y una lista de links (`/citacion/<token>`). **Confirma que NO se envió ningún correo/WhatsApp** (la tool no envía; si crees que envió algo, ✗ y detente).
+6. **Deshacer citaciones.** Toma el `accion_id` de esa acción (`hilvan_acciones`) y `hilvan_deshacer(accion_id)`. Vuelve a `hilvan_rodaje(rodaje_id)` y confirma `citaciones: 0` y que **el equipo y el rodaje siguen ahí** (deshacer citaciones NO borra el rodaje). ✓ si se cumple.
+7. **Deshacer la siembra.** Toma el `accion_id` de `sembrar-rodaje` y `hilvan_deshacer(accion_id)`. Luego `hilvan_rodaje(rodaje_id)` debe responder **no encontrado** y `hilvan_listar_rodajes(q="PRUEBA")` debe venir **vacío**. ✓ si el rodaje y todos sus hijos desaparecieron.
+8. **(Opcional) Verificación visual.** Mientras el rodaje existía (entre el paso 4 y 7) podías abrir `/rodaje/<id>` con la sesión de Tomás para verlo. Tras el paso 7 ya no existe.
+
+**Reporta así:** una tabla con los 7 chequeos (✓/✗), el `cotizacion_id` usado, cuántos departamentos/equipo/bloques se sembraron, y la confirmación de que **no quedó ningún rodaje de PRUEBA**. Si todo da ✓, las tools de rodaje están operativas.
+
 ## Glosario mínimo
 
 - **Boleta de honorarios:** documento que un freelancer emite a Casa Hiedra. Lleva **retención que sube por año (2026: 15,25%)** (Casa Hiedra paga el neto y retiene ese % para el SII). **Bruto** = total de la boleta; **neto** = lo que recibe la persona.
