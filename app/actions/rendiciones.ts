@@ -198,7 +198,7 @@ export async function crearGasto(payload: {
             <li>Tipo: ${data.tipo}</li>
             <li>Monto: $${data.monto.toLocaleString('es-CL')}</li>
           </ul>
-          <p><a href="${APP_URL}/rendiciones/admin">Ver en Hilván →</a></p>`,
+          <p><a href="${APP_URL}/costos/admin">Ver en Hilván →</a></p>`,
         contexto: 'rendiciones:nuevo_gasto',
       })
     } catch (e) { console.error('[email] nuevo_gasto:', e) }
@@ -478,7 +478,7 @@ export async function toggleFacturaEmitida(rendicionId: string, valor: boolean):
     .update({ factura_emitida: valor, updated_at: new Date().toISOString() })
     .eq('id', rendicionId)
   if (error) throw error
-  revalidatePath('/rendiciones/admin')
+  revalidatePath('/costos/admin')
 }
 
 export async function agregarArchivoFactura(rendicionId: string, url: string): Promise<string[]> {
@@ -490,7 +490,7 @@ export async function agregarArchivoFactura(rendicionId: string, url: string): P
     .update({ factura_archivos: archivos, updated_at: new Date().toISOString() })
     .eq('id', rendicionId)
   if (error) throw error
-  revalidatePath('/rendiciones/admin')
+  revalidatePath('/costos/admin')
   return archivos
 }
 
@@ -503,7 +503,7 @@ export async function eliminarArchivoFactura(rendicionId: string, url: string): 
     .update({ factura_archivos: archivos, updated_at: new Date().toISOString() })
     .eq('id', rendicionId)
   if (error) throw error
-  revalidatePath('/rendiciones/admin')
+  revalidatePath('/costos/admin')
   return archivos
 }
 
@@ -514,5 +514,5 @@ export async function togglePagoRecibido(rendicionId: string, valor: boolean): P
     .update({ pago_recibido: valor, updated_at: new Date().toISOString() })
     .eq('id', rendicionId)
   if (error) throw error
-  revalidatePath('/rendiciones/admin')
+  revalidatePath('/costos/admin')
 }

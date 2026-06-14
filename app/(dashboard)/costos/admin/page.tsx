@@ -40,21 +40,21 @@ export default async function AdminRendicionesPage() {
     <div className="p-6 lg:p-10">
       <div className="flex items-end justify-between mb-10">
         <div>
-          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Rendiciones · Admin</p>
+          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Centro de costos · Admin</p>
           <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Revisión</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/rendiciones/mensual"
+          <Link href="/costos/mensual"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
             Mensual →
           </Link>
           {esAdmin && (
-            <Link href="/rendiciones/admin/export"
+            <Link href="/costos/admin/export"
               className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
               Exportar →
             </Link>
           )}
-          <Link href="/rendiciones"
+          <Link href="/costos"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
             ← Volver
           </Link>

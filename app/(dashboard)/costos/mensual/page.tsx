@@ -11,7 +11,7 @@ export default async function RendicionMensualPage() {
 
   const { data: profile } = await supabase.from('profiles').select('rol, nombre').eq('id', user.id).single()
   const esProductorOAdmin = profile?.rol === 'admin' || profile?.rol === 'productor'
-  if (!esProductorOAdmin) redirect('/rendiciones')
+  if (!esProductorOAdmin) redirect('/costos')
 
   const rendiciones = await getRendicionesMensuales().catch(() => [])
 
@@ -23,11 +23,11 @@ export default async function RendicionMensualPage() {
     <div className="p-6 lg:p-10">
       <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
         <div>
-          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Rendiciones · Mensual</p>
+          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Centro de costos · Mensual</p>
           <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Gastos generales</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/rendiciones/admin"
+          <Link href="/costos/admin"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
             ← Admin
           </Link>

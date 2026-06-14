@@ -5,7 +5,7 @@ import type { Profile } from '@/types'
 const MODULOS = [
   { nombre: 'Cotizaciones', desc: 'Presupuestos y aprobaciones',      href: '/cotizaciones' },
   { nombre: 'Rodajes',      desc: 'Hojas de llamado y citaciones',    href: '/rodaje'       },
-  { nombre: 'Rendiciones',  desc: 'Gastos de colaboradores',          href: '/rendiciones/admin' },
+  { nombre: 'Centro de costos', desc: 'Gastos de colaboradores',      href: '/costos/admin' },
   { nombre: 'Equipos',      desc: 'Inventario, QR y disponibilidad',  href: '/equipos'      },
   { nombre: 'Colaboradores',desc: 'Equipo técnico y contratos',       href: '/colaboradores' },
   { nombre: 'Clientes',     desc: 'Cartera y proyectos',              href: '/clientes'     },

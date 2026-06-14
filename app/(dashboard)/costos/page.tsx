@@ -15,7 +15,7 @@ export default async function RendicionesPage() {
   const { data: profile } = await supabase.from('profiles').select('rol').eq('id', user.id).single()
   const esProductorOAdmin = profile?.rol === 'admin' || profile?.rol === 'productor'
 
-  if (esProductorOAdmin) redirect('/rendiciones/admin')
+  if (esProductorOAdmin) redirect('/costos/admin')
 
   // Colaboradores: cargar rendiciones donde tengan gastos propios
   const { data: colaborador } = await supabase
@@ -43,7 +43,7 @@ export default async function RendicionesPage() {
   return (
     <div className="p-6 lg:p-10">
       <div className="mb-10">
-        <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Rendiciones</p>
+        <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Centro de costos</p>
         <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Mis gastos</h1>
       </div>
       <AdminRendiciones

@@ -140,7 +140,7 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
           <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Cotización</label>
           <select
             value={cotizacionFiltro || ''}
-            onChange={e => router.push(e.target.value ? `/rendiciones/admin/export?cotizacion=${e.target.value}` : '/rendiciones/admin/export')}
+            onChange={e => router.push(e.target.value ? `/costos/admin/export?cotizacion=${e.target.value}` : '/costos/admin/export')}
             className="input-ch w-full">
             <option value="">— Seleccionar —</option>
             {cotizaciones.map(c => (

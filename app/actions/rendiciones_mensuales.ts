@@ -83,8 +83,8 @@ export async function agregarGastoMensual(payload: {
     .select()
     .single()
   if (error) throw error
-  revalidatePath('/rendiciones/mensual')
-  revalidatePath('/rendiciones/admin')
+  revalidatePath('/costos/mensual')
+  revalidatePath('/costos/admin')
   return data as RendicionMensualGasto
 }
 
@@ -92,8 +92,8 @@ export async function eliminarGastoMensual(id: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase.from('rendicion_mensual_gastos').delete().eq('id', id)
   if (error) throw error
-  revalidatePath('/rendiciones/mensual')
-  revalidatePath('/rendiciones/admin')
+  revalidatePath('/costos/mensual')
+  revalidatePath('/costos/admin')
 }
 
 export async function actualizarEstadoRendicionMensual(
@@ -106,8 +106,8 @@ export async function actualizarEstadoRendicionMensual(
     .update({ estado, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
-  revalidatePath('/rendiciones/mensual')
-  revalidatePath('/rendiciones/admin')
+  revalidatePath('/costos/mensual')
+  revalidatePath('/costos/admin')
 }
 
 export async function actualizarPresupuestoMensual(id: string, presupuesto: number): Promise<void> {
@@ -117,7 +117,7 @@ export async function actualizarPresupuestoMensual(id: string, presupuesto: numb
     .update({ presupuesto, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
-  revalidatePath('/rendiciones/mensual')
+  revalidatePath('/costos/mensual')
 }
 
 export async function exportarCSVGastosMensual(rendicionId: string): Promise<string> {
