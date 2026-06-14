@@ -164,13 +164,14 @@ Cowork (en tu Mac) → MCP de Hilván (local, guarda el token) → HTTPS → app
 |---|---|---|---|
 | POST | `/api/agent/gasto-mensual` | `{periodo?|rendicion_mensual_id?, descripcion, categoria, tipo_documento, monto, monto_es:"neto"\|"bruto", rut_emisor?, razon_social_emisor?, factura_casa_hiedra?, archivo_url?, fecha_documento?:"YYYY-MM-DD"}` | `{id, monto_bruto, retencion, neto}` |
 | POST | `/api/agent/gasto-proyecto` | `{cotizacion_item_id, tipo, descripcion, tipo_documento, monto, monto_es, rut_emisor?, razon_social_emisor?, archivo_url?, fecha_documento?:"YYYY-MM-DD"}` (crea la rendición si falta) | gasto creado |
+| POST | `/api/agent/gasto-fecha` | `{gasto_id, origen:"proyecto"\|"mensual", fecha_documento:"YYYY-MM-DD"}` | `{ok, gasto_id, fecha_documento, fecha_anterior}` — edita la fecha real de un gasto existente; reversible (deshacer restaura fecha_anterior, no borra la fila) |
 | POST | `/api/agent/pago-recibido` | `{cotizacion_id, fecha_pago_recibido, fecha_factura_emitida?, numero_factura?}` | `{ok, cotizacion}` |
-| POST | `/api/agent/deshacer` | `{accion_id}` | revierte la última escritura registrada |
+| POST | `/api/agent/deshacer` | `{accion_id}` | revierte la última escritura registrada — ramifica por herramienta: `gasto-fecha` → UPDATE fecha_anterior; creaciones de gasto → DELETE; pago → null |
 
 **Regla de la capa write:** `monto_es` permite mandar neto o bruto; el server calcula y **persiste el bruto** + retención (usa `calcularRetencion`, tasa por año (2026: 15,25%)). `fecha_documento` (opcional, YYYY-MM-DD) es la fecha real de la boleta/documento: define el año usado para la tasa de retención (fallback: año del período en mensual, o año actual) y permite cuadrar el gasto por su mes tributario. Todo write inserta en `agente_acciones` con archivo fuente y resumen.
 
 ### Herramientas MCP (1:1 con los endpoints)
-`hilvan_por_cobrar`, `hilvan_buscar_cotizacion`, `hilvan_buscar_colaborador`, `hilvan_rendicion_mensual`, `hilvan_buscar_gastos`, `hilvan_items_cotizacion`, `hilvan_estado_financiero`, `hilvan_parse_documento`, `hilvan_subir_archivo`, `hilvan_crear_gasto_mensual`, `hilvan_crear_gasto_proyecto`, `hilvan_registrar_pago`, `hilvan_deshacer`.
+`hilvan_por_cobrar`, `hilvan_buscar_cotizacion`, `hilvan_buscar_colaborador`, `hilvan_rendicion_mensual`, `hilvan_buscar_gastos`, `hilvan_items_cotizacion`, `hilvan_estado_financiero`, `hilvan_parse_documento`, `hilvan_subir_archivo`, `hilvan_crear_gasto_mensual`, `hilvan_crear_gasto_proyecto`, `hilvan_set_fecha_documento`, `hilvan_registrar_pago`, `hilvan_deshacer`.
 
 ## Investigación — qué pueden hacer agentes de IA en Hilván
 

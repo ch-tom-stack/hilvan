@@ -168,6 +168,20 @@ const TOOLS = [
       return api('GET', `/cotizacion-items${qs ? `?${qs}` : ''}`)
     },
   },
+  {
+    name: 'hilvan_set_fecha_documento',
+    description: 'Edita la fecha real del documento (fecha_documento) de un gasto ya cargado. Obtén gasto_id y origen con hilvan_buscar_gastos. Reversible con hilvan_deshacer (restaura la fecha anterior, no borra el gasto). CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        gasto_id: { type: 'string' },
+        origen: { type: 'string', description: 'proyecto | mensual' },
+        fecha_documento: { type: 'string', description: 'YYYY-MM-DD' },
+      },
+      required: ['gasto_id', 'origen', 'fecha_documento'],
+    },
+    run: (a) => api('POST', '/gasto-fecha', a),
+  },
 ]
 
 const server = new Server({ name: 'hilvan-mcp', version: '0.1.0' }, { capabilities: { tools: {} } })
