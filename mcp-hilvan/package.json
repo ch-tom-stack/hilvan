@@ -1,0 +1,14 @@
+{
+  "name": "hilvan-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Servidor MCP local para operar Hilván desde un agente (Cowork/Claude).",
+  "bin": { "hilvan-mcp": "server.mjs" },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  }
+}
