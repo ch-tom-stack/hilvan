@@ -41,6 +41,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/arriendo') ||
     pathname.startsWith('/api/arriendo/') ||
+    pathname.startsWith('/api/agent/') ||
     pathname.startsWith('/m/') ||
     pathname.startsWith('/r/') ||
     pathname.startsWith('/cotizacion/') ||
