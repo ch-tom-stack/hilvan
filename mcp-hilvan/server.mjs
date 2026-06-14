@@ -1,0 +1,150 @@
+#!/usr/bin/env node
+// Servidor MCP local de Hilván.
+// Expone las operaciones de /api/agent/* como herramientas que un agente
+// (Cowork / Claude) puede llamar. NO contiene lógica de negocio: solo reenvía
+// a la API HTTP autenticada (que es "la verdad"). Corre localmente.
+//
+// Config por variables de entorno:
+//   HILVAN_API_URL    base de la API (ej: https://app.casahiedra.com  o  http://localhost:3000)
+//   HILVAN_AGENT_TOKEN token Bearer del agente (el mismo que HILVAN_AGENT_TOKEN en el server)
+
+import { Server } from '@modelcontextprotocol/sdk/server/index.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+
+const API = (process.env.HILVAN_API_URL || 'http://localhost:3000').replace(/\/$/, '')
+const TOKEN = process.env.HILVAN_AGENT_TOKEN || ''
+
+async function api(method, path, body) {
+  const res = await fetch(`${API}/api/agent${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const text = await res.text()
+  let data
+  try { data = JSON.parse(text) } catch { data = text }
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`)
+  return data
+}
+
+// ── Definición de herramientas (1:1 con la API) ──────────────────────────────
+const TOOLS = [
+  {
+    name: 'hilvan_por_cobrar',
+    description: 'Lista las cotizaciones facturadas que aún no han sido pagadas, con días de antigüedad (aging).',
+    inputSchema: { type: 'object', properties: {} },
+    run: () => api('GET', '/por-cobrar'),
+  },
+  {
+    name: 'hilvan_buscar_cotizacion',
+    description: 'Busca cotizaciones por nombre, número (ej. CH-COT-007) o cliente.',
+    inputSchema: { type: 'object', properties: { q: { type: 'string', description: 'texto de búsqueda' } }, required: ['q'] },
+    run: (a) => api('GET', `/cotizaciones?q=${encodeURIComponent(a.q)}`),
+  },
+  {
+    name: 'hilvan_buscar_colaborador',
+    description: 'Busca colaboradores por nombre o RUT.',
+    inputSchema: { type: 'object', properties: { q: { type: 'string' } }, required: ['q'] },
+    run: (a) => api('GET', `/colaboradores?q=${encodeURIComponent(a.q)}`),
+  },
+  {
+    name: 'hilvan_rendicion_mensual',
+    description: 'Obtiene la rendición de costos mensuales de un período (YYYY-MM) con sus gastos.',
+    inputSchema: { type: 'object', properties: { periodo: { type: 'string', description: 'YYYY-MM' } }, required: ['periodo'] },
+    run: (a) => api('GET', `/rendicion-mensual?periodo=${encodeURIComponent(a.periodo)}`),
+  },
+  {
+    name: 'hilvan_crear_gasto_mensual',
+    description: 'Registra un gasto/boleta operacional del mes (no asociado a proyecto). Para boletas de honorarios usa tipo_documento="boleta"; el monto puede darse neto o bruto (monto_es) y se persiste el bruto con su retención. CONFIRMA con el usuario antes de llamar esta herramienta.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        periodo: { type: 'string', description: 'YYYY-MM' },
+        descripcion: { type: 'string' },
+        categoria: { type: 'string', description: 'Honorarios, Transporte, etc.' },
+        tipo_documento: { type: 'string', description: 'boleta | factura | boleta_consumo | exenta | sin_documento' },
+        monto: { type: 'number' },
+        monto_es: { type: 'string', description: 'neto | bruto' },
+        rut_emisor: { type: 'string' },
+        razon_social_emisor: { type: 'string' },
+        factura_casa_hiedra: { type: 'boolean' },
+        archivo_url: { type: 'string' },
+      },
+      required: ['periodo', 'descripcion', 'categoria', 'tipo_documento', 'monto', 'monto_es'],
+    },
+    run: (a) => api('POST', '/gasto-mensual', a),
+  },
+  {
+    name: 'hilvan_crear_gasto_proyecto',
+    description: 'Registra un gasto/boleta asociado al ítem de una cotización (proyecto). CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cotizacion_item_id: { type: 'string' },
+        rendicion_id: { type: 'string' },
+        tipo: { type: 'string' },
+        descripcion: { type: 'string' },
+        tipo_documento: { type: 'string' },
+        monto: { type: 'number' },
+        monto_es: { type: 'string', description: 'neto | bruto' },
+        rut_emisor: { type: 'string' },
+        razon_social_emisor: { type: 'string' },
+        archivo_url: { type: 'string' },
+      },
+      required: ['descripcion', 'tipo_documento', 'monto', 'monto_es'],
+    },
+    run: (a) => api('POST', '/gasto-proyecto', a),
+  },
+  {
+    name: 'hilvan_registrar_pago',
+    description: 'Marca una cotización como pagada (fecha_pago_recibido). Opcionalmente registra la factura emitida. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cotizacion_id: { type: 'string' },
+        fecha_pago_recibido: { type: 'string', description: 'YYYY-MM-DD' },
+        fecha_factura_emitida: { type: 'string', description: 'YYYY-MM-DD' },
+        numero_factura: { type: 'string' },
+      },
+      required: ['cotizacion_id', 'fecha_pago_recibido'],
+    },
+    run: (a) => api('POST', '/pago-recibido', a),
+  },
+  {
+    name: 'hilvan_deshacer',
+    description: 'Revierte una escritura previa del agente, usando el accion_id del log de auditoría.',
+    inputSchema: { type: 'object', properties: { accion_id: { type: 'string' } }, required: ['accion_id'] },
+    run: (a) => api('POST', '/deshacer', a),
+  },
+  {
+    name: 'hilvan_acciones',
+    description: 'Lista las últimas acciones que el agente registró (log de auditoría), para revisar o deshacer.',
+    inputSchema: { type: 'object', properties: {} },
+    run: () => api('GET', '/acciones'),
+  },
+]
+
+const server = new Server({ name: 'hilvan-mcp', version: '0.1.0' }, { capabilities: { tools: {} } })
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })),
+}))
+
+server.setRequestHandler(CallToolRequestSchema, async (req) => {
+  const tool = TOOLS.find((t) => t.name === req.params.name)
+  if (!tool) throw new Error(`Herramienta desconocida: ${req.params.name}`)
+  try {
+    const result = await tool.run(req.params.arguments ?? {})
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
+  } catch (e) {
+    return { content: [{ type: 'text', text: `Error: ${e.message}` }], isError: true }
+  }
+})
+
+const transport = new StdioServerTransport()
+await server.connect(transport)
+console.error('hilvan-mcp listo (stdio). API:', API)

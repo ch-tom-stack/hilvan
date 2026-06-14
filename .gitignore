@@ -43,3 +43,6 @@ next-env.d.ts
 # Claude Code local
 .claude/worktrees/
 .claude/settings.local.json
+
+# MCP local server deps
+mcp-hilvan/node_modules
