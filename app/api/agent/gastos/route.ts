@@ -59,10 +59,12 @@ export async function GET(req: Request) {
   if (proyError) return NextResponse.json({ error: proyError.message }, { status: 500 })
 
   // ── 2. rendicion_mensual_gastos (MENSUAL) ─────────────────────────────────
+  // La tabla mensual NO tiene columnas `tipo` ni `estado`: usa `categoria`
+  // y los gastos mensuales no manejan estado de aprobación.
   let mensQuery = admin
     .from('rendicion_mensual_gastos')
     .select(
-      'id,monto,tipo,tipo_documento,estado,rut_emisor,razon_social_emisor,descripcion,created_at,' +
+      'id,monto,categoria,tipo_documento,rut_emisor,razon_social_emisor,descripcion,created_at,' +
         'rendicion_mensual:rendiciones_mensuales(periodo)',
     )
     .order('created_at', { ascending: false })
@@ -70,7 +72,7 @@ export async function GET(req: Request) {
 
   if (qFilter) mensQuery = mensQuery.or(qFilter)
   if (tipo_documento) mensQuery = mensQuery.eq('tipo_documento', tipo_documento)
-  if (estado) mensQuery = mensQuery.eq('estado', estado)
+  // (sin filtro de estado: la tabla mensual no tiene esa columna)
   if (periodo) {
     // filtra por el campo `periodo` de la tabla padre (= YYYY-MM-01)
     mensQuery = mensQuery.eq('rendicion_mensual.periodo', `${periodo}-01`)
@@ -97,8 +99,8 @@ export async function GET(req: Request) {
   }
 
   const proyItems: GastoItem[] = (proyData ?? []).map((g: any) => {
-    const numero = g.rendicion?.cotizacion?.grupo?.numero_base ?? null
-    const contexto = numero != null ? `CH-COT-${String(numero).padStart(3, '0')}` : null
+    // numero_base ya viene como etiqueta completa (ej. "CH-COT-006")
+    const contexto = g.rendicion?.cotizacion?.grupo?.numero_base ?? null
     const { retencion, neto } = calcularRetencion({
       monto: g.monto ?? 0,
       tipo_documento: g.tipo_documento,
@@ -135,12 +137,12 @@ export async function GET(req: Request) {
       id: g.id,
       contexto,
       descripcion: g.descripcion ?? null,
-      tipo: g.tipo ?? null,
+      tipo: g.categoria ?? null,
       tipo_documento: g.tipo_documento ?? null,
       monto: g.monto ?? 0,
       rut_emisor: g.rut_emisor ?? null,
       razon_social_emisor: g.razon_social_emisor ?? null,
-      estado: g.estado ?? null,
+      estado: null,
       retencion,
       neto,
       created_at: g.created_at,
