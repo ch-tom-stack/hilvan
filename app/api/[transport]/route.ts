@@ -103,6 +103,18 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_buscar_cliente',
+      {
+        title: 'Buscar cliente',
+        description:
+          'Busca clientes por nombre, empresa o RUT. Devuelve id, nombre, empresa, rut, email. Útil para obtener el cliente_id antes de crear una cotización.',
+        inputSchema: { q: z.string().describe('nombre, empresa o RUT') },
+      },
+      async ({ q }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/clientes?q=${encodeURIComponent(q)}`)),
+    )
+
+    server.registerTool(
       'hilvan_buscar_colaborador',
       {
         title: 'Buscar colaborador',
@@ -143,6 +155,74 @@ const baseHandler = createMcpHandler(
     )
 
     // ── Escrituras ───────────────────────────────────────────────────────────
+    server.registerTool(
+      'hilvan_crear_cliente',
+      {
+        title: 'Crear cliente',
+        description:
+          'Crea un cliente nuevo (igual que en la app). Devuelve {id, nombre}. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          nombre: z.string(),
+          empresa: z.string().optional(),
+          email: z.string().optional(),
+          telefono: z.string().optional(),
+          rut: z.string().optional(),
+          direccion: z.string().optional(),
+          ciudad: z.string().optional(),
+          pais: z.string().optional(),
+          notas: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cliente', args)),
+    )
+
+    server.registerTool(
+      'hilvan_crear_cotizacion',
+      {
+        title: 'Crear cotización',
+        description:
+          'Crea una cotización COMPLETA, idéntica a la de un usuario y 100% editable en la app después. Define nombre (requerido) y, opcionalmente, cliente (cliente_id o cliente_nombre_libre), proyecto, IVA, descuento global, notas y la estructura de departamentos → subgrupos → ítems. Si no entregas departamentos, crea los 8 por defecto (como "Nueva cotización"). Devuelve {cotizacion_id, numero, url}. Reversible con hilvan_deshacer (borra todo en cascada). CONFIRMA con el usuario antes de llamar; crea una cotización editable en la app.',
+        inputSchema: {
+          nombre: z.string(),
+          cliente_id: z.string().optional(),
+          cliente_nombre_libre: z.string().optional(),
+          cliente_email_libre: z.string().optional(),
+          proyecto_id: z.string().optional(),
+          con_iva: z.boolean().optional().describe('default true'),
+          formato_pdf: z.enum(['simple', 'detallado']).optional().describe('default detallado'),
+          descuento_global: z.number().optional(),
+          descuento_global_tipo: z.enum(['porcentaje', 'monto']).optional(),
+          descripcion: z.string().optional(),
+          notas_internas: z.string().optional(),
+          notas_cliente: z.string().optional(),
+          fecha_factura_emitida: z.string().optional().describe('YYYY-MM-DD'),
+          numero_factura: z.string().optional(),
+          departamentos: z
+            .array(
+              z.object({
+                nombre: z.string(),
+                orden: z.number().optional(),
+                items: z.array(z.record(z.string(), z.any())).optional(),
+                subgrupos: z
+                  .array(
+                    z.object({
+                      nombre: z.string(),
+                      orden: z.number().optional(),
+                      items: z.array(z.record(z.string(), z.any())).optional(),
+                    }),
+                  )
+                  .optional(),
+              }),
+            )
+            .optional()
+            .describe(
+              'estructura completa; cada ítem: {tipo(rol|equipo_ch|equipo_externo|servicio|consumible|post_produccion|locacion|cast|otro), nombre, descripcion?, precio_cliente?, precio_neto_proveedor?, precio_bruto?, cantidad?, dias?, unidad?(día|hora|jornada|unidad|proyecto), incluido?, con_boleta?, tasa_boleta?, descuento_item?, descuento_item_tipo?, equipo_id?, tarifa_id?, orden?}',
+            ),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crear-cotizacion', args)),
+    )
+
     server.registerTool(
       'hilvan_crear_gasto_mensual',
       {

@@ -28,6 +28,11 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
 //    NO usa resultado_tabla/_id (es multi-fila).
 //  - 'conciliar': restaura el estado PREVIO de la fila match (payload.previo, según
 //    payload.match_tabla) y vuelve el movimiento a conciliado=false. Nunca a ciegas.
+//  - 'crear-cotizacion': borra la cotización COMPLETA en cascada (items →
+//    subgrupos → departamentos → cotizaciones → cotizacion_grupos, este último
+//    por payload.grupo_id que la acción siempre crea). Va ANTES de la rama
+//    genérica resultado_tabla==='cotizaciones' (pago) para no colisionar.
+//  - 'crear-cliente': borra la fila de clientes (resultado_id).
 //  - 'registrar-factura-emitida': UPDATE cotizaciones restaurando
 //    fecha_factura_emitida y numero_factura previos (payload.fecha_anterior /
 //    numero_anterior). NO toca fecha_pago_recibido.
@@ -134,6 +139,38 @@ export async function POST(req: Request) {
         numero_factura: payload?.numero_anterior ?? null,
       })
       .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'crear-cotizacion') {
+    // Borrar la cotización COMPLETA en cascada por FKs. Va ANTES de la rama
+    // genérica resultado_tabla==='cotizaciones' (que es el pago) para no colisionar.
+    // Orden: items → subgrupos → departamentos (por cotizacion_id) → la cotización
+    // → el grupo (que SIEMPRE crea esta acción; guardado en payload.grupo_id).
+    const cotizacionId = accion.resultado_id
+    const payload = accion.payload as { grupo_id?: string } | null
+    const hijas = ['cotizacion_items', 'cotizacion_subgrupos', 'cotizacion_departamentos']
+    for (const tabla of hijas) {
+      const { error } = await admin.from(tabla).delete().eq('cotizacion_id', cotizacionId)
+      if (error) {
+        return NextResponse.json(
+          { error: `Error borrando ${tabla}: ${error.message}` },
+          { status: 500 },
+        )
+      }
+    }
+    const { error: eCot } = await admin.from('cotizaciones').delete().eq('id', cotizacionId)
+    if (eCot) return NextResponse.json({ error: eCot.message }, { status: 500 })
+
+    // El grupo lo creó esta acción; borrarlo deja todo limpio.
+    if (payload?.grupo_id) {
+      const { error: eGrupo } = await admin
+        .from('cotizacion_grupos')
+        .delete()
+        .eq('id', payload.grupo_id)
+      if (eGrupo) return NextResponse.json({ error: eGrupo.message }, { status: 500 })
+    }
+  } else if (accion.herramienta === 'crear-cliente') {
+    // Borrar la fila de clientes creada por esta acción.
+    const { error } = await admin.from('clientes').delete().eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'sembrar-rodaje') {
     // Borrar el rodaje COMPLETO. Primero los hijos (por las FKs), luego el rodaje.
