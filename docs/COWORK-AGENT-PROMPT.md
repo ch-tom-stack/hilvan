@@ -37,6 +37,7 @@ Tienes dos formas de actuar:
 - `hilvan_movimientos(conciliado?, tipo?, fuente?, desde?, hasta?, q?)` — lista los movimientos bancarios/tarjeta importados. Filtra por `conciliado` ("true"/"false"), `tipo` ("cargo"/"abono"), `fuente`, rango `desde`/`hasta` (YYYY-MM-DD) o texto `q`. Para ver qué falta conciliar.
 - `hilvan_cuotas_credito(pagada?)` — cuotas de los créditos (con nombre/acreedor). Por defecto las **no** pagadas. Para cruzar pagos de crédito del extracto.
 - `hilvan_flujo_caja(periodo?, tipo?)` — movimientos de caja varios (ingresos/egresos no atados a cotización/gasto). Para revisar lo registrado con `conciliar_vario`.
+- `hilvan_estado_financiero(periodo?)` — resumen del mes (default mes actual): ingresos (facturado, cobrado, por cobrar con aging), egresos (total, por origen, por categoría, pagado vs adeudado), cuotas de crédito del mes, flujo de caja vario, y resumen (resultado devengado, caja aprox). Úsalo cuando Tomás pregunte **"¿cómo vamos?"** o para dar feedback financiero. Es solo lectura.
 - `hilvan_acciones` — tus últimas acciones (para revisar o deshacer).
 
 **Escribir (siempre confirmando primero):**
