@@ -656,6 +656,26 @@ const baseHandler = createMcpHandler(
           ),
         ),
     )
+
+    server.registerTool(
+      'hilvan_estado_financiero',
+      {
+        title: 'Estado financiero',
+        description:
+          'Resumen financiero del mes (ingresos, egresos, por cobrar, créditos, flujo) para responder cómo vamos.',
+        inputSchema: {
+          periodo: z.string().optional().describe('YYYY-MM; default = mes actual'),
+        },
+      },
+      async ({ periodo }, extra) =>
+        ok(
+          await callAgent(
+            extra as ToolExtra,
+            'GET',
+            `/estado-financiero${periodo ? `?periodo=${encodeURIComponent(periodo)}` : ''}`,
+          ),
+        ),
+    )
   },
   {},
   {

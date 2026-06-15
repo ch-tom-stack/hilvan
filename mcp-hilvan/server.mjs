@@ -488,6 +488,17 @@ const TOOLS = [
     },
     run: (a) => api('GET', `/cuotas-credito${a.pagada ? `?pagada=${a.pagada}` : ''}`),
   },
+  {
+    name: 'hilvan_estado_financiero',
+    description: 'Resumen financiero del mes (ingresos, egresos, por cobrar, créditos, flujo) para responder cómo vamos.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        periodo: { type: 'string', description: 'YYYY-MM; default = mes actual' },
+      },
+    },
+    run: (a) => api('GET', `/estado-financiero${a.periodo ? `?periodo=${encodeURIComponent(a.periodo)}` : ''}`),
+  },
 ]
 
 const server = new Server({ name: 'hilvan-mcp', version: '0.1.0' }, { capabilities: { tools: {} } })
