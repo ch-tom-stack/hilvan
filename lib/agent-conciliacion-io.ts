@@ -11,11 +11,16 @@ import {
   type MatchTabla,
 } from '@/lib/agent-conciliacion'
 import { COT_COBRAR_SELECT, calcularTotalCot } from '@/app/actions/financiero-helpers'
+import { calcularRetencion } from '@/lib/rendiciones-calc'
 
 /**
- * Total de la obligación (lo que hay que cubrir para considerarla pagada).
- *  - gastos / cuotas: el `monto` de la fila.
- *  - cotizaciones: calcularTotalCot (misma fórmula que el módulo financiero).
+ * Total que debe FLUIR POR EL BANCO para considerar cubierta la obligación.
+ *  - cotizaciones: calcularTotalCot (lo que paga el cliente, IVA incluido).
+ *  - gastos_fijos_cuotas: el `monto` de la cuota.
+ *  - rendicion_gastos / rendicion_mensual_gastos: el `monto` (bruto), SALVO las
+ *    boletas de honorarios, donde lo que se transfiere al colaborador es el NETO
+ *    (bruto − retención). La retención se paga al SII por separado, así que la
+ *    boleta queda saldada con el colaborador al transferir el neto.
  */
 export async function totalDeObligacion(
   admin: SupabaseClient,
@@ -32,11 +37,30 @@ export async function totalDeObligacion(
     if (!data) return { ok: false, error: `cotización ${id} no encontrada` }
     return { ok: true, total: Math.round(calcularTotalCot(data)) }
   }
-  // rendicion_gastos | rendicion_mensual_gastos | gastos_fijos_cuotas → monto
-  const { data, error } = await admin.from(tabla).select('monto').eq('id', id).maybeSingle()
+  if (tabla === 'gastos_fijos_cuotas') {
+    const { data, error } = await admin.from(tabla).select('monto').eq('id', id).maybeSingle()
+    if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: `fila ${id} no encontrada en ${tabla}` }
+    return { ok: true, total: Math.round((data as { monto: number }).monto ?? 0) }
+  }
+  // rendicion_gastos | rendicion_mensual_gastos
+  const { data, error } = await admin
+    .from(tabla)
+    .select('monto, tipo_documento, fecha_documento')
+    .eq('id', id)
+    .maybeSingle()
   if (error) return { ok: false, error: error.message }
   if (!data) return { ok: false, error: `fila ${id} no encontrada en ${tabla}` }
-  return { ok: true, total: Math.round((data as { monto: number }).monto ?? 0) }
+  const g = data as { monto: number; tipo_documento: string | null; fecha_documento: string | null }
+  if (g.tipo_documento === 'boleta') {
+    const { neto } = calcularRetencion({
+      monto: g.monto ?? 0,
+      tipo_documento: 'boleta',
+      fecha: g.fecha_documento,
+    })
+    return { ok: true, total: Math.round(neto) }
+  }
+  return { ok: true, total: Math.round(g.monto ?? 0) }
 }
 
 /** Suma de asignaciones del ledger a una obligación, y la fecha de pago más reciente. */
@@ -76,7 +100,11 @@ export async function recomputarObligacion(
   const s = await sumaAsignada(admin, tabla, id)
   if (!s.ok) return s.error
 
-  const cubierta = t.total > 0 && s.suma >= t.total
+  // Tolerancia para redondeo: el monto transferido puede no calzar al peso con el
+  // total calculado (neto de boletas, montos redondeados a la mano). Damos 1% (mín.
+  // $100) de margen para no dejar pendiente una obligación pagada en la práctica.
+  const margen = Math.max(100, Math.round(t.total * 0.01))
+  const cubierta = t.total > 0 && s.suma >= t.total - margen
   const patch = cubierta
     ? patchPago(tabla, s.fechaMax ?? '')
     : patchRestaurar(tabla, null) // → pagado=false / fecha null
