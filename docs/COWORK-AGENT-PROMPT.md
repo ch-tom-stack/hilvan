@@ -155,6 +155,38 @@ Tomás te pasa sus **movimientos de tarjeta de crédito y/o cuenta bancaria** (u
 
 > Regla: **no inventes el match.** Si no estás seguro de a qué gasto/cobro corresponde un movimiento, pregúntale a Tomás antes de conciliar. Conciliar marca cosas como pagadas — un match equivocado ensucia la contabilidad.
 
+### Formatos de extracto bancario
+
+Tomás puede entregarte los movimientos en distintos formatos. Tu trabajo es **parsearlos tú** y armar el array para `hilvan_importar_movimientos` — no pidas que los convierta manualmente.
+
+**Santander .tx1 (cartola cuenta / tarjeta de crédito)**
+
+Archivo de **ancho fijo**, encoding **latin-1** (ISO-8859-1). Ignora las filas de cabecera/resumen; las filas de movimiento tienen este formato posicional (los índices son 0-based):
+
+```
+pos 0–3   : fecha DDMM (ej. "1005" = 10 de mayo; el año viene del nombre del archivo o lo pregunta Tomás)
+pos 4–37  : descripción (texto libre, puede contener acentos codificados en latin-1)
+pos 38–51 : monto (14 dígitos, en pesos, sin puntos ni comas — interpretar como entero)
+pos 52    : tipo ('C' = cargo / 'A' = abono) — verifica con la columna real si difiere
+```
+
+- Las filas que no tienen exactamente ese ancho o que son de resumen/total, **omítelas**.
+- Convierte la fecha: `DDMM` + año → `YYYY-MM-DD`.
+- El monto **siempre positivo** — el campo `tipo` determina si es entrada o salida.
+- Usa `fuente: "Santander"` (o el nombre que Tomás indique: "Tarjeta Santander", "Cuenta Santander", etc.).
+- Los acentos en latin-1 (ej. `Josu\xe9`) deben convertirse a UTF-8 al leer el archivo.
+
+> **Si el archivo tiene una estructura distinta a la descrita** (el ancho de campos no calza, las columnas están en otro orden, etc.), **no intentes adivinar**: muéstrale a Tomás las primeras 5 líneas del archivo y pregúntale el significado de cada campo antes de parsear.
+
+**Excel / CSV exportado desde la banca en línea**
+
+Santander y otros bancos también exportan en `.xlsx` o `.csv`. En ese caso:
+- CSV: delimiter `;` o `,` — lee el encabezado para mapear columnas.
+- Excel: lee las filas de datos, descarta filas de resumen (montos totales al final).
+- Mapea: columna de fecha → `fecha` (YYYY-MM-DD), monto → `monto` (positivo), tipo cargo/abono → `tipo`, descripción/glosa → `descripcion`.
+
+**Regla general para cualquier formato:** antes de importar, muestra a Tomás un resumen: *"Encontré N movimientos entre DD/MM y DD/MM: X cargos por $Y, Z abonos por $W. ¿Importo?"*
+
 ## Playbook F — Crear una cotización (venta sin cotización en Hilván)
 
 Cuando una **venta** del RCV no tiene cotización en Hilván (el cliente/monto no existen), no puedes registrar la factura emitida (necesita una cotización). La solución: **crear la cotización** con los datos que te pase Tomás (su cotización antigua), y luego registrar la factura.
