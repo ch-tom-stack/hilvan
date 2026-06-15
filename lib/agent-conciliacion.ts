@@ -18,6 +18,74 @@ export function esMatchTablaValida(t: unknown): t is MatchTabla {
   return typeof t === 'string' && (MATCH_TABLAS as readonly string[]).includes(t)
 }
 
+/** Una asignación normalizada: tanto monto de un movimiento paga esta obligación. */
+export type Asignacion = { match_tabla: MatchTabla; match_id: string; monto: number }
+
+/**
+ * Normaliza y valida la lista de asignaciones de un movimiento (conciliación N:M).
+ *  - `raw` debe ser un array no vacío de { match_tabla, match_id, monto? }.
+ *  - `monto` se puede omitir SOLO si hay exactamente una asignación → toma el
+ *    monto completo del movimiento (retrocompatible con la conciliación 1:1).
+ *  - Cada `monto` debe ser un entero finito > 0 (CLP, sin decimales).
+ *  - La suma de las asignaciones NO puede exceder el monto del movimiento
+ *    (sí puede ser menor: el resto queda sin asignar y el movimiento, no conciliado).
+ * Devuelve la lista con montos enteros, o un error con el motivo.
+ */
+export function normalizarAsignaciones(
+  raw: unknown,
+  movimientoMonto: number,
+): { ok: true; asignaciones: Asignacion[] } | { ok: false; error: string } {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { ok: false, error: 'asignaciones debe ser un array con al menos una asignación' }
+  }
+
+  const unica = raw.length === 1
+  const out: Asignacion[] = []
+
+  for (let i = 0; i < raw.length; i++) {
+    const a = raw[i] as Record<string, unknown> | null
+    const etq = `asignación ${i + 1}`
+    if (!a || typeof a !== 'object') {
+      return { ok: false, error: `${etq}: debe ser un objeto` }
+    }
+    if (!esMatchTablaValida(a.match_tabla)) {
+      return {
+        ok: false,
+        error: `${etq}: match_tabla inválida (rendicion_gastos | rendicion_mensual_gastos | gastos_fijos_cuotas | cotizaciones)`,
+      }
+    }
+    if (typeof a.match_id !== 'string' || !a.match_id.trim()) {
+      return { ok: false, error: `${etq}: falta match_id` }
+    }
+
+    let monto: number
+    if (a.monto == null) {
+      if (!unica) {
+        return { ok: false, error: `${etq}: monto requerido cuando hay más de una asignación` }
+      }
+      monto = movimientoMonto
+    } else {
+      const n = typeof a.monto === 'string' ? parseFloat(a.monto) : (a.monto as number)
+      if (!Number.isFinite(n) || n <= 0) {
+        return { ok: false, error: `${etq}: monto debe ser un número > 0` }
+      }
+      monto = Math.round(n)
+    }
+
+    out.push({ match_tabla: a.match_tabla, match_id: a.match_id.trim(), monto })
+  }
+
+  const suma = out.reduce((s, a) => s + a.monto, 0)
+  if (suma > movimientoMonto) {
+    return {
+      ok: false,
+      error: `la suma de asignaciones ($${suma.toLocaleString('es-CL')}) excede el monto del movimiento ($${movimientoMonto.toLocaleString('es-CL')})`,
+    }
+  }
+
+  return { ok: true, asignaciones: out }
+}
+
 /**
  * Coherencia tipo de movimiento ↔ tabla de match.
  * - 'abono' (entrada de dinero) solo concilia con 'cotizaciones' (un pago recibido).

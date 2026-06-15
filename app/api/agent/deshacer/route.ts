@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { obtenerAccion } from '@/lib/agent-audit'
-import { esMatchTablaValida, patchRestaurar } from '@/lib/agent-conciliacion'
+import { esMatchTablaValida } from '@/lib/agent-conciliacion'
+import { recomputarObligacion, recomputarMovimiento } from '@/lib/agent-conciliacion-io'
 
 export const runtime = 'nodejs'
 
@@ -26,8 +27,9 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
 //  - 'importar-movimientos': borra cada movimiento creado (payload.creados), pero
 //    ABORTA (400) si alguno ya está conciliado (primero deshacer la conciliación).
 //    NO usa resultado_tabla/_id (es multi-fila).
-//  - 'conciliar': restaura el estado PREVIO de la fila match (payload.previo, según
-//    payload.match_tabla) y vuelve el movimiento a conciliado=false. Nunca a ciegas.
+//  - 'conciliar': borra las filas del ledger `conciliaciones` de esta acción
+//    (payload.ledger_ids) y RECOMPUTA el pago de cada obligación afectada
+//    (payload.obligaciones) y del movimiento desde el ledger restante.
 //  - 'conciliar-vario': borra la fila de flujo_caja_manual creada (payload.flujo_id)
 //    y vuelve el movimiento a conciliado=false (resultado_id = movimiento_id).
 //  - 'crear-cotizacion': borra la cotización COMPLETA en cascada (items →
@@ -233,31 +235,32 @@ export async function POST(req: Request) {
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'conciliar') {
-    // Conciliación: restaurar el estado PREVIO de la fila match (payload.previo,
-    // según payload.match_tabla) y volver el movimiento a no conciliado.
-    // Nunca a ciegas: usa el estado guardado al conciliar.
+    // Conciliación N:M: borrar las filas del ledger creadas por esta acción
+    // (payload.ledger_ids) y RECOMPUTAR el estado de pago de cada obligación
+    // afectada (payload.obligaciones) y del movimiento desde el ledger restante.
+    // Recomputar (no restaurar un "previo") es correcto incluso si otra acción
+    // también asignó a la misma obligación: refleja lo que queda en el ledger.
     const payload = accion.payload as
-      | { match_tabla?: string; match_id?: string; previo?: Record<string, unknown> | null }
+      | {
+          ledger_ids?: string[]
+          obligaciones?: { tabla?: string; id?: string }[]
+        }
       | null
-    const matchTabla = payload?.match_tabla
-    const matchId = payload?.match_id
-    if (!esMatchTablaValida(matchTabla) || !matchId) {
-      return NextResponse.json(
-        { error: 'La acción de conciliación no tiene match_tabla/match_id válidos para revertir' },
-        { status: 400 },
-      )
+    const ledgerIds = Array.isArray(payload?.ledger_ids) ? payload!.ledger_ids : []
+    if (ledgerIds.length > 0) {
+      const { error: eDel } = await admin.from('conciliaciones').delete().in('id', ledgerIds)
+      if (eDel) return NextResponse.json({ error: eDel.message }, { status: 500 })
     }
-    const { error: eRestaurar } = await admin
-      .from(matchTabla)
-      .update(patchRestaurar(matchTabla, payload?.previo ?? null))
-      .eq('id', matchId)
-    if (eRestaurar) return NextResponse.json({ error: eRestaurar.message }, { status: 500 })
 
-    const { error: eMov } = await admin
-      .from('movimientos_bancarios')
-      .update({ conciliado: false, conciliado_tabla: null, conciliado_id: null })
-      .eq('id', accion.resultado_id)
-    if (eMov) return NextResponse.json({ error: eMov.message }, { status: 500 })
+    const obligaciones = Array.isArray(payload?.obligaciones) ? payload!.obligaciones : []
+    for (const o of obligaciones) {
+      if (!esMatchTablaValida(o?.tabla) || !o?.id) continue
+      const err = await recomputarObligacion(admin, o.tabla, o.id)
+      if (err) return NextResponse.json({ error: err }, { status: 500 })
+    }
+
+    const errMov = await recomputarMovimiento(admin, accion.resultado_id)
+    if (errMov) return NextResponse.json({ error: errMov }, { status: 500 })
   } else if (accion.herramienta === 'conciliar-vario') {
     // Conciliación vario: borrar la fila de flujo_caja_manual creada
     // (payload.flujo_id) y volver el movimiento a no conciliado.

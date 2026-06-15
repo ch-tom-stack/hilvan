@@ -584,9 +584,27 @@ const baseHandler = createMcpHandler(
       {
         title: 'Conciliar movimiento',
         description:
-          'Cruza un movimiento bancario con una fila de Hilván y MARCA PAGADA la obligación. match_tabla indica qué se paga: "cotizaciones" (un abono = pago recibido, setea fecha_pago_recibido), "rendicion_gastos"/"rendicion_mensual_gastos" (un cargo = gasto pagado), "gastos_fijos_cuotas" (un cargo = cuota de crédito pagada). match_id es el UUID de esa fila. Reversible con hilvan_deshacer (restaura el estado previo). CONFIRMA con el usuario antes de llamar.',
+          'Cruza UN movimiento bancario con UNA o VARIAS obligaciones de Hilván y las MARCA PAGADAS, repartiendo el monto. Resuelve transferencias COMBINADAS (un movimiento paga varios gastos) y pagos PARCIALES (varias asignaciones/movimientos cubren una obligación). Cada asignación: match_tabla ("cotizaciones" = un abono/pago recibido; "rendicion_gastos"/"rendicion_mensual_gastos" = un cargo/gasto pagado; "gastos_fijos_cuotas" = cuota de crédito pagada), match_id (UUID de esa fila) y monto (parte del movimiento que paga esa obligación). Una obligación queda PAGADA solo cuando sus asignaciones cubren su total; si es parcial, queda registrada pero pendiente. La suma de asignaciones no puede exceder el monto del movimiento. Para el caso simple 1:1 puedes pasar asignaciones=[{match_tabla, match_id}] (sin monto = monto completo) o directamente match_tabla+match_id. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           movimiento_id: z.string().describe('UUID del movimiento bancario'),
+          asignaciones: z
+            .array(
+              z.object({
+                match_tabla: z.enum([
+                  'rendicion_gastos',
+                  'rendicion_mensual_gastos',
+                  'gastos_fijos_cuotas',
+                  'cotizaciones',
+                ]),
+                match_id: z.string().describe('UUID de la obligación'),
+                monto: z
+                  .number()
+                  .optional()
+                  .describe('parte del movimiento asignada a esta obligación; obligatorio si hay más de una'),
+              }),
+            )
+            .optional()
+            .describe('lista de obligaciones que paga el movimiento (caso N:M)'),
           match_tabla: z
             .enum([
               'rendicion_gastos',
@@ -594,8 +612,9 @@ const baseHandler = createMcpHandler(
               'gastos_fijos_cuotas',
               'cotizaciones',
             ])
-            .describe('qué obligación se paga'),
-          match_id: z.string().describe('UUID de la fila en match_tabla'),
+            .optional()
+            .describe('atajo 1:1 (alternativa a asignaciones)'),
+          match_id: z.string().optional().describe('atajo 1:1 (UUID de la fila en match_tabla)'),
           fecha_pago: z.string().optional().describe('YYYY-MM-DD; por defecto la fecha del movimiento'),
         },
       },

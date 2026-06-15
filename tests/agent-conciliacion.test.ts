@@ -6,6 +6,7 @@ import {
   columnasPrevio,
   patchRestaurar,
   tipoFlujoDesdeMovimiento,
+  normalizarAsignaciones,
 } from '@/lib/agent-conciliacion'
 
 // ── esMatchTablaValida ────────────────────────────────────────────────────────
@@ -107,6 +108,102 @@ describe('patchRestaurar', () => {
   it('con previo null cae a valores por defecto seguros', () => {
     expect(patchRestaurar('rendicion_gastos', null)).toEqual({ pagado: false, fecha_pago: null })
     expect(patchRestaurar('cotizaciones', null)).toEqual({ fecha_pago_recibido: null })
+  })
+})
+
+// ── normalizarAsignaciones (conciliación N:M) ─────────────────────────────────
+describe('normalizarAsignaciones', () => {
+  it('rechaza un array vacío o no-array', () => {
+    expect(normalizarAsignaciones([], 1000).ok).toBe(false)
+    expect(normalizarAsignaciones(null, 1000).ok).toBe(false)
+    expect(normalizarAsignaciones('x', 1000).ok).toBe(false)
+  })
+
+  it('caso 1:1: una sola asignación sin monto toma el monto completo del movimiento', () => {
+    const r = normalizarAsignaciones(
+      [{ match_tabla: 'rendicion_gastos', match_id: 'g1' }],
+      178500,
+    )
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.asignaciones).toEqual([{ match_tabla: 'rendicion_gastos', match_id: 'g1', monto: 178500 }])
+  })
+
+  it('transferencia combinada (Arias): reparte $440.300 en dos gastos exactos', () => {
+    const r = normalizarAsignaciones(
+      [
+        { match_tabla: 'rendicion_gastos', match_id: 'cot007', monto: 261800 },
+        { match_tabla: 'rendicion_gastos', match_id: 'cot001', monto: 178500 },
+      ],
+      440300,
+    )
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.asignaciones.reduce((s, a) => s + a.monto, 0)).toBe(440300)
+  })
+
+  it('exige monto cuando hay más de una asignación', () => {
+    const r = normalizarAsignaciones(
+      [
+        { match_tabla: 'rendicion_gastos', match_id: 'a' },
+        { match_tabla: 'rendicion_gastos', match_id: 'b' },
+      ],
+      1000,
+    )
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/monto requerido/)
+  })
+
+  it('rechaza si la suma excede el monto del movimiento', () => {
+    const r = normalizarAsignaciones(
+      [
+        { match_tabla: 'rendicion_gastos', match_id: 'a', monto: 600 },
+        { match_tabla: 'rendicion_gastos', match_id: 'b', monto: 600 },
+      ],
+      1000,
+    )
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/excede/)
+  })
+
+  it('permite suma MENOR al monto (movimiento parcialmente asignado)', () => {
+    const r = normalizarAsignaciones(
+      [{ match_tabla: 'rendicion_gastos', match_id: 'a', monto: 300 }],
+      1000,
+    )
+    expect(r.ok).toBe(true)
+  })
+
+  it('pago parcial: una asignación a una obligación por menos de su total', () => {
+    // El movimiento es de $30.000 y se asigna entero a la boleta (que vale más).
+    const r = normalizarAsignaciones(
+      [{ match_tabla: 'rendicion_mensual_gastos', match_id: 'boleta585' }],
+      30000,
+    )
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.asignaciones[0].monto).toBe(30000)
+  })
+
+  it('acepta monto como string numérico y lo redondea a entero', () => {
+    const r = normalizarAsignaciones(
+      [{ match_tabla: 'cotizaciones', match_id: 'c', monto: '1234.6' }],
+      2000,
+    )
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.asignaciones[0].monto).toBe(1235)
+  })
+
+  it('rechaza match_tabla inválida y match_id faltante', () => {
+    expect(normalizarAsignaciones([{ match_tabla: 'profiles', match_id: 'x' }], 100).ok).toBe(false)
+    expect(normalizarAsignaciones([{ match_tabla: 'cotizaciones' }], 100).ok).toBe(false)
+  })
+
+  it('rechaza monto no positivo o no finito', () => {
+    expect(normalizarAsignaciones([{ match_tabla: 'cotizaciones', match_id: 'c', monto: 0 }], 100).ok).toBe(false)
+    expect(normalizarAsignaciones([{ match_tabla: 'cotizaciones', match_id: 'c', monto: -5 }], 100).ok).toBe(false)
+    expect(normalizarAsignaciones([{ match_tabla: 'cotizaciones', match_id: 'c', monto: 'NaN' }], 100).ok).toBe(false)
   })
 })
 

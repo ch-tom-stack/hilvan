@@ -158,9 +158,34 @@ export async function GET(req: Request) {
     'Sin categoría',
   )
 
+  // Pagado: suma de asignaciones del ledger `conciliaciones` a los gastos del período
+  // (refleja pagos PARCIALES, no el booleano todo-o-nada). Se topa al monto de cada
+  // gasto para que una sobre-asignación accidental no infle el pagado.
+  const proyIds = proyItems.map((g) => g.id as string)
+  const mensIds = mensItems.map((g) => g.id as string)
+  const allIds = [...proyIds, ...mensIds]
+  const asignadoPorGasto = new Map<string, number>()
+  if (allIds.length > 0) {
+    const { data: asg, error: eAsg } = await admin
+      .from('conciliaciones')
+      .select('match_tabla, match_id, monto')
+      .in('match_id', allIds)
+      .in('match_tabla', ['rendicion_gastos', 'rendicion_mensual_gastos'])
+    if (eAsg) return NextResponse.json({ error: eAsg.message }, { status: 500 })
+    const proySet = new Set(proyIds)
+    const mensSet = new Set(mensIds)
+    for (const a of (asg ?? []) as { match_tabla: string; match_id: string; monto: number }[]) {
+      const ok =
+        (a.match_tabla === 'rendicion_gastos' && proySet.has(a.match_id)) ||
+        (a.match_tabla === 'rendicion_mensual_gastos' && mensSet.has(a.match_id))
+      if (ok) asignadoPorGasto.set(a.match_id, (asignadoPorGasto.get(a.match_id) ?? 0) + (a.monto ?? 0))
+    }
+  }
+  const pagadoDeGasto = (g: any) =>
+    Math.max(0, Math.min(asignadoPorGasto.get(g.id) ?? 0, g.monto ?? 0))
   const egresosPagado =
-    proyItems.filter((g) => g.pagado).reduce((s, g) => s + (g.monto ?? 0), 0) +
-    mensItems.filter((g) => g.pagado).reduce((s, g) => s + (g.monto ?? 0), 0)
+    proyItems.reduce((s, g) => s + pagadoDeGasto(g), 0) +
+    mensItems.reduce((s, g) => s + pagadoDeGasto(g), 0)
   const egresosAdeudado = egresosTotal - egresosPagado
 
   // ── Créditos: cuotas del período ────────────────────────────────────────────
