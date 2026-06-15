@@ -63,6 +63,52 @@ export async function totalDeObligacion(
   return { ok: true, total: Math.round(g.monto ?? 0) }
 }
 
+/**
+ * Etiqueta legible de una obligación para mostrar en la inspección del ledger.
+ *  - cotizaciones: "CH-COT-xxx · <cliente>"
+ *  - gastos: razón social / descripción (+ folio si lo hay)
+ *  - cuotas: "<crédito> cuota N"
+ * Devuelve un string corto (nunca falla; si no encuentra la fila, usa el id).
+ */
+export async function etiquetaObligacion(
+  admin: SupabaseClient,
+  tabla: MatchTabla,
+  id: string,
+): Promise<string> {
+  if (tabla === 'cotizaciones') {
+    const { data } = await admin
+      .from('cotizaciones')
+      .select('nombre, cliente_nombre_libre, grupo:cotizacion_grupos(numero_base), cliente:clientes(nombre)')
+      .eq('id', id)
+      .maybeSingle()
+    if (!data) return `cotización ${id}`
+    const numero = (data as any).grupo?.numero_base ?? '—'
+    const cliente = (data as any).cliente?.nombre ?? (data as any).cliente_nombre_libre ?? (data as any).nombre ?? ''
+    return cliente ? `${numero} · ${cliente}` : `${numero}`
+  }
+  if (tabla === 'gastos_fijos_cuotas') {
+    const { data } = await admin
+      .from('gastos_fijos_cuotas')
+      .select('numero_cuota, gasto_fijo:gastos_fijos(nombre)')
+      .eq('id', id)
+      .maybeSingle()
+    if (!data) return `cuota ${id}`
+    const nombre = (data as any).gasto_fijo?.nombre ?? 'Crédito'
+    return `${nombre} cuota ${(data as any).numero_cuota ?? '?'}`
+  }
+  // rendicion_gastos | rendicion_mensual_gastos
+  const { data } = await admin
+    .from(tabla)
+    .select('razon_social_emisor, descripcion, folio')
+    .eq('id', id)
+    .maybeSingle()
+  if (!data) return `gasto ${id}`
+  const base =
+    (data as any).razon_social_emisor || (data as any).descripcion || `gasto ${id}`
+  const folio = (data as any).folio ? ` (folio ${(data as any).folio})` : ''
+  return `${base}${folio}`
+}
+
 /** Suma de asignaciones del ledger a una obligación, y la fecha de pago más reciente. */
 export async function sumaAsignada(
   admin: SupabaseClient,

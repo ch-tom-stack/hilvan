@@ -432,6 +432,26 @@ const TOOLS = [
     },
   },
   {
+    name: 'hilvan_conciliaciones',
+    description: 'Inspecciona cómo se repartió la conciliación N:M (solo lectura). Dos modos: (1) pasa movimiento_id para ver a qué obligaciones se asignó ese movimiento y cuánto, más el resto sin asignar; (2) pasa match_tabla + match_id para ver qué movimientos pagaron esa obligación, el total a cubrir, lo asignado, lo pendiente y si quedó cubierta. Útil para auditar un split antes de deshacer o reportar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        movimiento_id: { type: 'string', description: 'UUID del movimiento (modo movimiento)' },
+        match_tabla: { type: 'string', description: 'tabla de la obligación (modo obligación): rendicion_gastos | rendicion_mensual_gastos | gastos_fijos_cuotas | cotizaciones' },
+        match_id: { type: 'string', description: 'UUID de la obligación (modo obligación)' },
+      },
+    },
+    run: (a) => {
+      const p = new URLSearchParams()
+      if (a.movimiento_id) p.set('movimiento_id', a.movimiento_id)
+      if (a.match_tabla) p.set('match_tabla', a.match_tabla)
+      if (a.match_id) p.set('match_id', a.match_id)
+      const qs = p.toString()
+      return api('GET', `/conciliaciones${qs ? `?${qs}` : ''}`)
+    },
+  },
+  {
     name: 'hilvan_conciliar',
     description: 'Cruza UN movimiento bancario con UNA o VARIAS obligaciones de Hilván y las MARCA PAGADAS, repartiendo el monto. Resuelve transferencias COMBINADAS (un movimiento paga varios gastos) y pagos PARCIALES (varias asignaciones/movimientos cubren una obligación). Cada asignación: match_tabla ("cotizaciones" = abono/pago recibido; "rendicion_gastos"/"rendicion_mensual_gastos" = cargo/gasto pagado; "gastos_fijos_cuotas" = cuota de crédito pagada), match_id (UUID de la fila) y monto (parte del movimiento que paga esa obligación). Una obligación queda PAGADA solo cuando sus asignaciones cubren su total; si es parcial queda registrada pero pendiente. La suma de asignaciones no puede exceder el monto del movimiento. Caso simple 1:1: pasa asignaciones=[{match_tabla, match_id}] (sin monto = monto completo) o directamente match_tabla+match_id. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
     inputSchema: {

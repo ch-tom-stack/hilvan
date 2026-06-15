@@ -580,6 +580,36 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_conciliaciones',
+      {
+        title: 'Inspeccionar conciliación (ledger)',
+        description:
+          'Inspecciona cómo se repartió la conciliación N:M (solo lectura). Dos modos: (1) pasa movimiento_id para ver a qué obligaciones se asignó ese movimiento y cuánto, más el resto sin asignar; (2) pasa match_tabla + match_id para ver qué movimientos pagaron esa obligación, el total a cubrir, lo asignado, lo pendiente y si quedó cubierta. Útil para auditar un split antes de deshacer o reportar.',
+        inputSchema: {
+          movimiento_id: z.string().optional().describe('UUID del movimiento (modo movimiento)'),
+          match_tabla: z
+            .enum([
+              'rendicion_gastos',
+              'rendicion_mensual_gastos',
+              'gastos_fijos_cuotas',
+              'cotizaciones',
+            ])
+            .optional()
+            .describe('tabla de la obligación (modo obligación, con match_id)'),
+          match_id: z.string().optional().describe('UUID de la obligación (modo obligación)'),
+        },
+      },
+      async ({ movimiento_id, match_tabla, match_id }, extra) => {
+        const params = new URLSearchParams()
+        if (movimiento_id) params.set('movimiento_id', movimiento_id)
+        if (match_tabla) params.set('match_tabla', match_tabla)
+        if (match_id) params.set('match_id', match_id)
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/conciliaciones${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
       'hilvan_conciliar',
       {
         title: 'Conciliar movimiento',
