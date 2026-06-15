@@ -181,8 +181,15 @@ export async function GET(req: Request) {
       if (ok) asignadoPorGasto.set(a.match_id, (asignadoPorGasto.get(a.match_id) ?? 0) + (a.monto ?? 0))
     }
   }
-  const pagadoDeGasto = (g: any) =>
-    Math.max(0, Math.min(asignadoPorGasto.get(g.id) ?? 0, g.monto ?? 0))
+  // Un gasto puede estar pagado por DOS vías:
+  //  - vía ledger (conciliación bancaria): usamos la suma de asignaciones (refleja parciales).
+  //  - sin movimiento (efectivo / marcado a mano): no tiene ledger, pero pagado=true → cuenta completo.
+  // Si hay asignaciones, mandan ellas; si no, cae al booleano pagado.
+  const pagadoDeGasto = (g: any) => {
+    const ledger = asignadoPorGasto.get(g.id) ?? 0
+    const base = ledger > 0 ? ledger : g.pagado ? g.monto ?? 0 : 0
+    return Math.max(0, Math.min(base, g.monto ?? 0))
+  }
   const egresosPagado =
     proyItems.reduce((s, g) => s + pagadoDeGasto(g), 0) +
     mensItems.reduce((s, g) => s + pagadoDeGasto(g), 0)
