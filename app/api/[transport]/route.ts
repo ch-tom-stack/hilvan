@@ -603,6 +603,41 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_conciliar_vario',
+      {
+        title: 'Conciliar movimiento vario',
+        description:
+          'Cierra el loop de conciliación: registra un movimiento bancario SIN match en Hilván (devolución de impuesto, depósito, compra suelta, etc.) como ingreso/gasto vario en el flujo de caja y lo marca conciliado. El abono se guarda como "entrada" y el cargo como "salida", con el monto y la fecha del movimiento. El movimiento debe existir y NO estar ya conciliado. Reversible con hilvan_deshacer (borra la fila de flujo y des-concilia el movimiento). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          movimiento_id: z.string().describe('UUID del movimiento bancario'),
+          descripcion: z.string().describe('descripción del ingreso/gasto vario'),
+        },
+      },
+      async (args, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'POST', '/conciliar-vario', args)),
+    )
+
+    server.registerTool(
+      'hilvan_flujo_caja',
+      {
+        title: 'Flujo de caja',
+        description:
+          'Lista las entradas/salidas del flujo de caja manual (ingresos/gastos varios), incluidas las creadas al conciliar movimientos sin match. Filtra por periodo (YYYY-MM) y/o tipo (entrada|salida).',
+        inputSchema: {
+          periodo: z.string().optional().describe('YYYY-MM'),
+          tipo: z.enum(['entrada', 'salida']).optional(),
+        },
+      },
+      async ({ periodo, tipo }, extra) => {
+        const params = new URLSearchParams()
+        if (periodo) params.set('periodo', periodo)
+        if (tipo) params.set('tipo', tipo)
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/flujo-caja${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
       'hilvan_cuotas_credito',
       {
         title: 'Cuotas de crédito',

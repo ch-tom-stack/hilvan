@@ -5,6 +5,7 @@ import {
   patchPago,
   columnasPrevio,
   patchRestaurar,
+  tipoFlujoDesdeMovimiento,
 } from '@/lib/agent-conciliacion'
 
 // ── esMatchTablaValida ────────────────────────────────────────────────────────
@@ -106,5 +107,15 @@ describe('patchRestaurar', () => {
   it('con previo null cae a valores por defecto seguros', () => {
     expect(patchRestaurar('rendicion_gastos', null)).toEqual({ pagado: false, fecha_pago: null })
     expect(patchRestaurar('cotizaciones', null)).toEqual({ fecha_pago_recibido: null })
+  })
+})
+
+// ── tipoFlujoDesdeMovimiento (conciliar-vario) ────────────────────────────────
+describe('tipoFlujoDesdeMovimiento', () => {
+  it('abono (entrada de dinero) → entrada', () => {
+    expect(tipoFlujoDesdeMovimiento('abono')).toBe('entrada')
+  })
+  it('cargo (salida de dinero) → salida', () => {
+    expect(tipoFlujoDesdeMovimiento('cargo')).toBe('salida')
   })
 })

@@ -69,6 +69,16 @@ export function columnasPrevio(matchTabla: MatchTabla): string {
   }
 }
 
+/**
+ * Mapea el tipo de movimiento bancario al tipo de fila en flujo_caja_manual.
+ *   - 'abono' (entrada de dinero) → 'entrada'
+ *   - 'cargo' (salida de dinero)  → 'salida'
+ * Usado al conciliar un movimiento SIN match como ingreso/gasto vario.
+ */
+export function tipoFlujoDesdeMovimiento(tipo: TipoMovimiento): 'entrada' | 'salida' {
+  return tipo === 'abono' ? 'entrada' : 'salida'
+}
+
 /** Construye el patch de UPDATE para RESTAURAR el estado previo (deshacer). */
 export function patchRestaurar(
   matchTabla: MatchTabla,
