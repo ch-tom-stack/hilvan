@@ -7,6 +7,7 @@ import {
   patchRestaurar,
   tipoFlujoDesdeMovimiento,
   normalizarAsignaciones,
+  montoVarioRestante,
 } from '@/lib/agent-conciliacion'
 
 // ── esMatchTablaValida ────────────────────────────────────────────────────────
@@ -204,6 +205,23 @@ describe('normalizarAsignaciones', () => {
     expect(normalizarAsignaciones([{ match_tabla: 'cotizaciones', match_id: 'c', monto: 0 }], 100).ok).toBe(false)
     expect(normalizarAsignaciones([{ match_tabla: 'cotizaciones', match_id: 'c', monto: -5 }], 100).ok).toBe(false)
     expect(normalizarAsignaciones([{ match_tabla: 'cotizaciones', match_id: 'c', monto: 'NaN' }], 100).ok).toBe(false)
+  })
+})
+
+// ── montoVarioRestante (conciliar-vario sobre movimiento mixto) ───────────────
+describe('montoVarioRestante', () => {
+  it('sin asignaciones previas → monto completo (comportamiento clásico)', () => {
+    expect(montoVarioRestante(2754843, 0)).toBe(2754843)
+  })
+  it('transferencia mixta contador: resta los honorarios ya conciliados', () => {
+    // $2.754.843 transferidos; $140.000 conciliados como honorarios → resto impuestos.
+    expect(montoVarioRestante(2754843, 140000)).toBe(2614843)
+  })
+  it('completamente asignado → 0 (el route lo rechaza con 400)', () => {
+    expect(montoVarioRestante(440300, 440300)).toBe(0)
+  })
+  it('sobre-asignado → negativo (el route lo rechaza con 400)', () => {
+    expect(montoVarioRestante(100, 150)).toBe(-50)
   })
 })
 

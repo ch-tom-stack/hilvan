@@ -626,7 +626,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Conciliar movimiento vario',
         description:
-          'Cierra el loop de conciliación: registra un movimiento bancario SIN match en Hilván (devolución de impuesto, depósito, compra suelta, etc.) como ingreso/gasto vario en el flujo de caja y lo marca conciliado. El abono se guarda como "entrada" y el cargo como "salida", con el monto y la fecha del movimiento. El movimiento debe existir y NO estar ya conciliado. Reversible con hilvan_deshacer (borra la fila de flujo y des-concilia el movimiento). CONFIRMA con el usuario antes de llamar.',
+          'Cierra el loop de conciliación: registra como ingreso/gasto vario en el flujo de caja el RESTO de un movimiento que no se asignó a obligaciones (devolución de impuesto, depósito, compra suelta, o la parte de impuestos de una transferencia mixta al contador), y lo marca conciliado. Registra el monto del movimiento MENOS lo ya conciliado a obligaciones con hilvan_conciliar (sin asignaciones previas = monto completo). Así un movimiento mixto se reparte: parte gasto vía hilvan_conciliar, parte vario aquí, sin doble contar. El abono se guarda como "entrada" y el cargo como "salida", con la fecha del movimiento. El movimiento debe existir, NO estar ya conciliado y quedar resto > 0. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           movimiento_id: z.string().describe('UUID del movimiento bancario'),
           descripcion: z.string().describe('descripción del ingreso/gasto vario'),

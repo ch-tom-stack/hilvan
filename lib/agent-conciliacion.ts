@@ -138,6 +138,17 @@ export function columnasPrevio(matchTabla: MatchTabla): string {
 }
 
 /**
+ * Monto que `conciliar-vario` debe registrar en flujo de caja: el RESTO del
+ * movimiento que no quedó asignado a obligaciones en el ledger. Si no hay
+ * asignaciones (sumaLedger=0), es el monto completo (comportamiento clásico).
+ * Permite repartir un movimiento mixto (parte gasto vía conciliar, parte
+ * impuesto/vario vía conciliar-vario) sin doble contar.
+ */
+export function montoVarioRestante(movimientoMonto: number, sumaLedger: number): number {
+  return movimientoMonto - sumaLedger
+}
+
+/**
  * Mapea el tipo de movimiento bancario al tipo de fila en flujo_caja_manual.
  *   - 'abono' (entrada de dinero) → 'entrada'
  *   - 'cargo' (salida de dinero)  → 'salida'

@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
-import { tipoFlujoDesdeMovimiento, type TipoMovimiento } from '@/lib/agent-conciliacion'
+import {
+  tipoFlujoDesdeMovimiento,
+  montoVarioRestante,
+  type TipoMovimiento,
+} from '@/lib/agent-conciliacion'
 import { resolverPerfilAgente } from '@/lib/agent-perfil'
 
 export const runtime = 'nodejs'
@@ -14,8 +18,12 @@ export const runtime = 'nodejs'
 // Body: { movimiento_id (req), descripcion (req) }.
 //
 //   - El movimiento debe existir (404) y NO estar ya conciliado (400).
-//   - Crea una fila en flujo_caja_manual con el monto/fecha del movimiento y el
-//     tipo derivado (abono → entrada, cargo → salida). created_by = perfil real.
+//   - Registra el RESTO no asignado (monto del movimiento − lo ya conciliado a
+//     obligaciones en el ledger). Sin asignaciones previas = monto completo. Así un
+//     movimiento mixto se reparte entre conciliar (gasto) y conciliar-vario (vario)
+//     sin doble contar. Si no queda resto (>0) → 400.
+//   - Crea una fila en flujo_caja_manual por ese resto, con la fecha del movimiento y
+//     el tipo derivado (abono → entrada, cargo → salida). created_by = perfil real.
 //   - Marca el movimiento conciliado contra esa fila.
 //
 // Reversible: deshacer borra la fila de flujo_caja_manual (payload.flujo_id) y
@@ -54,6 +62,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'El movimiento ya está conciliado' }, { status: 400 })
   }
 
+  // ── Resto no asignado: el movimiento puede tener parte ya conciliada a
+  //    obligaciones (ledger). Vario registra SOLO el resto, para repartir un
+  //    movimiento mixto (ej. transferencia al contador: parte honorarios vía
+  //    conciliar, parte impuestos vía conciliar-vario) sin doble contar. ──────
+  const { data: asg, error: eAsg } = await admin
+    .from('conciliaciones')
+    .select('monto')
+    .eq('movimiento_id', movimiento_id)
+  if (eAsg) return NextResponse.json({ error: eAsg.message }, { status: 500 })
+  const sumaLedger = (asg ?? []).reduce((s, a: { monto: number }) => s + (a.monto ?? 0), 0)
+  const montoResto = montoVarioRestante(mov.monto, sumaLedger)
+  if (montoResto <= 0) {
+    return NextResponse.json(
+      { error: 'El movimiento ya está completamente asignado a obligaciones; no queda resto para registrar como vario' },
+      { status: 400 },
+    )
+  }
+
   // ── Resolver autoría (created_by) con un perfil real ────────────────────────
   const perfil = await resolverPerfilAgente(admin)
   if (!perfil.ok) {
@@ -62,12 +88,12 @@ export async function POST(req: Request) {
 
   const tipoFlujo = tipoFlujoDesdeMovimiento(mov.tipo as TipoMovimiento)
 
-  // ── 1. Crear la fila de flujo de caja ───────────────────────────────────────
+  // ── 1. Crear la fila de flujo de caja (por el RESTO no asignado) ─────────────
   const { data: flujo, error: eFlujo } = await admin
     .from('flujo_caja_manual')
     .insert({
       descripcion: descripcion.trim(),
-      monto: mov.monto,
+      monto: montoResto,
       fecha: mov.fecha,
       tipo: tipoFlujo,
       created_by: perfil.id,
@@ -121,6 +147,8 @@ export async function POST(req: Request) {
     ok: true,
     flujo_id: flujo.id,
     tipo: tipoFlujo,
-    monto: mov.monto,
+    monto: montoResto,
+    monto_movimiento: mov.monto,
+    monto_asignado_obligaciones: sumaLedger,
   })
 }

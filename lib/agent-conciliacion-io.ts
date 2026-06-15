@@ -100,11 +100,11 @@ export async function recomputarObligacion(
   const s = await sumaAsignada(admin, tabla, id)
   if (!s.ok) return s.error
 
-  // Tolerancia para redondeo: el monto transferido puede no calzar al peso con el
-  // total calculado (neto de boletas, montos redondeados a la mano). Damos 1% (mín.
-  // $100) de margen para no dejar pendiente una obligación pagada en la práctica.
-  const margen = Math.max(100, Math.round(t.total * 0.01))
-  const cubierta = t.total > 0 && s.suma >= t.total - margen
+  // Cobertura EXACTA: el líquido de una boleta (bruto − retención redondeada) es
+  // determinista y debe calzar al peso con la transferencia real. No usamos banda de
+  // tolerancia a propósito: una diferencia significa dato mal cargado o pago incompleto,
+  // y debe quedar pendiente para revisión en vez de marcarse pagada a la fuerza.
+  const cubierta = t.total > 0 && s.suma >= t.total
   const patch = cubierta
     ? patchPago(tabla, s.fechaMax ?? '')
     : patchRestaurar(tabla, null) // → pagado=false / fecha null
