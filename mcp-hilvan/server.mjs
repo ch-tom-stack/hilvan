@@ -447,6 +447,37 @@ const TOOLS = [
     run: (a) => api('POST', '/conciliar', a),
   },
   {
+    name: 'hilvan_conciliar_vario',
+    description: 'Cierra el loop de conciliación: registra un movimiento bancario SIN match en Hilván (devolución de impuesto, depósito, compra suelta, etc.) como ingreso/gasto vario en el flujo de caja y lo marca conciliado. El abono se guarda como "entrada" y el cargo como "salida", con el monto y la fecha del movimiento. El movimiento debe existir y NO estar ya conciliado. Reversible con hilvan_deshacer (borra la fila de flujo y des-concilia el movimiento). CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        movimiento_id: { type: 'string', description: 'UUID del movimiento bancario' },
+        descripcion: { type: 'string', description: 'descripción del ingreso/gasto vario' },
+      },
+      required: ['movimiento_id', 'descripcion'],
+    },
+    run: (a) => api('POST', '/conciliar-vario', a),
+  },
+  {
+    name: 'hilvan_flujo_caja',
+    description: 'Lista las entradas/salidas del flujo de caja manual (ingresos/gastos varios), incluidas las creadas al conciliar movimientos sin match. Filtra por periodo (YYYY-MM) y/o tipo (entrada|salida).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        periodo: { type: 'string', description: 'YYYY-MM' },
+        tipo: { type: 'string', description: 'entrada | salida' },
+      },
+    },
+    run: (a) => {
+      const params = new URLSearchParams()
+      if (a.periodo) params.set('periodo', a.periodo)
+      if (a.tipo) params.set('tipo', a.tipo)
+      const qs = params.toString()
+      return api('GET', `/flujo-caja${qs ? `?${qs}` : ''}`)
+    },
+  },
+  {
     name: 'hilvan_cuotas_credito',
     description: 'Lista las cuotas de créditos / gastos fijos con su crédito (nombre/acreedor). Por defecto solo pendientes. Útil para cruzar pagos de crédito con movimientos bancarios (luego conciliar con match_tabla="gastos_fijos_cuotas").',
     inputSchema: {

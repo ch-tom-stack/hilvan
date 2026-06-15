@@ -28,6 +28,8 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
 //    NO usa resultado_tabla/_id (es multi-fila).
 //  - 'conciliar': restaura el estado PREVIO de la fila match (payload.previo, según
 //    payload.match_tabla) y vuelve el movimiento a conciliado=false. Nunca a ciegas.
+//  - 'conciliar-vario': borra la fila de flujo_caja_manual creada (payload.flujo_id)
+//    y vuelve el movimiento a conciliado=false (resultado_id = movimiento_id).
 //  - 'crear-cotizacion': borra la cotización COMPLETA en cascada (items →
 //    subgrupos → departamentos → cotizaciones → cotizacion_grupos, este último
 //    por payload.grupo_id que la acción siempre crea). Va ANTES de la rama
@@ -251,6 +253,23 @@ export async function POST(req: Request) {
       .eq('id', matchId)
     if (eRestaurar) return NextResponse.json({ error: eRestaurar.message }, { status: 500 })
 
+    const { error: eMov } = await admin
+      .from('movimientos_bancarios')
+      .update({ conciliado: false, conciliado_tabla: null, conciliado_id: null })
+      .eq('id', accion.resultado_id)
+    if (eMov) return NextResponse.json({ error: eMov.message }, { status: 500 })
+  } else if (accion.herramienta === 'conciliar-vario') {
+    // Conciliación vario: borrar la fila de flujo_caja_manual creada
+    // (payload.flujo_id) y volver el movimiento a no conciliado.
+    const payload = accion.payload as { flujo_id?: string } | null
+    const flujoId = payload?.flujo_id
+    if (flujoId) {
+      const { error: eFlujo } = await admin
+        .from('flujo_caja_manual')
+        .delete()
+        .eq('id', flujoId)
+      if (eFlujo) return NextResponse.json({ error: eFlujo.message }, { status: 500 })
+    }
     const { error: eMov } = await admin
       .from('movimientos_bancarios')
       .update({ conciliado: false, conciliado_tabla: null, conciliado_id: null })
