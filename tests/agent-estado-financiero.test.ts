@@ -6,6 +6,7 @@ import {
   fechaDentroDePeriodo,
   fechaTributariaGasto,
   agregarPorCategoria,
+  etiquetaCategoria,
 } from '@/lib/agent-estado-financiero'
 
 describe('normalizarPeriodo', () => {
@@ -86,5 +87,23 @@ describe('agregarPorCategoria', () => {
     ]
     const r = agregarPorCategoria(conNC, (x) => x.cat, (x) => x.monto)
     expect(r).toEqual({ Insumos: 3000 })
+  })
+})
+
+describe('etiquetaCategoria', () => {
+  it('unifica proyecto (tipo) y mensual (categoria) en una etiqueta canónica', () => {
+    expect(etiquetaCategoria('honorarios')).toBe('Honorarios')
+    expect(etiquetaCategoria('Honorarios')).toBe('Honorarios')
+    expect(etiquetaCategoria('articulos_oficina')).toBe('Artículos de oficina')
+    expect(etiquetaCategoria('Artículos de oficina')).toBe('Artículos de oficina')
+    expect(etiquetaCategoria('insumos')).toBe('Insumos de rodaje')
+    expect(etiquetaCategoria('Insumos de rodaje')).toBe('Insumos de rodaje')
+    expect(etiquetaCategoria('alimentacion')).toBe('Alimentación')
+    expect(etiquetaCategoria('Alimentación')).toBe('Alimentación')
+  })
+  it('vacío → Sin categoría; desconocido → capitaliza', () => {
+    expect(etiquetaCategoria('')).toBe('Sin categoría')
+    expect(etiquetaCategoria(null)).toBe('Sin categoría')
+    expect(etiquetaCategoria('locacion')).toBe('Locacion')
   })
 })

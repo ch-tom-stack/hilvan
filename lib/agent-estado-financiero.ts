@@ -54,6 +54,32 @@ export function fechaTributariaGasto(g: {
   return g.fecha_documento ?? g.created_at ?? null
 }
 
+// Mapa canónico: unifica el vocabulario de proyecto (`tipo`, minúscula/enum) con el
+// de mensual (`categoria`, etiqueta) para que no aparezcan duplicadas ("honorarios"
+// vs "Honorarios"). La clave se normaliza (minúscula, sin acentos, espacios→_).
+const MAPA_CATEGORIA: Record<string, string> = {
+  honorarios: 'Honorarios',
+  transporte: 'Transporte',
+  alimentacion: 'Alimentación',
+  articulos_oficina: 'Artículos de oficina',
+  insumos: 'Insumos de rodaje',
+  servicios: 'Servicios',
+  otros: 'Otros',
+  post_produccion: 'Post-producción',
+  suscripciones: 'Suscripciones',
+}
+
+export function etiquetaCategoria(raw: string | null | undefined): string {
+  const s = (raw || '').trim()
+  if (!s) return 'Sin categoría'
+  const key = s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '_')
+  return MAPA_CATEGORIA[key] ?? s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 /**
  * Suma montos agrupando por una clave (categoría / tipo). Las claves vacías o
  * nulas se agrupan bajo `sinClave`. Montos negativos (notas de crédito) restan,

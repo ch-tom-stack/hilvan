@@ -7,6 +7,7 @@ import {
   periodoActual,
   rangoPeriodo,
   agregarPorCategoria,
+  etiquetaCategoria,
 } from '@/lib/agent-estado-financiero'
 
 export const runtime = 'nodejs'
@@ -145,11 +146,12 @@ export async function GET(req: Request) {
   const egresosMens = mensItems.reduce((s, g) => s + (g.monto ?? 0), 0)
   const egresosTotal = egresosProy + egresosMens
 
-  // Por categoría: proyecto agrupa por `tipo`, mensual por `categoria`.
+  // Por categoría: proyecto agrupa por `tipo`, mensual por `categoria`. Se unifican
+  // bajo una etiqueta canónica (etiquetaCategoria) para no duplicar honorarios/etc.
   const porCategoria = agregarPorCategoria(
     [
-      ...proyItems.map((g) => ({ k: g.tipo as string | null, m: g.monto ?? 0 })),
-      ...mensItems.map((g) => ({ k: g.categoria as string | null, m: g.monto ?? 0 })),
+      ...proyItems.map((g) => ({ k: etiquetaCategoria(g.tipo as string | null), m: g.monto ?? 0 })),
+      ...mensItems.map((g) => ({ k: etiquetaCategoria(g.categoria as string | null), m: g.monto ?? 0 })),
     ],
     (x) => x.k,
     (x) => x.m,
