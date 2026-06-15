@@ -523,7 +523,7 @@ const TOOLS = [
   },
   {
     name: 'hilvan_estado_financiero',
-    description: 'Resumen financiero del mes (ingresos, egresos, por cobrar, créditos, flujo) para responder cómo vamos.',
+    description: 'Resumen financiero del mes (ingresos, egresos, por cobrar, créditos, flujo) para responder cómo vamos. Incluye un array `alertas` con feedback proactivo (cobros vencidos, cuotas de crédito vencidas/por vencer, mes en rojo, caja negativa), cada una con nivel "alta"/"media" y un mensaje listo para narrar. Si hay alertas, menciónalas al usuario aunque no las pida.',
     inputSchema: {
       type: 'object',
       properties: {

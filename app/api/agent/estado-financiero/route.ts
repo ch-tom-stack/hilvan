@@ -8,6 +8,7 @@ import {
   rangoPeriodo,
   agregarPorCategoria,
   etiquetaCategoria,
+  construirAlertas,
 } from '@/lib/agent-estado-financiero'
 
 export const runtime = 'nodejs'
@@ -222,8 +223,18 @@ export async function GET(req: Request) {
   const resultado_devengado = facturado_periodo - egresosTotal
   const caja_aprox = cobrado_periodo + flujoEntradas - egresosPagado - flujoSalidas
 
+  // ── Alertas (feedback proactivo) ────────────────────────────────────────────
+  const alertas = construirAlertas({
+    porCobrar: porCobrarItems,
+    cuotas: cuotasItems,
+    hoy: hoy.toISOString().slice(0, 10),
+    resultadoDevengado: Math.round(resultado_devengado),
+    cajaAprox: Math.round(caja_aprox),
+  })
+
   return NextResponse.json({
     periodo,
+    alertas,
     ingresos: {
       facturado_periodo: Math.round(facturado_periodo),
       cobrado_periodo: Math.round(cobrado_periodo),

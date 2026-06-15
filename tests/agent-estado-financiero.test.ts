@@ -7,6 +7,7 @@ import {
   fechaTributariaGasto,
   agregarPorCategoria,
   etiquetaCategoria,
+  construirAlertas,
 } from '@/lib/agent-estado-financiero'
 
 describe('normalizarPeriodo', () => {
@@ -105,5 +106,65 @@ describe('etiquetaCategoria', () => {
     expect(etiquetaCategoria('')).toBe('Sin categoría')
     expect(etiquetaCategoria(null)).toBe('Sin categoría')
     expect(etiquetaCategoria('locacion')).toBe('Locacion')
+  })
+})
+
+describe('construirAlertas', () => {
+  const base = {
+    porCobrar: [] as any[],
+    cuotas: [] as any[],
+    hoy: '2026-06-15',
+    resultadoDevengado: 1_000_000,
+    cajaAprox: 1_000_000,
+  }
+
+  it('mes sano → sin alertas', () => {
+    expect(construirAlertas(base)).toEqual([])
+  })
+
+  it('cobro con aging ≥60 → alerta alta; 30–59 → media', () => {
+    const r = construirAlertas({
+      ...base,
+      porCobrar: [
+        { numero: 'CH-COT-007', cliente: 'Zona Cero', monto: 1_606_500, dias_aging: 75 },
+        { numero: 'CH-COT-006', cliente: 'ULA', monto: 2_944_973, dias_aging: 40 },
+        { numero: 'CH-COT-010', cliente: 'X', monto: 100_000, dias_aging: 10 },
+      ],
+    })
+    const tipos = r.filter((a) => a.tipo === 'cobro_vencido')
+    expect(tipos).toHaveLength(2)
+    expect(tipos.find((a) => a.nivel === 'alta')?.monto).toBe(1_606_500)
+    expect(tipos.find((a) => a.nivel === 'media')?.monto).toBe(2_944_973)
+  })
+
+  it('cuota impaga vencida → alta; por vencer → media', () => {
+    const r = construirAlertas({
+      ...base,
+      cuotas: [
+        { credito: 'Forum', monto: 254_000, fecha_vencimiento: '2026-06-05', pagada: false },
+        { credito: 'BancoEstado', monto: 84_000, fecha_vencimiento: '2026-06-25', pagada: false },
+        { credito: 'Pagada', monto: 50_000, fecha_vencimiento: '2026-06-01', pagada: true },
+      ],
+    })
+    expect(r.find((a) => a.tipo === 'cuota_vencida')?.nivel).toBe('alta')
+    expect(r.find((a) => a.tipo === 'cuota_vencida')?.monto).toBe(254_000)
+    expect(r.find((a) => a.tipo === 'cuota_proxima')?.monto).toBe(84_000)
+  })
+
+  it('mes en rojo y caja negativa → dos alertas alta', () => {
+    const r = construirAlertas({ ...base, resultadoDevengado: -500_000, cajaAprox: -200_000 })
+    expect(r.find((a) => a.tipo === 'mes_en_rojo')?.nivel).toBe('alta')
+    expect(r.find((a) => a.tipo === 'caja_negativa')?.nivel).toBe('alta')
+    expect(r.find((a) => a.tipo === 'mes_en_rojo')?.mensaje).toContain('-$500.000')
+  })
+
+  it('ordena las alta antes que las media', () => {
+    const r = construirAlertas({
+      ...base,
+      porCobrar: [{ numero: 'A', cliente: 'c', monto: 1, dias_aging: 35 }], // media
+      resultadoDevengado: -1, // alta
+    })
+    expect(r[0].nivel).toBe('alta')
+    expect(r[r.length - 1].nivel).toBe('media')
   })
 })

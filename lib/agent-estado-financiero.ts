@@ -2,6 +2,8 @@
 // conversacional del agente (/api/agent/estado-financiero). Sin acceso a DB:
 // solo lógica de período y agregación, para poder testearlos en aislamiento.
 
+import { formatCLP } from '@/lib/cotizaciones-calc'
+
 /**
  * Valida y normaliza un período YYYY-MM. Si no calza con el formato, devuelve
  * null. (El default = mes actual se resuelve en el route, no aquí.)
@@ -97,4 +99,108 @@ export function agregarPorCategoria<T>(
     acc[k] = (acc[k] ?? 0) + (monto(it) || 0)
   }
   return acc
+}
+
+// Umbrales de aging para alertas de cobranza (días desde la factura emitida).
+export const AGING_ALTA = 60
+export const AGING_MEDIA = 30
+
+export type NivelAlerta = 'alta' | 'media'
+export interface Alerta {
+  nivel: NivelAlerta
+  tipo: string
+  mensaje: string
+  monto?: number
+}
+
+/**
+ * Construye el feedback proactivo del mes: señales accionables que el agente
+ * narra sin que se las pregunten. Función PURA (recibe ya calculado lo que
+ * necesita) para testearla en aislamiento. Orden: las 'alta' primero.
+ *
+ * Señales:
+ *  - cobro_vencido: cotizaciones por cobrar con aging ≥ 60 (alta) / 30–59 (media).
+ *  - cuota_vencida / cuota_proxima: cuotas de crédito impagas vencidas (alta) o
+ *    por vencer en el período (media).
+ *  - mes_en_rojo: resultado devengado negativo (alta).
+ *  - caja_negativa: caja aproximada negativa (alta).
+ */
+export function construirAlertas(input: {
+  porCobrar: { numero: string | null; cliente: string; monto: number; dias_aging: number }[]
+  cuotas: { credito: string | null; monto: number; fecha_vencimiento: string; pagada: boolean }[]
+  hoy: string // YYYY-MM-DD
+  resultadoDevengado: number
+  cajaAprox: number
+}): Alerta[] {
+  const alertas: Alerta[] = []
+
+  // ── Cobros vencidos ─────────────────────────────────────────────────────────
+  const venc60 = input.porCobrar.filter((c) => c.dias_aging >= AGING_ALTA)
+  const venc30 = input.porCobrar.filter(
+    (c) => c.dias_aging >= AGING_MEDIA && c.dias_aging < AGING_ALTA,
+  )
+  if (venc60.length > 0) {
+    const total = venc60.reduce((s, c) => s + c.monto, 0)
+    alertas.push({
+      nivel: 'alta',
+      tipo: 'cobro_vencido',
+      monto: total,
+      mensaje: `${venc60.length} cotización(es) con más de ${AGING_ALTA} días sin cobrar (${formatCLP(total)})`,
+    })
+  }
+  if (venc30.length > 0) {
+    const total = venc30.reduce((s, c) => s + c.monto, 0)
+    alertas.push({
+      nivel: 'media',
+      tipo: 'cobro_vencido',
+      monto: total,
+      mensaje: `${venc30.length} cotización(es) con ${AGING_MEDIA}–${AGING_ALTA - 1} días sin cobrar (${formatCLP(total)})`,
+    })
+  }
+
+  // ── Cuotas de crédito impagas ───────────────────────────────────────────────
+  const impagas = input.cuotas.filter((c) => !c.pagada)
+  const vencidas = impagas.filter((c) => c.fecha_vencimiento < input.hoy)
+  const proximas = impagas.filter((c) => c.fecha_vencimiento >= input.hoy)
+  if (vencidas.length > 0) {
+    const total = vencidas.reduce((s, c) => s + c.monto, 0)
+    alertas.push({
+      nivel: 'alta',
+      tipo: 'cuota_vencida',
+      monto: total,
+      mensaje: `${vencidas.length} cuota(s) de crédito vencida(s) sin pagar (${formatCLP(total)})`,
+    })
+  }
+  if (proximas.length > 0) {
+    const total = proximas.reduce((s, c) => s + c.monto, 0)
+    alertas.push({
+      nivel: 'media',
+      tipo: 'cuota_proxima',
+      monto: total,
+      mensaje: `${proximas.length} cuota(s) de crédito por vencer este mes (${formatCLP(total)})`,
+    })
+  }
+
+  // ── Mes en rojo ─────────────────────────────────────────────────────────────
+  if (input.resultadoDevengado < 0) {
+    alertas.push({
+      nivel: 'alta',
+      tipo: 'mes_en_rojo',
+      monto: input.resultadoDevengado,
+      mensaje: `Mes en rojo: resultado devengado -${formatCLP(Math.abs(input.resultadoDevengado))}`,
+    })
+  }
+
+  // ── Caja negativa ───────────────────────────────────────────────────────────
+  if (input.cajaAprox < 0) {
+    alertas.push({
+      nivel: 'alta',
+      tipo: 'caja_negativa',
+      monto: input.cajaAprox,
+      mensaje: `Caja aproximada negativa: -${formatCLP(Math.abs(input.cajaAprox))}`,
+    })
+  }
+
+  // Las 'alta' primero, conservando el orden relativo.
+  return alertas.sort((a, b) => (a.nivel === b.nivel ? 0 : a.nivel === 'alta' ? -1 : 1))
 }
