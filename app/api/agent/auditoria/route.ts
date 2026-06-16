@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { COT_COBRAR_SELECT, calcularTotalCot, clienteCot } from '@/app/actions/financiero-helpers'
 import {
   aplicarReglas,
   type GastoAudit,
@@ -75,14 +76,7 @@ export async function GET(req: Request) {
     // También incluye todas con factura emitida sin pago.
     admin
       .from('cotizaciones')
-      .select(
-        'id, estado, fecha_respuesta_cliente, fecha_factura_emitida, fecha_pago_recibido,' +
-          'grupo:cotizacion_grupos(numero_base),' +
-          'proyecto:proyectos(nombre),' +
-          'cliente_id, cliente_nombre_libre,' +
-          'cotizacion_departamentos(cotizacion_subgrupos(cotizacion_items(precio_cliente, cantidad, dias, con_iva, descuento_item, descuento_item_tipo))),' +
-          'rodajes:rodajes(id)',
-      )
+      .select(`${COT_COBRAR_SELECT}, rodajes:rodajes(id)`)
       .or('estado.in.(aprobada,en_produccion),fecha_factura_emitida.not.is.null'),
 
     // Colaboradores con contratos y señal de onboarding completado.
@@ -133,35 +127,15 @@ export async function GET(req: Request) {
   // ── Normalizar cotizaciones ───────────────────────────────────────────────
 
   const cotizaciones: CotizacionAudit[] = (cotizData ?? []).map((c: any): CotizacionAudit => {
-    // Calcular monto total (mismo patrón que financiero-helpers pero aquí simplificado:
-    // sumamos precio_cliente × cantidad × dias, respetando "con_iva" del ítem).
-    // NOTE: para el auditor no necesitamos el cálculo exacto — el flag estancado
-    // no depende del monto exacto. Usamos una aproximación plana.
-    let monto = 0
-    const deptos: any[] = c.cotizacion_departamentos ?? []
-    for (const d of deptos) {
-      for (const sg of (d.cotizacion_subgrupos ?? []) as any[]) {
-        for (const item of (sg.cotizacion_items ?? []) as any[]) {
-          const precio = item.precio_cliente ?? 0
-          const cantidad = item.cantidad ?? 1
-          const dias = item.dias ?? 1
-          monto += precio * cantidad * dias
-        }
-      }
-    }
-
-    // Cliente: nombre libre o placeholder (el agente mostrará el ID si no hay nombre).
-    const cliente: string | null = c.cliente_nombre_libre ?? null
-
-    // Tiene rodaje: el join trae array (puede ser [] si no tiene).
+    // Monto y cliente con las fórmulas canónicas (calcularTotalCot respeta incluido,
+    // descuentos e IVA; clienteCot resuelve cliente formal o nombre libre).
     const tiene_rodaje = Array.isArray(c.rodajes) && c.rodajes.length > 0
-
     return {
       id: c.id,
       numero: (c.grupo as any)?.numero_base ?? null,
-      cliente,
+      cliente: clienteCot(c),
       estado: c.estado,
-      monto,
+      monto: Math.round(calcularTotalCot(c)),
       fecha_respuesta_cliente: c.fecha_respuesta_cliente ?? null,
       fecha_factura_emitida: c.fecha_factura_emitida ?? null,
       tiene_rodaje,
