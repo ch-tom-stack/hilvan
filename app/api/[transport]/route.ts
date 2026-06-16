@@ -711,7 +711,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Estado financiero',
         description:
-          'Resumen financiero del mes (ingresos, egresos, por cobrar, créditos, flujo) para responder cómo vamos. Incluye un array `alertas` con feedback proactivo (cobros vencidos, cuotas de crédito vencidas/por vencer, mes en rojo, caja negativa), cada una con nivel "alta"/"media" y un mensaje listo para narrar. Si hay alertas, menciónalas al usuario aunque no las pida.',
+          'Panorama financiero del mes para responder "cómo vamos". Incluye: ingresos (facturado, cobrado, por_cobrar con aging, por_facturar = aprobado sin factura), egresos (total, por_origen, por_categoria, por_pagar = deuda REAL en neto [interno+enviada/externo+aprobada], y conciliado/no_conciliado = cruce con banco, OTRO concepto), creditos (cuotas del mes + deuda_vigente_total + proxima_cuota), nomina (planilla mensual), inversiones (solo estado — NO des consejo de inversión), flujo_varios, resumen (resultado devengado, caja aprox), y un array `alertas` (cobros vencidos, cuotas vencidas/por vencer, mes en rojo, caja negativa) con nivel "alta"/"media" y mensaje listo para narrar. Si hay alertas, menciónalas aunque no las pidan. "Lo que falta pagar" = egresos.por_pagar (NO no_conciliado).',
         inputSchema: {
           periodo: z.string().optional().describe('YYYY-MM; default = mes actual'),
         },

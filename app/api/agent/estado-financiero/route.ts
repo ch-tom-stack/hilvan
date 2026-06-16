@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { COT_COBRAR_SELECT, calcularTotalCot, clienteCot } from '@/app/actions/financiero-helpers'
+import { _getNomina } from '@/app/actions/financiero-config'
+import { calcularRetencion } from '@/types'
 import {
   normalizarPeriodo,
   periodoActual,
@@ -103,6 +105,47 @@ export async function GET(req: Request) {
   const firstErr =
     errFact || errCobrar || errProy || errMens || errCuotas || errFlujo
   if (firstErr) return NextResponse.json({ error: firstErr.message }, { status: 500 })
+
+  // ── Panorama completo: por facturar, por pagar (deuda real), deuda de crédito
+  //    vigente, inversiones (solo estado) y nómina. Reusa las MISMAS definiciones
+  //    del módulo financiero ya validadas. ──────────────────────────────────────
+  const [
+    { data: cotPorFacturar, error: ePF },
+    { data: gastosPorPagar, error: ePP },
+    { data: cuotasPend, error: eDeuda },
+    { data: inversionesRows, error: eInv },
+  ] = await Promise.all([
+    // Por facturar: aprobadas / en producción sin factura emitida (igual que /financiero/cobrar).
+    admin
+      .from('cotizaciones')
+      .select(COT_COBRAR_SELECT)
+      .in('estado', ['aprobada', 'en_produccion'])
+      .is('fecha_factura_emitida', null)
+      .order('fecha_respuesta_cliente', { ascending: true }),
+
+    // Por pagar (deuda real): misma definición que Centro de costos · Revisión.
+    admin
+      .from('rendicion_gastos')
+      .select('id, monto, tipo_documento, razon_social_emisor, descripcion, rendicion:rendiciones(cotizacion:cotizaciones(nombre))')
+      .or('and(origen.eq.interno,estado.eq.enviada),and(origen.eq.externo,estado.eq.aprobada)'),
+
+    // Deuda de crédito vigente: todas las cuotas pendientes (no solo las del mes).
+    admin
+      .from('gastos_fijos_cuotas')
+      .select('monto, fecha_vencimiento, pagada, gasto_fijo:gastos_fijos(nombre, acreedor)')
+      .eq('pagada', false)
+      .order('fecha_vencimiento', { ascending: true }),
+
+    // Inversiones: solo estado (no se da consejo de inversión).
+    admin
+      .from('inversiones')
+      .select('id, descripcion, monto, fecha_compra')
+      .order('fecha_compra', { ascending: false }),
+  ])
+  const errPanorama = ePF || ePP || eDeuda || eInv
+  if (errPanorama) return NextResponse.json({ error: errPanorama.message }, { status: 500 })
+
+  const nominaPersonas = await _getNomina()
 
   // ── Ingresos ──────────────────────────────────────────────────────────────
   const facturado_periodo = (cotFacturadas ?? []).reduce(
@@ -210,6 +253,52 @@ export async function GET(req: Request) {
     .reduce((s, c) => s + c.monto, 0)
   const cuotasPendientes = totalCuotas - cuotasPagadas
 
+  // ── Por facturar: aprobado/en producción sin factura (plata lista para facturar) ──
+  const porFacturarItems = (cotPorFacturar ?? []).map((c: any) => {
+    const ref = c.fecha_respuesta_cliente
+    const dias = ref ? Math.floor((hoy.getTime() - new Date(ref).getTime()) / 86400000) : null
+    return {
+      numero: (c.grupo as any)?.numero_base ?? null,
+      cliente: clienteCot(c),
+      monto: Math.round(calcularTotalCot(c)),
+      dias_aprobado: dias,
+    }
+  })
+  const porFacturarTotal = porFacturarItems.reduce((s, i) => s + i.monto, 0)
+
+  // ── Por pagar (deuda real, en neto): interno+enviada / externo+aprobada ──────
+  const porPagarItems = ((gastosPorPagar ?? []) as any[]).map((g) => {
+    const { neto } = calcularRetencion({ monto: g.monto ?? 0, tipo_documento: g.tipo_documento })
+    return {
+      proveedor: g.razon_social_emisor || g.descripcion || '—',
+      contexto: (g.rendicion as any)?.cotizacion?.nombre ?? 'Proyecto',
+      neto: Math.round(neto),
+    }
+  })
+  const porPagarTotal = porPagarItems.reduce((s, i) => s + i.neto, 0)
+
+  // ── Deuda de crédito vigente (todas las cuotas pendientes) ──────────────────
+  const cuotasPendRows = (cuotasPend ?? []) as any[]
+  const deudaVigente = cuotasPendRows.reduce((s, c) => s + (c.monto ?? 0), 0)
+  const proximaCuota = cuotasPendRows[0]
+    ? {
+        credito: cuotasPendRows[0].gasto_fijo?.nombre ?? null,
+        monto: Math.round(cuotasPendRows[0].monto ?? 0),
+        fecha_vencimiento: cuotasPendRows[0].fecha_vencimiento,
+      }
+    : null
+
+  // ── Inversiones (solo estado, sin consejo de inversión) ──────────────────────
+  const inversionesItems = ((inversionesRows ?? []) as any[]).map((i) => ({
+    descripcion: i.descripcion,
+    monto: Math.round(i.monto ?? 0),
+    fecha_compra: i.fecha_compra,
+  }))
+  const inversionesTotal = inversionesItems.reduce((s, i) => s + i.monto, 0)
+
+  // ── Nómina (planilla de sueldo mensual) ──────────────────────────────────────
+  const nominaTotal = (nominaPersonas ?? []).reduce((s, p) => s + (p.monto ?? 0), 0)
+
   // ── Flujo vario ─────────────────────────────────────────────────────────────
   const flujoRows = (flujo ?? []) as any[]
   const flujoEntradas = flujoRows
@@ -242,6 +331,11 @@ export async function GET(req: Request) {
         total: Math.round(porCobrarTotal),
         items: porCobrarItems.map((i) => ({ ...i, monto: Math.round(i.monto) })),
       },
+      // Aprobado/en producción SIN factura emitida: plata lista para facturar y cobrar.
+      por_facturar: {
+        total: Math.round(porFacturarTotal),
+        items: porFacturarItems,
+      },
     },
     egresos: {
       total: Math.round(egresosTotal),
@@ -252,14 +346,40 @@ export async function GET(req: Request) {
       por_categoria: Object.fromEntries(
         Object.entries(porCategoria).map(([k, v]) => [k, Math.round(v)]),
       ),
-      pagado: Math.round(egresosPagado),
-      adeudado: Math.round(egresosAdeudado),
+      // por_pagar = deuda REAL en el modelo de Hilván (lo que falta pagar, en neto):
+      // gasto interno+enviada / externo+aprobada. Esto es "lo que debes pagar".
+      por_pagar: {
+        total_neto: Math.round(porPagarTotal),
+        count: porPagarItems.length,
+        items: porPagarItems,
+      },
+      // conciliado/no_conciliado = cruce con cartola bancaria (OTRO concepto: NO es
+      // "lo que debes", sino qué gasto del período ya se cruzó contra un movimiento).
+      conciliado: Math.round(egresosPagado),
+      no_conciliado: Math.round(egresosAdeudado),
     },
     creditos: {
       cuotas_periodo: cuotasItems.map((c) => ({ ...c, monto: Math.round(c.monto) })),
       total_cuotas_periodo: Math.round(totalCuotas),
       pagadas: Math.round(cuotasPagadas),
       pendientes: Math.round(cuotasPendientes),
+      // Deuda de crédito vigente total (todas las cuotas pendientes, no solo del mes).
+      deuda_vigente_total: Math.round(deudaVigente),
+      cuotas_pendientes_count: cuotasPendRows.length,
+      proxima_cuota: proximaCuota,
+    },
+    nomina: {
+      personas: (nominaPersonas ?? []).map((p) => ({
+        nombre: p.nombre,
+        monto: Math.round(p.monto ?? 0),
+        tipo: p.tipo,
+      })),
+      total_mensual: Math.round(nominaTotal),
+    },
+    // Solo estado — el agente NO da consejo de inversión (comprar/vender/dónde).
+    inversiones: {
+      total: Math.round(inversionesTotal),
+      items: inversionesItems,
     },
     flujo_varios: {
       entradas: Math.round(flujoEntradas),
