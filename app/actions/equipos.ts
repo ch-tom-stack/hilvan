@@ -34,16 +34,19 @@ export async function crearEquipo(formData: FormData) {
   if ('error' in precio) return { error: precio.error }
 
   const data = {
-    codigo:          formData.get('codigo') as string,
-    nombre:          formData.get('nombre') as string,
+    codigo:           formData.get('codigo') as string,
+    nombre:           formData.get('nombre') as string,
     categoria_codigo: formData.get('categoria_codigo') as string,
-    descripcion:     formData.get('descripcion') as string || null,
-    notas:           formData.get('notas') as string || null,
-    cantidad:        parseInt(formData.get('cantidad') as string) || 1,
-    rentable:        formData.get('rentable') === 'true',
-    estado:          formData.get('estado') as string || 'disponible',
-    precio_jornada:  precio.value,
-    fotos:           parsearFotos(formData.get('fotos')),
+    descripcion:      formData.get('descripcion') as string || null,
+    notas:            formData.get('notas') as string || null,
+    marca:            formData.get('marca') as string || null,
+    modelo:           formData.get('modelo') as string || null,
+    numero_serie:     formData.get('numero_serie') as string || null,
+    cantidad:         parseInt(formData.get('cantidad') as string) || 1,
+    rentable:         formData.get('rentable') === 'true',
+    estado:           formData.get('estado') as string || 'disponible',
+    precio_jornada:   precio.value,
+    fotos:            parsearFotos(formData.get('fotos')),
   }
 
   const { error } = await supabase.from('equipos').insert(data)
@@ -63,16 +66,19 @@ export async function actualizarEquipo(id: string, formData: FormData) {
   if ('error' in precio) return { error: precio.error }
 
   const data = {
-    codigo:          formData.get('codigo') as string,
-    nombre:          formData.get('nombre') as string,
+    codigo:           formData.get('codigo') as string,
+    nombre:           formData.get('nombre') as string,
     categoria_codigo: formData.get('categoria_codigo') as string,
-    descripcion:     formData.get('descripcion') as string || null,
-    notas:           formData.get('notas') as string || null,
-    cantidad:        parseInt(formData.get('cantidad') as string) || 1,
-    rentable:        formData.get('rentable') === 'true',
-    estado:          formData.get('estado') as string,
-    precio_jornada:  precio.value,
-    fotos:           parsearFotos(formData.get('fotos')),
+    descripcion:      formData.get('descripcion') as string || null,
+    notas:            formData.get('notas') as string || null,
+    marca:            formData.get('marca') as string || null,
+    modelo:           formData.get('modelo') as string || null,
+    numero_serie:     formData.get('numero_serie') as string || null,
+    cantidad:         parseInt(formData.get('cantidad') as string) || 1,
+    rentable:         formData.get('rentable') === 'true',
+    estado:           formData.get('estado') as string,
+    precio_jornada:   precio.value,
+    fotos:            parsearFotos(formData.get('fotos')),
   }
 
   const { error } = await supabase.from('equipos').update(data).eq('id', id)

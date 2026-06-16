@@ -115,6 +115,24 @@ export default async function DetalleEquipoPage({
                 <span className="font-body text-xs text-ch-muted">Código</span>
                 <span className="font-body text-xs text-ch-cream font-mono">{equipo.codigo}</span>
               </div>
+              {equipo.marca && (
+                <div className="flex justify-between px-4 py-3">
+                  <span className="font-body text-xs text-ch-muted">Marca</span>
+                  <span className="font-body text-xs text-ch-cream">{equipo.marca}</span>
+                </div>
+              )}
+              {equipo.modelo && (
+                <div className="flex justify-between px-4 py-3">
+                  <span className="font-body text-xs text-ch-muted">Modelo</span>
+                  <span className="font-body text-xs text-ch-cream">{equipo.modelo}</span>
+                </div>
+              )}
+              {equipo.numero_serie && (
+                <div className="flex justify-between px-4 py-3">
+                  <span className="font-body text-xs text-ch-muted">N° de serie</span>
+                  <span className="font-body text-xs text-ch-cream font-mono">{equipo.numero_serie}</span>
+                </div>
+              )}
               <div className="flex justify-between px-4 py-3">
                 <span className="font-body text-xs text-ch-muted">Estado</span>
                 <TagEstado estado={equipo.estado} />

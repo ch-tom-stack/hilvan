@@ -28,6 +28,9 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
   const [codigo, setCodigo]               = useState(equipo?.codigo || '')
   const [descripcion, setDescripcion]     = useState(equipo?.descripcion || '')
   const [notas, setNotas]                 = useState(equipo?.notas || '')
+  const [marca, setMarca]                 = useState(equipo?.marca || '')
+  const [modelo, setModelo]               = useState(equipo?.modelo || '')
+  const [numeroSerie, setNumeroSerie]     = useState(equipo?.numero_serie || '')
   const [cantidad, setCantidad]           = useState(equipo?.cantidad || 1)
   const [rentable, setRentable]           = useState(equipo?.rentable ?? true)
   const [estado, setEstado]               = useState<EstadoEquipo>(equipo?.estado || 'disponible')
@@ -86,6 +89,9 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
     formData.set('categoria_codigo', categoria)
     formData.set('descripcion',      descripcion)
     formData.set('notas',            notas)
+    formData.set('marca',            marca)
+    formData.set('modelo',           modelo)
+    formData.set('numero_serie',     numeroSerie)
     formData.set('cantidad',         cantidad.toString())
     formData.set('rentable',         rentable.toString())
     formData.set('estado',           estado)
@@ -171,6 +177,36 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
           rows={2}
           className={inputClass + ' resize-none'}
         />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={labelClass}>Marca</label>
+          <input
+            type="text" value={marca}
+            onChange={e => setMarca(e.target.value)}
+            placeholder="Ej: Sony"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Modelo</label>
+          <input
+            type="text" value={modelo}
+            onChange={e => setModelo(e.target.value)}
+            placeholder="Ej: A7S III"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>N° de serie</label>
+          <input
+            type="text" value={numeroSerie}
+            onChange={e => setNumeroSerie(e.target.value)}
+            placeholder="Opcional"
+            className={inputClass}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

@@ -15,15 +15,25 @@ interface Props {
 
 export default function CatalogoCliente({ equipos, categorias }: Props) {
   const [categoriaActiva, setCategoriaActiva] = useState<string | null>(null)
+  const [busqueda, setBusqueda] = useState('')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [jornadas, setJornadas] = useState(1)
 
   const carritoActivo = carrito.length > 0
 
-  const equiposFiltrados = useMemo(
-    () => categoriaActiva ? equipos.filter(e => e.categoria_codigo === categoriaActiva) : equipos,
-    [equipos, categoriaActiva]
-  )
+  const equiposFiltrados = useMemo(() => {
+    let lista = categoriaActiva ? equipos.filter(e => e.categoria_codigo === categoriaActiva) : equipos
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase()
+      lista = lista.filter(e =>
+        e.nombre.toLowerCase().includes(q) ||
+        (e.marca?.toLowerCase().includes(q)) ||
+        (e.modelo?.toLowerCase().includes(q)) ||
+        (e.descripcion?.toLowerCase().includes(q))
+      )
+    }
+    return lista
+  }, [equipos, categoriaActiva, busqueda])
 
   const categoriasConEquipos = useMemo(
     () => categorias.filter(c => equipos.some(e => e.categoria_codigo === c.codigo)),
@@ -70,7 +80,18 @@ export default function CatalogoCliente({ equipos, categorias }: Props) {
 
       {/* Columna principal */}
       <div>
-        {/* Filtros */}
+        {/* Buscador */}
+        <div className="mb-6">
+          <input
+            type="search"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar equipo, marca o modelo…"
+            className="w-full bg-ch-surface border border-ch-border text-ch-cream font-body px-4 py-3 text-sm placeholder:text-ch-subtle focus:outline-none focus:border-ch-green transition-colors"
+          />
+        </div>
+
+        {/* Filtros por categoría */}
         {categoriasConEquipos.length > 1 && (
           <div className="flex gap-2 mb-10 flex-wrap">
             <button
