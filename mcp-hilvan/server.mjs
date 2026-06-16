@@ -522,6 +522,57 @@ const TOOLS = [
     run: (a) => api('GET', `/cuotas-credito${a.pagada ? `?pagada=${a.pagada}` : ''}`),
   },
   {
+    name: 'hilvan_proyeccion_caja',
+    description:
+      'Proyecta el saldo de caja a 30, 60 o 90 días (configurable) partiendo de un saldo inicial ' +
+      'declarado. Arma una línea de tiempo de entradas y salidas futuras con fecha (cobros de ' +
+      'cotizaciones facturadas y aprobadas, cuotas de crédito, nómina mensual, gastos pendientes de ' +
+      'pago) y devuelve el saldo proyectado día a día, marcando cuándo cruza a negativo por primera ' +
+      'vez. IMPORTANTE: la proyección es estimada bajo supuestos explícitos que se devuelven junto ' +
+      'al resultado. SIEMPRE menciona los supuestos y el aviso_supuestos al narrar. ' +
+      'primera_fecha_negativa es null si el saldo no cae. NUNCA des consejo de inversión.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        saldo_inicial: {
+          type: 'number',
+          description: 'Saldo actual de caja en CLP. REQUERIDO — la app no lo tiene automático.',
+        },
+        dias: {
+          type: 'integer',
+          description: 'Horizonte de proyección en días (default: 90, máx: 365)',
+        },
+        plazo_cobro: {
+          type: 'integer',
+          description: 'Días desde fecha_factura_emitida para estimar cobro (default: 30)',
+        },
+        plazo_aprobado: {
+          type: 'integer',
+          description: 'Días desde hoy para cotizaciones aprobadas sin factura (default: 60)',
+        },
+        dia_nomina: {
+          type: 'integer',
+          description: 'Día del mes en que se paga la nómina (default: 30)',
+        },
+        dias_gasto_pend: {
+          type: 'integer',
+          description: 'Días hasta pago de gastos sin fecha exacta (default: 15)',
+        },
+      },
+      required: ['saldo_inicial'],
+    },
+    run: (a) => {
+      const params = new URLSearchParams()
+      params.set('saldo_inicial', String(a.saldo_inicial))
+      if (a.dias != null) params.set('dias', String(a.dias))
+      if (a.plazo_cobro != null) params.set('plazo_cobro', String(a.plazo_cobro))
+      if (a.plazo_aprobado != null) params.set('plazo_aprobado', String(a.plazo_aprobado))
+      if (a.dia_nomina != null) params.set('dia_nomina', String(a.dia_nomina))
+      if (a.dias_gasto_pend != null) params.set('dias_gasto_pend', String(a.dias_gasto_pend))
+      return api('GET', `/proyeccion-caja?${params.toString()}`)
+    },
+  },
+  {
     name: 'hilvan_estado_financiero',
     description: 'Panorama financiero del mes para responder "cómo vamos". Incluye: ingresos (facturado, cobrado, por_cobrar con aging, por_facturar = aprobado sin factura), egresos (total, por_origen, por_categoria, por_pagar = deuda REAL en neto [interno+enviada/externo+aprobada], y conciliado/no_conciliado = cruce con banco, OTRO concepto), creditos (cuotas del mes + deuda_vigente_total + proxima_cuota), nomina (planilla mensual), inversiones (solo estado — NO des consejo de inversión), flujo_varios, resumen (resultado devengado, caja aprox), un array `alertas` (señales: cobros vencidos, cuotas vencidas/por vencer, mes en rojo, caja negativa; nivel "alta"/"media") y un array `recomendaciones` (acciones operativas: compromisos del mes vs caja, facturar lo aprobado, cobrar lo vencido, provisionar cuota próxima, mes en rojo; prioridad "alta"/"media"/"info"). Si hay alertas o recomendaciones, menciónalas aunque no las pidan. "Lo que falta pagar" = egresos.por_pagar (NO no_conciliado). NUNCA des consejo de inversión.',
     inputSchema: {

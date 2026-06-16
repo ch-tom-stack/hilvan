@@ -707,6 +707,50 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_proyeccion_caja',
+      {
+        title: 'Proyección de caja',
+        description:
+          'Proyecta el saldo de caja a 30, 60 o 90 días (configurable) partiendo de un saldo inicial ' +
+          'declarado. Arma una línea de tiempo de entradas y salidas futuras con fecha (cobros de ' +
+          'cotizaciones facturadas y aprobadas, cuotas de crédito, nómina mensual, gastos pendientes de ' +
+          'pago) y devuelve el saldo proyectado día a día, marcando cuándo cruza a negativo por primera ' +
+          'vez. IMPORTANTE: la proyección es estimada bajo supuestos explícitos (saldo_inicial, ' +
+          'plazo_cobro, dia_nomina, etc.) que se devuelven junto al resultado. SIEMPRE menciona los ' +
+          'supuestos y el aviso_supuestos al narrar. primera_fecha_negativa es null si el saldo no cae. ' +
+          'linea_tiempo tiene un punto por fecha con movimientos del día y saldo corriente. ' +
+          'saldo_minimo y fecha_saldo_minimo indican el peor momento. ' +
+          'NUNCA des consejo de inversión.',
+        inputSchema: {
+          dias: z.number().int().min(1).max(365).optional()
+            .describe('Horizonte de proyección en días (default: 90)'),
+          saldo_inicial: z.number()
+            .describe('Saldo actual de caja en CLP. REQUERIDO — la app no lo tiene automático.'),
+          plazo_cobro: z.number().int().min(0).optional()
+            .describe('Días desde fecha_factura_emitida para estimar el cobro (default: 30)'),
+          plazo_aprobado: z.number().int().min(0).optional()
+            .describe('Días desde hoy para cotizaciones aprobadas sin factura (default: 60, más incierto)'),
+          dia_nomina: z.number().int().min(1).max(31).optional()
+            .describe('Día del mes en que se paga la nómina (default: 30)'),
+          dias_gasto_pend: z.number().int().min(0).optional()
+            .describe('Días estimados hasta pago de gastos pendientes sin fecha exacta (default: 15)'),
+        },
+      },
+      async ({ dias, saldo_inicial, plazo_cobro, plazo_aprobado, dia_nomina, dias_gasto_pend }, extra) => {
+        const params = new URLSearchParams()
+        params.set('saldo_inicial', String(saldo_inicial))
+        if (dias != null) params.set('dias', String(dias))
+        if (plazo_cobro != null) params.set('plazo_cobro', String(plazo_cobro))
+        if (plazo_aprobado != null) params.set('plazo_aprobado', String(plazo_aprobado))
+        if (dia_nomina != null) params.set('dia_nomina', String(dia_nomina))
+        if (dias_gasto_pend != null) params.set('dias_gasto_pend', String(dias_gasto_pend))
+        return ok(
+          await callAgent(extra as ToolExtra, 'GET', `/proyeccion-caja?${params.toString()}`),
+        )
+      },
+    )
+
+    server.registerTool(
       'hilvan_estado_financiero',
       {
         title: 'Estado financiero',
