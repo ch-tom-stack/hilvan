@@ -522,6 +522,39 @@ const TOOLS = [
     run: (a) => api('GET', `/cuotas-credito${a.pagada ? `?pagada=${a.pagada}` : ''}`),
   },
   {
+    name: 'hilvan_correo_pendientes',
+    description:
+      'Recibe documentos tributarios parseados (boletas/facturas del correo o del SII) y devuelve ' +
+      'borradores clasificados: nuevo / ya_existe / dudoso, con origen propuesto y sugerencias de ' +
+      'categoría/período. No escribe en DB — solo clasifica. Para cargar los "nuevo" usar hilvan_crear_gastos_bulk.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        documentos: {
+          type: 'array',
+          description: 'Lista de documentos parseados a clasificar (máx. 50)',
+          items: {
+            type: 'object',
+            properties: {
+              rut_emisor: { type: ['string', 'null'] },
+              razon_social: { type: ['string', 'null'] },
+              folio: { type: ['string', 'null'] },
+              fecha: { type: ['string', 'null'] },
+              monto: { type: ['number', 'null'] },
+              tipo_doc: {
+                type: 'string',
+                enum: ['boleta', 'factura', 'boleta_consumo', 'exenta', 'nota_credito', 'sin_documento'],
+              },
+            },
+            required: ['tipo_doc'],
+          },
+        },
+      },
+      required: ['documentos'],
+    },
+    run: (a) => api('POST', '/correo-ingesta', a),
+  },
+  {
     name: 'hilvan_rentabilidad_proyecto',
     description:
       'Calcula la rentabilidad real de un proyecto: ingreso cotizado vs costo real ' +

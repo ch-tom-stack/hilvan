@@ -860,6 +860,35 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_correo_pendientes',
+      {
+        title: 'Clasificar documentos del correo',
+        description:
+          'Recibe uno o varios documentos tributarios ya parseados (boletas/facturas del correo o del SII) ' +
+          'y devuelve borradores clasificados: nuevo / ya_existe / dudoso, con origen propuesto ' +
+          '(mensual o proyecto_manual) y sugerencia de categoría y período. ' +
+          'NO escribe nada en DB — solo clasifica. Para confirmar y cargar los "nuevo" usa hilvan_crear_gastos_bulk. ' +
+          'Útil para procesar el RCV mensual o adjuntos del correo sin duplicar boletas ya cargadas.',
+        inputSchema: {
+          documentos: z.array(
+            z.object({
+              rut_emisor: z.string().nullable().optional().describe('RUT del emisor (con o sin puntos/guión)'),
+              razon_social: z.string().nullable().optional().describe('Razón social del emisor'),
+              folio: z.string().nullable().optional().describe('Número de folio del documento'),
+              fecha: z.string().nullable().optional().describe('Fecha del documento (DD/MM/YYYY o YYYY-MM-DD)'),
+              monto: z.number().nullable().optional().describe('Monto bruto del documento'),
+              tipo_doc: z
+                .enum(['boleta', 'factura', 'boleta_consumo', 'exenta', 'nota_credito', 'sin_documento'])
+                .describe('Tipo de documento tributario'),
+            }),
+          ).describe('Lista de documentos parseados a clasificar (máx. 50)'),
+        },
+      },
+      async ({ documentos }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'POST', '/correo-ingesta', { documentos })),
+    )
+
+    server.registerTool(
       'hilvan_estado_financiero',
       {
         title: 'Estado financiero',
