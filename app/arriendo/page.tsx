@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Equipo, CategoriaEquipo } from '@/types'
 import CatalogoCliente from './CatalogoCliente'
+import VideoPromoPopup from './VideoPromoPopup'
+import BundleCamionBtn from './BundleCamionBtn'
 
 export const metadata = {
   title: 'Arriendo de equipos — Casa Hiedra',
@@ -20,6 +22,8 @@ export default async function ArriendoPage() {
 
   return (
     <div className="min-h-screen bg-ch-black text-ch-cream">
+      <VideoPromoPopup />
+      <BundleCamionBtn />
 
       {/* Header */}
       <header className="border-b border-ch-border px-6 py-4 flex items-center justify-between">
