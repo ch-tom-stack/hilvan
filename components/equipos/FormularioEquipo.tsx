@@ -25,7 +25,7 @@ const SUBCATEGORIAS: Record<string, string[]> = {
   ILU:  ['Focos', 'Modificadores', 'Tubos y paneles'],
   OPT:  ['Lentes', 'Filtros'],
   ALM:  ['SD', 'SSD', 'CFExpress A', 'CFExpress B'],
-  FON:  ['Fondo papel', 'Fondo tela/muslin', 'Fondo vinilo', 'Chroma key'],
+  FON:  ['Fondo papel', 'Fondo tela/muslin', 'Fondo vinilo', 'Chroma key', 'Portafondos'],
 }
 
 export default function FormularioEquipo({ categorias, equipo }: Props) {
