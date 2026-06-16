@@ -23,7 +23,6 @@ const ESTADOS: { value: EstadoEquipo; label: string }[] = [
 // Claves = valor del campo `codigo` en categorias_equipo.
 const SUBCATEGORIAS: Record<string, string[]> = {
   ILU:  ['Modificadores de focos', 'Fresneles', 'Tubos y paneles'],
-  LUZ:  ['Modificadores de focos', 'Fresneles', 'Tubos y paneles'],
   OPT:  ['Lentes', 'Filtros'],
   ALM:  ['SD', 'SSD', 'CFExpress A', 'CFExpress B'],
   FON:  ['Fondo papel', 'Fondo tela/muslin', 'Fondo vinilo', 'Chroma key'],
