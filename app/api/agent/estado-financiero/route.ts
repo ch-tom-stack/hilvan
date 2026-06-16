@@ -11,6 +11,8 @@ import {
   agregarPorCategoria,
   etiquetaCategoria,
   construirAlertas,
+  construirRecomendaciones,
+  AGING_MEDIA,
 } from '@/lib/agent-estado-financiero'
 
 export const runtime = 'nodejs'
@@ -312,18 +314,36 @@ export async function GET(req: Request) {
   const resultado_devengado = facturado_periodo - egresosTotal
   const caja_aprox = cobrado_periodo + flujoEntradas - egresosPagado - flujoSalidas
 
-  // ── Alertas (feedback proactivo) ────────────────────────────────────────────
+  const hoyISO = hoy.toISOString().slice(0, 10)
+
+  // ── Alertas (señales: qué está pasando) ─────────────────────────────────────
   const alertas = construirAlertas({
     porCobrar: porCobrarItems,
     cuotas: cuotasItems,
-    hoy: hoy.toISOString().slice(0, 10),
+    hoy: hoyISO,
     resultadoDevengado: Math.round(resultado_devengado),
     cajaAprox: Math.round(caja_aprox),
+  })
+
+  // ── Recomendaciones (acciones: qué hacer) ───────────────────────────────────
+  const porCobrarVencido = porCobrarItems
+    .filter((i) => i.dias_aging >= AGING_MEDIA)
+    .reduce((s, i) => s + i.monto, 0)
+  const recomendaciones = construirRecomendaciones({
+    porFacturarTotal: Math.round(porFacturarTotal),
+    porCobrarVencido: Math.round(porCobrarVencido),
+    porPagarTotal: Math.round(porPagarTotal),
+    nominaTotal: Math.round(nominaTotal),
+    proximaCuota,
+    cajaAprox: Math.round(caja_aprox),
+    resultadoDevengado: Math.round(resultado_devengado),
+    hoy: hoyISO,
   })
 
   return NextResponse.json({
     periodo,
     alertas,
+    recomendaciones,
     ingresos: {
       facturado_periodo: Math.round(facturado_periodo),
       cobrado_periodo: Math.round(cobrado_periodo),

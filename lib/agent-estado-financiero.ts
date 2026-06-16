@@ -204,3 +204,110 @@ export function construirAlertas(input: {
   // Las 'alta' primero, conservando el orden relativo.
   return alertas.sort((a, b) => (a.nivel === b.nivel ? 0 : a.nivel === 'alta' ? -1 : 1))
 }
+
+// Días para escalar la próxima cuota de crédito a recomendación de alta prioridad.
+export const DIAS_CUOTA_PRONTO = 7
+
+export type Prioridad = 'alta' | 'media' | 'info'
+export interface Recomendacion {
+  prioridad: Prioridad
+  tipo: string
+  mensaje: string
+  monto?: number
+}
+
+/**
+ * Recomendaciones OPERATIVAS de gestión (qué hacer), distintas de las alertas
+ * (qué está pasando). Función PURA. Cubre flujo de caja, deuda, planilla y
+ * cobranza/facturación. NO da consejo de inversión (comprar/vender/dónde) — las
+ * inversiones se exponen solo como estado.
+ *
+ *  - compromisos_mes: total de salidas próximas (por pagar + nómina + próxima
+ *    cuota) para que se provisione caja.
+ *  - facturar: hay plata aprobada sin factura → emitir para poder cobrar.
+ *  - cobrar: hay cobros vencidos → priorizar cobranza.
+ *  - cuota_pronto: una cuota de crédito vence en ≤ DIAS_CUOTA_PRONTO días.
+ *  - mes_en_rojo: resultado devengado negativo → acelerar facturación / revisar egresos.
+ */
+export function construirRecomendaciones(input: {
+  porFacturarTotal: number
+  porCobrarVencido: number // total de cobros con aging ≥ AGING_MEDIA
+  porPagarTotal: number // neto
+  nominaTotal: number
+  proximaCuota: { credito: string | null; monto: number; fecha_vencimiento: string } | null
+  cajaAprox: number
+  resultadoDevengado: number
+  hoy: string // YYYY-MM-DD
+}): Recomendacion[] {
+  const recs: Recomendacion[] = []
+
+  // ── Compromisos del mes vs caja aproximada ──────────────────────────────────
+  const cuotaMonto = input.proximaCuota?.monto ?? 0
+  const compromisos = input.porPagarTotal + input.nominaTotal + cuotaMonto
+  if (compromisos > 0) {
+    const partes = [
+      input.porPagarTotal > 0 ? `por pagar ${formatCLP(input.porPagarTotal)}` : null,
+      input.nominaTotal > 0 ? `nómina ${formatCLP(input.nominaTotal)}` : null,
+      cuotaMonto > 0 ? `cuota ${formatCLP(cuotaMonto)}` : null,
+    ].filter(Boolean)
+    const falta = compromisos - input.cajaAprox
+    const cubre = input.cajaAprox >= compromisos
+    recs.push({
+      prioridad: cubre ? 'info' : 'alta',
+      tipo: 'compromisos_mes',
+      monto: compromisos,
+      mensaje: `Compromisos próximos ${formatCLP(compromisos)} (${partes.join(' + ')}) vs caja aprox ${formatCLP(input.cajaAprox)} → ${cubre ? 'cubierto' : `ajustado, faltarían ${formatCLP(falta)}`}. Provisiona caja.`,
+    })
+  }
+
+  // ── Facturar lo aprobado ────────────────────────────────────────────────────
+  if (input.porFacturarTotal > 0) {
+    recs.push({
+      prioridad: 'media',
+      tipo: 'facturar',
+      monto: input.porFacturarTotal,
+      mensaje: `Tienes ${formatCLP(input.porFacturarTotal)} aprobado sin factura emitida — factúralo para poder cobrar y mejorar caja.`,
+    })
+  }
+
+  // ── Cobranza vencida ────────────────────────────────────────────────────────
+  if (input.porCobrarVencido > 0) {
+    recs.push({
+      prioridad: 'media',
+      tipo: 'cobrar',
+      monto: input.porCobrarVencido,
+      mensaje: `Prioriza cobrar ${formatCLP(input.porCobrarVencido)} en facturas con más de ${AGING_MEDIA} días.`,
+    })
+  }
+
+  // ── Cuota de crédito próxima a vencer ───────────────────────────────────────
+  if (input.proximaCuota) {
+    const dias = Math.floor(
+      (new Date(input.proximaCuota.fecha_vencimiento + 'T12:00:00').getTime() -
+        new Date(input.hoy + 'T12:00:00').getTime()) /
+        86400000,
+    )
+    if (dias <= DIAS_CUOTA_PRONTO) {
+      const cuando = dias < 0 ? `venció hace ${Math.abs(dias)}d` : dias === 0 ? 'vence hoy' : `vence en ${dias}d`
+      recs.push({
+        prioridad: 'alta',
+        tipo: 'cuota_pronto',
+        monto: input.proximaCuota.monto,
+        mensaje: `Provisiona la cuota ${input.proximaCuota.credito ?? 'de crédito'} de ${formatCLP(input.proximaCuota.monto)} (${cuando}).`,
+      })
+    }
+  }
+
+  // ── Mes en rojo ─────────────────────────────────────────────────────────────
+  if (input.resultadoDevengado < 0) {
+    recs.push({
+      prioridad: 'alta',
+      tipo: 'mes_en_rojo',
+      monto: input.resultadoDevengado,
+      mensaje: `El mes va en rojo (resultado devengado -${formatCLP(Math.abs(input.resultadoDevengado))}). Acelera facturación o revisa egresos.`,
+    })
+  }
+
+  const peso = { alta: 0, media: 1, info: 2 }
+  return recs.sort((a, b) => peso[a.prioridad] - peso[b.prioridad])
+}

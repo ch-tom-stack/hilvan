@@ -8,6 +8,7 @@ import {
   agregarPorCategoria,
   etiquetaCategoria,
   construirAlertas,
+  construirRecomendaciones,
 } from '@/lib/agent-estado-financiero'
 
 describe('normalizarPeriodo', () => {
@@ -166,5 +167,64 @@ describe('construirAlertas', () => {
     })
     expect(r[0].nivel).toBe('alta')
     expect(r[r.length - 1].nivel).toBe('media')
+  })
+})
+
+describe('construirRecomendaciones', () => {
+  const base = {
+    porFacturarTotal: 0,
+    porCobrarVencido: 0,
+    porPagarTotal: 0,
+    nominaTotal: 0,
+    proximaCuota: null as { credito: string | null; monto: number; fecha_vencimiento: string } | null,
+    cajaAprox: 10_000_000,
+    resultadoDevengado: 1_000_000,
+    hoy: '2026-06-15',
+  }
+
+  it('mes sano sin compromisos → sin recomendaciones', () => {
+    expect(construirRecomendaciones(base)).toEqual([])
+  })
+
+  it('compromisos cubiertos por caja → info; descubiertos → alta', () => {
+    const cubierto = construirRecomendaciones({ ...base, porPagarTotal: 610_425, nominaTotal: 1_600_000, cajaAprox: 5_000_000 })
+    const c = cubierto.find((r) => r.tipo === 'compromisos_mes')
+    expect(c?.prioridad).toBe('info')
+    expect(c?.mensaje).toContain('cubierto')
+
+    const corto = construirRecomendaciones({ ...base, porPagarTotal: 610_425, nominaTotal: 1_600_000, cajaAprox: 1_000_000 })
+    const c2 = corto.find((r) => r.tipo === 'compromisos_mes')
+    expect(c2?.prioridad).toBe('alta')
+    expect(c2?.mensaje).toContain('faltarían')
+  })
+
+  it('por facturar y por cobrar vencido generan acciones media', () => {
+    const r = construirRecomendaciones({ ...base, porFacturarTotal: 6_461_595, porCobrarVencido: 1_606_500 })
+    expect(r.find((x) => x.tipo === 'facturar')?.prioridad).toBe('media')
+    expect(r.find((x) => x.tipo === 'cobrar')?.prioridad).toBe('media')
+  })
+
+  it('cuota próxima (≤7d) → alta; lejana → no recomienda provisionar', () => {
+    const pronto = construirRecomendaciones({ ...base, proximaCuota: { credito: 'FOGAPE', monto: 517_028, fecha_vencimiento: '2026-06-20' } })
+    expect(pronto.find((r) => r.tipo === 'cuota_pronto')?.prioridad).toBe('alta')
+
+    const lejos = construirRecomendaciones({ ...base, proximaCuota: { credito: 'FOGAPE', monto: 517_028, fecha_vencimiento: '2026-07-30' } })
+    expect(lejos.find((r) => r.tipo === 'cuota_pronto')).toBeUndefined()
+  })
+
+  it('mes en rojo → recomendación alta', () => {
+    const r = construirRecomendaciones({ ...base, resultadoDevengado: -500_000 })
+    expect(r.find((x) => x.tipo === 'mes_en_rojo')?.prioridad).toBe('alta')
+  })
+
+  it('ordena por prioridad: alta → media → info', () => {
+    const r = construirRecomendaciones({
+      ...base,
+      porPagarTotal: 100, nominaTotal: 0, cajaAprox: 999_999_999, // compromisos info
+      porFacturarTotal: 200, // media
+      resultadoDevengado: -1, // alta
+    })
+    expect(r[0].prioridad).toBe('alta')
+    expect(r[r.length - 1].prioridad).toBe('info')
   })
 })
