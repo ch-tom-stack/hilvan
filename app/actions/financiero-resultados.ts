@@ -407,6 +407,69 @@ export async function getCuentasPorCobrar(): Promise<DatosCobrar> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CUENTAS POR PAGAR  (espejo de cobrar, lado egresos)
+// MISMA definición que Centro de costos · Admin · Revisión (la fuente de verdad,
+// app/(dashboard)/costos/admin/page.tsx): "por pagar" =
+//   - gasto INTERNO con estado='enviada'  (van directo a pago)
+//   - gasto EXTERNO con estado='aprobada' (aprobados de contenido, esperando pago)
+// El total se valoriza en NETO (lo que efectivamente se transfiere), igual que la
+// tarjeta "Total neto a pagar". NO usa el flag `pagado` (conciliación bancaria,
+// otro concepto) ni los gastos mensuales (no tienen flujo de aprobación).
+// El detalle vive en Centro de costos; esta vista lo resume en Financiero.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface FilaPagar {
+  id: string
+  proveedor: string
+  contexto: string // proyecto (cotización)
+  tipo_documento: string | null
+  neto: number // lo que se paga (= "neto a pagar")
+  bruto: number // referencia; en boletas bruto > neto por la retención
+  fecha_documento: string | null
+  dias_desde_documento?: number
+}
+
+export interface DatosPagar {
+  filas: FilaPagar[]
+  total: number // Σ neto
+}
+
+export async function getCuentasPorPagar(): Promise<DatosPagar> {
+  await requireRol(['admin', 'contabilidad'])
+  const supabase = await createClient()
+  const hoy = new Date()
+
+  const { data: gastos } = await supabase.from('rendicion_gastos')
+    .select('id, descripcion, razon_social_emisor, monto, tipo_documento, origen, estado, fecha_documento, created_at, rendicion:rendiciones(cotizacion:cotizaciones(nombre))')
+    .or('and(origen.eq.interno,estado.eq.enviada),and(origen.eq.externo,estado.eq.aprobada)')
+
+  const fila = (g: any): FilaPagar => {
+    const fechaRef: string | null = g.fecha_documento ?? g.created_at ?? null
+    const dias = fechaRef
+      ? Math.floor((hoy.getTime() - new Date(fechaRef.slice(0, 10) + 'T12:00:00').getTime()) / 86400000)
+      : undefined
+    // Mismo cálculo que la tarjeta de Revisión: calcularRetencion(g).neto.
+    const { neto } = calcularRetencion({ monto: g.monto ?? 0, tipo_documento: g.tipo_documento })
+    return {
+      id: g.id,
+      proveedor: g.razon_social_emisor || g.descripcion || '—',
+      contexto: (g.rendicion as any)?.cotizacion?.nombre ?? 'Proyecto',
+      tipo_documento: g.tipo_documento ?? null,
+      neto,
+      bruto: g.monto ?? 0,
+      fecha_documento: g.fecha_documento ?? null,
+      dias_desde_documento: dias,
+    }
+  }
+
+  const filas: FilaPagar[] = (gastos ?? [])
+    .map((g: any) => fila(g))
+    .sort((a: FilaPagar, b: FilaPagar) => (b.dias_desde_documento ?? 0) - (a.dias_desde_documento ?? 0))
+
+  return { filas, total: filas.reduce((s, f) => s + f.neto, 0) }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // EXPORTACIÓN PARA EL CONTADOR
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -17,13 +17,14 @@ export type { PersonaNomina } from './financiero-helpers'
 // ── Estado de resultados, cuentas por cobrar y exportación al contador ────────
 export {
   getDatosFinancieros, getResumenPeriodo,
-  getCuentasPorCobrar,
+  getCuentasPorCobrar, getCuentasPorPagar,
   getResumenContador,
 } from './financiero-resultados'
 export type {
   FilaCotizacion, FilaGasto, FilaCuota, FilaInversion,
   DatosFinancieros, ResumenPeriodo,
   FilaCobrar, DatosCobrar,
+  FilaPagar, DatosPagar,
   GastoContador, InversionContador, ResumenContador,
 } from './financiero-resultados'
 

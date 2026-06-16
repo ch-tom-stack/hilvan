@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getCuentasPorCobrar } from '@/app/actions/financiero'
-import CuentasPorCobrar from '@/components/financiero/CuentasPorCobrar'
+import { getCuentasPorPagar } from '@/app/actions/financiero'
+import CuentasPorPagar from '@/components/financiero/CuentasPorPagar'
 import Link from 'next/link'
 
-export default async function CobrarPage() {
+export default async function PagarPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -13,7 +13,7 @@ export default async function CobrarPage() {
     .from('profiles').select('rol').eq('id', user.id).single()
   if (profile?.rol !== 'admin' && profile?.rol !== 'contabilidad') redirect('/dashboard')
 
-  const datos = await getCuentasPorCobrar()
+  const datos = await getCuentasPorPagar()
 
   return (
     <div className="p-6 lg:p-10">
@@ -21,16 +21,16 @@ export default async function CobrarPage() {
       <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
         <div>
           <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">
-            Financiero · Cobranza
+            Financiero · Pagos
           </p>
           <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">
-            Cuentas por cobrar
+            Cuentas por pagar
           </h1>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <Link href="/financiero/pagar"
+          <Link href="/financiero/cobrar"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
-            Por pagar →
+            ← Cobranza
           </Link>
           <Link href="/financiero"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
@@ -39,7 +39,7 @@ export default async function CobrarPage() {
         </div>
       </div>
 
-      <CuentasPorCobrar datos={datos} />
+      <CuentasPorPagar datos={datos} />
     </div>
   )
 }
