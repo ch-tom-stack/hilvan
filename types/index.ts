@@ -46,6 +46,7 @@ export interface Equipo {
   marca?: string
   modelo?: string
   numero_serie?: string
+  subcategoria?: string
   estado: EstadoEquipo
   precio_jornada?: number
   foto_url?: string

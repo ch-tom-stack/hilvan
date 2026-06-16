@@ -19,6 +19,16 @@ const ESTADOS: { value: EstadoEquipo; label: string }[] = [
   { value: 'pendiente_compra',    label: 'Pendiente de compra' },
 ]
 
+// Subcategorías disponibles por código de categoría.
+// Claves = valor del campo `codigo` en categorias_equipo.
+const SUBCATEGORIAS: Record<string, string[]> = {
+  ILU:  ['Modificadores de focos', 'Fresneles', 'Tubos y paneles'],
+  LUZ:  ['Modificadores de focos', 'Fresneles', 'Tubos y paneles'],
+  OPT:  ['Lentes', 'Filtros'],
+  ALM:  ['SD', 'SSD', 'CFExpress A', 'CFExpress B'],
+  FON:  ['Fondo papel', 'Fondo tela/muslin', 'Fondo vinilo', 'Chroma key'],
+}
+
 export default function FormularioEquipo({ categorias, equipo }: Props) {
   const router = useRouter()
   const esEdicion = !!equipo
@@ -31,6 +41,7 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
   const [marca, setMarca]                 = useState(equipo?.marca || '')
   const [modelo, setModelo]               = useState(equipo?.modelo || '')
   const [numeroSerie, setNumeroSerie]     = useState(equipo?.numero_serie || '')
+  const [subcategoria, setSubcategoria]   = useState(equipo?.subcategoria || '')
   const [cantidad, setCantidad]           = useState(equipo?.cantidad || 1)
   const [rentable, setRentable]           = useState(equipo?.rentable ?? true)
   const [estado, setEstado]               = useState<EstadoEquipo>(equipo?.estado || 'disponible')
@@ -41,6 +52,8 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
   const [error, setError]                 = useState<string | null>(null)
   const [codigoAuto, setCodigoAuto]       = useState(!esEdicion)
 
+  const opcionesSubcat = SUBCATEGORIAS[categoria] ?? []
+
   useEffect(() => {
     if (!esEdicion && codigoAuto && categoria) {
       getSiguienteCodigo(categoria).then(setCodigo)
@@ -49,6 +62,7 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
 
   async function handleCategoriaChange(nuevaCategoria: string) {
     setCategoria(nuevaCategoria)
+    setSubcategoria('')
     if (codigoAuto) {
       const siguiente = await getSiguienteCodigo(nuevaCategoria)
       setCodigo(siguiente)
@@ -92,6 +106,7 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
     formData.set('marca',            marca)
     formData.set('modelo',           modelo)
     formData.set('numero_serie',     numeroSerie)
+    formData.set('subcategoria',     subcategoria)
     formData.set('cantidad',         cantidad.toString())
     formData.set('rentable',         rentable.toString())
     formData.set('estado',           estado)
@@ -156,6 +171,23 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
           />
         </div>
       </div>
+
+      {/* Subcategoría — solo si la categoría tiene opciones definidas */}
+      {opcionesSubcat.length > 0 && (
+        <div>
+          <label className={labelClass}>Subcategoría</label>
+          <select
+            value={subcategoria}
+            onChange={e => setSubcategoria(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">— Sin subcategoría —</option>
+            {opcionesSubcat.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className={labelClass}>Descripción</label>
