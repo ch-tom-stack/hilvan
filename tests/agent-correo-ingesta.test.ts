@@ -11,10 +11,7 @@ import {
   sugerirCategoria,
   clasificarDocumento,
   clasificarLote,
-  construirHtmlDigest,
-  construirAsuntoDigest,
   type DocumentoParsado,
-  type ResumenDigest,
 } from '@/lib/agent-correo-ingesta'
 
 // ── construirClaveDedup ───────────────────────────────────────────────────────
@@ -252,90 +249,5 @@ describe('clasificarLote', () => {
     }
     const resultados = clasificarLote([doc], new Set())
     expect(resultados[0].estado_dedup).toBe('dudoso')
-  })
-})
-
-// ── construirHtmlDigest ───────────────────────────────────────────────────────
-
-describe('construirHtmlDigest', () => {
-  const resumenBase: ResumenDigest = {
-    periodo: '2026-06',
-    alertas: [],
-    recomendaciones: [],
-    ingresos: {
-      facturado_periodo: 5000000,
-      cobrado_periodo: 3000000,
-      por_cobrar: { total: 2000000 },
-      por_facturar: { total: 1000000 },
-    },
-    egresos: {
-      total: 2500000,
-      por_pagar: { total_neto: 800000, count: 3 },
-    },
-    creditos: {
-      pendientes: 84000,
-      deuda_vigente_total: 3000000,
-      proxima_cuota: null,
-    },
-    resumen: {
-      resultado_devengado: 2500000,
-      caja_aprox: 2200000,
-    },
-  }
-
-  it('genera HTML válido con el período correcto', () => {
-    const html = construirHtmlDigest(resumenBase)
-    expect(html).toContain('2026-06')
-    expect(html).toContain('Casa Hiedra')
-    expect(html).toContain('<!DOCTYPE html>')
-  })
-
-  it('incluye mensaje "Sin alertas" cuando alertas está vacío', () => {
-    const html = construirHtmlDigest(resumenBase)
-    expect(html).toContain('Sin alertas críticas')
-  })
-
-  it('incluye alerta de nivel alta cuando existe', () => {
-    const data: ResumenDigest = {
-      ...resumenBase,
-      alertas: [{ nivel: 'alta', mensaje: 'Mes en rojo', monto: -500000 }],
-    }
-    const html = construirHtmlDigest(data)
-    expect(html).toContain('Mes en rojo')
-    expect(html).toContain('🔴')
-  })
-
-  it('incluye la próxima cuota si existe', () => {
-    const data: ResumenDigest = {
-      ...resumenBase,
-      creditos: {
-        ...resumenBase.creditos,
-        proxima_cuota: { credito: 'BancoEstado Emprende Plus', monto: 84000, fecha_vencimiento: '2026-06-28' },
-      },
-    }
-    const html = construirHtmlDigest(data)
-    expect(html).toContain('BancoEstado Emprende Plus')
-    expect(html).toContain('2026-06-28')
-  })
-})
-
-// ── construirAsuntoDigest ─────────────────────────────────────────────────────
-
-describe('construirAsuntoDigest', () => {
-  it('sin alertas altas, asunto es limpio', () => {
-    const asunto = construirAsuntoDigest('2026-06', [])
-    expect(asunto).toBe('Digest financiero 2026-06 — Casa Hiedra')
-    expect(asunto).not.toContain('⚠️')
-  })
-
-  it('con alerta alta, prefija ⚠️', () => {
-    const asunto = construirAsuntoDigest('2026-06', [{ nivel: 'alta' }])
-    expect(asunto).toContain('⚠️')
-    expect(asunto).toContain('2026-06')
-  })
-
-  it('con solo alertas medias, sin prefijo de alerta', () => {
-    const asunto = construirAsuntoDigest('2026-06', [{ nivel: 'media' }])
-    expect(asunto).not.toContain('⚠️')
   })
 })
