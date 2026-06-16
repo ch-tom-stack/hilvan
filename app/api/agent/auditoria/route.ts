@@ -138,6 +138,7 @@ export async function GET(req: Request) {
       monto: Math.round(calcularTotalCot(c)),
       fecha_respuesta_cliente: c.fecha_respuesta_cliente ?? null,
       fecha_factura_emitida: c.fecha_factura_emitida ?? null,
+      fecha_pago_recibido: c.fecha_pago_recibido ?? null,
       tiene_rodaje,
     }
   })

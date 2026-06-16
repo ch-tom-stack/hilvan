@@ -85,6 +85,8 @@ export interface CotizacionAudit {
   fecha_respuesta_cliente: string | null
   /** null si no se ha facturado aún. */
   fecha_factura_emitida: string | null
+  /** null si no se ha recibido el pago. Es la señal de "cobrado" en Hilván. */
+  fecha_pago_recibido: string | null
   /** Si tiene rodaje vinculado. */
   tiene_rodaje: boolean
 }
@@ -206,7 +208,8 @@ export interface InputAgingFacturas {
 export function regla_factura_sin_cobrar(input: InputAgingFacturas): Hallazgo[] {
   const { cotizaciones, aging_dias, hoy } = input
   return cotizaciones
-    .filter((c) => c.fecha_factura_emitida !== null && c.estado !== 'pagada')
+    // "Cobrado" en Hilván = fecha_pago_recibido seteada (NO un estado 'pagada').
+    .filter((c) => c.fecha_factura_emitida !== null && c.fecha_pago_recibido === null)
     .flatMap((c) => {
       const dias = diasEntre(c.fecha_factura_emitida!, hoy)
       if (dias < aging_dias) return []

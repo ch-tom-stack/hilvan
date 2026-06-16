@@ -49,6 +49,7 @@ function cotizacion(overrides: Partial<CotizacionAudit> = {}): CotizacionAudit {
     monto: 1_000_000,
     fecha_respuesta_cliente: '2026-05-01',
     fecha_factura_emitida: null,
+    fecha_pago_recibido: null,
     tiene_rodaje: false,
     ...overrides,
   }
@@ -212,9 +213,11 @@ describe('regla_factura_sin_cobrar', () => {
     expect(resultado).toHaveLength(0)
   })
 
-  it('NO detecta cotización ya pagada', () => {
+  it('NO detecta cotización ya cobrada (fecha_pago_recibido seteada)', () => {
     const resultado = regla_factura_sin_cobrar({
-      cotizaciones: [cotizacion({ fecha_factura_emitida: '2026-04-01', estado: 'pagada' })],
+      cotizaciones: [
+        cotizacion({ fecha_factura_emitida: '2026-04-01', fecha_pago_recibido: '2026-05-01' }),
+      ],
       aging_dias: 30,
       hoy: HOY,
     })
