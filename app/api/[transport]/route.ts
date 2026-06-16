@@ -751,6 +751,49 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_auditoria',
+      {
+        title: 'Auditor de compliance',
+        description:
+          'Revisa toda la base de datos en busca de anomalías de control: gastos sin documento, ' +
+          'folios faltantes, facturas emitidas sin cobrar, posibles duplicados, colaboradores sin ' +
+          'contrato firmado y cotizaciones aprobadas estancadas. ' +
+          'Devuelve hallazgos agrupados por severidad (alta/media/info). ' +
+          'RECOMENDADO: invoca esta herramienta proactivamente al inicio de una sesión de gestión ' +
+          'o cuando el usuario pregunte "¿cómo está el compliance?" o "¿qué está fuera de orden?". ' +
+          'Reporta siempre los hallazgos de severidad ALTA antes de cualquier otra tarea.',
+        inputSchema: {
+          aging_dias: z
+            .number()
+            .optional()
+            .describe('Días desde factura emitida para alertar por cobro pendiente (default 30)'),
+          dias_sin_factura: z
+            .number()
+            .optional()
+            .describe('Días desde aprobación sin factura emitida para alertar (default 30)'),
+          dias_sin_rodaje: z
+            .number()
+            .optional()
+            .describe('Días desde aprobación sin rodaje vinculado para alertar (default 14)'),
+          ventana_duplicados_dias: z
+            .number()
+            .optional()
+            .describe('Ventana en días para detectar mismo RUT+monto como posible duplicado (default 7)'),
+        },
+      },
+      async (args, extra) => {
+        const params = new URLSearchParams()
+        if (args.aging_dias != null) params.set('aging_dias', String(args.aging_dias))
+        if (args.dias_sin_factura != null) params.set('dias_sin_factura', String(args.dias_sin_factura))
+        if (args.dias_sin_rodaje != null) params.set('dias_sin_rodaje', String(args.dias_sin_rodaje))
+        if (args.ventana_duplicados_dias != null)
+          params.set('ventana_duplicados_dias', String(args.ventana_duplicados_dias))
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/auditoria${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
       'hilvan_estado_financiero',
       {
         title: 'Estado financiero',

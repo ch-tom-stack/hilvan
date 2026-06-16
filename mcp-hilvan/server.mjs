@@ -522,6 +522,49 @@ const TOOLS = [
     run: (a) => api('GET', `/cuotas-credito${a.pagada ? `?pagada=${a.pagada}` : ''}`),
   },
   {
+    name: 'hilvan_auditoria',
+    description:
+      'Revisa toda la base de datos en busca de anomalías de control: gastos sin documento, ' +
+      'folios faltantes, facturas emitidas sin cobrar, posibles duplicados, colaboradores sin ' +
+      'contrato firmado y cotizaciones aprobadas estancadas. ' +
+      'Devuelve hallazgos agrupados por severidad (alta/media/info). ' +
+      'RECOMENDADO: invoca esta herramienta proactivamente al inicio de una sesión de gestión ' +
+      'o cuando el usuario pregunte "¿cómo está el compliance?" o "¿qué está fuera de orden?". ' +
+      'Reporta siempre los hallazgos de severidad ALTA antes de cualquier otra tarea.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        aging_dias: {
+          type: 'number',
+          description: 'Días desde factura emitida para alertar por cobro pendiente (default 30)',
+        },
+        dias_sin_factura: {
+          type: 'number',
+          description: 'Días desde aprobación sin factura emitida para alertar (default 30)',
+        },
+        dias_sin_rodaje: {
+          type: 'number',
+          description: 'Días desde aprobación sin rodaje vinculado para alertar (default 14)',
+        },
+        ventana_duplicados_dias: {
+          type: 'number',
+          description:
+            'Ventana en días para detectar mismo RUT+monto como posible duplicado (default 7)',
+        },
+      },
+    },
+    run: (args) => {
+      const params = new URLSearchParams()
+      if (args.aging_dias != null) params.set('aging_dias', String(args.aging_dias))
+      if (args.dias_sin_factura != null) params.set('dias_sin_factura', String(args.dias_sin_factura))
+      if (args.dias_sin_rodaje != null) params.set('dias_sin_rodaje', String(args.dias_sin_rodaje))
+      if (args.ventana_duplicados_dias != null)
+        params.set('ventana_duplicados_dias', String(args.ventana_duplicados_dias))
+      const qs = params.toString()
+      return api('GET', `/auditoria${qs ? `?${qs}` : ''}`)
+    },
+  },
+  {
     name: 'hilvan_proyeccion_caja',
     description:
       'Proyecta el saldo de caja a 30, 60 o 90 días (configurable) partiendo de un saldo inicial ' +
