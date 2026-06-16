@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import TagEstado from '@/components/equipos/TagEstado'
+import EquipoAcciones from '@/app/(dashboard)/equipos/EquipoAcciones'
 import type { Equipo } from '@/types'
 import type { Rol } from '@/types'
 
@@ -51,7 +52,7 @@ export default async function DetalleEquipoPage({
             <p className="text-ch-muted font-body text-xs mt-2 tracking-wider">{equipo.categoria.nombre}</p>
           )}
         </div>
-        <div className="flex gap-3 flex-shrink-0">
+        <div className="flex gap-3 flex-shrink-0 flex-wrap">
           <Link
             href="/equipos"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors"
@@ -59,12 +60,15 @@ export default async function DetalleEquipoPage({
             ← Inventario
           </Link>
           {puedeEditar && (
-            <Link
-              href={`/equipos/${equipo.id}/editar`}
-              className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
-            >
-              Editar
-            </Link>
+            <>
+              <EquipoAcciones equipoId={equipo.id} equipoNombre={equipo.nombre} />
+              <Link
+                href={`/equipos/${equipo.id}/editar`}
+                className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
+              >
+                Editar
+              </Link>
+            </>
           )}
         </div>
       </div>
