@@ -794,6 +794,72 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_rentabilidad_proyecto',
+      {
+        title: 'Rentabilidad de proyecto',
+        description:
+          'Calcula la rentabilidad real de un proyecto: ingreso cotizado vs costo real ' +
+          '(suma bruta de gastos en rendiciones), margen en $ y %, desglose por categoría ' +
+          'de gasto, y clasificación (rentable / ajustado / pérdida). ' +
+          'Si el proyecto no tiene gastos cargados, advierte que el margen puede ser artificialmente alto. ' +
+          'Pasa costos_adicionales (JSON de array) para incluir costos no capturados en rendiciones ' +
+          '(crew fuera de nómina, equipo propio, etc.). ' +
+          'Usa numero (CH-COT-005) o cotizacion_id para identificar el proyecto.',
+        inputSchema: {
+          numero: z.string().optional().describe('número del grupo, ej. CH-COT-005'),
+          cotizacion_id: z.string().optional().describe('UUID de la cotización'),
+          costos_adicionales: z
+            .string()
+            .optional()
+            .describe(
+              'JSON con array de costos extra no en rendiciones: ' +
+              '[{"concepto":"Crew extra","monto":150000,"categoria":"Honorarios","nota":"estimado"}]',
+            ),
+        },
+      },
+      async ({ numero, cotizacion_id, costos_adicionales }, extra) => {
+        const params = new URLSearchParams()
+        if (numero) params.set('numero', numero)
+        if (cotizacion_id) params.set('cotizacion_id', cotizacion_id)
+        if (costos_adicionales) params.set('costos_adicionales', costos_adicionales)
+        const qs = params.toString()
+        return ok(
+          await callAgent(extra as ToolExtra, 'GET', `/rentabilidad-proyecto${qs ? `?${qs}` : ''}`),
+        )
+      },
+    )
+
+    server.registerTool(
+      'hilvan_rentabilidad_resumen',
+      {
+        title: 'Resumen de rentabilidad (todos los proyectos)',
+        description:
+          'Lista todos los proyectos con su margen real (ingreso cotizado − gastos en rendiciones), ' +
+          'clasificados como rentable / ajustado / pérdida. Incluye totales globales (ingreso, costo, ' +
+          'margen total, % promedio, conteo por clasificación). ' +
+          'Los proyectos sin gastos cargados se marcan con advertencia_datos_incompletos=true. ' +
+          'Pasa estados (separados por coma) para filtrar por estado de cotización; sin filtro devuelve todos. ' +
+          'Útil para detectar de un vistazo qué proyectos están en pérdida o sin margen suficiente.',
+        inputSchema: {
+          estados: z
+            .string()
+            .optional()
+            .describe(
+              'estados separados por coma, ej. "aprobada,en_produccion,terminada". Sin valor = todos',
+            ),
+        },
+      },
+      async ({ estados }, extra) => {
+        const params = new URLSearchParams()
+        params.set('resumen', 'true')
+        if (estados) params.set('estados', estados)
+        return ok(
+          await callAgent(extra as ToolExtra, 'GET', `/rentabilidad-proyecto?${params.toString()}`),
+        )
+      },
+    )
+
+    server.registerTool(
       'hilvan_estado_financiero',
       {
         title: 'Estado financiero',

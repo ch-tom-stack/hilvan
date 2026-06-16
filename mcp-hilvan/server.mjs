@@ -522,6 +522,59 @@ const TOOLS = [
     run: (a) => api('GET', `/cuotas-credito${a.pagada ? `?pagada=${a.pagada}` : ''}`),
   },
   {
+    name: 'hilvan_rentabilidad_proyecto',
+    description:
+      'Calcula la rentabilidad real de un proyecto: ingreso cotizado vs costo real ' +
+      '(suma bruta de gastos en rendiciones), margen en $ y %, desglose por categoría ' +
+      'de gasto, y clasificación (rentable / ajustado / pérdida). ' +
+      'Si el proyecto no tiene gastos cargados, advierte que el margen puede ser artificialmente alto. ' +
+      'Pasa costos_adicionales (JSON string de array) para incluir costos no capturados en rendiciones. ' +
+      'Usa numero (CH-COT-005) o cotizacion_id para identificar el proyecto.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        numero: { type: 'string', description: 'número del grupo, ej. CH-COT-005' },
+        cotizacion_id: { type: 'string', description: 'UUID de la cotización' },
+        costos_adicionales: {
+          type: 'string',
+          description:
+            'JSON con array de costos extra no en rendiciones: ' +
+            '[{"concepto":"Crew extra","monto":150000,"categoria":"Honorarios","nota":"estimado"}]',
+        },
+      },
+    },
+    run: (a) => {
+      const params = new URLSearchParams()
+      if (a.numero) params.set('numero', a.numero)
+      if (a.cotizacion_id) params.set('cotizacion_id', a.cotizacion_id)
+      if (a.costos_adicionales) params.set('costos_adicionales', a.costos_adicionales)
+      const qs = params.toString()
+      return api('GET', `/rentabilidad-proyecto${qs ? `?${qs}` : ''}`)
+    },
+  },
+  {
+    name: 'hilvan_rentabilidad_resumen',
+    description:
+      'Lista todos los proyectos con su margen real (ingreso cotizado − gastos en rendiciones), ' +
+      'clasificados como rentable / ajustado / pérdida. Incluye totales globales. ' +
+      'Pasa estados (separados por coma) para filtrar. Sin filtro devuelve todos.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        estados: {
+          type: 'string',
+          description: 'estados separados por coma, ej. "aprobada,en_produccion,terminada"',
+        },
+      },
+    },
+    run: (a) => {
+      const params = new URLSearchParams()
+      params.set('resumen', 'true')
+      if (a.estados) params.set('estados', a.estados)
+      return api('GET', `/rentabilidad-proyecto?${params.toString()}`)
+    },
+  },
+  {
     name: 'hilvan_auditoria',
     description:
       'Revisa toda la base de datos en busca de anomalías de control: gastos sin documento, ' +
