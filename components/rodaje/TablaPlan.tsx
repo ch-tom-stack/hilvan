@@ -182,19 +182,19 @@ export default function TablaPlan({
             + Plantilla
           </button>
           <button
+            onClick={() => onCrear({ titulo: 'Nuevo bloque', tipo: 'rodaje', duracion_min: 30 })}
+            disabled={creando}
+            className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50"
+          >
+            {creando ? '...' : '+ Bloque'}
+          </button>
+          <button
             onClick={() => onCrear({ titulo: 'Libre', tipo: 'libre', duracion_min: 0 })}
             disabled={creando}
             title="Lienzo libre: pega imágenes, chistes, notas con tu propia letra y color"
-            className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50"
-          >
-            + Libre
-          </button>
-          <button
-            onClick={() => onCrear({ titulo: 'Nuevo bloque', tipo: 'rodaje', duracion_min: 30 })}
-            disabled={creando}
             className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
           >
-            {creando ? '...' : '+ Bloque'}
+            + Libre
           </button>
 
           {mostrarPlantillas && (

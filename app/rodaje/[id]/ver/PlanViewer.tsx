@@ -159,7 +159,7 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
                   {bloque.imagen_url && (
                     <button onClick={() => setImagenAmpliada(bloque.imagen_url!)} className="block mb-2"
                       style={{ marginLeft: est.align === 'center' ? 'auto' : undefined, marginRight: est.align === 'center' ? 'auto' : undefined }}>
-                      <img src={bloque.imagen_url} alt="" className="max-h-72 w-auto max-w-full object-contain rounded-[2px] border border-ch-border hover:border-ch-muted transition-colors" />
+                      <img src={bloque.imagen_url} alt="" className="max-h-72 w-auto max-w-full object-contain opacity-95 hover:opacity-100 transition-opacity" />
                     </button>
                   )}
                   {bloque.contenido_rico && (

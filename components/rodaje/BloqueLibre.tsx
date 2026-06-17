@@ -148,7 +148,7 @@ export default function BloqueLibre({
       <div className="px-3 py-3" style={{ backgroundColor: e.color_fondo }}>
         {bloque.imagen_url && (
           <img src={bloque.imagen_url} alt=""
-            className="max-h-72 w-auto max-w-full object-contain rounded-[2px] border border-ch-border mb-2"
+            className="max-h-72 w-auto max-w-full object-contain mb-2"
             style={{ marginLeft: e.align === 'center' ? 'auto' : undefined, marginRight: e.align === 'center' || e.align === 'left' ? 'auto' : undefined }} />
         )}
         <textarea
