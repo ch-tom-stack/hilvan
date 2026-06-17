@@ -496,9 +496,20 @@ const EMAIL_DIGEST_OVERRIDE: Record<string, string> = {
   'nataliaalejandra.r@gmail.com': 'natalia@casahiedra.com',
 }
 
+// Excluidos del digest por decisión de Tomás (jun 2026): conservan su perfil y
+// acceso al CRM, pero NO deben recibir ningún recordatorio. Clave = email real.
+const EMAIL_DIGEST_EXCLUIR = new Set<string>([
+  'ignaciofigueroas@gmail.com',
+  'ornamentastudio@gmail.com', // FOCH
+])
+
+// Devuelve la dirección a la que mandar el digest, o null si no se debe enviar
+// (sin email o excluido). NO infiere direcciones.
 function emailDigest(profileEmail: string | null | undefined): string | null {
   if (!profileEmail) return null
-  return EMAIL_DIGEST_OVERRIDE[profileEmail.trim().toLowerCase()] ?? profileEmail
+  const e = profileEmail.trim().toLowerCase()
+  if (EMAIL_DIGEST_EXCLUIR.has(e)) return null
+  return EMAIL_DIGEST_OVERRIDE[e] ?? profileEmail
 }
 
 interface DigestResponsable {
