@@ -52,13 +52,22 @@ export async function GET(
     )
 
     const numVisible = cotizacion.grupo?.numero_base ?? "cotizacion"
-    const filename = `${numVisible.replace(/\s/g, "-")}.pdf`
+    const titulo = (cotizacion.nombre ?? "").trim()
+    // Nombre legible: "CH-COT-005 - Aldo Boho - Plan Anual.pdf"
+    const base = (titulo ? `${numVisible} - ${titulo}` : numVisible)
+      .replace(/[\/\\:*?"<>|]/g, "") // caracteres inválidos en nombres de archivo
+      .replace(/\s+/g, " ")
+      .trim()
+    const filename = `${base}.pdf`
+    // Fallback ASCII para clientes que no soportan filename*
+    const filenameAscii =
+      (filename.normalize("NFKD").replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, "-").replace(/^-+|-+$/g, "") || "cotizacion.pdf")
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="${filenameAscii}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         "Content-Length": buffer.length.toString(),
       },
     })

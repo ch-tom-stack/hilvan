@@ -29,6 +29,8 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
   const [estadoLocal, setEstadoLocal] = useState(cotizacion.estado)
 
   const totales = calcularTotales(cotizacion)
+  // Modo 'simple': precio solo por categoría; los ítems van como viñetas sin monto.
+  const simple = cotizacion.formato_pdf === 'simple'
   const numVisible = numeroCotizacion({
     grupo: cotizacion.grupo,
     version: cotizacion.version,
@@ -135,7 +137,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
                         </span>
                       </div>
                       {(sg.items ?? []).map(item => (
-                        <ItemFila key={item.id} item={item} />
+                        <ItemFila key={item.id} item={item} simple={simple} />
                       ))}
                     </div>
                   )
@@ -143,7 +145,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
 
                 {/* Ítems directos */}
                 {(dep.items ?? []).map(item => (
-                  <ItemFila key={item.id} item={item} />
+                  <ItemFila key={item.id} item={item} simple={simple} />
                 ))}
               </div>
             )
@@ -250,7 +252,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
   )
 }
 
-function ItemFila({ item }: { item: any }) {
+function ItemFila({ item, simple }: { item: any; simple?: boolean }) {
   const subtotal = subtotalItem(item)
   return (
     <div className="flex items-start justify-between py-2 pl-2">
@@ -262,9 +264,11 @@ function ItemFila({ item }: { item: any }) {
           </p>
         )}
       </div>
-      <span className="text-sm font-sans text-gray-700 shrink-0">
-        {item.incluido ? 'Incluida' : formatCLP(subtotal)}
-      </span>
+      {!simple && (
+        <span className="text-sm font-sans text-gray-700 shrink-0">
+          {item.incluido ? 'Incluida' : formatCLP(subtotal)}
+        </span>
+      )}
     </div>
   )
 }

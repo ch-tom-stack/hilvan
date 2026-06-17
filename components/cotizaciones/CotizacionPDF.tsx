@@ -240,6 +240,9 @@ interface Props {
 
 export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
   const totales = calcularTotales(cotizacion)
+  // Modo 'simple': el precio se muestra solo a nivel de categoría; los ítems
+  // quedan como viñetas descriptivas sin monto (estilo bundle del Excel).
+  const simple = cotizacion.formato_pdf === 'simple'
   const numVisible = numeroCotizacion({
     grupo: cotizacion.grupo,
     version: cotizacion.version,
@@ -329,11 +332,11 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
                     <Text style={S.sgNombre}>{sg.nombre}</Text>
                     <Text style={S.sgTotal}>{formatCLP(subtotalSubgrupo(sg))}</Text>
                   </View>
-                  {(sg.items ?? []).map(item => <ItemPDF key={item.id} item={item} />)}
+                  {(sg.items ?? []).map(item => <ItemPDF key={item.id} item={item} simple={simple} />)}
                 </View>
               ))}
 
-              {(dep.items ?? []).map(item => <ItemPDF key={item.id} item={item} />)}
+              {(dep.items ?? []).map(item => <ItemPDF key={item.id} item={item} simple={simple} />)}
             </View>
           )
         })}
@@ -378,7 +381,7 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
   )
 }
 
-function ItemPDF({ item }: { item: any }) {
+function ItemPDF({ item, simple }: { item: any; simple?: boolean }) {
   const subtotal = subtotalItem(item)
   return (
     <View style={S.itemRow}>
@@ -391,9 +394,11 @@ function ItemPDF({ item }: { item: any }) {
           <Text style={S.itemDesc}>{item.descripcion}</Text>
         ) : null}
       </View>
-      <Text style={S.itemPrecio}>
-        {item.incluido ? 'Incluida' : formatCLP(subtotal)}
-      </Text>
+      {!simple && (
+        <Text style={S.itemPrecio}>
+          {item.incluido ? 'Incluida' : formatCLP(subtotal)}
+        </Text>
+      )}
     </View>
   )
 }
