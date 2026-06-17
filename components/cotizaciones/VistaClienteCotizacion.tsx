@@ -29,8 +29,6 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
   const [estadoLocal, setEstadoLocal] = useState(cotizacion.estado)
 
   const totales = calcularTotales(cotizacion)
-  // Modo 'simple': precio solo por categoría; los ítems van como viñetas sin monto.
-  const simple = cotizacion.formato_pdf === 'simple'
   const numVisible = numeroCotizacion({
     grupo: cotizacion.grupo,
     version: cotizacion.version,
@@ -138,7 +136,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
                         </span>
                       </div>
                       {(sg.items ?? []).map(item => (
-                        <ItemFila key={item.id} item={item} simple={simple || depBundle || sg.precio_manual != null} />
+                        <ItemFila key={item.id} item={item} simple={depBundle || sg.precio_manual != null} />
                       ))}
                     </div>
                   )
@@ -146,7 +144,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
 
                 {/* Ítems directos */}
                 {(dep.items ?? []).map(item => (
-                  <ItemFila key={item.id} item={item} simple={simple || depBundle} />
+                  <ItemFila key={item.id} item={item} simple={depBundle} />
                 ))}
               </div>
             )

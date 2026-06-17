@@ -258,17 +258,33 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
         }
       } else if (itemModal?.mode === 'editar' && itemModal.item) {
         await actualizarItem(itemModal.item.id, cot.id, itemData)
+        const itemId = itemModal.item.id
         const updatedItem = { ...itemModal.item, ...itemData }
-        if (itemModal.sgId) {
-          actualizarSgLocal(itemModal.depId, itemModal.sgId, sg => ({
-            ...sg,
-            items: sg.items?.map(i => i.id === itemModal.item!.id ? updatedItem : i),
-          }))
+        const oldDep = itemModal.depId
+        const oldSg = itemModal.sgId ?? null
+        const newDep = itemData.departamento_id
+        const newSg = itemData.subgrupo_id ?? null
+        const movido = oldDep !== newDep || oldSg !== newSg
+
+        if (!movido) {
+          // Edición en el mismo lugar: reemplazar en sitio.
+          if (oldSg) {
+            actualizarSgLocal(oldDep, oldSg, sg => ({ ...sg, items: sg.items?.map(i => i.id === itemId ? updatedItem : i) }))
+          } else {
+            actualizarDepLocal(oldDep, d => ({ ...d, items: d.items?.map(i => i.id === itemId ? updatedItem : i) }))
+          }
         } else {
-          actualizarDepLocal(itemModal.depId, d => ({
-            ...d,
-            items: d.items?.map(i => i.id === itemModal.item!.id ? updatedItem : i),
-          }))
+          // Movido de categoría/subgrupo: sacar del lugar viejo y agregar al nuevo.
+          if (oldSg) {
+            actualizarSgLocal(oldDep, oldSg, sg => ({ ...sg, items: sg.items?.filter(i => i.id !== itemId) }))
+          } else {
+            actualizarDepLocal(oldDep, d => ({ ...d, items: d.items?.filter(i => i.id !== itemId) }))
+          }
+          if (newSg) {
+            actualizarSgLocal(newDep, newSg, sg => ({ ...sg, items: [...(sg.items ?? []), updatedItem] }))
+          } else {
+            actualizarDepLocal(newDep, d => ({ ...d, items: [...(d.items ?? []), updatedItem] }))
+          }
         }
       }
       setItemModal(null)
@@ -540,6 +556,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           cotizacionId={cot.id}
           departamentoId={itemModal.depId}
           subgrupoId={itemModal.sgId}
+          departamentos={cot.departamentos ?? []}
           tarifas={tarifas}
           equipos={equipos}
           onGuardar={handleGuardarItem}

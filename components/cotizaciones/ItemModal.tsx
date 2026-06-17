@@ -5,6 +5,7 @@ import {
   formatCLP,
   calcularBruto,
   type CotizacionItem,
+  type CotizacionDepartamento,
   type TarifaBase,
   type Equipo,
   type TipoItem,
@@ -35,6 +36,7 @@ interface ItemModalProps {
   cotizacionId: string
   departamentoId: string
   subgrupoId?: string
+  departamentos: CotizacionDepartamento[]
   tarifas: TarifaBase[]
   equipos: Equipo[]
   onGuardar: (item: Omit<CotizacionItem, 'id' | 'created_at' | 'subtotal_cliente' | 'costo_real' | 'margen'>) => Promise<void>
@@ -42,10 +44,15 @@ interface ItemModalProps {
 }
 
 export default function ItemModal({
-  mode, item, cotizacionId, departamentoId, subgrupoId,
+  mode, item, cotizacionId, departamentoId, subgrupoId, departamentos,
   tarifas, equipos, onGuardar, onCerrar,
 }: ItemModalProps) {
   const [isPending, startTransition] = useTransition()
+
+  // Ubicación (editar): permite mover el ítem entre categorías y dentro/fuera de subgrupos.
+  const [depIdSel, setDepIdSel] = useState(departamentoId)
+  const [sgIdSel, setSgIdSel] = useState(subgrupoId ?? '')
+  const subgruposDeDep = departamentos.find(d => d.id === depIdSel)?.subgrupos ?? []
 
   const [tipo, setTipo] = useState<TipoItem>(item?.tipo ?? 'rol')
   const [nombre, setNombre] = useState(item?.nombre ?? '')
@@ -99,8 +106,8 @@ export default function ItemModal({
     startTransition(async () => {
       await onGuardar({
         cotizacion_id: cotizacionId,
-        departamento_id: departamentoId,
-        subgrupo_id: subgrupoId ?? null,
+        departamento_id: depIdSel,
+        subgrupo_id: sgIdSel || null,
         tipo,
         equipo_id: null,
         tarifa_id: null,
@@ -139,6 +146,37 @@ export default function ItemModal({
             </h2>
             <button type="button" onClick={onCerrar} className="text-ch-muted hover:text-ch-cream text-lg">✕</button>
           </div>
+
+          {/* Ubicación: mover entre categorías / dentro o fuera de subgrupos (solo al editar) */}
+          {mode === 'editar' && (
+            <div className="grid grid-cols-2 gap-3 border border-ch-border/60 rounded p-3">
+              <div>
+                <label className="block font-body text-xs tracking-wider uppercase text-ch-muted mb-1.5">Categoría</label>
+                <select
+                  value={depIdSel}
+                  onChange={e => { setDepIdSel(e.target.value); setSgIdSel('') }}
+                  className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream focus:outline-none focus:border-ch-cream/40"
+                >
+                  {departamentos.map(d => (
+                    <option key={d.id} value={d.id}>{d.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block font-body text-xs tracking-wider uppercase text-ch-muted mb-1.5">Subgrupo</label>
+                <select
+                  value={sgIdSel}
+                  onChange={e => setSgIdSel(e.target.value)}
+                  className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream focus:outline-none focus:border-ch-cream/40"
+                >
+                  <option value="">— Sin subgrupo (directo) —</option>
+                  {subgruposDeDep.map(sg => (
+                    <option key={sg.id} value={sg.id}>{sg.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* Biblioteca de tarifas */}
           {mode === 'nuevo' && (
