@@ -365,7 +365,7 @@ const TOOLS = [
   },
   {
     name: 'hilvan_editar_gasto',
-    description: 'Corrige el tipo_documento y/o el folio de un gasto ya cargado (no recalcula el monto). Obtén gasto_id y origen con hilvan_buscar_gastos. Debe venir al menos uno de tipo_documento/folio. Reversible con hilvan_deshacer (restaura los valores previos, no borra el gasto). CONFIRMA con el usuario antes de llamar.',
+    description: 'Corrige metadata de un gasto ya cargado (no recalcula el monto): tipo_documento, folio, o las marcas de auditoría sin_documento_aceptado / folio_compartido / referencia_externa. Obtén gasto_id y origen con hilvan_buscar_gastos. Debe venir al menos un campo. sin_documento_aceptado=true: sin respaldo aceptado a propósito (la auditoría lo baja a info). folio_compartido=true: parte de una factura que cubre varias cotizaciones (no es duplicado). referencia_externa: invoice de proveedor extranjero sin folio chileno (resuelve folio faltante). Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -373,10 +373,27 @@ const TOOLS = [
         origen: { type: 'string', description: 'proyecto | mensual' },
         tipo_documento: { type: 'string', description: 'boleta | boleta_consumo | factura | exenta | sin_documento | nota_credito' },
         folio: { type: 'string', description: 'folio del documento SII' },
+        sin_documento_aceptado: { type: 'boolean', description: 'true = sin respaldo aceptado a propósito (baja la alerta a info)' },
+        folio_compartido: { type: 'boolean', description: 'true = parte de una factura que cubre varias cotizaciones (no es duplicado)' },
+        referencia_externa: { type: 'string', description: 'número de invoice de proveedor extranjero sin folio chileno' },
       },
       required: ['gasto_id', 'origen'],
     },
     run: (a) => api('POST', '/editar-gasto', a),
+  },
+  {
+    name: 'hilvan_eliminar_gasto',
+    description: 'Elimina un gasto ya cargado (proyecto o mensual). Sirve para resolver DUPLICADOS creados por humanos o en sesiones anteriores, que hilvan_deshacer no puede revertir. motivo es OBLIGATORIO y queda en el log de auditoría. Reversible: hilvan_deshacer re-inserta el gasto completo. Obtén gasto_id y origen con hilvan_buscar_gastos. CONFIRMA SIEMPRE con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        gasto_id: { type: 'string' },
+        origen: { type: 'string', description: 'proyecto | mensual' },
+        motivo: { type: 'string', description: 'por qué se elimina (queda registrado en auditoría)' },
+      },
+      required: ['gasto_id', 'origen', 'motivo'],
+    },
+    run: (a) => api('POST', '/eliminar-gasto', a),
   },
   {
     name: 'hilvan_importar_movimientos',

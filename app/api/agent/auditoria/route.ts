@@ -59,6 +59,7 @@ export async function GET(req: Request) {
       .from('rendicion_gastos')
       .select(
         'id, monto, tipo_documento, folio, rut_emisor, razon_social_emisor, descripcion, fecha_documento, created_at,' +
+          'sin_documento_aceptado, folio_compartido, referencia_externa,' +
           'rendicion:rendiciones(cotizacion:cotizaciones(grupo:cotizacion_grupos(numero_base)))',
       )
       .order('fecha_documento', { ascending: true }),
@@ -68,6 +69,7 @@ export async function GET(req: Request) {
       .from('rendicion_mensual_gastos')
       .select(
         'id, monto, tipo_documento, folio, rut_emisor, razon_social_emisor, descripcion, fecha_documento, created_at,' +
+          'sin_documento_aceptado, folio_compartido, referencia_externa,' +
           'rendicion_mensual:rendiciones_mensuales(periodo)',
       )
       .order('fecha_documento', { ascending: true }),
@@ -109,6 +111,9 @@ export async function GET(req: Request) {
       fecha_documento: g.fecha_documento ?? g.created_at?.slice(0, 10) ?? null,
       contexto: (g.rendicion as any)?.cotizacion?.grupo?.numero_base ?? null,
       descripcion: g.descripcion ?? null,
+      sin_documento_aceptado: g.sin_documento_aceptado ?? false,
+      folio_compartido: g.folio_compartido ?? false,
+      referencia_externa: g.referencia_externa ?? null,
     })),
     ...(gastosMensData ?? []).map((g: any): GastoAudit => ({
       id: g.id,
@@ -121,6 +126,9 @@ export async function GET(req: Request) {
       fecha_documento: g.fecha_documento ?? g.created_at?.slice(0, 10) ?? null,
       contexto: (g.rendicion_mensual as any)?.periodo?.slice(0, 7) ?? null,
       descripcion: g.descripcion ?? null,
+      sin_documento_aceptado: g.sin_documento_aceptado ?? false,
+      folio_compartido: g.folio_compartido ?? false,
+      referencia_externa: g.referencia_externa ?? null,
     })),
   ]
 

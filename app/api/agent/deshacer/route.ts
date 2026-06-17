@@ -221,10 +221,18 @@ export async function POST(req: Request) {
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'editar-gasto') {
-    // Edición de metadata (tipo_documento/folio): restaurar los valores PREVIOS.
+    // Edición de metadata: restaurar los valores PREVIOS (todos los campos editables).
     // Nunca borrar la fila ni restaurar a ciegas: usa payload.previo guardado al editar.
     const payload = accion.payload as
-      | { previo?: { tipo_documento?: string | null; folio?: string | null } | null }
+      | {
+          previo?: {
+            tipo_documento?: string | null
+            folio?: string | null
+            sin_documento_aceptado?: boolean
+            folio_compartido?: boolean
+            referencia_externa?: string | null
+          } | null
+        }
       | null
     const previo = payload?.previo ?? null
     const { error } = await admin
@@ -232,8 +240,25 @@ export async function POST(req: Request) {
       .update({
         tipo_documento: previo?.tipo_documento ?? null,
         folio: previo?.folio ?? null,
+        sin_documento_aceptado: previo?.sin_documento_aceptado ?? false,
+        folio_compartido: previo?.folio_compartido ?? false,
+        referencia_externa: previo?.referencia_externa ?? null,
       })
       .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'eliminar-gasto') {
+    // Borrado reversible: re-insertar la fila completa que se guardó al eliminar
+    // (con su mismo id). Va ANTES de la rama genérica TABLAS_DELETE para no
+    // intentar borrar de nuevo una fila que justamente queremos restaurar.
+    const payload = accion.payload as { fila?: Record<string, unknown> | null } | null
+    const fila = payload?.fila
+    if (!fila) {
+      return NextResponse.json(
+        { error: 'La acción de eliminación no guardó la fila para restaurar' },
+        { status: 400 },
+      )
+    }
+    const { error } = await admin.from(accion.resultado_tabla).insert(fila)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'conciliar') {
     // Conciliación N:M: borrar las filas del ledger creadas por esta acción

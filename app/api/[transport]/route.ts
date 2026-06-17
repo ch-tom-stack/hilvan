@@ -509,9 +509,13 @@ const baseHandler = createMcpHandler(
     server.registerTool(
       'hilvan_editar_gasto',
       {
-        title: 'Editar tipo/folio de gasto',
+        title: 'Editar metadata de gasto',
         description:
-          'Corrige el tipo_documento y/o el folio de un gasto ya cargado (no recalcula el monto). Obtén gasto_id y origen con hilvan_buscar_gastos. Debe venir al menos uno de tipo_documento/folio. Reversible con hilvan_deshacer (restaura los valores previos, no borra el gasto). CONFIRMA con el usuario antes de llamar.',
+          'Corrige metadata de un gasto ya cargado (no recalcula el monto): tipo_documento, folio, o las marcas de auditoría sin_documento_aceptado / folio_compartido / referencia_externa. Obtén gasto_id y origen con hilvan_buscar_gastos. Debe venir al menos un campo. ' +
+          'sin_documento_aceptado=true: el gasto no tiene respaldo y se acepta así a propósito → la auditoría lo baja de alta a info. ' +
+          'folio_compartido=true: el gasto es parte de una factura que cubre varias cotizaciones (mismo RUT+folio a propósito) → la auditoría no lo marca como duplicado. ' +
+          'referencia_externa: número de invoice de un proveedor extranjero sin folio chileno (Anthropic, Spotify, etc.) → resuelve el hallazgo de folio faltante. ' +
+          'Reversible con hilvan_deshacer (restaura los valores previos, no borra el gasto). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           gasto_id: z.string(),
           origen: z.enum(['proyecto', 'mensual']),
@@ -520,9 +524,36 @@ const baseHandler = createMcpHandler(
             .optional()
             .describe('boleta | boleta_consumo | factura | exenta | sin_documento | nota_credito'),
           folio: z.string().optional().describe('folio del documento SII'),
+          sin_documento_aceptado: z
+            .boolean()
+            .optional()
+            .describe('true = sin respaldo aceptado a propósito (baja la alerta a info)'),
+          folio_compartido: z
+            .boolean()
+            .optional()
+            .describe('true = parte de una factura que cubre varias cotizaciones (no es duplicado)'),
+          referencia_externa: z
+            .string()
+            .optional()
+            .describe('número de invoice de proveedor extranjero sin folio chileno'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/editar-gasto', args)),
+    )
+
+    server.registerTool(
+      'hilvan_eliminar_gasto',
+      {
+        title: 'Eliminar gasto',
+        description:
+          'Elimina un gasto ya cargado (proyecto o mensual). Sirve para resolver DUPLICADOS creados por humanos o en sesiones anteriores, que hilvan_deshacer no puede revertir (no fueron acciones del agente). motivo es OBLIGATORIO y queda en el log de auditoría. Reversible: hilvan_deshacer re-inserta el gasto completo. Obtén gasto_id y origen con hilvan_buscar_gastos. CONFIRMA SIEMPRE con el usuario antes de llamar.',
+        inputSchema: {
+          gasto_id: z.string(),
+          origen: z.enum(['proyecto', 'mensual']),
+          motivo: z.string().describe('por qué se elimina (queda registrado en auditoría)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/eliminar-gasto', args)),
     )
 
     // ── Conciliación bancaria ────────────────────────────────────────────────

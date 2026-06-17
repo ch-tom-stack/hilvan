@@ -32,7 +32,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
-  const { gasto_id, origen, tipo_documento, folio } = body ?? {}
+  const {
+    gasto_id,
+    origen,
+    tipo_documento,
+    folio,
+    sin_documento_aceptado,
+    folio_compartido,
+    referencia_externa,
+  } = body ?? {}
 
   // ── Validaciones ──────────────────────────────────────────────────────────
   if (!gasto_id || typeof gasto_id !== 'string') {
@@ -44,9 +52,15 @@ export async function POST(req: Request) {
 
   const tieneTipo = tipo_documento !== undefined
   const tieneFolio = folio !== undefined
-  if (!tieneTipo && !tieneFolio) {
+  const tieneSinDocAcept = sin_documento_aceptado !== undefined
+  const tieneFolioComp = folio_compartido !== undefined
+  const tieneRefExt = referencia_externa !== undefined
+  if (!tieneTipo && !tieneFolio && !tieneSinDocAcept && !tieneFolioComp && !tieneRefExt) {
     return NextResponse.json(
-      { error: 'Debe venir al menos uno de tipo_documento o folio' },
+      {
+        error:
+          'Debe venir al menos uno de: tipo_documento, folio, sin_documento_aceptado, folio_compartido, referencia_externa',
+      },
       { status: 400 },
     )
   }
@@ -61,6 +75,15 @@ export async function POST(req: Request) {
   if (tieneFolio && folio !== null && typeof folio !== 'string') {
     return NextResponse.json({ error: 'folio inválido (string o null)' }, { status: 400 })
   }
+  if (tieneSinDocAcept && typeof sin_documento_aceptado !== 'boolean') {
+    return NextResponse.json({ error: 'sin_documento_aceptado debe ser boolean' }, { status: 400 })
+  }
+  if (tieneFolioComp && typeof folio_compartido !== 'boolean') {
+    return NextResponse.json({ error: 'folio_compartido debe ser boolean' }, { status: 400 })
+  }
+  if (tieneRefExt && referencia_externa !== null && typeof referencia_externa !== 'string') {
+    return NextResponse.json({ error: 'referencia_externa inválida (string o null)' }, { status: 400 })
+  }
 
   const tabla = origen === 'mensual' ? 'rendicion_mensual_gastos' : 'rendicion_gastos'
 
@@ -69,7 +92,7 @@ export async function POST(req: Request) {
   // ── Leer valores actuales (para poder deshacer) ───────────────────────────
   const { data: fila, error: eLeer } = await admin
     .from(tabla)
-    .select('id, tipo_documento, folio')
+    .select('id, tipo_documento, folio, sin_documento_aceptado, folio_compartido, referencia_externa')
     .eq('id', gasto_id)
     .maybeSingle()
 
@@ -79,12 +102,18 @@ export async function POST(req: Request) {
   const previo = {
     tipo_documento: fila.tipo_documento ?? null,
     folio: fila.folio ?? null,
+    sin_documento_aceptado: fila.sin_documento_aceptado ?? false,
+    folio_compartido: fila.folio_compartido ?? false,
+    referencia_externa: fila.referencia_externa ?? null,
   }
 
   // ── Armar UPDATE solo con los campos provistos ────────────────────────────
-  const cambios: Record<string, string | null> = {}
+  const cambios: Record<string, string | boolean | null> = {}
   if (tieneTipo) cambios.tipo_documento = tipo_documento
   if (tieneFolio) cambios.folio = folio || null
+  if (tieneSinDocAcept) cambios.sin_documento_aceptado = sin_documento_aceptado
+  if (tieneFolioComp) cambios.folio_compartido = folio_compartido
+  if (tieneRefExt) cambios.referencia_externa = referencia_externa || null
 
   const { error: eUpdate } = await admin.from(tabla).update(cambios).eq('id', gasto_id)
 

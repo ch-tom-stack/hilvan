@@ -36,6 +36,9 @@ function gasto(overrides: Partial<GastoAudit> = {}): GastoAudit {
     fecha_documento: '2026-06-01',
     contexto: 'CH-COT-007',
     descripcion: 'Gasto de prueba',
+    sin_documento_aceptado: false,
+    folio_compartido: false,
+    referencia_externa: null,
     ...overrides,
   }
 }
@@ -120,6 +123,15 @@ describe('regla_sin_documento', () => {
   it('devuelve lista vacía si no hay gastos', () => {
     expect(regla_sin_documento([])).toHaveLength(0)
   })
+
+  it('#1: sin_documento_aceptado=true → severidad info, no alta', () => {
+    const resultado = regla_sin_documento([
+      gasto({ tipo_documento: 'sin_documento', sin_documento_aceptado: true }),
+    ])
+    expect(resultado).toHaveLength(1)
+    expect(resultado[0].severidad).toBe('info')
+    expect(resultado[0].descripcion).toMatch(/aceptado a propósito/)
+  })
 })
 
 // ─── REGLA 2: folio_faltante ──────────────────────────────────────────────────
@@ -143,6 +155,13 @@ describe('regla_folio_faltante', () => {
       gasto({ id: 'g-2', tipo_documento: 'exenta', folio: null }),
     ])
     expect(resultado).toHaveLength(2)
+  })
+
+  it('#4: exenta sin folio pero con referencia_externa → NO se marca (resuelto)', () => {
+    const resultado = regla_folio_faltante([
+      gasto({ tipo_documento: 'exenta', folio: null, referencia_externa: 'INV-2026-0042' }),
+    ])
+    expect(resultado).toHaveLength(0)
   })
 
   it('NO alerta sin_documento (no tiene folio por definición)', () => {
@@ -240,6 +259,30 @@ describe('regla_duplicados', () => {
     expect(exactos[0].severidad).toBe('alta')
     expect(exactos[0].referencia).toContain('g-1')
     expect(exactos[0].referencia).toContain('g-2')
+  })
+
+  it('#2: mismo RUT+folio con folio_compartido=true → factura compartida (info), no duplicado', () => {
+    const resultado = regla_duplicados({
+      gastos: [
+        gasto({ id: 'g-1', rut_emisor: '77.994.916-8', folio: '100', monto: 178_500, folio_compartido: true }),
+        gasto({ id: 'g-2', rut_emisor: '77.994.916-8', folio: '100', monto: 261_800, folio_compartido: true }),
+      ],
+    })
+    expect(resultado.filter((h) => h.regla === 'duplicado_exacto')).toHaveLength(0)
+    const compartida = resultado.filter((h) => h.regla === 'factura_compartida')
+    expect(compartida).toHaveLength(1)
+    expect(compartida[0].severidad).toBe('info')
+    expect(compartida[0].monto).toBe(440_300) // suma del grupo
+  })
+
+  it('#2: si solo UNO del par tiene folio_compartido, sigue siendo duplicado', () => {
+    const resultado = regla_duplicados({
+      gastos: [
+        gasto({ id: 'g-1', rut_emisor: '12.345.678-9', folio: '100', folio_compartido: true }),
+        gasto({ id: 'g-2', rut_emisor: '12.345.678-9', folio: '100', folio_compartido: false }),
+      ],
+    })
+    expect(resultado.filter((h) => h.regla === 'duplicado_exacto')).toHaveLength(1)
   })
 
   it('NO confunde folios distintos del mismo RUT', () => {

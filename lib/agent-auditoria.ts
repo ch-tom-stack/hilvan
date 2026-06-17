@@ -72,6 +72,12 @@ export interface GastoAudit {
   /** Contexto: número de cotización (proyecto) o periodo YYYY-MM (mensual). */
   contexto: string | null
   descripcion: string | null
+  /** true = sin respaldo aceptado a propósito → baja de alta a info. */
+  sin_documento_aceptado: boolean
+  /** true = parte de una factura que cubre varias cotizaciones → no es duplicado. */
+  folio_compartido: boolean
+  /** número de invoice de proveedor extranjero sin folio chileno (resuelve folio faltante). */
+  referencia_externa: string | null
 }
 
 /** Cotización con estado y fechas clave. */
@@ -152,11 +158,12 @@ export function regla_sin_documento(gastos: GastoAudit[]): Hallazgo[] {
     )
     .map((g) => ({
       regla: 'sin_documento',
-      severidad: 'alta' as Severidad,
-      descripcion: `Gasto sin documento tributario${g.descripcion ? ` — "${g.descripcion}"` : ''}${g.contexto ? ` (${g.contexto})` : ''}`,
+      // #1: si se aceptó a propósito (sin_documento_aceptado), baja de alta a info.
+      severidad: (g.sin_documento_aceptado ? 'info' : 'alta') as Severidad,
+      descripcion: `Gasto sin documento tributario${g.sin_documento_aceptado ? ' (aceptado a propósito)' : ''}${g.descripcion ? ` — "${g.descripcion}"` : ''}${g.contexto ? ` (${g.contexto})` : ''}`,
       monto: g.monto,
       referencia: g.id,
-      meta: { origen: g.origen, contexto: g.contexto },
+      meta: { origen: g.origen, contexto: g.contexto, aceptado: g.sin_documento_aceptado },
     }))
 }
 
@@ -175,7 +182,9 @@ export function regla_folio_faltante(gastos: GastoAudit[]): Hallazgo[] {
       (g) =>
         g.tipo_documento &&
         TIPOS_CON_FOLIO.has(g.tipo_documento) &&
-        (!g.folio || g.folio.trim() === ''),
+        (!g.folio || g.folio.trim() === '') &&
+        // #4: un proveedor extranjero sin folio chileno se resuelve con su invoice propio.
+        !(g.referencia_externa && g.referencia_externa.trim() !== ''),
     )
     .map((g) => ({
       regla: 'folio_faltante',
@@ -265,11 +274,26 @@ export function regla_duplicados(input: InputDuplicados): Hallazgo[] {
     if (grupo.length < 2) continue
     const [rut, folio] = key.split('::')
     const ids = grupo.map((g) => g.id)
+    const suma = grupo.reduce((s, g) => s + g.monto, 0)
+    // #2: si TODO el grupo está marcado folio_compartido, es UNA factura que cubre
+    // varias cotizaciones (no un duplicado). Se reporta como info con la suma del
+    // grupo, para verificar que coincide con el monto total de la factura.
+    if (grupo.every((g) => g.folio_compartido)) {
+      hallazgos.push({
+        regla: 'factura_compartida',
+        severidad: 'info',
+        descripcion: `Factura compartida: RUT ${rut} folio ${folio} cubre ${grupo.length} gastos por un total de $${suma.toLocaleString('es-CL')}`,
+        monto: suma,
+        referencia: ids.join(','),
+        meta: { rut_emisor: rut, folio, ids, suma },
+      })
+      continue
+    }
     hallazgos.push({
       regla: 'duplicado_exacto',
       severidad: 'alta',
       descripcion: `Posible gasto duplicado: RUT ${rut} folio ${folio} aparece ${grupo.length} veces`,
-      monto: grupo.reduce((s, g) => s + g.monto, 0),
+      monto: suma,
       referencia: ids.join(','),
       meta: { rut_emisor: rut, folio, ids },
     })
