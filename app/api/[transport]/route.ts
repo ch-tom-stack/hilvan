@@ -1049,6 +1049,166 @@ const baseHandler = createMcpHandler(
           ),
         ),
     )
+
+    // ── CH-10 CRM (pipeline de captación) ─────────────────────────────────────
+    // Etapas: prospecto · calificado · lectura_entregada · conversacion ·
+    // producto_propuesto · cotizacion_enviada · seguimiento · confirmado · nurture · descartado
+    server.registerTool(
+      'hilvan_crear_prospecto',
+      {
+        title: 'Crear prospecto (CRM)',
+        description:
+          'Crea un prospecto en el CRM. empresa REQUERIDO; opcionales: nombre_contacto, email, telefono, origen (linkedin|instagram|referido|feria|web|correo|otro), score (alta|media|baja), decisor, angulo, producto_objetivo (banco|lookbook|spot|sin_definir), arquetipo (feed|temporadas|sin_definir), responsable_id (uuid de profiles), notas, etapa (default prospecto). como_propuesta=true NO crea: deja el lead en la Bandeja de Aprobación (úsalo para leads de correo entrante). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          empresa: z.string(),
+          nombre_contacto: z.string().optional(),
+          email: z.string().optional(),
+          telefono: z.string().optional(),
+          origen: z.string().optional(),
+          score: z.string().optional().describe('alta | media | baja'),
+          decisor: z.string().optional(),
+          angulo: z.string().optional(),
+          producto_objetivo: z.string().optional().describe('banco | lookbook | spot | sin_definir'),
+          arquetipo: z.string().optional().describe('feed | temporadas | sin_definir'),
+          responsable_id: z.string().optional().describe('uuid de profiles'),
+          notas: z.string().optional(),
+          etapa: z.string().optional(),
+          como_propuesta: z.boolean().optional().describe('true = dejar en la Bandeja en vez de crear'),
+          nota_agente: z.string().optional().describe('por qué se propone (solo si como_propuesta)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/crear', args)),
+    )
+
+    server.registerTool(
+      'hilvan_buscar_prospecto',
+      {
+        title: 'Buscar prospecto',
+        description: 'Busca prospectos por empresa, contacto o email.',
+        inputSchema: { q: z.string() },
+      },
+      async ({ q }, extra) => ok(await callAgent(extra as ToolExtra, 'GET', `/crm/buscar?q=${encodeURIComponent(q)}`)),
+    )
+
+    server.registerTool(
+      'hilvan_pipeline',
+      {
+        title: 'Pipeline CRM',
+        description: 'Lista el pipeline de prospectos con conteo por etapa. Filtros opcionales: responsable (uuid) y etapa.',
+        inputSchema: {
+          responsable: z.string().optional().describe('uuid de profiles'),
+          etapa: z.string().optional(),
+        },
+      },
+      async (args, extra) => {
+        const qs = new URLSearchParams()
+        if (args.responsable) qs.set('responsable', args.responsable)
+        if (args.etapa) qs.set('etapa', args.etapa)
+        const s = qs.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/crm/pipeline${s ? `?${s}` : ''}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_mover_etapa',
+      {
+        title: 'Mover etapa de prospecto',
+        description: 'Cambia la etapa de un prospecto. Valida que la etapa exista. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: { prospecto_id: z.string(), etapa: z.string() },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/mover-etapa', args)),
+    )
+
+    server.registerTool(
+      'hilvan_registrar_interaccion',
+      {
+        title: 'Registrar interacción (CRM)',
+        description:
+          'Agrega un toque a la bitácora de un prospecto. Indica al menos resumen o proximo_paso. Fechas en YYYY-MM-DD. tipo: correo|reunion|lectura|llamada|mensaje. CONFIRMA antes de llamar.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          fecha: z.string().optional().describe('YYYY-MM-DD'),
+          tipo: z.string().optional(),
+          resumen: z.string().optional(),
+          proximo_paso: z.string().optional(),
+          fecha_proximo: z.string().optional().describe('YYYY-MM-DD'),
+          gmail_thread: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/interaccion', args)),
+    )
+
+    server.registerTool(
+      'hilvan_proximos_seguimientos',
+      {
+        title: 'Próximos seguimientos (CRM)',
+        description: 'Prospectos con próximo paso vencido o que vence dentro de `dias` (default 7), de prospectos aún activos. Para alertas y recordatorios.',
+        inputSchema: { dias: z.number().optional().describe('ventana en días (default 7)') },
+      },
+      async ({ dias }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/seguimientos${dias ? `?dias=${encodeURIComponent(dias)}` : ''}`)),
+    )
+
+    server.registerTool(
+      'hilvan_registrar_lectura',
+      {
+        title: 'Registrar La Lectura (CRM)',
+        description: 'Guarda "La Lectura" de un prospecto y aplica la heurística E7 (feed→banco, temporadas→lookbook): completa producto_objetivo/arquetipo si faltan y avanza la etapa a lectura_entregada. producto_derivado: banco|lookbook.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          url: z.string().optional(),
+          dossier_ref: z.string().optional(),
+          producto_derivado: z.string().optional().describe('banco | lookbook'),
+          fecha: z.string().optional().describe('YYYY-MM-DD'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/lectura', args)),
+    )
+
+    server.registerTool(
+      'hilvan_derivar_brief_cotizacion',
+      {
+        title: 'Derivar brief a cotización (CRM)',
+        description: 'Genera un brief estratégico desde el prospecto y lo deja como PROPUESTA en la Bandeja (tipo brief_cotizacion). NUNCA deriva solo a cotización: requiere aprobación. Úsalo cuando el prospecto se confirma.',
+        inputSchema: { prospecto_id: z.string(), nota_agente: z.string().optional() },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/brief', args)),
+    )
+
+    server.registerTool(
+      'hilvan_metricas_crm',
+      {
+        title: 'Métricas CRM',
+        description: 'Métricas del CRM: concentración Falabella (KPI norte de diversificación: % no-Falabella en pipeline y en ganados) + conteo por etapa y por responsable.',
+        inputSchema: {},
+      },
+      async (_args, extra) => ok(await callAgent(extra as ToolExtra, 'GET', '/crm/metricas')),
+    )
+
+    server.registerTool(
+      'hilvan_listar_aprobaciones',
+      {
+        title: 'Bandeja de aprobación (CRM)',
+        description: 'Lista la Bandeja de Aprobación del CRM (crm_aprobaciones). estado: pendiente (default) | aprobado | descartado | todos.',
+        inputSchema: { estado: z.string().optional() },
+      },
+      async ({ estado }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/aprobaciones${estado ? `?estado=${encodeURIComponent(estado)}` : ''}`)),
+    )
+
+    server.registerTool(
+      'hilvan_resolver_aprobacion',
+      {
+        title: 'Resolver aprobación (CRM)',
+        description:
+          'Resuelve un ítem de la Bandeja. accion=aprobado APLICA el cambio (crea prospecto / mueve etapa / registra interacción); brief_cotizacion y correo_borrador solo se marcan aprobados (ejecución externa = fases posteriores). accion=descartado lo archiva. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          aprobacion_id: z.string(),
+          accion: z.string().describe('aprobado | descartado'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/resolver-aprobacion', args)),
+    )
   },
   {},
   {

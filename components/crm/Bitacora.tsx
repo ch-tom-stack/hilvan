@@ -1,0 +1,144 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import type { CrmInteraccion } from '@/types'
+import { TIPOS_INTERACCION } from '@/types'
+import { registrarInteraccion, type InteraccionInput } from '@/app/actions/crm'
+import { toastOk, toastError } from '@/lib/toast'
+import { formatFecha, parseFechaLocal } from '@/lib/fechas'
+
+function hoyISO(): string {
+  // Fecha local de Chile en formato YYYY-MM-DD (sin correrse por UTC)
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
+}
+
+function estaVencida(fecha?: string | null): boolean {
+  if (!fecha) return false
+  return parseFechaLocal(fecha).getTime() < parseFechaLocal(hoyISO()).getTime()
+}
+
+interface Props {
+  prospectoId: string
+  interacciones: CrmInteraccion[]
+}
+
+export default function Bitacora({ prospectoId, interacciones }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [abierto, setAbierto] = useState(false)
+  const [form, setForm] = useState<InteraccionInput>({
+    fecha: hoyISO(),
+    tipo: 'correo',
+    resumen: '',
+    proximo_paso: '',
+    fecha_proximo: '',
+  })
+
+  const set = (k: keyof InteraccionInput, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  const submit = () => {
+    if (!form.resumen?.trim()) {
+      toastError('Escribe un resumen de la interacción')
+      return
+    }
+    startTransition(async () => {
+      try {
+        const res = await registrarInteraccion(prospectoId, form)
+        if (res.error) { toastError(res.error); return }
+        toastOk('Interacción registrada')
+        setForm({ fecha: hoyISO(), tipo: 'correo', resumen: '', proximo_paso: '', fecha_proximo: '' })
+        setAbierto(false)
+        router.refresh()
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al registrar')
+      }
+    })
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted">Bitácora</h2>
+        <button
+          onClick={() => setAbierto(!abierto)}
+          className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-green hover:text-ch-green-light transition-colors"
+        >
+          {abierto ? 'Cancelar' : '+ Registrar'}
+        </button>
+      </div>
+
+      {abierto && (
+        <div className="border border-ch-border bg-ch-surface/30 p-4 mb-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Fecha</label>
+              <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} className="input-ch w-full" />
+            </div>
+            <div>
+              <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Tipo</label>
+              <select value={form.tipo} onChange={e => set('tipo', e.target.value)} className="input-ch w-full capitalize">
+                {TIPOS_INTERACCION.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Resumen</label>
+            <textarea value={form.resumen} onChange={e => set('resumen', e.target.value)} rows={2} className="input-ch w-full resize-none"
+              placeholder="Qué pasó en este toque" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Próximo paso</label>
+              <input value={form.proximo_paso} onChange={e => set('proximo_paso', e.target.value)} className="input-ch w-full"
+                placeholder="Qué sigue" />
+            </div>
+            <div>
+              <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Fecha próximo paso</label>
+              <input type="date" value={form.fecha_proximo} onChange={e => set('fecha_proximo', e.target.value)} className="input-ch w-full" />
+            </div>
+          </div>
+          <button onClick={submit} disabled={isPending || !form.resumen?.trim()}
+            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-2.5 transition-colors disabled:opacity-50">
+            {isPending ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      )}
+
+      {interacciones.length === 0 ? (
+        <p className="font-body text-sm text-ch-subtle">Sin interacciones registradas todavía.</p>
+      ) : (
+        <ol className="space-y-0">
+          {interacciones.map(i => {
+            const vencida = estaVencida(i.fecha_proximo)
+            return (
+              <li key={i.id} className="border-l border-ch-border pl-4 pb-5 relative">
+                <span className="absolute left-0 top-1.5 -translate-x-1/2 w-1.5 h-1.5 bg-ch-muted" />
+                <div className="flex items-center gap-3 mb-1">
+                  {i.tipo && (
+                    <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle border border-ch-border px-2 py-0.5 capitalize">
+                      {i.tipo}
+                    </span>
+                  )}
+                  <span className="font-body text-[11px] text-ch-muted">{formatFecha(i.fecha)}</span>
+                </div>
+                {i.resumen && <p className="font-body text-sm text-ch-cream mb-1">{i.resumen}</p>}
+                {i.proximo_paso && (
+                  <p className="font-body text-xs text-ch-muted">
+                    <span className="text-ch-subtle">Próximo: </span>
+                    {i.proximo_paso}
+                    {i.fecha_proximo && (
+                      <span className={`ml-1 ${vencida ? 'text-ch-gold font-medium' : 'text-ch-subtle'}`}>
+                        · {formatFecha(i.fecha_proximo)}{vencida ? ' (vencido)' : ''}
+                      </span>
+                    )}
+                  </p>
+                )}
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </div>
+  )
+}

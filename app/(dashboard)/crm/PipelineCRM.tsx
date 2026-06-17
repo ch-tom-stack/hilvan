@@ -1,0 +1,379 @@
+'use client'
+
+import { useMemo, useState, useTransition } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import type { Prospecto, EtapaProspecto } from '@/types'
+import {
+  ETAPA_PROSPECTO_LABELS,
+  ETAPAS_PIPELINE_ACTIVAS,
+  ETAPAS_CAJON,
+  ORIGENES_PROSPECTO,
+  SCORES_PROSPECTO,
+} from '@/types'
+import { moverEtapa } from '@/app/actions/crm'
+import { toastOk, toastError } from '@/lib/toast'
+import TarjetaProspecto, { Tag } from '@/components/crm/TarjetaProspecto'
+import type { MetricasCrm } from '@/app/actions/crm'
+
+interface Props {
+  prospectos: Prospecto[]
+  metricas: MetricasCrm
+  pendientesIds: string[]
+  totalBandeja: number
+}
+
+type Vista = 'kanban' | 'tabla'
+
+export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja }: Props) {
+  const router = useRouter()
+  const [, startTransition] = useTransition()
+  const [vista, setVista] = useState<Vista>('kanban')
+  const [cajonAbierto, setCajonAbierto] = useState(false)
+  const pendientesSet = useMemo(() => new Set(pendientesIds), [pendientesIds])
+
+  // filtros
+  const [fResponsable, setFResponsable] = useState('')
+  const [fOrigen, setFOrigen] = useState('')
+  const [fScore, setFScore] = useState('')
+
+  // drag & drop
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState<EtapaProspecto | null>(null)
+  // confirmación inline al mover a 'confirmado'
+  const [pendiente, setPendiente] = useState<{ id: string; etapa: EtapaProspecto } | null>(null)
+
+  const responsables = useMemo(() => {
+    const set = new Map<string, string>()
+    for (const p of prospectos) {
+      if (p.responsable) set.set(p.responsable.id, p.responsable.nombre)
+    }
+    return Array.from(set.entries())
+  }, [prospectos])
+
+  const filtrados = useMemo(() => {
+    return prospectos.filter(p => {
+      if (fResponsable && p.responsable?.id !== fResponsable) return false
+      if (fOrigen && p.origen !== fOrigen) return false
+      if (fScore && p.score !== fScore) return false
+      return true
+    })
+  }, [prospectos, fResponsable, fOrigen, fScore])
+
+  const porEtapa = useMemo(() => {
+    const map = new Map<EtapaProspecto, Prospecto[]>()
+    for (const e of [...ETAPAS_PIPELINE_ACTIVAS, ...ETAPAS_CAJON]) map.set(e, [])
+    for (const p of filtrados) {
+      const arr = map.get(p.etapa)
+      if (arr) arr.push(p)
+    }
+    return map
+  }, [filtrados])
+
+  const ejecutarMovimiento = (id: string, etapa: EtapaProspecto) => {
+    startTransition(async () => {
+      const res = await moverEtapa(id, etapa)
+      if (res.error) toastError(res.error)
+      else {
+        toastOk(`Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`)
+        router.refresh()
+      }
+    })
+  }
+
+  const onDrop = (etapa: EtapaProspecto) => {
+    setDragOver(null)
+    const id = draggedId
+    setDraggedId(null)
+    if (!id) return
+    const actual = prospectos.find(p => p.id === id)
+    if (!actual || actual.etapa === etapa) return
+    // Mover a 'confirmado' dispara handoff (F5) → pedir confirmación inline
+    if (etapa === 'confirmado') {
+      setPendiente({ id, etapa })
+      return
+    }
+    ejecutarMovimiento(id, etapa)
+  }
+
+  const limpiarFiltros = () => { setFResponsable(''); setFOrigen(''); setFScore('') }
+  const hayFiltros = fResponsable || fOrigen || fScore
+
+  return (
+    <>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-8 gap-4">
+        <div>
+          <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-2">Módulo CH-10</p>
+          <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">CRM</h1>
+        </div>
+        <div className="flex gap-3 flex-shrink-0">
+          <Link
+            href="/crm/aprobaciones"
+            className="relative border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
+          >
+            Bandeja
+            {totalBandeja > 0 && (
+              <span className="absolute -top-2 -right-2 bg-ch-gold text-ch-black font-body text-[10px] font-medium w-5 h-5 flex items-center justify-center">
+                {totalBandeja}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/crm/nuevo"
+            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
+          >
+            + Nuevo
+          </Link>
+        </div>
+      </div>
+
+      {/* Banda de métricas */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+        <MetricaCard
+          label="En pipeline"
+          valor={`${metricas.totalPipeline}`}
+          sub="prospectos activos"
+        />
+        <MetricaCard
+          label="Por contactar"
+          valor={`${metricas.porContactar}`}
+          sub="en etapa prospecto"
+          acento={metricas.porContactar > 0 ? 'gold' : undefined}
+        />
+        <MetricaCard
+          label="En seguimiento"
+          valor={`${metricas.enSeguimiento}`}
+          sub="esperando respuesta"
+        />
+        <MetricaCard
+          label="Confirmados"
+          valor={`${metricas.totalGanados}`}
+          sub="ganados"
+          acento={metricas.totalGanados > 0 ? 'green' : undefined}
+        />
+      </div>
+
+      {/* Toolbar: vista + filtros */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex border border-ch-border">
+          {(['kanban', 'tabla'] as Vista[]).map(v => (
+            <button
+              key={v}
+              onClick={() => setVista(v)}
+              className={`font-body text-[10px] tracking-[0.3em] uppercase px-4 py-2 transition-colors ${
+                vista === v ? 'bg-ch-surface text-ch-cream' : 'text-ch-muted hover:text-ch-cream'
+              }`}
+            >
+              {v === 'kanban' ? 'Kanban' : 'Tabla'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-2 ml-auto">
+          <select value={fResponsable} onChange={e => setFResponsable(e.target.value)} className="input-ch text-xs py-2">
+            <option value="">Responsable · todos</option>
+            {responsables.map(([id, nombre]) => <option key={id} value={id}>{nombre}</option>)}
+          </select>
+          <select value={fOrigen} onChange={e => setFOrigen(e.target.value)} className="input-ch text-xs py-2">
+            <option value="">Origen · todos</option>
+            {ORIGENES_PROSPECTO.map(o => <option key={o} value={o} className="capitalize">{o}</option>)}
+          </select>
+          <select value={fScore} onChange={e => setFScore(e.target.value)} className="input-ch text-xs py-2">
+            <option value="">Score · todos</option>
+            {SCORES_PROSPECTO.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+          </select>
+          {hayFiltros && (
+            <button onClick={limpiarFiltros} className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-muted hover:text-ch-cream px-2 transition-colors">
+              Limpiar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Confirmación inline */}
+      {pendiente && (
+        <div className="mb-6 border border-ch-gold bg-ch-gold/10 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="font-body text-sm text-ch-cream">
+            Mover <strong>{prospectos.find(p => p.id === pendiente.id)?.empresa}</strong> a <strong>Confirmado</strong>.
+            En F5 esto generará un brief para cotización.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { ejecutarMovimiento(pendiente.id, pendiente.etapa); setPendiente(null) }}
+              className="bg-ch-gold hover:bg-ch-gold-light text-ch-black font-body text-[10px] tracking-[0.3em] uppercase px-5 py-2 transition-colors"
+            >
+              Confirmar
+            </button>
+            <button
+              onClick={() => setPendiente(null)}
+              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.3em] uppercase px-5 py-2 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {vista === 'kanban' ? (
+        <KanbanView
+          porEtapa={porEtapa}
+          dragOver={dragOver}
+          setDragOver={setDragOver}
+          onDragStartCard={setDraggedId}
+          onDrop={onDrop}
+          cajonAbierto={cajonAbierto}
+          setCajonAbierto={setCajonAbierto}
+          pendientesSet={pendientesSet}
+        />
+      ) : (
+        <TablaView prospectos={filtrados} />
+      )}
+    </>
+  )
+}
+
+function MetricaCard({ label, valor, sub, acento }: { label: string; valor: string; sub: string; acento?: 'green' | 'gold' }) {
+  const color = acento === 'green' ? 'text-ch-green' : acento === 'gold' ? 'text-ch-gold' : 'text-ch-cream'
+  return (
+    <div className="border border-ch-border bg-ch-surface/30 p-4">
+      <p className="font-body text-[9px] tracking-[0.25em] uppercase text-ch-subtle mb-2">{label}</p>
+      <p className={`font-display italic text-3xl leading-none ${color}`}>{valor}</p>
+      <p className="font-body text-[11px] text-ch-muted mt-2">{sub}</p>
+    </div>
+  )
+}
+
+function KanbanView({
+  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, setCajonAbierto, pendientesSet,
+}: {
+  porEtapa: Map<EtapaProspecto, Prospecto[]>
+  dragOver: EtapaProspecto | null
+  setDragOver: (e: EtapaProspecto | null) => void
+  onDragStartCard: (id: string) => void
+  onDrop: (e: EtapaProspecto) => void
+  cajonAbierto: boolean
+  setCajonAbierto: (v: boolean) => void
+  pendientesSet: Set<string>
+}) {
+  return (
+    <div className="flex gap-4">
+      {/* Tablero principal */}
+      <div className="flex-1 overflow-x-auto">
+        <div className="flex gap-3 min-w-max pb-4">
+          {ETAPAS_PIPELINE_ACTIVAS.map(etapa => {
+            const cards = porEtapa.get(etapa) ?? []
+            return (
+              <div
+                key={etapa}
+                onDragOver={e => { e.preventDefault(); setDragOver(etapa) }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={() => onDrop(etapa)}
+                className={`w-64 shrink-0 border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
+              >
+                <div className="px-3 py-3 border-b border-ch-border flex items-center justify-between">
+                  <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted">
+                    {ETAPA_PROSPECTO_LABELS[etapa]}
+                  </span>
+                  <span className="font-body text-[10px] text-ch-subtle">{cards.length}</span>
+                </div>
+                <div className="p-2 space-y-2 min-h-[120px]">
+                  {cards.map(p => (
+                    <TarjetaProspecto
+                      key={p.id}
+                      prospecto={p}
+                      draggable
+                      onDragStart={() => onDragStartCard(p.id)}
+                      pendiente={pendientesSet.has(p.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Cajón lateral: nurture + descartado */}
+      <div className="shrink-0">
+        <button
+          onClick={() => setCajonAbierto(!cajonAbierto)}
+          className="h-full w-10 border border-ch-border bg-ch-black/20 text-ch-muted hover:text-ch-cream transition-colors flex items-center justify-center"
+          title="Nurture y descartados"
+        >
+          <span className="font-body text-[9px] tracking-[0.3em] uppercase [writing-mode:vertical-rl] rotate-180">
+            {cajonAbierto ? 'Cerrar' : 'Nurture / Descartados'}
+          </span>
+        </button>
+      </div>
+
+      {cajonAbierto && (
+        <div className="shrink-0 flex gap-3">
+          {ETAPAS_CAJON.map(etapa => {
+            const cards = porEtapa.get(etapa) ?? []
+            return (
+              <div
+                key={etapa}
+                onDragOver={e => { e.preventDefault(); setDragOver(etapa) }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={() => onDrop(etapa)}
+                className={`w-56 shrink-0 border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
+              >
+                <div className="px-3 py-3 border-b border-ch-border flex items-center justify-between">
+                  <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted">
+                    {ETAPA_PROSPECTO_LABELS[etapa]}
+                  </span>
+                  <span className="font-body text-[10px] text-ch-subtle">{cards.length}</span>
+                </div>
+                <div className="p-2 space-y-2 min-h-[120px]">
+                  {cards.map(p => (
+                    <TarjetaProspecto key={p.id} prospecto={p} draggable onDragStart={() => onDragStartCard(p.id)} pendiente={pendientesSet.has(p.id)} />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TablaView({ prospectos }: { prospectos: Prospecto[] }) {
+  if (prospectos.length === 0) {
+    return (
+      <div className="border border-ch-border p-10 text-center">
+        <p className="font-body text-sm text-ch-muted">No hay prospectos que coincidan con los filtros.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="border border-ch-border overflow-x-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="border-b border-ch-border">
+            {['Empresa', 'Contacto', 'Etapa', 'Producto', 'Score', 'Responsable'].map(h => (
+              <th key={h} className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle px-4 py-3">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {prospectos.map(p => (
+            <tr key={p.id} className="border-b border-ch-border/50 hover:bg-ch-surface/30 transition-colors">
+              <td className="px-4 py-3">
+                <Link href={`/crm/${p.id}`} className="font-display italic text-base text-ch-cream hover:text-white transition-colors">
+                  {p.empresa}
+                </Link>
+              </td>
+              <td className="px-4 py-3 font-body text-xs text-ch-muted">{p.nombre_contacto ?? '—'}</td>
+              <td className="px-4 py-3"><Tag className="border-ch-border text-ch-muted">{ETAPA_PROSPECTO_LABELS[p.etapa]}</Tag></td>
+              <td className="px-4 py-3 font-body text-xs text-ch-muted capitalize">{p.producto_objetivo && p.producto_objetivo !== 'sin_definir' ? p.producto_objetivo : '—'}</td>
+              <td className="px-4 py-3 font-body text-xs text-ch-muted capitalize">{p.score ?? '—'}</td>
+              <td className="px-4 py-3 font-body text-xs text-ch-muted">{p.responsable?.nombre ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

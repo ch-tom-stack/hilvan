@@ -124,3 +124,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.inversiones TO service_role;
 -- CREATE POLICY "admin_all_movimientos_bancarios" ON movimientos_bancarios FOR ALL TO authenticated USING (true) WITH CHECK (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.movimientos_bancarios TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.movimientos_bancarios TO service_role;
+
+-- CH-10 CRM (schema completo en sql/crm.sql)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prospectos        TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_interacciones TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_lecturas      TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_aprobaciones  TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prospectos        TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_interacciones TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_lecturas      TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_aprobaciones  TO service_role;

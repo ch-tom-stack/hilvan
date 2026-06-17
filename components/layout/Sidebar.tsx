@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 
 const BASE_NAV_ITEMS = [
   { label: 'Dashboard',     href: '/dashboard',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },
+  { label: 'CRM',           href: '/crm',           disponible: true,  rolesPermitidos: ['admin', 'productor'], ocultarPara: null },
   { label: 'Cotizaciones',  href: '/cotizaciones',  disponible: true,  rolesPermitidos: null,              ocultarPara: null },
   { label: 'Rodajes',       href: '/rodaje',        disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
   { label: 'Centro de costos', href: '/costos',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },

@@ -396,6 +396,71 @@ const TOOLS = [
     run: (a) => api('POST', '/eliminar-gasto', a),
   },
   {
+    name: 'hilvan_cotizacion_precio_categoria',
+    description: 'Fija (o limpia) el precio NATIVO de bundle de una categoría (departamento) o subcategoría (subgrupo). Casa Hiedra precia el bundle, no equipo por equipo: con precio_manual seteado, el total de la categoría es ese valor y los ítems pasan a ser solo descripción. precio_manual=null vuelve a sumar los ítems. Obtén ids con hilvan_items_cotizacion. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nivel: { type: 'string', description: 'departamento | subgrupo' },
+        id: { type: 'string', description: 'id de la categoría o subcategoría' },
+        precio_manual: { type: ['number', 'null'], description: 'monto del bundle (≥0), o null para volver a sumar ítems' },
+      },
+      required: ['nivel', 'id'],
+    },
+    run: (a) => api('POST', '/cotizacion-precio-categoria', a),
+  },
+  {
+    name: 'hilvan_cotizacion_estado',
+    description: 'Cambia el estado de una cotización (borrador, enviada, aprobada, rechazada, en_produccion, cerrada). Útil para desaprobar → corregir → reaprobar. Reversible con hilvan_deshacer (restaura el estado previo). CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cotizacion_id: { type: 'string' },
+        estado: { type: 'string', description: 'borrador | enviada | aprobada | rechazada | en_produccion | cerrada' },
+      },
+      required: ['cotizacion_id', 'estado'],
+    },
+    run: (a) => api('POST', '/cotizacion-estado', a),
+  },
+  {
+    name: 'hilvan_cotizacion_editar_item',
+    description: 'Edita un ítem existente de una cotización: precio_cliente, nombre, descripcion, incluido, cantidad, dias. Debe venir al menos un campo. Obtén item_id con hilvan_items_cotizacion. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        item_id: { type: 'string' },
+        precio_cliente: { type: 'number', description: 'precio al cliente (≥0)' },
+        nombre: { type: 'string' },
+        descripcion: { type: 'string' },
+        incluido: { type: 'boolean', description: 'true = "Incluida", no suma al total' },
+        cantidad: { type: 'number' },
+        dias: { type: 'number' },
+      },
+      required: ['item_id'],
+    },
+    run: (a) => api('POST', '/cotizacion-editar-item', a),
+  },
+  {
+    name: 'hilvan_cotizacion_categoria',
+    description: 'Gestiona la estructura de categorías de una cotización. accion: "crear" {cotizacion_id, nivel, nombre, orden?, departamento_id? si subgrupo}; "renombrar" {nivel, id, nombre}; "reordenar" {nivel, id, orden}; "eliminar" {nivel, id} (solo si NO tiene ítems ni subgrupos); "mover_item" {item_id, departamento_id, subgrupo_id?}. nivel = departamento | subgrupo. Obtén ids con hilvan_items_cotizacion. Reversibles con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        accion: { type: 'string', description: 'crear | renombrar | reordenar | eliminar | mover_item' },
+        nivel: { type: 'string', description: 'departamento | subgrupo' },
+        cotizacion_id: { type: 'string' },
+        id: { type: 'string', description: 'id de la categoría/subcategoría (renombrar/reordenar/eliminar)' },
+        nombre: { type: 'string' },
+        orden: { type: 'number' },
+        departamento_id: { type: 'string', description: 'depto destino (crear subgrupo / mover_item)' },
+        subgrupo_id: { type: 'string', description: 'subgrupo destino en mover_item (omitir = ítem directo)' },
+        item_id: { type: 'string', description: 'ítem a mover (mover_item)' },
+      },
+      required: ['accion'],
+    },
+    run: (a) => api('POST', '/cotizacion-categoria', a),
+  },
+  {
     name: 'hilvan_importar_movimientos',
     description: 'Importa movimientos de tarjeta/cuenta (extracto). Recibe un array `movimientos`, cada uno con fecha (YYYY-MM-DD), monto (>0), tipo ("cargo"=salida | "abono"=entrada) y opcionalmente descripcion/fuente/referencia. Valida TODAS las filas antes de escribir; reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
     inputSchema: {
@@ -756,6 +821,142 @@ const TOOLS = [
       },
     },
     run: (a) => api('GET', `/estado-financiero${a.periodo ? `?periodo=${encodeURIComponent(a.periodo)}` : ''}`),
+  },
+
+  // ── CH-10 CRM (pipeline de captación) ──────────────────────────────────────
+  // Etapas válidas: prospecto · calificado · lectura_entregada · conversacion ·
+  // producto_propuesto · cotizacion_enviada · seguimiento · confirmado · nurture · descartado
+  {
+    name: 'hilvan_crear_prospecto',
+    description: 'Crea un prospecto en el CRM (pipeline de captación). Campos: empresa (REQUERIDO), nombre_contacto, email, telefono, origen (linkedin|instagram|referido|feria|web|correo|otro), score (alta|media|baja), decisor, angulo (gancho de acercamiento), producto_objetivo (banco|lookbook|spot|sin_definir), arquetipo (feed|temporadas|sin_definir), responsable_id (uuid de profiles), notas, etapa (default prospecto). Si pasas como_propuesta=true NO se crea: queda en la Bandeja de Aprobación para que un humano lo apruebe (úsalo cuando el lead viene de un correo entrante). CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        empresa: { type: 'string' },
+        nombre_contacto: { type: 'string' },
+        email: { type: 'string' },
+        telefono: { type: 'string' },
+        origen: { type: 'string' },
+        score: { type: 'string', description: 'alta | media | baja' },
+        decisor: { type: 'string' },
+        angulo: { type: 'string' },
+        producto_objetivo: { type: 'string', description: 'banco | lookbook | spot | sin_definir' },
+        arquetipo: { type: 'string', description: 'feed | temporadas | sin_definir' },
+        responsable_id: { type: 'string', description: 'uuid de profiles' },
+        notas: { type: 'string' },
+        etapa: { type: 'string' },
+        como_propuesta: { type: 'boolean', description: 'true = dejar en la Bandeja en vez de crear' },
+        nota_agente: { type: 'string', description: 'por qué se propone (solo si como_propuesta)' },
+      },
+      required: ['empresa'],
+    },
+    run: (a) => api('POST', '/crm/crear', a),
+  },
+  {
+    name: 'hilvan_buscar_prospecto',
+    description: 'Busca prospectos por empresa, contacto o email.',
+    inputSchema: { type: 'object', properties: { q: { type: 'string' } }, required: ['q'] },
+    run: (a) => api('GET', `/crm/buscar?q=${encodeURIComponent(a.q)}`),
+  },
+  {
+    name: 'hilvan_pipeline',
+    description: 'Lista el pipeline de prospectos con conteo por etapa. Filtros opcionales: responsable (uuid) y etapa.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        responsable: { type: 'string', description: 'uuid de profiles' },
+        etapa: { type: 'string' },
+      },
+    },
+    run: (a) => {
+      const qs = new URLSearchParams()
+      if (a.responsable) qs.set('responsable', a.responsable)
+      if (a.etapa) qs.set('etapa', a.etapa)
+      const s = qs.toString()
+      return api('GET', `/crm/pipeline${s ? `?${s}` : ''}`)
+    },
+  },
+  {
+    name: 'hilvan_mover_etapa',
+    description: 'Cambia la etapa de un prospecto. Valida que la etapa exista. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: { prospecto_id: { type: 'string' }, etapa: { type: 'string' } },
+      required: ['prospecto_id', 'etapa'],
+    },
+    run: (a) => api('POST', '/crm/mover-etapa', a),
+  },
+  {
+    name: 'hilvan_registrar_interaccion',
+    description: 'Agrega un toque a la bitácora de un prospecto. Indica al menos resumen o proximo_paso. Fechas en YYYY-MM-DD. tipo: correo|reunion|lectura|llamada|mensaje. CONFIRMA antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prospecto_id: { type: 'string' },
+        fecha: { type: 'string', description: 'YYYY-MM-DD' },
+        tipo: { type: 'string' },
+        resumen: { type: 'string' },
+        proximo_paso: { type: 'string' },
+        fecha_proximo: { type: 'string', description: 'YYYY-MM-DD' },
+        gmail_thread: { type: 'string' },
+      },
+      required: ['prospecto_id'],
+    },
+    run: (a) => api('POST', '/crm/interaccion', a),
+  },
+  {
+    name: 'hilvan_proximos_seguimientos',
+    description: 'Prospectos con próximo paso vencido o que vence dentro de `dias` (default 7), de prospectos aún activos. Para alertas y recordatorios.',
+    inputSchema: { type: 'object', properties: { dias: { type: 'number', description: 'ventana en días (default 7)' } } },
+    run: (a) => api('GET', `/crm/seguimientos${a.dias ? `?dias=${encodeURIComponent(a.dias)}` : ''}`),
+  },
+  {
+    name: 'hilvan_registrar_lectura',
+    description: 'Guarda "La Lectura" de un prospecto y aplica la heurística E7 (feed→banco, temporadas→lookbook): completa producto_objetivo/arquetipo si faltan y avanza la etapa a lectura_entregada. producto_derivado: banco|lookbook.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prospecto_id: { type: 'string' },
+        url: { type: 'string' },
+        dossier_ref: { type: 'string' },
+        producto_derivado: { type: 'string', description: 'banco | lookbook' },
+        fecha: { type: 'string', description: 'YYYY-MM-DD' },
+      },
+      required: ['prospecto_id'],
+    },
+    run: (a) => api('POST', '/crm/lectura', a),
+  },
+  {
+    name: 'hilvan_derivar_brief_cotizacion',
+    description: 'Genera un brief estratégico desde el prospecto y lo deja como PROPUESTA en la Bandeja (tipo brief_cotizacion). NUNCA deriva solo a cotización: requiere aprobación. Úsalo cuando el prospecto se confirma.',
+    inputSchema: {
+      type: 'object',
+      properties: { prospecto_id: { type: 'string' }, nota_agente: { type: 'string' } },
+      required: ['prospecto_id'],
+    },
+    run: (a) => api('POST', '/crm/brief', a),
+  },
+  {
+    name: 'hilvan_metricas_crm',
+    description: 'Métricas del CRM: concentración Falabella (KPI norte de diversificación: % no-Falabella en pipeline y en ganados) + conteo por etapa y por responsable.',
+    inputSchema: { type: 'object', properties: {} },
+    run: () => api('GET', '/crm/metricas'),
+  },
+  {
+    name: 'hilvan_listar_aprobaciones',
+    description: 'Lista la Bandeja de Aprobación del CRM (crm_aprobaciones). estado: pendiente (default) | aprobado | descartado | todos.',
+    inputSchema: { type: 'object', properties: { estado: { type: 'string' } } },
+    run: (a) => api('GET', `/crm/aprobaciones${a.estado ? `?estado=${encodeURIComponent(a.estado)}` : ''}`),
+  },
+  {
+    name: 'hilvan_resolver_aprobacion',
+    description: 'Resuelve un ítem de la Bandeja. accion=aprobado APLICA el cambio (crea prospecto / mueve etapa / registra interacción); brief_cotizacion y correo_borrador solo se marcan aprobados (ejecución externa = fases posteriores). accion=descartado lo archiva. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: { aprobacion_id: { type: 'string' }, accion: { type: 'string', description: 'aprobado | descartado' } },
+      required: ['aprobacion_id', 'accion'],
+    },
+    run: (a) => api('POST', '/crm/resolver-aprobacion', a),
   },
 ]
 

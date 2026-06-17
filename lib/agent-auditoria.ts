@@ -459,12 +459,60 @@ export function regla_cotizacion_estancada(
   return hallazgos
 }
 
+// ─── REGLA 7: Prospectos estancados (CH-10 CRM) ──────────────────────────────
+
+/** Prospecto del CRM con su última actividad, para la regla de estancamiento. */
+export interface ProspectoAudit {
+  id: string
+  empresa: string
+  etapa: string
+  responsable?: string | null
+  /** Fecha de la última actividad (interacción o creación), YYYY-MM-DD. */
+  ultima_actividad: string | null
+}
+
+export interface InputProspectosEstancados {
+  prospectos: ProspectoAudit[]
+  dias_estancado: number
+  hoy: string
+}
+
+/**
+ * Detecta prospectos ACTIVOS (no confirmados, descartados ni en nurture) sin
+ * actividad en más de `dias_estancado` días. Riesgo de diversificación: leads
+ * que se enfrían sin seguimiento. MEDIA; ALTA si lleva >= 2x el umbral.
+ */
+export function regla_prospectos_estancados(input: InputProspectosEstancados): Hallazgo[] {
+  const { prospectos, dias_estancado, hoy } = input
+  const INACTIVAS = ['confirmado', 'descartado', 'nurture']
+  const hallazgos: Hallazgo[] = []
+
+  for (const p of prospectos) {
+    if (INACTIVAS.includes(p.etapa)) continue
+    if (!p.ultima_actividad) continue
+    const dias = diasEntre(p.ultima_actividad, hoy)
+    if (dias < dias_estancado) continue
+
+    hallazgos.push({
+      regla: 'prospecto_estancado',
+      severidad: dias >= dias_estancado * 2 ? 'alta' : 'media',
+      descripcion: `Prospecto "${p.empresa}" sin actividad hace ${dias} días${p.responsable ? ` — ${p.responsable}` : ''}`,
+      referencia: p.id,
+      meta: { dias_inactivo: dias, etapa: p.etapa, responsable: p.responsable ?? null },
+    })
+  }
+
+  return hallazgos
+}
+
 // ─── ORQUESTADOR: aplica todas las reglas al dataset completo ─────────────────
 
 export interface DatasetAuditoria {
   gastos: GastoAudit[]
   cotizaciones: CotizacionAudit[]
   colaboradores: ColaboradorAudit[]
+  /** Prospectos del CRM (CH-10). Opcional para no romper llamadas previas. */
+  prospectos?: ProspectoAudit[]
   /** Configuración de umbrales (opcionales — usan defaults si no se pasan). */
   config: {
     aging_dias: number
@@ -473,6 +521,8 @@ export interface DatasetAuditoria {
     /** Off por defecto: la sugerencia "sin rodaje" genera ruido en operación flexible. */
     incluir_sin_rodaje?: boolean
     ventana_duplicados_dias: number
+    /** Umbral de días sin actividad para marcar un prospecto como estancado. */
+    dias_estancado?: number
     hoy: string // YYYY-MM-DD
   }
 }
@@ -483,7 +533,7 @@ export interface DatasetAuditoria {
  * producción de las reglas (la más grave primero: sin_documento, duplicado, etc.)
  */
 export function aplicarReglas(dataset: DatasetAuditoria): ResultadoAuditoria {
-  const { gastos, cotizaciones, colaboradores, config } = dataset
+  const { gastos, cotizaciones, colaboradores, prospectos, config } = dataset
 
   const todos: Hallazgo[] = [
     ...regla_sin_documento(gastos),
@@ -503,6 +553,11 @@ export function aplicarReglas(dataset: DatasetAuditoria): ResultadoAuditoria {
       dias_sin_factura: config.dias_sin_factura,
       dias_sin_rodaje: config.dias_sin_rodaje,
       incluir_sin_rodaje: config.incluir_sin_rodaje ?? false,
+      hoy: config.hoy,
+    }),
+    ...regla_prospectos_estancados({
+      prospectos: prospectos ?? [],
+      dias_estancado: config.dias_estancado ?? 21,
       hoy: config.hoy,
     }),
   ]

@@ -19,6 +19,7 @@ import {
   type GastoAudit,
   type CotizacionAudit,
   type ColaboradorAudit,
+  type ProspectoAudit,
 } from '@/lib/agent-auditoria'
 
 export const runtime = 'nodejs'
@@ -28,6 +29,7 @@ const DEFAULT_AGING_DIAS = 30
 const DEFAULT_DIAS_SIN_FACTURA = 30
 const DEFAULT_DIAS_SIN_RODAJE = 60
 const DEFAULT_VENTANA_DUPLICADOS = 7
+const DEFAULT_DIAS_ESTANCADO = 21
 
 export async function GET(req: Request) {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -45,6 +47,12 @@ export async function GET(req: Request) {
     parseInt(searchParams.get('ventana_duplicados_dias') ?? '', 10) || DEFAULT_VENTANA_DUPLICADOS
   // #5: la sugerencia "sin rodaje" está OFF por defecto (ruido en operación flexible).
   const incluir_sin_rodaje = searchParams.get('incluir_sin_rodaje') === 'true'
+  // Nota: usamos un parse que respeta 0 (a diferencia de `|| DEFAULT`).
+  const diasEstancadoRaw = searchParams.get('dias_estancado')
+  const dias_estancado =
+    diasEstancadoRaw !== null && diasEstancadoRaw !== '' && Number.isFinite(Number(diasEstancadoRaw))
+      ? parseInt(diasEstancadoRaw, 10)
+      : DEFAULT_DIAS_ESTANCADO
 
   const hoy = new Date().toISOString().slice(0, 10)
   const admin = createAdminClient()
@@ -55,6 +63,7 @@ export async function GET(req: Request) {
     { data: gastosMensData, error: eGM },
     { data: cotizData, error: eCot },
     { data: colabData, error: eColab },
+    { data: prospData, error: eProsp },
   ] = await Promise.all([
     // Gastos de proyecto: campos necesarios para las reglas.
     admin
@@ -92,9 +101,18 @@ export async function GET(req: Request) {
           'colaboradores_links_temporales(id, tipo, used_at)',
       )
       .eq('disponible', true),
+
+    // Prospectos del CRM (CH-10) con sus interacciones, para "estancados".
+    admin
+      .from('prospectos')
+      .select(
+        'id, empresa, etapa, created_at,' +
+          'responsable:profiles!prospectos_responsable_id_fkey(nombre),' +
+          'crm_interacciones(fecha, created_at)',
+      ),
   ])
 
-  const firstError = eGP || eGM || eCot || eColab
+  const firstError = eGP || eGM || eCot || eColab || eProsp
   if (firstError) {
     return NextResponse.json({ error: firstError.message }, { status: 500 })
   }
@@ -176,18 +194,40 @@ export async function GET(req: Request) {
     },
   )
 
+  // ── Normalizar prospectos (CH-10) ─────────────────────────────────────────
+
+  const prospectos: ProspectoAudit[] = (prospData ?? []).map((p: any): ProspectoAudit => {
+    const interacciones: any[] = p.crm_interacciones ?? []
+    // Última actividad = fecha más reciente entre interacciones (fecha o created_at)
+    // y, si no hay, la creación del prospecto.
+    const fechas = interacciones
+      .map((i) => (i.fecha ?? i.created_at)?.slice(0, 10))
+      .filter(Boolean) as string[]
+    fechas.push(p.created_at?.slice(0, 10))
+    const ultima_actividad = fechas.filter(Boolean).sort().at(-1) ?? null
+    return {
+      id: p.id,
+      empresa: p.empresa,
+      etapa: p.etapa,
+      responsable: (p.responsable as any)?.nombre ?? null,
+      ultima_actividad,
+    }
+  })
+
   // ── Aplicar reglas ────────────────────────────────────────────────────────
 
   const resultado = aplicarReglas({
     gastos,
     cotizaciones,
     colaboradores,
+    prospectos,
     config: {
       aging_dias,
       dias_sin_factura,
       dias_sin_rodaje,
       incluir_sin_rodaje,
       ventana_duplicados_dias,
+      dias_estancado,
       hoy,
     },
   })
@@ -212,6 +252,7 @@ export async function GET(req: Request) {
       dias_sin_rodaje,
       incluir_sin_rodaje,
       ventana_duplicados_dias,
+      dias_estancado,
       hoy,
     },
     calculado_en: resultado.calculado_en,
