@@ -487,6 +487,20 @@ function hoyChileISO(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
 }
 
+// Override CONFIRMADO por Tomás (jun 2026): los únicos con correo corporativo
+// @casahiedra.com son Tomás y Natalia; el resto del equipo NO tiene casahiedra,
+// así que el digest se les manda a su email real del perfil. Clave = email del
+// perfil (dato real de la tabla profiles). NO inferir/derivar direcciones.
+const EMAIL_DIGEST_OVERRIDE: Record<string, string> = {
+  'tomasmontealegrem@gmail.com': 'tomas@casahiedra.com',
+  'nataliaalejandra.r@gmail.com': 'natalia@casahiedra.com',
+}
+
+function emailDigest(profileEmail: string | null | undefined): string | null {
+  if (!profileEmail) return null
+  return EMAIL_DIGEST_OVERRIDE[profileEmail.trim().toLowerCase()] ?? profileEmail
+}
+
 interface DigestResponsable {
   email: string | null
   nombre: string
@@ -523,7 +537,7 @@ export async function procesarSeguimientosCrm(
   const ensure = (r: any): DigestResponsable => {
     const k = keyDe(r)
     if (!porResponsable.has(k)) {
-      porResponsable.set(k, { email: r?.email ?? null, nombre: r?.nombre ?? 'Sin responsable', vencidos: [], estancados: [] })
+      porResponsable.set(k, { email: emailDigest(r?.email), nombre: r?.nombre ?? 'Sin responsable', vencidos: [], estancados: [] })
     }
     return porResponsable.get(k)!
   }
