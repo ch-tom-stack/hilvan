@@ -5,11 +5,12 @@ import { toastError } from '@/lib/toast'
 import { actualizarImagenBloque } from '@/app/actions/rodaje-plan'
 import { subirImagenBloque, eliminarImagenBloque } from '@/lib/supabase/storage-rodaje'
 import {
-  RodajeBloque, RodajeLocacion, PLANTILLAS_BLOQUES,
+  RodajeBloque, RodajeLocacion, BloqueEstilo, PLANTILLAS_BLOQUES,
   calcularCascada, aplicarCambioTiempo,
   minutosAHora, horaAMinutos,
 } from '@/types'
 import TimelineView from './TimelineView'
+import BloqueLibre from './BloqueLibre'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -97,11 +98,7 @@ export default function TablaPlan({
     fileInputRef.current?.click()
   }
 
-  const handleArchivoSeleccionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    const bloqueId = bloqueParaImagenRef.current
-    if (!file || !bloqueId) return
-    e.target.value = ''
+  const subirYAsignar = async (bloqueId: string, file: File) => {
     setSubiendoImagen(bloqueId)
     try {
       const url = await subirImagenBloque(file, rodajeId, bloqueId)
@@ -114,6 +111,14 @@ export default function TablaPlan({
     } finally {
       setSubiendoImagen(null)
     }
+  }
+
+  const handleArchivoSeleccionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const bloqueId = bloqueParaImagenRef.current
+    if (!file || !bloqueId) return
+    e.target.value = ''
+    await subirYAsignar(bloqueId, file)
   }
 
   const handleEliminarImagen = async (bloqueId: string, url: string) => {
@@ -175,6 +180,14 @@ export default function TablaPlan({
             className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors"
           >
             + Plantilla
+          </button>
+          <button
+            onClick={() => onCrear({ titulo: 'Libre', tipo: 'libre', duracion_min: 0 })}
+            disabled={creando}
+            title="Lienzo libre: pega imágenes, chistes, notas con tu propia letra y color"
+            className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50"
+          >
+            + Libre
           </button>
           <button
             onClick={() => onCrear({ titulo: 'Nuevo bloque', tipo: 'rodaje', duracion_min: 30 })}
@@ -248,6 +261,23 @@ export default function TablaPlan({
       ) : (
         <div onClick={() => { setVisibilidadAbierta(null); setColorPickerAbierto(null) }}>
           {bloquesRaiz.map((bloque, idx) => {
+            // Bloque libre: lienzo expresivo a todo lo ancho (fuera de la grilla).
+            if (bloque.tipo === 'libre') {
+              return (
+                <BloqueLibre
+                  key={bloque.id}
+                  bloque={bloque}
+                  subiendo={subiendoImagen === bloque.id}
+                  onCampo={(campo, valor) => actualizarCelda(bloque.id, campo, valor)}
+                  onEstilo={(parcial: Partial<BloqueEstilo>) =>
+                    actualizarCelda(bloque.id, 'estilo', { ...(bloque.estilo || {}), ...parcial })}
+                  onSubirImagen={(file) => subirYAsignar(bloque.id, file)}
+                  onEliminarImagen={() => bloque.imagen_url && handleEliminarImagen(bloque.id, bloque.imagen_url)}
+                  onEliminar={() => onEliminar(bloque.id)}
+                />
+              )
+            }
+
             const casc = cascada[idx]
             const isExpandido = expandidoMobil === bloque.id
             const isEliminando = confirmarEliminar === bloque.id

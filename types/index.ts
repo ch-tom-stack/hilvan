@@ -626,7 +626,18 @@ export interface RodajeLocacion {
   updated_at: string
 }
 
-export type TipoBloque = 'rodaje' | 'pausa' | 'traslado' | 'montaje' | 'otro'
+export type TipoBloque = 'rodaje' | 'pausa' | 'traslado' | 'montaje' | 'otro' | 'libre'
+
+// Estilo expresivo de un bloque (devuelve la "libertad del Google Sheet" al plan):
+// fuente de un set curado, color de texto/fondo, tamaño, peso y alineación.
+export interface BloqueEstilo {
+  fuente?: string // clave del set curado (ver FUENTES_PLAN), ej. 'manuscrita'
+  color?: string // color del texto
+  color_fondo?: string // color de fondo del bloque
+  tamano?: 'sm' | 'md' | 'lg' | 'xl'
+  peso?: 'thin' | 'normal' | 'bold'
+  align?: 'left' | 'center' | 'right'
+}
 
 export interface RodajeBloque {
   id: string
@@ -654,9 +665,33 @@ export interface RodajeBloque {
   visible_extras: boolean
   visible_cliente: boolean
   imagen_url?: string
+  /** Texto libre del bloque "libre" (el lienzo: chistes, notas, lo que sea). */
+  contenido_rico?: string
+  /** Estilo expresivo del bloque (fuente curada, colores, tamaño, peso). */
+  estilo?: BloqueEstilo
   created_at: string
   updated_at: string
   hijos?: RodajeBloque[]
+}
+
+// Set CURADO de fuentes con personalidad para el contenido del plan (devuelve la
+// expresión del Google Sheet). Se cargan en globals.css. Acotado a propósito: da
+// carácter sin romper la consistencia ni complicar el PDF/viewer.
+export const FUENTES_PLAN: Array<{ clave: string; label: string; family: string }> = [
+  { clave: 'manuscrita', label: 'Manuscrita', family: "'Cedarville Cursive', cursive" },
+  { clave: 'mano', label: 'Mano', family: "'Rock Salt', cursive" },
+  { clave: 'marcador', label: 'Marcador', family: "'Permanent Marker', cursive" },
+  { clave: 'gruesa', label: 'Gruesa', family: "'Oi', system-ui, sans-serif" },
+  { clave: 'maquina', label: 'Máquina', family: "'Courier Prime', monospace" },
+  { clave: 'grotesk', label: 'Grotesk', family: "'Schibsted Grotesk', sans-serif" },
+  { clave: 'fina', label: 'Fina', family: "'Archivo', sans-serif" },
+  { clave: 'marca', label: 'Marca', family: "'Cormorant Garamond', serif" },
+]
+
+/** Devuelve el font-family CSS de una fuente curada del plan, o undefined. */
+export function familiaFuentePlan(clave?: string): string | undefined {
+  if (!clave) return undefined
+  return FUENTES_PLAN.find((f) => f.clave === clave)?.family
 }
 
 // Helpers de cascada/tiempo de bloques movidos a lib/rodaje-helpers.ts (T12) —
@@ -930,3 +965,130 @@ export {
   duracionTotalDia,
   uberLinkLocacion,
 } from '@/lib/rodaje-helpers'
+
+// ============================================================
+// CH-10 CRM (Prospectos / pipeline de captación)
+// ============================================================
+
+export type EtapaProspecto =
+  | 'prospecto'
+  | 'calificado'
+  | 'lectura_entregada'
+  | 'conversacion'
+  | 'producto_propuesto'
+  | 'cotizacion_enviada'
+  | 'seguimiento'
+  | 'confirmado'
+  | 'nurture'
+  | 'descartado'
+
+export const ETAPA_PROSPECTO_LABELS: Record<EtapaProspecto, string> = {
+  prospecto:          'Prospecto',
+  calificado:         'Calificado',
+  lectura_entregada:  'Lectura entregada',
+  conversacion:       'Conversación',
+  producto_propuesto: 'Producto propuesto',
+  cotizacion_enviada: 'Cotización enviada',
+  seguimiento:        'Seguimiento',
+  confirmado:         'Confirmado',
+  nurture:            'Nurture',
+  descartado:         'Descartado',
+}
+
+// Las 8 etapas que van en columnas del Kanban (en orden de pipeline)
+export const ETAPAS_PIPELINE_ACTIVAS: EtapaProspecto[] = [
+  'prospecto',
+  'calificado',
+  'lectura_entregada',
+  'conversacion',
+  'producto_propuesto',
+  'cotizacion_enviada',
+  'seguimiento',
+  'confirmado',
+]
+
+// Etapas que viven en el cajón lateral, fuera del flujo principal
+export const ETAPAS_CAJON: EtapaProspecto[] = ['nurture', 'descartado']
+
+export type Producto = 'banco' | 'lookbook' | 'spot'
+
+export const PRODUCTO_LABELS: Record<Producto, string> = {
+  banco:    'Banco',
+  lookbook: 'Lookbook',
+  spot:     'Spot',
+}
+
+export const ORIGENES_PROSPECTO = [
+  'linkedin',
+  'instagram',
+  'referido',
+  'feria',
+  'web',
+  'correo',
+  'otro',
+] as const
+
+export const SCORES_PROSPECTO = ['alta', 'media', 'baja'] as const
+
+export const ARQUETIPOS = ['feed', 'temporadas', 'sin_definir'] as const
+
+export const PRODUCTOS_OBJETIVO = ['banco', 'lookbook', 'spot', 'sin_definir'] as const
+
+export const TIPOS_INTERACCION = ['correo', 'reunion', 'lectura', 'llamada', 'mensaje'] as const
+
+export interface Prospecto {
+  id: string
+  empresa: string
+  nombre_contacto?: string | null
+  email?: string | null
+  telefono?: string | null
+  origen?: string | null
+  arquetipo?: string | null
+  etapa: EtapaProspecto
+  responsable_id?: string | null
+  responsable?: Pick<Profile, 'id' | 'nombre'> | null
+  score?: string | null
+  decisor?: string | null
+  angulo?: string | null
+  producto_objetivo?: string | null
+  cliente_id?: string | null
+  cliente?: Pick<Cliente, 'id' | 'nombre'> | null
+  notas?: string | null
+  created_at: string
+  updated_at?: string
+}
+
+export interface CrmInteraccion {
+  id: string
+  prospecto_id: string
+  fecha?: string | null
+  tipo?: string | null
+  resumen?: string | null
+  proximo_paso?: string | null
+  fecha_proximo?: string | null
+  gmail_thread?: string | null
+  created_at: string
+}
+
+export interface CrmLectura {
+  id: string
+  prospecto_id: string
+  url?: string | null
+  dossier_ref?: string | null
+  producto_derivado?: string | null
+  fecha?: string | null
+  created_at: string
+}
+
+export interface CrmAprobacion {
+  id: string
+  tipo: string
+  prospecto_id?: string | null
+  payload?: unknown
+  estado: string
+  origen?: string | null
+  nota_agente?: string | null
+  created_at: string
+  resuelto_por?: string | null
+  resuelto_at?: string | null
+}

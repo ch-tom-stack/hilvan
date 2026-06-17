@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { RodajeLocacion, RodajeBloque, PLANTILLAS_BLOQUES } from '@/types'
+import { RodajeLocacion, RodajeBloque, BloqueEstilo, PLANTILLAS_BLOQUES } from '@/types'
 
 // ─── LOCACIONES ───────────────────────────────────────────────────────────────
 
@@ -154,6 +154,8 @@ export async function crearBloque(
       visible_catering: payload.visible_catering ?? true,
       visible_extras: payload.visible_extras ?? false,
       visible_cliente: payload.visible_cliente ?? false,
+      contenido_rico: payload.contenido_rico ?? null,
+      estilo: payload.estilo ?? null,
     })
     .select()
     .single()
@@ -206,22 +208,38 @@ export async function guardarBloques(
     visible_catering?: boolean
     visible_extras?: boolean
     visible_cliente?: boolean
+    imagen_url?: string | null
+    contenido_rico?: string | null
+    estilo?: BloqueEstilo | null
+    [k: string]: unknown
   }>
 ) {
   const supabase = await createClient()
   const reales = bloques.filter(b => !b.id.startsWith('temp-'))
   if (reales.length === 0) { revalidatePath(`/rodaje/${rodajeId}`); return }
 
+  // Whitelist de columnas reales: la UI nos pasa el bloque completo ({ ...b }),
+  // que incluye relaciones (locacion, hijos) y timestamps que no se deben escribir.
+  const COLS = [
+    'orden', 'titulo', 'tipo', 'scenes_label', 'scenes_color', 'character_num',
+    'dia_noche', 'interior_exterior', 'locacion_id', 'descripcion', 'nota_previa',
+    'hora_inicio_fija', 'hora_fin', 'duracion_min', 'es_anclado', 'es_paralelo',
+    'visible_equipo', 'visible_catering', 'visible_extras', 'visible_cliente',
+    'imagen_url', 'contenido_rico', 'estilo',
+  ] as const
+
   const resultados = await Promise.allSettled(
-    reales.map(({ id, ...resto }) =>
-      supabase
+    reales.map((b) => {
+      const update: Record<string, unknown> = {}
+      for (const c of COLS) if (c in b) update[c] = (b as Record<string, unknown>)[c]
+      return supabase
         .from('rodaje_bloques')
-        .update(resto)
-        .eq('id', id)
+        .update(update)
+        .eq('id', b.id)
         .then(({ error }) => {
           if (error) throw new Error(error.message)
         })
-    )
+    })
   )
 
   revalidatePath(`/rodaje/${rodajeId}`)

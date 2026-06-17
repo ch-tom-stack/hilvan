@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RodajeBloque, calcularCascada, minutosAHora } from '@/types'
+import { estiloCss } from '@/components/rodaje/BloqueLibre'
 import SunCalc from 'suncalc'
 import { parseFechaLocal } from '@/lib/fechas'
 
@@ -150,6 +151,24 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
           </div>
 
           {bloquesRaiz.map((bloque, idx) => {
+            // Bloque libre: lienzo expresivo a todo lo ancho.
+            if (bloque.tipo === 'libre') {
+              const est = bloque.estilo || {}
+              return (
+                <div key={bloque.id} className="py-3 border-b border-ch-border/30" style={{ backgroundColor: est.color_fondo }}>
+                  {bloque.imagen_url && (
+                    <button onClick={() => setImagenAmpliada(bloque.imagen_url!)} className="block mb-2"
+                      style={{ marginLeft: est.align === 'center' ? 'auto' : undefined, marginRight: est.align === 'center' ? 'auto' : undefined }}>
+                      <img src={bloque.imagen_url} alt="" className="max-h-72 w-auto max-w-full object-contain rounded-[2px] border border-ch-border hover:border-ch-muted transition-colors" />
+                    </button>
+                  )}
+                  {bloque.contenido_rico && (
+                    <p className="whitespace-pre-wrap" style={estiloCss(est)}>{bloque.contenido_rico}</p>
+                  )}
+                </div>
+              )
+            }
+
             const casc = cascada[idx]
             return (
               <div key={bloque.id} className={bloque.es_paralelo ? 'opacity-75' : ''}>

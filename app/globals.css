@@ -1,4 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+/* Set CURADO de fuentes con personalidad — solo para el contenido del plan de rodaje (ver FUENTES_PLAN en types/index.ts).
+   Los archivos woff2 se descargan únicamente cuando un bloque usa la familia, así que no penaliza la carga general. */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@100;300;400;700&family=Cedarville+Cursive&family=Courier+Prime:wght@400;700&family=Oi&family=Permanent+Marker&family=Rock+Salt&family=Schibsted+Grotesk:wght@400;500;700&display=swap');
 
 @import "tailwindcss";
 

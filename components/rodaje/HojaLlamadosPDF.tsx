@@ -366,6 +366,28 @@ export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64 }: Pro
             </View>
 
             {bloques.map((bloque: any, idx: number) => {
+              // Bloque libre: lienzo a todo el ancho (imagen + texto con estilo).
+              // La fuente curada no se registra en el PDF; se respeta color/tamaño/peso/alineación.
+              if (bloque.tipo === 'libre') {
+                const e = bloque.estilo || {}
+                const fs = ({ sm: 11, md: 14, lg: 20, xl: 30 } as any)[e.tamano] ?? 12
+                return (
+                  <View key={bloque.id} style={{ paddingVertical: 6, paddingHorizontal: 4, backgroundColor: e.color_fondo || undefined }} wrap={false}>
+                    {bloque.imagen_url ? (
+                      <Image
+                        src={bloque.imagen_url}
+                        style={{ maxHeight: 180, marginBottom: bloque.contenido_rico ? 4 : 0, alignSelf: e.align === 'center' ? 'center' : e.align === 'right' ? 'flex-end' : 'flex-start' }}
+                      />
+                    ) : null}
+                    {bloque.contenido_rico ? (
+                      <Text style={{ fontSize: fs, color: e.color || undefined, fontWeight: e.peso === 'bold' ? 'bold' : 'normal', textAlign: e.align || 'left' }}>
+                        {bloque.contenido_rico}
+                      </Text>
+                    ) : null}
+                  </View>
+                )
+              }
+
               const casc = cascada[idx]
               const esRodaje = bloque.tipo === 'rodaje'
               const labelColor = bloque.scenes_color || '#353135'
