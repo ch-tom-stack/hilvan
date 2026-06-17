@@ -41,6 +41,10 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
 //  - 'registrar-factura-emitida': UPDATE cotizaciones restaurando
 //    fecha_factura_emitida y numero_factura previos (payload.fecha_anterior /
 //    numero_anterior). NO toca fecha_pago_recibido.
+//  - CRM (CH-10): 'crm-crear' / 'crm-crear-propuesta' / 'crm-interaccion' /
+//    'crm-lectura' / 'crm-brief' borran la fila creada (prospectos arrastra hijos
+//    por CASCADE; crm-lectura NO revierte el patch E7). 'crm-mover-etapa' restaura
+//    payload.etapa_anterior. 'crm-resolver-aprobacion' NO es reversible (400).
 //  - Otras herramientas de gastos (insert): DELETE de la fila.
 //  - Pago de cotización (update): set fecha_pago_recibido = null.
 // Marca la acción como deshecha.
@@ -354,6 +358,43 @@ export async function POST(req: Request) {
     }
     const errMov = await recomputarMovimiento(admin, accion.resultado_id)
     if (errMov) return NextResponse.json({ error: errMov }, { status: 500 })
+  } else if (
+    accion.herramienta === 'crm-crear' ||
+    accion.herramienta === 'crm-crear-propuesta' ||
+    accion.herramienta === 'crm-interaccion' ||
+    accion.herramienta === 'crm-lectura' ||
+    accion.herramienta === 'crm-brief'
+  ) {
+    // Creaciones del CRM: borrar la fila creada (resultado_tabla/_id).
+    // 'crm-crear' (prospectos) arrastra interacciones/lecturas/aprobaciones por CASCADE.
+    // NOTA: 'crm-lectura' borra la lectura pero NO revierte el patch E7 (arquetipo/
+    // producto/etapa) que pudo haber aplicado sobre el prospecto.
+    const { error } = await admin
+      .from(accion.resultado_tabla)
+      .delete()
+      .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'crm-mover-etapa') {
+    // Restaurar la etapa previa (payload.etapa_anterior, guardada al mover).
+    const payload = accion.payload as { etapa_anterior?: string } | null
+    if (!payload?.etapa_anterior) {
+      return NextResponse.json({ error: 'No se guardó la etapa previa' }, { status: 400 })
+    }
+    const { error } = await admin
+      .from('prospectos')
+      .update({ etapa: payload.etapa_anterior })
+      .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'crm-resolver-aprobacion') {
+    // Resolver una aprobación tiene efectos compuestos (crea prospecto / mueve
+    // etapa / registra interacción) que no se revierten en bloque de forma segura.
+    return NextResponse.json(
+      {
+        error:
+          'Resolver una aprobación no es reversible automáticamente: deshaz el efecto a mano (borra/edita lo creado) y vuelve a dejar la propuesta en pendiente.',
+      },
+      { status: 400 },
+    )
   } else if (TABLAS_DELETE.includes(accion.resultado_tabla)) {
     // Creación de gasto: eliminar la fila insertada.
     const { error } = await admin

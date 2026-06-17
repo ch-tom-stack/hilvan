@@ -24,8 +24,10 @@ export async function POST(req: Request) {
   if (!esEtapaValida(body?.etapa)) return NextResponse.json({ error: 'etapa inválida' }, { status: 400 })
 
   const admin = createAdminClient()
-  const { data: existe } = await admin.from('prospectos').select('id, empresa').eq('id', prospectoId).maybeSingle()
+  const { data: existe } = await admin.from('prospectos').select('id, empresa, etapa').eq('id', prospectoId).maybeSingle()
   if (!existe) return NextResponse.json({ error: 'prospecto_id no encontrado' }, { status: 404 })
+
+  const etapaAnterior = existe.etapa
 
   const { error } = await admin.from('prospectos').update({ etapa: body.etapa }).eq('id', prospectoId)
   if (error) {
@@ -33,6 +35,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  await registrarAccion({ herramienta: 'crm-mover-etapa', payload: body, resultado_tabla: 'prospectos', resultado_id: prospectoId, ok: true })
+  // Guardamos etapa_anterior para que hilvan_deshacer pueda restaurarla.
+  await registrarAccion({ herramienta: 'crm-mover-etapa', payload: { ...body, etapa_anterior: etapaAnterior }, resultado_tabla: 'prospectos', resultado_id: prospectoId, ok: true })
   return NextResponse.json({ id: prospectoId, empresa: existe.empresa, etapa: body.etapa })
 }

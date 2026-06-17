@@ -487,6 +487,21 @@ function hoyChileISO(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
 }
 
+// Los recordatorios van al correo corporativo @casahiedra.com (no al email del
+// perfil, que es personal/antiguo). Convención: <primer-nombre-sin-tildes>@casahiedra.com
+// (confirmado: Tomás→tomas, Natalia→natalia). Si no hay nombre, no se puede enviar.
+function emailCasaHiedra(nombre: string | null | undefined): string | null {
+  if (!nombre) return null
+  const primer = nombre.trim().split(/\s+/)[0]
+  if (!primer) return null
+  const slug = primer
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+  return slug ? `${slug}@casahiedra.com` : null
+}
+
 interface DigestResponsable {
   email: string | null
   nombre: string
@@ -523,7 +538,7 @@ export async function procesarSeguimientosCrm(
   const ensure = (r: any): DigestResponsable => {
     const k = keyDe(r)
     if (!porResponsable.has(k)) {
-      porResponsable.set(k, { email: r?.email ?? null, nombre: r?.nombre ?? 'Sin responsable', vencidos: [], estancados: [] })
+      porResponsable.set(k, { email: emailCasaHiedra(r?.nombre), nombre: r?.nombre ?? 'Sin responsable', vencidos: [], estancados: [] })
     }
     return porResponsable.get(k)!
   }
