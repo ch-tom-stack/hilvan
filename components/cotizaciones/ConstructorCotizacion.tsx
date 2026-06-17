@@ -314,6 +314,33 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     }
   }
 
+  // Drag-and-drop: mover un ítem a otra categoría / subgrupo (o sacarlo: toSg=null).
+  async function moverItem(itemId: string, fromDep: string, fromSg: string | null, toDep: string, toSg: string | null) {
+    if (fromDep === toDep && (fromSg ?? null) === (toSg ?? null)) return
+    const depFrom = cot.departamentos?.find(d => d.id === fromDep)
+    const item = fromSg
+      ? depFrom?.subgrupos?.find(s => s.id === fromSg)?.items?.find(i => i.id === itemId)
+      : depFrom?.items?.find(i => i.id === itemId)
+    if (!item) return
+    try {
+      await actualizarItem(itemId, cot.id, { departamento_id: toDep, subgrupo_id: toSg })
+      const movido = { ...item, departamento_id: toDep, subgrupo_id: toSg }
+      if (fromSg) {
+        actualizarSgLocal(fromDep, fromSg, sg => ({ ...sg, items: sg.items?.filter(i => i.id !== itemId) }))
+      } else {
+        actualizarDepLocal(fromDep, d => ({ ...d, items: d.items?.filter(i => i.id !== itemId) }))
+      }
+      if (toSg) {
+        actualizarSgLocal(toDep, toSg, sg => ({ ...sg, items: [...(sg.items ?? []), movido] }))
+      } else {
+        actualizarDepLocal(toDep, d => ({ ...d, items: [...(d.items ?? []), movido] }))
+      }
+      toastOk('Ítem movido')
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al mover el ítem')
+    }
+  }
+
   // ─── RENDER ─────────────────────────────────────────────────────────────────
 
   return (
@@ -524,6 +551,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               onAgregarItem={(sgId) => setItemModal({ mode: 'nuevo', depId: dep.id, sgId })}
               onEditarItem={(item, sgId) => setItemModal({ mode: 'editar', depId: dep.id, sgId, item })}
               onEliminarItem={(item, sgId) => handleEliminarItem(item, dep.id, sgId)}
+              onMoverItem={moverItem}
             />
           ))}
 

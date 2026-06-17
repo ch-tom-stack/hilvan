@@ -42,17 +42,27 @@ interface DepBlockProps {
   onAgregarItem: (sgId?: string) => void
   onEditarItem: (item: CotizacionItem, sgId?: string) => void
   onEliminarItem: (item: CotizacionItem, sgId?: string) => void
+  onMoverItem: (itemId: string, fromDep: string, fromSg: string | null, toDep: string, toSg: string | null) => void
 }
 
 export default function DepBlock({
   dep, editable, showInterno,
   onRenombrar, onPrecio, onEliminar, onAgregarSg,
   onRenombrarSg, onPrecioSg, onEliminarSg,
-  onAgregarItem, onEditarItem, onEliminarItem,
+  onAgregarItem, onEditarItem, onEliminarItem, onMoverItem,
 }: DepBlockProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [overDir, setOverDir] = useState(false)
   const subtotal = subtotalDepartamento(dep)
   const bundle = dep.precio_manual != null
+
+  // Lee el ítem arrastrado y lo mueve a (este depto, toSg).
+  const soltar = (e: React.DragEvent, toSg: string | null) => {
+    try {
+      const { itemId, fromDep, fromSg } = JSON.parse(e.dataTransfer.getData('application/json'))
+      if (itemId) onMoverItem(itemId, fromDep, fromSg ?? null, dep.id, toSg)
+    } catch { /* drop inválido */ }
+  }
 
   return (
     <div className="border border-ch-border overflow-hidden">
@@ -94,6 +104,7 @@ export default function DepBlock({
             <SgBlock
               key={sg.id}
               sg={sg}
+              depId={dep.id}
               editable={editable}
               showInterno={showInterno}
               bundlePadre={bundle}
@@ -103,22 +114,37 @@ export default function DepBlock({
               onAgregarItem={() => onAgregarItem(sg.id)}
               onEditarItem={item => onEditarItem(item, sg.id)}
               onEliminarItem={item => onEliminarItem(item, sg.id)}
+              onSoltarItem={e => soltar(e, sg.id)}
             />
           ))}
 
-          {/* Ítems directos */}
-          {(dep.items ?? []).map(item => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              editable={editable}
-              showInterno={showInterno}
-              indent={false}
-              bundle={bundle}
-              onEditar={() => onEditarItem(item)}
-              onEliminar={() => onEliminarItem(item)}
-            />
-          ))}
+          {/* Ítems directos (zona de drop = soltar como directo / sacar de subgrupo) */}
+          <div
+            onDragOver={editable ? (e => { e.preventDefault(); setOverDir(true) }) : undefined}
+            onDragLeave={editable ? (() => setOverDir(false)) : undefined}
+            onDrop={editable ? (e => { e.preventDefault(); setOverDir(false); soltar(e, null) }) : undefined}
+            className={overDir ? 'ring-1 ring-inset ring-ch-green/60 bg-ch-green/5' : ''}
+          >
+            {(dep.items ?? []).map(item => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                editable={editable}
+                showInterno={showInterno}
+                indent={false}
+                bundle={bundle}
+                depId={dep.id}
+                onEditar={() => onEditarItem(item)}
+                onEliminar={() => onEliminarItem(item)}
+              />
+            ))}
+            {/* Tira de drop visible solo al arrastrar: deja un objetivo aunque no haya ítems directos */}
+            {editable && (dep.subgrupos?.length ?? 0) > 0 && (
+              <div className="px-4 py-1.5 text-[10px] text-ch-border italic select-none">
+                Suelta aquí para dejar el ítem fuera de un subgrupo (directo)
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -129,6 +155,7 @@ export default function DepBlock({
 
 interface SgBlockProps {
   sg: CotizacionSubgrupo
+  depId: string
   editable: boolean
   showInterno: boolean
   bundlePadre: boolean
@@ -138,18 +165,25 @@ interface SgBlockProps {
   onAgregarItem: () => void
   onEditarItem: (item: CotizacionItem) => void
   onEliminarItem: (item: CotizacionItem) => void
+  onSoltarItem: (e: React.DragEvent) => void
 }
 
 function SgBlock({
-  sg, editable, showInterno, bundlePadre,
+  sg, depId, editable, showInterno, bundlePadre,
   onRenombrar, onPrecio, onEliminar, onAgregarItem,
-  onEditarItem, onEliminarItem,
+  onEditarItem, onEliminarItem, onSoltarItem,
 }: SgBlockProps) {
   const subtotal = subtotalSubgrupo(sg)
   const bundle = bundlePadre || sg.precio_manual != null
+  const [over, setOver] = useState(false)
 
   return (
-    <div>
+    <div
+      onDragOver={editable ? (e => { e.preventDefault(); e.stopPropagation(); setOver(true) }) : undefined}
+      onDragLeave={editable ? (() => setOver(false)) : undefined}
+      onDrop={editable ? (e => { e.preventDefault(); e.stopPropagation(); setOver(false); onSoltarItem(e) }) : undefined}
+      className={over ? 'ring-1 ring-inset ring-ch-green/60 bg-ch-green/5' : ''}
+    >
       {/* Header sub-grupo */}
       <div className="flex items-center justify-between px-4 py-2 bg-ch-dark/20">
         <div className="flex items-center gap-2">
@@ -181,6 +215,8 @@ function SgBlock({
           showInterno={showInterno}
           indent={true}
           bundle={bundle}
+          depId={depId}
+          sgId={sg.id}
           onEditar={() => onEditarItem(item)}
           onEliminar={() => onEliminarItem(item)}
         />
@@ -197,19 +233,31 @@ interface ItemRowProps {
   showInterno: boolean
   indent: boolean
   bundle?: boolean
+  depId: string
+  sgId?: string
   onEditar: () => void
   onEliminar: () => void
 }
 
-function ItemRow({ item, editable, showInterno, indent, bundle, onEditar, onEliminar }: ItemRowProps) {
+function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onEditar, onEliminar }: ItemRowProps) {
   const subtotal = subtotalItem(item)
   const costo = Math.round(item.precio_bruto * item.cantidad * item.dias)
   const margen = subtotal - costo
 
   return (
-    <div className={`flex items-start justify-between py-2 pr-4 hover:bg-ch-border/5 group ${indent ? 'pl-8' : 'pl-4'}`}>
+    <div
+      draggable={editable}
+      onDragStart={e => {
+        e.dataTransfer.setData('application/json', JSON.stringify({ itemId: item.id, fromDep: depId, fromSg: sgId ?? null }))
+        e.dataTransfer.effectAllowed = 'move'
+      }}
+      className={`flex items-start justify-between py-2 pr-4 hover:bg-ch-border/5 group ${indent ? 'pl-8' : 'pl-4'} ${editable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+    >
       <div className="flex-1 min-w-0 pr-4">
         <div className="flex items-center gap-2">
+          {editable && (
+            <span className="font-body text-[10px] text-ch-border group-hover:text-ch-muted shrink-0 select-none" title="Arrastra para mover">⠿</span>
+          )}
           <span className="font-body text-xs text-ch-cream truncate">
             {item.nombre}
           </span>
