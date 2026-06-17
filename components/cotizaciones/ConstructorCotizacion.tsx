@@ -147,6 +147,42 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     }
   }
 
+  // Precio nativo del bundle a nivel de categoría: vacío = volver a sumar ítems.
+  function parsearPrecioBundle(val: string | null): number | null | undefined {
+    if (val === null) return undefined // cancelado
+    const limpio = val.trim()
+    if (limpio === '') return null // sin precio manual → suma de ítems
+    const n = parseFloat(limpio.replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.'))
+    if (!Number.isFinite(n) || n < 0) { toastError('Monto inválido'); return undefined }
+    return Math.round(n)
+  }
+
+  async function handlePrecioDep(dep: CotizacionDepartamento) {
+    const actual = dep.precio_manual != null ? String(dep.precio_manual) : ''
+    const val = await prompt(`Precio del bundle para "${dep.nombre}" (vacío = sumar ítems):`, actual)
+    const precio_manual = parsearPrecioBundle(val)
+    if (precio_manual === undefined) return
+    try {
+      await actualizarDepartamento(dep.id, cot.id, { precio_manual })
+      actualizarDepLocal(dep.id, d => ({ ...d, precio_manual }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al fijar el precio')
+    }
+  }
+
+  async function handlePrecioSg(dep: CotizacionDepartamento, sg: CotizacionSubgrupo) {
+    const actual = sg.precio_manual != null ? String(sg.precio_manual) : ''
+    const val = await prompt(`Precio del bundle para "${sg.nombre}" (vacío = sumar ítems):`, actual)
+    const precio_manual = parsearPrecioBundle(val)
+    if (precio_manual === undefined) return
+    try {
+      await actualizarSubgrupo(sg.id, cot.id, { precio_manual })
+      actualizarSgLocal(dep.id, sg.id, s => ({ ...s, precio_manual }))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Error al fijar el precio')
+    }
+  }
+
   async function handleEliminarDep(dep: CotizacionDepartamento) {
     if (!await confirm(`¿Eliminar "${dep.nombre}" y todos sus ítems?`)) return
     try {
@@ -463,9 +499,11 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               editable={editable}
               showInterno={showInterno}
               onRenombrar={() => handleRenombrarDep(dep)}
+              onPrecio={() => handlePrecioDep(dep)}
               onEliminar={() => handleEliminarDep(dep)}
               onAgregarSg={() => handleAgregarSg(dep)}
               onRenombrarSg={sg => handleRenombrarSg(dep, sg)}
+              onPrecioSg={sg => handlePrecioSg(dep, sg)}
               onEliminarSg={sg => handleEliminarSg(dep, sg)}
               onAgregarItem={(sgId) => setItemModal({ mode: 'nuevo', depId: dep.id, sgId })}
               onEditarItem={(item, sgId) => setItemModal({ mode: 'editar', depId: dep.id, sgId, item })}

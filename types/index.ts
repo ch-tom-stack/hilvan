@@ -298,6 +298,9 @@ export interface CotizacionDepartamento {
   cotizacion_id: string
   nombre: string
   orden: number
+  /** Precio nativo del bundle. Si está seteado, el total de la categoría es este
+   *  valor (ignora la suma de ítems) y los ítems se muestran solo como descripción. */
+  precio_manual?: number | null
   subgrupos?: CotizacionSubgrupo[]
   items?: CotizacionItem[]
 }
@@ -309,6 +312,8 @@ export interface CotizacionSubgrupo {
   departamento_id: string
   nombre: string
   orden: number
+  /** Precio nativo del bundle a nivel de subcategoría (ver CotizacionDepartamento.precio_manual). */
+  precio_manual?: number | null
   items?: CotizacionItem[]
 }
 

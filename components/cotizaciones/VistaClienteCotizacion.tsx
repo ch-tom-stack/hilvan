@@ -109,7 +109,8 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
         <div className="space-y-6">
           {(cotizacion.departamentos ?? []).map(dep => {
             const subDep = subtotalDepartamento(dep)
-            if (subDep === 0 && !(dep.subgrupos?.length) && !(dep.items?.length)) return null
+            const depBundle = dep.precio_manual != null
+            if (!depBundle && subDep === 0 && !(dep.subgrupos?.length) && !(dep.items?.length)) return null
 
             return (
               <div key={dep.id}>
@@ -137,7 +138,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
                         </span>
                       </div>
                       {(sg.items ?? []).map(item => (
-                        <ItemFila key={item.id} item={item} simple={simple} />
+                        <ItemFila key={item.id} item={item} simple={simple || depBundle || sg.precio_manual != null} />
                       ))}
                     </div>
                   )
@@ -145,7 +146,7 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
 
                 {/* Ítems directos */}
                 {(dep.items ?? []).map(item => (
-                  <ItemFila key={item.id} item={item} simple={simple} />
+                  <ItemFila key={item.id} item={item} simple={simple || depBundle} />
                 ))}
               </div>
             )

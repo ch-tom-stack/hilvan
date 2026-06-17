@@ -314,7 +314,9 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
         </View>
 
         {(cotizacion.departamentos ?? []).map(dep => {
+          const depBundle = dep.precio_manual != null
           const tieneContenido =
+            depBundle ||
             (dep.subgrupos?.some(sg => (sg.items?.length ?? 0) > 0) ?? false) ||
             (dep.items?.length ?? 0) > 0
           if (!tieneContenido) return null
@@ -326,17 +328,17 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
                 <Text style={S.depTotal}>{formatCLP(subtotalDepartamento(dep))}</Text>
               </View>
 
-              {(dep.subgrupos ?? []).filter(sg => (sg.items?.length ?? 0) > 0).map(sg => (
+              {(dep.subgrupos ?? []).filter(sg => (sg.items?.length ?? 0) > 0 || sg.precio_manual != null).map(sg => (
                 <View key={sg.id}>
                   <View style={S.sgRow}>
                     <Text style={S.sgNombre}>{sg.nombre}</Text>
                     <Text style={S.sgTotal}>{formatCLP(subtotalSubgrupo(sg))}</Text>
                   </View>
-                  {(sg.items ?? []).map(item => <ItemPDF key={item.id} item={item} simple={simple} />)}
+                  {(sg.items ?? []).map(item => <ItemPDF key={item.id} item={item} simple={simple || depBundle || sg.precio_manual != null} />)}
                 </View>
               ))}
 
-              {(dep.items ?? []).map(item => <ItemPDF key={item.id} item={item} simple={simple} />)}
+              {(dep.items ?? []).map(item => <ItemPDF key={item.id} item={item} simple={simple || depBundle} />)}
             </View>
           )
         })}

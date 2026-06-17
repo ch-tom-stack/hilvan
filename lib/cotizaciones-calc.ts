@@ -30,13 +30,17 @@ export function subtotalItem(item: CotizacionItem): number {
   return Math.round(base - item.descuento_item)
 }
 
-// Subtotal de un sub-grupo al cliente
+// Subtotal de un sub-grupo al cliente.
+// Si tiene precio_manual (bundle), ese es el valor; si no, suma de ítems.
 export function subtotalSubgrupo(sg: CotizacionSubgrupo): number {
+  if (sg.precio_manual != null) return Math.round(sg.precio_manual)
   return (sg.items ?? []).reduce((acc, i) => acc + subtotalItem(i), 0)
 }
 
-// Subtotal de un departamento al cliente
+// Subtotal de un departamento al cliente.
+// Si tiene precio_manual (bundle), ese es el valor; si no, suma sub-grupos + ítems.
 export function subtotalDepartamento(dep: CotizacionDepartamento): number {
+  if (dep.precio_manual != null) return Math.round(dep.precio_manual)
   const deSubs = (dep.subgrupos ?? []).reduce(
     (acc, sg) => acc + subtotalSubgrupo(sg),
     0

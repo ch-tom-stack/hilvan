@@ -33,9 +33,11 @@ interface DepBlockProps {
   editable: boolean
   showInterno: boolean
   onRenombrar: () => void
+  onPrecio: () => void
   onEliminar: () => void
   onAgregarSg: () => void
   onRenombrarSg: (sg: CotizacionSubgrupo) => void
+  onPrecioSg: (sg: CotizacionSubgrupo) => void
   onEliminarSg: (sg: CotizacionSubgrupo) => void
   onAgregarItem: (sgId?: string) => void
   onEditarItem: (item: CotizacionItem, sgId?: string) => void
@@ -44,12 +46,13 @@ interface DepBlockProps {
 
 export default function DepBlock({
   dep, editable, showInterno,
-  onRenombrar, onEliminar, onAgregarSg,
-  onRenombrarSg, onEliminarSg,
+  onRenombrar, onPrecio, onEliminar, onAgregarSg,
+  onRenombrarSg, onPrecioSg, onEliminarSg,
   onAgregarItem, onEditarItem, onEliminarItem,
 }: DepBlockProps) {
   const [collapsed, setCollapsed] = useState(false)
   const subtotal = subtotalDepartamento(dep)
+  const bundle = dep.precio_manual != null
 
   return (
     <div className="border border-ch-border overflow-hidden">
@@ -62,6 +65,9 @@ export default function DepBlock({
           <span className="font-body text-sm font-medium text-ch-cream uppercase tracking-wider">
             {dep.nombre}
           </span>
+          {bundle && (
+            <span className="font-body text-[9px] text-ch-green bg-ch-green/10 px-1.5 py-0.5 rounded uppercase tracking-wider">bundle</span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <span className="font-body text-sm text-ch-cream">{formatCLP(subtotal)}</span>
@@ -73,6 +79,7 @@ export default function DepBlock({
               <button onClick={() => onAgregarItem(undefined)} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20">
                 + ítem
               </button>
+              <button onClick={onPrecio} title="Precio del bundle" className={`font-body text-[10px] px-1 transition-colors ${bundle ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'}`}>$</button>
               <button onClick={onRenombrar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1">✎</button>
               <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 transition-colors px-1">✕</button>
             </div>
@@ -89,7 +96,9 @@ export default function DepBlock({
               sg={sg}
               editable={editable}
               showInterno={showInterno}
+              bundlePadre={bundle}
               onRenombrar={() => onRenombrarSg(sg)}
+              onPrecio={() => onPrecioSg(sg)}
               onEliminar={() => onEliminarSg(sg)}
               onAgregarItem={() => onAgregarItem(sg.id)}
               onEditarItem={item => onEditarItem(item, sg.id)}
@@ -105,6 +114,7 @@ export default function DepBlock({
               editable={editable}
               showInterno={showInterno}
               indent={false}
+              bundle={bundle}
               onEditar={() => onEditarItem(item)}
               onEliminar={() => onEliminarItem(item)}
             />
@@ -121,7 +131,9 @@ interface SgBlockProps {
   sg: CotizacionSubgrupo
   editable: boolean
   showInterno: boolean
+  bundlePadre: boolean
   onRenombrar: () => void
+  onPrecio: () => void
   onEliminar: () => void
   onAgregarItem: () => void
   onEditarItem: (item: CotizacionItem) => void
@@ -129,17 +141,23 @@ interface SgBlockProps {
 }
 
 function SgBlock({
-  sg, editable, showInterno,
-  onRenombrar, onEliminar, onAgregarItem,
+  sg, editable, showInterno, bundlePadre,
+  onRenombrar, onPrecio, onEliminar, onAgregarItem,
   onEditarItem, onEliminarItem,
 }: SgBlockProps) {
   const subtotal = subtotalSubgrupo(sg)
+  const bundle = bundlePadre || sg.precio_manual != null
 
   return (
     <div>
       {/* Header sub-grupo */}
       <div className="flex items-center justify-between px-4 py-2 bg-ch-dark/20">
-        <span className="font-body text-xs font-semibold text-ch-cream/80">{sg.nombre}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-body text-xs font-semibold text-ch-cream/80">{sg.nombre}</span>
+          {sg.precio_manual != null && (
+            <span className="font-body text-[9px] text-ch-green bg-ch-green/10 px-1.5 py-0.5 rounded uppercase tracking-wider">bundle</span>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <span className="font-body text-xs text-ch-cream">{formatCLP(subtotal)}</span>
           {editable && (
@@ -147,6 +165,7 @@ function SgBlock({
               <button onClick={onAgregarItem} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20">
                 + ítem
               </button>
+              <button onClick={onPrecio} title="Precio del bundle" className={`font-body text-[10px] px-1 transition-colors ${sg.precio_manual != null ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'}`}>$</button>
               <button onClick={onRenombrar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1">✎</button>
               <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 px-1">✕</button>
             </div>
@@ -161,6 +180,7 @@ function SgBlock({
           editable={editable}
           showInterno={showInterno}
           indent={true}
+          bundle={bundle}
           onEditar={() => onEditarItem(item)}
           onEliminar={() => onEliminarItem(item)}
         />
@@ -176,11 +196,12 @@ interface ItemRowProps {
   editable: boolean
   showInterno: boolean
   indent: boolean
+  bundle?: boolean
   onEditar: () => void
   onEliminar: () => void
 }
 
-function ItemRow({ item, editable, showInterno, indent, onEditar, onEliminar }: ItemRowProps) {
+function ItemRow({ item, editable, showInterno, indent, bundle, onEditar, onEliminar }: ItemRowProps) {
   const subtotal = subtotalItem(item)
   const costo = Math.round(item.precio_bruto * item.cantidad * item.dias)
   const margen = subtotal - costo
@@ -224,8 +245,8 @@ function ItemRow({ item, editable, showInterno, indent, onEditar, onEliminar }: 
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <span className="font-body text-xs text-ch-cream">
-          {item.incluido ? 'Incluida' : formatCLP(subtotal)}
+        <span className={`font-body text-xs ${bundle ? 'text-ch-muted/40' : 'text-ch-cream'}`}>
+          {bundle ? '—' : item.incluido ? 'Incluida' : formatCLP(subtotal)}
         </span>
         {editable && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

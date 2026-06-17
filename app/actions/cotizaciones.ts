@@ -619,7 +619,7 @@ export async function agregarDepartamento(
 export async function actualizarDepartamento(
   id: string,
   cotizacion_id: string,
-  campos: { nombre?: string; orden?: number }
+  campos: { nombre?: string; orden?: number; precio_manual?: number | null }
 ) {
   const supabase = await createClient()
   const { error } = await supabase
@@ -667,7 +667,7 @@ export async function agregarSubgrupo(
 export async function actualizarSubgrupo(
   id: string,
   cotizacion_id: string,
-  campos: { nombre?: string; orden?: number }
+  campos: { nombre?: string; orden?: number; precio_manual?: number | null }
 ) {
   const supabase = await createClient()
   const { error } = await supabase
