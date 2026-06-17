@@ -702,6 +702,29 @@ const TOOLS = [
     },
   },
   {
+    name: 'hilvan_resumen_contador',
+    description:
+      'ESTIMACIÓN de lo que la empresa debe transferir/declarar en el mes para el contador (Juan Carlos): ' +
+      'IVA a pagar, retención de honorarios, PPM, Previred, IUSC y los honorarios del propio contador, con ' +
+      'total estimado y desglose. Sirve para anticipar "¿cuánto voy a tener que transferir este mes?". ' +
+      'NO es el F29 oficial — preséntalo SIEMPRE como estimación; el definitivo lo arma el contador. Si el IVA ' +
+      'da a favor, lo indica en iva_a_favor. Opcional: honorarios para sobrescribir el honorario del contador. NUNCA des consejo de inversión.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        periodo: { type: 'string', description: 'YYYY-MM; default = mes actual' },
+        honorarios: { type: 'number', description: 'honorarios del contador a incluir; si se omite, usa el configurado' },
+      },
+    },
+    run: (a) => {
+      const params = new URLSearchParams()
+      if (a.periodo) params.set('periodo', a.periodo)
+      if (a.honorarios != null) params.set('honorarios', String(a.honorarios))
+      const qs = params.toString()
+      return api('GET', `/resumen-contador${qs ? `?${qs}` : ''}`)
+    },
+  },
+  {
     name: 'hilvan_estado_financiero',
     description: 'Panorama financiero del mes para responder "cómo vamos". Incluye: ingresos (facturado, cobrado, por_cobrar con aging, por_facturar = aprobado sin factura), egresos (total, por_origen, por_categoria, por_pagar = deuda REAL en neto [interno+enviada/externo+aprobada], y conciliado/no_conciliado = cruce con banco, OTRO concepto), creditos (cuotas del mes + deuda_vigente_total + proxima_cuota), nomina (planilla mensual), inversiones (solo estado — NO des consejo de inversión), flujo_varios, resumen (resultado devengado, caja aprox), un array `alertas` (señales: cobros vencidos, cuotas vencidas/por vencer, mes en rojo, caja negativa; nivel "alta"/"media") y un array `recomendaciones` (acciones operativas: compromisos del mes vs caja, facturar lo aprobado, cobrar lo vencido, provisionar cuota próxima, mes en rojo; prioridad "alta"/"media"/"info"). Si hay alertas o recomendaciones, menciónalas aunque no las pidan. "Lo que falta pagar" = egresos.por_pagar (NO no_conciliado). NUNCA des consejo de inversión.',
     inputSchema: {

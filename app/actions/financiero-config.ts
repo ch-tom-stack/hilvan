@@ -38,6 +38,17 @@ export async function _getIUSCMensual(): Promise<number> {
   return data ? parseInt(data.valor, 10) : 0
 }
 
+export async function _getHonorariosContador(): Promise<number> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('configuracion_financiero')
+    .select('valor')
+    .eq('clave', 'honorarios_contador')
+    .single()
+  // Default: honorarios mensuales del contador (ej. F29: $90.000 + gestión laboral $50.000).
+  return data ? parseInt(data.valor, 10) : 140000
+}
+
 export async function _getNomina(): Promise<PersonaNomina[]> {
   const supabase = createAdminClient()
   const { data } = await supabase

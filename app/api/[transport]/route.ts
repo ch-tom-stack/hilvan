@@ -889,6 +889,34 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_resumen_contador',
+      {
+        title: 'Resumen para el contador',
+        description:
+          'ESTIMACIÓN de lo que la empresa debe transferir/declarar en el mes para el contador (Juan Carlos): ' +
+          'IVA a pagar, retención de honorarios, PPM, Previred, IUSC y los honorarios del propio contador, con ' +
+          'total estimado y desglose línea por línea. Sirve para anticipar "¿cuánto voy a tener que transferir ' +
+          'este mes?". NO es el F29 oficial — preséntalo SIEMPRE como estimación; el monto definitivo lo arma el ' +
+          'contador. Si el IVA del mes da a favor, lo indica en iva_a_favor (se arrastra, no se paga). Opcional: ' +
+          'honorarios para sobrescribir el honorario del contador (si se omite, usa el valor configurado). NUNCA des consejo de inversión.',
+        inputSchema: {
+          periodo: z.string().optional().describe('YYYY-MM; default = mes actual'),
+          honorarios: z
+            .number()
+            .optional()
+            .describe('honorarios del contador a incluir en el total; si se omite, usa el configurado'),
+        },
+      },
+      async ({ periodo, honorarios }, extra) => {
+        const params = new URLSearchParams()
+        if (periodo) params.set('periodo', periodo)
+        if (honorarios != null) params.set('honorarios', String(honorarios))
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/resumen-contador${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
       'hilvan_estado_financiero',
       {
         title: 'Estado financiero',
