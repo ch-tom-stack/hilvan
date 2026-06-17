@@ -57,6 +57,10 @@ export default async function FinancieroPage({ searchParams }: Props) {
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
             Por pagar →
           </Link>
+          <Link href="/financiero/contador"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
+            Contador →
+          </Link>
           <Link href="/financiero/flujo"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
             Flujo →

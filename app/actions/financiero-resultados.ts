@@ -10,7 +10,8 @@ import {
   calcularCamposContador,
   type PersonaNomina,
 } from './financiero-helpers'
-import { _getPPMTasa, _getPreviredMensual, _getIUSCMensual, _getNomina } from './financiero-config'
+import { _getPPMTasa, _getPreviredMensual, _getIUSCMensual, _getNomina, _getHonorariosContador } from './financiero-config'
+import { ensamblarResumenContador, type ResumenContadorTotal } from '@/lib/agent-resumen-contador'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS PÚBLICOS
@@ -612,4 +613,38 @@ export async function getResumenContador(mes: number, año: number): Promise<Res
   })
 
   return { gastosProyectos, gastosOperacionales, inversiones }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESUMEN PARA EL CONTADOR (estimación de la transferencia mensual)
+// Reusa el bloque `tributario` del estado de resultados (fuente de verdad) + los
+// honorarios del contador, y arma el desglose con el mismo helper que el agente.
+// ES UNA ESTIMACIÓN — el F29 oficial lo determina el contador.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ResumenContadorEstimado extends ResumenContadorTotal {
+  periodo: string
+  detalle: { iva_debito: number; iva_credito: number; saldo_iva: number }
+}
+
+export async function getResumenContadorEstimado(mes: string): Promise<ResumenContadorEstimado> {
+  await requireRol(['admin', 'contabilidad'])
+  const datos = await getDatosFinancieros(mes)
+  const honorarios_contador = await _getHonorariosContador()
+  const t = datos.tributario
+
+  const resumen = ensamblarResumenContador({
+    saldo_iva: t.saldo_iva,
+    retencion_honorarios: t.retenciones_bh,
+    ppm: t.ppm_estimado,
+    previred: t.previred_mensual,
+    iusc: t.iusc_mensual,
+    honorarios_contador,
+  })
+
+  return {
+    periodo: mes,
+    ...resumen,
+    detalle: { iva_debito: t.iva_debito, iva_credito: t.iva_credito, saldo_iva: t.saldo_iva },
+  }
 }

@@ -18,7 +18,7 @@ export type { PersonaNomina } from './financiero-helpers'
 export {
   getDatosFinancieros, getResumenPeriodo,
   getCuentasPorCobrar, getCuentasPorPagar,
-  getResumenContador,
+  getResumenContador, getResumenContadorEstimado,
 } from './financiero-resultados'
 export type {
   FilaCotizacion, FilaGasto, FilaCuota, FilaInversion,
@@ -26,6 +26,7 @@ export type {
   FilaCobrar, DatosCobrar,
   FilaPagar, DatosPagar,
   GastoContador, InversionContador, ResumenContador,
+  ResumenContadorEstimado,
 } from './financiero-resultados'
 
 // ── Flujo de caja ─────────────────────────────────────────────────────────────
