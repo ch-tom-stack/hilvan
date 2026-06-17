@@ -422,8 +422,7 @@ describe('regla_cotizacion_estancada', () => {
     expect(estancadas[0].severidad).toBe('media')
   })
 
-  it('detecta cotización sin rodaje pasado el umbral (info)', () => {
-    // Aprobada hace 20 días, umbral rodaje=14 → info
+  it('#5: sin_rodaje OFF por defecto → no genera ese hallazgo', () => {
     const resultado = regla_cotizacion_estancada({
       cotizaciones: [
         cotizacion({
@@ -435,10 +434,29 @@ describe('regla_cotizacion_estancada', () => {
       dias_sin_factura: 30,
       dias_sin_rodaje: 14,
       hoy: HOY,
+      // incluir_sin_rodaje omitido = false
+    })
+    expect(resultado.filter((h) => h.regla === 'cotizacion_sin_rodaje')).toHaveLength(0)
+  })
+
+  it('#5: con incluir_sin_rodaje=true → sugerencia operacional (info)', () => {
+    const resultado = regla_cotizacion_estancada({
+      cotizaciones: [
+        cotizacion({
+          fecha_respuesta_cliente: '2026-05-27',
+          fecha_factura_emitida: null,
+          tiene_rodaje: false,
+        }),
+      ],
+      dias_sin_factura: 30,
+      dias_sin_rodaje: 14,
+      incluir_sin_rodaje: true,
+      hoy: HOY,
     })
     const sinRodaje = resultado.filter((h) => h.regla === 'cotizacion_sin_rodaje')
     expect(sinRodaje).toHaveLength(1)
     expect(sinRodaje[0].severidad).toBe('info')
+    expect(sinRodaje[0].descripcion).toMatch(/Sugerencia operacional/)
   })
 
   it('NO detecta cotización reciente (dentro de los dos umbrales)', () => {

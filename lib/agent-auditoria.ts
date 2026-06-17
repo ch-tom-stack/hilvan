@@ -392,8 +392,14 @@ export interface InputCotizacionesEstancadas {
   cotizaciones: CotizacionAudit[]
   /** Días desde aprobación sin factura emitida para alertar. Default: 30. */
   dias_sin_factura: number
-  /** Días adicionales con factura pero sin rodaje vinculado. Default: 14. */
+  /** Días sin rodaje vinculado para la sugerencia operacional. Default: 60. */
   dias_sin_rodaje: number
+  /**
+   * Si se incluye la sugerencia "sin rodaje vinculado". Default: false — genera
+   * ruido en operaciones flexibles (proyectos sin cotización, rodajes no
+   * registrados, entregas sin plan de rodaje). El "sin facturar" siempre va.
+   */
+  incluir_sin_rodaje?: boolean
   hoy: string // YYYY-MM-DD
 }
 
@@ -401,12 +407,13 @@ export interface InputCotizacionesEstancadas {
  * Detecta cotizaciones aprobadas o en producción que llevan demasiado tiempo
  * sin avanzar al siguiente paso:
  *   A) Aprobada hace > dias_sin_factura sin factura emitida → MEDIA.
- *   B) Aprobada hace > dias_sin_rodaje sin rodaje vinculado → INFO.
+ *   B) (solo si incluir_sin_rodaje) Aprobada hace > dias_sin_rodaje sin rodaje
+ *      vinculado → INFO, como "sugerencia operacional" (no hallazgo de compliance).
  */
 export function regla_cotizacion_estancada(
   input: InputCotizacionesEstancadas,
 ): Hallazgo[] {
-  const { cotizaciones, dias_sin_factura, dias_sin_rodaje, hoy } = input
+  const { cotizaciones, dias_sin_factura, dias_sin_rodaje, hoy, incluir_sin_rodaje = false } = input
   const hallazgos: Hallazgo[] = []
 
   for (const c of cotizaciones) {
@@ -431,12 +438,12 @@ export function regla_cotizacion_estancada(
       })
     }
 
-    // B) Sin rodaje vinculado pasado el umbral (info)
-    if (!c.tiene_rodaje && diasDesdeAprobacion >= dias_sin_rodaje) {
+    // B) Sin rodaje vinculado — solo si se pide explícitamente (sugerencia operacional)
+    if (incluir_sin_rodaje && !c.tiene_rodaje && diasDesdeAprobacion >= dias_sin_rodaje) {
       hallazgos.push({
         regla: 'cotizacion_sin_rodaje',
         severidad: 'info',
-        descripcion: `Cotización aprobada hace ${diasDesdeAprobacion} días sin rodaje vinculado${c.numero ? ` (${c.numero})` : ''}`,
+        descripcion: `Sugerencia operacional: cotización aprobada hace ${diasDesdeAprobacion} días sin rodaje vinculado${c.numero ? ` (${c.numero})` : ''}`,
         monto: c.monto,
         referencia: c.id,
         meta: {
@@ -463,6 +470,8 @@ export interface DatasetAuditoria {
     aging_dias: number
     dias_sin_factura: number
     dias_sin_rodaje: number
+    /** Off por defecto: la sugerencia "sin rodaje" genera ruido en operación flexible. */
+    incluir_sin_rodaje?: boolean
     ventana_duplicados_dias: number
     hoy: string // YYYY-MM-DD
   }
@@ -493,6 +502,7 @@ export function aplicarReglas(dataset: DatasetAuditoria): ResultadoAuditoria {
       cotizaciones,
       dias_sin_factura: config.dias_sin_factura,
       dias_sin_rodaje: config.dias_sin_rodaje,
+      incluir_sin_rodaje: config.incluir_sin_rodaje ?? false,
       hoy: config.hoy,
     }),
   ]

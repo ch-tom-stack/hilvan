@@ -647,12 +647,16 @@ const TOOLS = [
         },
         dias_sin_rodaje: {
           type: 'number',
-          description: 'Días desde aprobación sin rodaje vinculado para alertar (default 14)',
+          description: 'Días desde aprobación sin rodaje vinculado para la sugerencia (default 60)',
         },
         ventana_duplicados_dias: {
           type: 'number',
           description:
             'Ventana en días para detectar mismo RUT+monto como posible duplicado (default 7)',
+        },
+        incluir_sin_rodaje: {
+          type: 'boolean',
+          description: 'Incluir la sugerencia "cotización sin rodaje vinculado". Default false (genera ruido en operación flexible).',
         },
       },
     },
@@ -663,6 +667,7 @@ const TOOLS = [
       if (args.dias_sin_rodaje != null) params.set('dias_sin_rodaje', String(args.dias_sin_rodaje))
       if (args.ventana_duplicados_dias != null)
         params.set('ventana_duplicados_dias', String(args.ventana_duplicados_dias))
+      if (args.incluir_sin_rodaje === true) params.set('incluir_sin_rodaje', 'true')
       const qs = params.toString()
       return api('GET', `/auditoria${qs ? `?${qs}` : ''}`)
     },

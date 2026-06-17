@@ -26,7 +26,7 @@ export const runtime = 'nodejs'
 // Umbrales por defecto (sobreescribibles por query param).
 const DEFAULT_AGING_DIAS = 30
 const DEFAULT_DIAS_SIN_FACTURA = 30
-const DEFAULT_DIAS_SIN_RODAJE = 14
+const DEFAULT_DIAS_SIN_RODAJE = 60
 const DEFAULT_VENTANA_DUPLICADOS = 7
 
 export async function GET(req: Request) {
@@ -43,6 +43,8 @@ export async function GET(req: Request) {
     parseInt(searchParams.get('dias_sin_rodaje') ?? '', 10) || DEFAULT_DIAS_SIN_RODAJE
   const ventana_duplicados_dias =
     parseInt(searchParams.get('ventana_duplicados_dias') ?? '', 10) || DEFAULT_VENTANA_DUPLICADOS
+  // #5: la sugerencia "sin rodaje" está OFF por defecto (ruido en operación flexible).
+  const incluir_sin_rodaje = searchParams.get('incluir_sin_rodaje') === 'true'
 
   const hoy = new Date().toISOString().slice(0, 10)
   const admin = createAdminClient()
@@ -184,6 +186,7 @@ export async function GET(req: Request) {
       aging_dias,
       dias_sin_factura,
       dias_sin_rodaje,
+      incluir_sin_rodaje,
       ventana_duplicados_dias,
       hoy,
     },
@@ -207,6 +210,7 @@ export async function GET(req: Request) {
       aging_dias,
       dias_sin_factura,
       dias_sin_rodaje,
+      incluir_sin_rodaje,
       ventana_duplicados_dias,
       hoy,
     },
