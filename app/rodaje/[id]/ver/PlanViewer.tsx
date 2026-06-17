@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { RodajeBloque, calcularCascada, minutosAHora } from '@/types'
+import { RodajeBloque, RodajeSticker, calcularCascada, minutosAHora } from '@/types'
 import { estiloCss } from '@/components/rodaje/BloqueLibre'
+import StickerView from '@/components/rodaje/StickerView'
 import SunCalc from 'suncalc'
 import { parseFechaLocal } from '@/lib/fechas'
 
@@ -12,11 +13,13 @@ interface Props {
   rodajeInicial: any
   bloquesIniciales: RodajeBloque[]
   locaciones: any[]
+  stickersIniciales: RodajeSticker[]
   solInicial: { amanecer: string; atardecer: string; dorada_am: string; dorada_pm: string } | null
 }
 
-export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaciones, solInicial }: Props) {
+export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaciones, stickersIniciales, solInicial }: Props) {
   const [bloques, setBloques] = useState<RodajeBloque[]>(bloquesIniciales)
+  const [stickers] = useState<RodajeSticker[]>(stickersIniciales)
   const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null)
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null)
   const supabaseRef = useRef(createClient())
@@ -63,7 +66,7 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
     : null
 
   return (
-    <div className="min-h-screen bg-ch-dark text-ch-cream">
+    <div className="tema-claro relative min-h-screen bg-ch-dark text-ch-cream">
 
       {/* HEADER */}
       <div className="border-b border-ch-border px-4 py-5 max-w-4xl mx-auto">
@@ -277,6 +280,13 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
       <div className="border-t border-ch-border/20 px-4 py-4 text-center max-w-4xl mx-auto">
         <p className="text-xs text-ch-border">Casa Hiedra · Hilván</p>
       </div>
+
+      {/* Capa de stickers flotantes (se posan ENCIMA del plan, alineada a la columna) */}
+      {stickers.length > 0 && (
+        <div className="pointer-events-none absolute inset-0 max-w-4xl mx-auto">
+          {stickers.map(s => <StickerView key={s.id} s={s} />)}
+        </div>
+      )}
 
       {/* Lightbox */}
       {imagenAmpliada && (

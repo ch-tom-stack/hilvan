@@ -272,7 +272,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     : null
 
   return (
-    <div className="min-h-screen bg-ch-dark">
+    <div className="tema-claro min-h-screen bg-ch-dark">
 
       {/* HEADER */}
       <div className="border-b border-ch-border px-4 lg:px-6 py-4">

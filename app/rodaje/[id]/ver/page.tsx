@@ -16,7 +16,7 @@ export default async function RodajeVerPage({ params }: { params: Promise<{ id: 
 
   if (!rodaje) notFound()
 
-  const [{ data: bloques }, { data: locaciones }] = await Promise.all([
+  const [{ data: bloques }, { data: locaciones }, { data: stickers }] = await Promise.all([
     supabase
       .from('rodaje_bloques')
       .select('*')
@@ -28,6 +28,11 @@ export default async function RodajeVerPage({ params }: { params: Promise<{ id: 
       .select('*')
       .eq('rodaje_id', id)
       .order('orden'),
+    supabase
+      .from('rodaje_stickers')
+      .select('*')
+      .eq('rodaje_id', id)
+      .order('z'),
   ])
 
   let sol = null
@@ -51,6 +56,7 @@ export default async function RodajeVerPage({ params }: { params: Promise<{ id: 
       rodajeInicial={rodaje}
       bloquesIniciales={bloques || []}
       locaciones={locaciones || []}
+      stickersIniciales={stickers || []}
       solInicial={sol}
     />
   )

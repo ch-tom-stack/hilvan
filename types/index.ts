@@ -699,6 +699,24 @@ export function familiaFuentePlan(clave?: string): string | undefined {
   return FUENTES_PLAN.find((f) => f.clave === clave)?.family
 }
 
+// Sticker flotante: imagen o nota de texto que se posa ENCIMA del plan (como en el
+// Google Sheet). Posición/tamaño en fracción del ancho del plan (0..1) para que
+// escale en distintos tamaños/orientaciones del export. Imágenes en bucket rodaje-imagenes.
+export interface RodajeSticker {
+  id: string
+  rodaje_id: string
+  tipo: 'imagen' | 'texto'
+  imagen_url?: string
+  contenido?: string // texto de la nota
+  estilo?: BloqueEstilo // fuente/color/tamaño/peso (notas)
+  x: number // 0..1 fracción del ancho del plan
+  y: number // 0..1 fracción del alto del plan
+  w: number // 0..1 fracción del ancho del plan
+  rot: number // grados
+  z: number // orden de apilado
+  created_at: string
+}
+
 // Helpers de cascada/tiempo de bloques movidos a lib/rodaje-helpers.ts (T12) —
 // reexportados al final: horaAMinutos, minutosAHora, calcularCascada,
 // aplicarCambioTiempo, duracionTotalDia, uberLinkLocacion.

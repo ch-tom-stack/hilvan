@@ -23,6 +23,43 @@
   --font-body: 'DM Sans', system-ui, sans-serif;
 }
 
+/* ── Tema claro Casa Hiedra ("hoja") ────────────────────────────────────────
+   Paleta clara semántica y reutilizable, consistente con la identidad. NO toca el
+   @theme global ni los valores de ch-*. Se aplica con la clase .tema-claro, que
+   dentro de su alcance mapea los tokens estructurales ch-* a esta paleta (override
+   acotado y documentado). Papel = blanco puro (calza con el PDF); acentos un poco
+   más oscuros para contraste sobre papel. Reutilizable en otras superficies. */
+.tema-claro {
+  /* paleta semántica base */
+  --paper: #ffffff;
+  --paper-2: #f4f2ee;
+  --line: #ddd8cd;
+  --ink: #1c1c1a;
+  --ink-muted: #6f6a60;
+  --ink-subtle: #9a9488;
+  --acento-verde: #5f8466;
+  --acento-dorado: #a8842f;
+
+  /* mapeo de los tokens del sistema a la paleta clara (solo en este alcance) */
+  --color-ch-black: var(--paper);
+  --color-ch-dark: var(--paper);
+  --color-ch-surface: var(--paper-2);
+  --color-ch-border: var(--line);
+  --color-ch-subtle: var(--ink-subtle);
+  --color-ch-muted: var(--ink-muted);
+  --color-ch-cream: var(--ink);
+  --color-ch-white: var(--ink);
+  --color-ch-green: var(--acento-verde);
+  --color-ch-green-light: #7a9e7e;
+  --color-ch-gold: var(--acento-dorado);
+  --color-ch-gold-light: #c9a84c;
+
+  color: var(--ink);
+  background-color: var(--paper);
+}
+.tema-claro *::-webkit-scrollbar-track { background: #f4f2ee; }
+.tema-claro *::-webkit-scrollbar-thumb { background: #ddd8cd; }
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #383836 #111110;
