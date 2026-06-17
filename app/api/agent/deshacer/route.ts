@@ -145,6 +145,57 @@ export async function POST(req: Request) {
       })
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'cotizacion-precio-categoria') {
+    // Restaurar el precio_manual previo de la categoría/subcategoría.
+    const payload = accion.payload as { previo?: { precio_manual?: number | null } } | null
+    const { error } = await admin
+      .from(accion.resultado_tabla)
+      .update({ precio_manual: payload?.previo?.precio_manual ?? null })
+      .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'cotizacion-estado') {
+    // Restaurar el estado previo (no toca factura/pago). Va ANTES de la rama
+    // genérica resultado_tabla==='cotizaciones' (pago) para no colisionar.
+    const payload = accion.payload as { previo_estado?: string } | null
+    if (!payload?.previo_estado) {
+      return NextResponse.json({ error: 'No se guardó el estado previo' }, { status: 400 })
+    }
+    const { error } = await admin
+      .from('cotizaciones')
+      .update({ estado: payload.previo_estado })
+      .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'cotizacion-editar-item') {
+    // Restaurar SOLO los campos editados (payload.previo tiene exactamente esos).
+    const payload = accion.payload as { previo?: Record<string, unknown> } | null
+    const previo = payload?.previo
+    if (!previo) return NextResponse.json({ error: 'No se guardaron los valores previos' }, { status: 400 })
+    const { error } = await admin.from('cotizacion_items').update(previo).eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'cotizacion-categoria') {
+    // Ramifica por la acción original guardada en el payload.
+    const payload = accion.payload as
+      | { accion?: string; previo?: Record<string, unknown>; fila?: Record<string, unknown> | null }
+      | null
+    const sub = payload?.accion
+    if (sub === 'crear') {
+      const { error } = await admin.from(accion.resultado_tabla).delete().eq('id', accion.resultado_id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    } else if (sub === 'renombrar' || sub === 'reordenar') {
+      if (!payload?.previo) return NextResponse.json({ error: 'No se guardó el valor previo' }, { status: 400 })
+      const { error } = await admin.from(accion.resultado_tabla).update(payload.previo).eq('id', accion.resultado_id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    } else if (sub === 'eliminar') {
+      if (!payload?.fila) return NextResponse.json({ error: 'No se guardó la fila para restaurar' }, { status: 400 })
+      const { error } = await admin.from(accion.resultado_tabla).insert(payload.fila)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    } else if (sub === 'mover_item') {
+      if (!payload?.previo) return NextResponse.json({ error: 'No se guardó la ubicación previa' }, { status: 400 })
+      const { error } = await admin.from('cotizacion_items').update(payload.previo).eq('id', accion.resultado_id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    } else {
+      return NextResponse.json({ error: `No se sabe revertir la categoría (accion=${sub})` }, { status: 400 })
+    }
   } else if (accion.herramienta === 'crear-cotizacion') {
     // Borrar la cotización COMPLETA en cascada por FKs. Va ANTES de la rama
     // genérica resultado_tabla==='cotizaciones' (que es el pago) para no colisionar.

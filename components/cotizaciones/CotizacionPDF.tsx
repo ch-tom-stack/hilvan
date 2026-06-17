@@ -322,7 +322,9 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
           if (!tieneContenido) return null
 
           return (
-            <View key={dep.id}>
+            // wrap={false}: la categoría (header + ítems) no se parte entre páginas,
+            // así el título nunca queda huérfano al pie de una hoja.
+            <View key={dep.id} wrap={false}>
               <View style={S.depRow}>
                 <Text style={S.depNombre}>{dep.nombre}</Text>
                 <Text style={S.depTotal}>{formatCLP(subtotalDepartamento(dep))}</Text>

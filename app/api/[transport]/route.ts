@@ -556,6 +556,84 @@ const baseHandler = createMcpHandler(
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/eliminar-gasto', args)),
     )
 
+    // ── Cotizaciones: estructura y precio de bundle ──────────────────────────
+    server.registerTool(
+      'hilvan_cotizacion_precio_categoria',
+      {
+        title: 'Precio de bundle por categoría',
+        description:
+          'Fija (o limpia) el precio NATIVO de bundle de una categoría (departamento) o subcategoría (subgrupo). Casa Hiedra precia el bundle, no equipo por equipo: con precio_manual seteado, el total de la categoría es ese valor y los ítems pasan a ser solo descripción (sin monto). Manda precio_manual=null para volver a sumar los ítems. Obtén los ids con hilvan_items_cotizacion. Reversible con hilvan_deshacer (restaura el precio previo). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          nivel: z.enum(['departamento', 'subgrupo']),
+          id: z.string().describe('id de la categoría o subcategoría'),
+          precio_manual: z
+            .number()
+            .nullable()
+            .describe('monto del bundle (≥0), o null para volver a sumar los ítems'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-precio-categoria', args)),
+    )
+
+    server.registerTool(
+      'hilvan_cotizacion_estado',
+      {
+        title: 'Cambiar estado de cotización',
+        description:
+          'Cambia el estado de una cotización (borrador, enviada, aprobada, rechazada, en_produccion, cerrada). Útil para el flujo desaprobar → corregir → reaprobar. Reversible con hilvan_deshacer (restaura el estado previo). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          cotizacion_id: z.string(),
+          estado: z.enum(['borrador', 'enviada', 'aprobada', 'rechazada', 'en_produccion', 'cerrada']),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-estado', args)),
+    )
+
+    server.registerTool(
+      'hilvan_cotizacion_editar_item',
+      {
+        title: 'Editar ítem de cotización',
+        description:
+          'Edita un ítem existente: precio_cliente, nombre, descripcion, incluido, cantidad, dias. Debe venir al menos un campo. Si mandas precio_cliente se marca como precio personalizado. Obtén item_id con hilvan_items_cotizacion. Reversible con hilvan_deshacer (restaura los valores previos). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          item_id: z.string(),
+          precio_cliente: z.number().optional().describe('precio al cliente (≥0)'),
+          nombre: z.string().optional(),
+          descripcion: z.string().optional(),
+          incluido: z.boolean().optional().describe('true = "Incluida", no suma al total'),
+          cantidad: z.number().optional(),
+          dias: z.number().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-editar-item', args)),
+    )
+
+    server.registerTool(
+      'hilvan_cotizacion_categoria',
+      {
+        title: 'Gestionar categorías de cotización',
+        description:
+          'Gestiona la estructura de categorías de una cotización. accion: ' +
+          '"crear" {cotizacion_id, nivel, nombre, orden?, departamento_id? (si nivel=subgrupo)}; ' +
+          '"renombrar" {nivel, id, nombre}; "reordenar" {nivel, id, orden}; ' +
+          '"eliminar" {nivel, id} (solo si la categoría NO tiene ítems ni subgrupos); ' +
+          '"mover_item" {item_id, departamento_id, subgrupo_id?}. nivel = departamento | subgrupo. ' +
+          'Obtén ids con hilvan_items_cotizacion. Todas reversibles con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          accion: z.enum(['crear', 'renombrar', 'reordenar', 'eliminar', 'mover_item']),
+          nivel: z.enum(['departamento', 'subgrupo']).optional(),
+          cotizacion_id: z.string().optional(),
+          id: z.string().optional().describe('id de la categoría/subcategoría (renombrar/reordenar/eliminar)'),
+          nombre: z.string().optional(),
+          orden: z.number().optional(),
+          departamento_id: z.string().optional().describe('depto destino (crear subgrupo / mover_item)'),
+          subgrupo_id: z.string().optional().describe('subgrupo destino en mover_item (omitir = ítem directo)'),
+          item_id: z.string().optional().describe('ítem a mover (mover_item)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-categoria', args)),
+    )
+
     // ── Conciliación bancaria ────────────────────────────────────────────────
     server.registerTool(
       'hilvan_importar_movimientos',
