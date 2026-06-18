@@ -130,3 +130,14 @@ export async function agregarBorde(input: Buffer, color: [number, number, number
 export async function recortarMargenes(input: Buffer): Promise<Buffer> {
   return sharp(input).trim().png().toBuffer()
 }
+
+/** Recorte manual a un rectángulo dado en fracciones (0..1) del ancho/alto. */
+export async function recortar(input: Buffer, x: number, y: number, w: number, h: number): Promise<Buffer> {
+  const meta = await sharp(input).metadata()
+  const W = meta.width ?? 0, H = meta.height ?? 0
+  const left = Math.max(0, Math.min(W - 1, Math.round(x * W)))
+  const top = Math.max(0, Math.min(H - 1, Math.round(y * H)))
+  const width = Math.max(1, Math.min(W - left, Math.round(w * W)))
+  const height = Math.max(1, Math.min(H - top, Math.round(h * H)))
+  return sharp(input).extract({ left, top, width, height }).png().toBuffer()
+}

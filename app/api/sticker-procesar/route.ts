@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { quitarFondo, agregarBorde, recortarMargenes } from '@/lib/sticker-image'
+import { quitarFondo, agregarBorde, recortarMargenes, recortar } from '@/lib/sticker-image'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -62,7 +62,15 @@ export async function POST(req: Request) {
     if (op === 'trim') {
       return pngResponse(await recortarMargenes(buf))
     }
-    return NextResponse.json({ error: "op inválida (quitar-fondo | borde | trim)" }, { status: 400 })
+    if (op === 'crop') {
+      const f = (k: string) => Number(form.get(k))
+      const [x, y, w, h] = [f('x'), f('y'), f('w'), f('h')]
+      if (![x, y, w, h].every(n => Number.isFinite(n)) || w <= 0 || h <= 0) {
+        return NextResponse.json({ error: 'crop requiere x,y,w,h (fracciones 0..1)' }, { status: 400 })
+      }
+      return pngResponse(await recortar(buf, x, y, w, h))
+    }
+    return NextResponse.json({ error: "op inválida (quitar-fondo | borde | trim | crop)" }, { status: 400 })
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error procesando la imagen' }, { status: 500 })
   }

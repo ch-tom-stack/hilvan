@@ -19,9 +19,11 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
   const [sel, setSel] = useState<string | null>(null)
   const [quitarAuto, setQuitarAuto] = useState(true)
   const [ocupado, setOcupado] = useState(false)
+  const [crop, setCrop] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const layerRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const dragRef = useRef<Drag | null>(null)
+  const cropRef = useRef<{ mode: 'move' | 'resize'; sx: number; sy: number; x: number; y: number; w: number; h: number; ew: number; eh: number } | null>(null)
   const stickersRef = useRef(stickers); stickersRef.current = stickers
 
   const seleccionado = stickers.find(s => s.id === sel) || null
@@ -106,6 +108,33 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
     if (s) actualizarSticker(s.id, rodajeId, { x: s.x, y: s.y, w: s.w, rot: s.rot }).catch(() => {})
   }
 
+  // ── Recorte manual (caja sobre el sticker seleccionado) ─────────────────────
+  function iniciarCrop(e: React.PointerEvent, s: RodajeSticker, mode: 'move' | 'resize') {
+    e.preventDefault(); e.stopPropagation()
+    if (!crop) return
+    const el = document.getElementById('stk-' + s.id)!.getBoundingClientRect()
+    cropRef.current = { mode, sx: e.clientX, sy: e.clientY, ...crop, ew: el.width, eh: el.height }
+    window.addEventListener('pointermove', cropMover); window.addEventListener('pointerup', cropSoltar)
+  }
+  function cropMover(e: PointerEvent) {
+    const d = cropRef.current; if (!d) return
+    const dx = (e.clientX - d.sx) / d.ew, dy = (e.clientY - d.sy) / d.eh
+    if (d.mode === 'move') {
+      setCrop({ x: Math.max(0, Math.min(1 - d.w, d.x + dx)), y: Math.max(0, Math.min(1 - d.h, d.y + dy)), w: d.w, h: d.h })
+    } else {
+      setCrop({ x: d.x, y: d.y, w: Math.max(0.05, Math.min(1 - d.x, d.w + dx)), h: Math.max(0.05, Math.min(1 - d.y, d.h + dy)) })
+    }
+  }
+  function cropSoltar() {
+    cropRef.current = null
+    window.removeEventListener('pointermove', cropMover); window.removeEventListener('pointerup', cropSoltar)
+  }
+  async function aplicarRecorte() {
+    const s = seleccionado; if (!s || !crop) return
+    await aplicarOp(s, 'crop', { x: String(crop.x), y: String(crop.y), w: String(crop.w), h: String(crop.h) })
+    setCrop(null)
+  }
+
   // pegar imagen (⌘V) en cualquier parte del editor
   useEffect(() => {
     const onPaste = (ev: ClipboardEvent) => {
@@ -139,14 +168,21 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
       {/* Barra del sticker seleccionado */}
       {seleccionado && (
         <div className="flex items-center gap-2 flex-wrap px-4 py-1.5 border-b border-ch-border/60 text-xs bg-ch-surface/40">
-          {seleccionado.tipo === 'imagen' && <>
+          {seleccionado.tipo === 'imagen' && (crop ? <>
+            <button onClick={aplicarRecorte} disabled={ocupado} className="text-ch-green hover:text-ch-green-light disabled:opacity-50">aplicar recorte</button>
+            <span className="text-ch-border">·</span>
+            <button onClick={() => setCrop(null)} className="text-ch-muted hover:text-ch-cream">cancelar</button>
+            <span className="text-ch-border">·</span>
+          </> : <>
             <button onClick={() => aplicarOp(seleccionado, 'quitar-fondo')} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">quitar fondo</button>
             <span className="text-ch-border">·</span>
             <button onClick={() => aplicarOp(seleccionado, 'borde', { color: 'ffffff', grosor: '12' })} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">borde</button>
             <span className="text-ch-border">·</span>
-            <button onClick={() => aplicarOp(seleccionado, 'trim')} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">recortar</button>
+            <button onClick={() => aplicarOp(seleccionado, 'trim')} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">auto-trim</button>
             <span className="text-ch-border">·</span>
-          </>}
+            <button onClick={() => setCrop({ x: 0.12, y: 0.12, w: 0.76, h: 0.76 })} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">✂ recortar</button>
+            <span className="text-ch-border">·</span>
+          </>)}
           <button onClick={() => actualizarSticker(seleccionado.id, rodajeId, { z: maxZ + 1 }).then(() => setStickers(p => p.map(x => x.id === seleccionado.id ? { ...x, z: maxZ + 1 } : x)))} className="text-ch-muted hover:text-ch-cream">al frente</button>
           <span className="text-ch-border">·</span>
           <button onClick={() => borrar(seleccionado)} className="text-red-500/70 hover:text-red-400">eliminar</button>
@@ -173,12 +209,23 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
                 /* eslint-disable-next-line @next/next/no-img-element */
                 : s.imagen_url ? <img src={s.imagen_url} alt="" draggable={false} className="w-full select-none" /> : null}
 
-              {activo && <>
+              {activo && !crop && <>
                 {/* redimensionar (esquina inferior derecha) */}
                 <div onPointerDown={e => iniciar(e, s, 'resize')} className="pointer-events-auto absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-ch-green border border-white cursor-nwse-resize" />
                 {/* rotar (arriba) */}
                 <div onPointerDown={e => iniciar(e, s, 'rotate')} className="pointer-events-auto absolute -top-5 left-1/2 -translate-x-1/2 w-3 h-3 bg-ch-green border border-white rounded-full cursor-grab" />
               </>}
+
+              {/* Caja de recorte manual */}
+              {activo && crop && s.tipo === 'imagen' && (
+                <div className="pointer-events-auto absolute inset-0" onPointerDown={e => e.stopPropagation()}>
+                  <div className="absolute border-2 border-ch-green cursor-move"
+                    style={{ left: `${crop.x * 100}%`, top: `${crop.y * 100}%`, width: `${crop.w * 100}%`, height: `${crop.h * 100}%`, boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)' }}
+                    onPointerDown={e => iniciarCrop(e, s, 'move')}>
+                    <div onPointerDown={e => iniciarCrop(e, s, 'resize')} className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-ch-green border border-white cursor-nwse-resize" />
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
