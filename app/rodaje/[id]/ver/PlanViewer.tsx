@@ -19,7 +19,7 @@ interface Props {
 
 export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaciones, stickersIniciales, solInicial }: Props) {
   const [bloques, setBloques] = useState<RodajeBloque[]>(bloquesIniciales)
-  const [stickers] = useState<RodajeSticker[]>(stickersIniciales)
+  const [stickers, setStickers] = useState<RodajeSticker[]>(stickersIniciales)
   const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null)
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null)
   const supabaseRef = useRef(createClient())
@@ -43,6 +43,14 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
             setBloques(data as RodajeBloque[])
             setUltimaActualizacion(new Date())
           }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rodaje_stickers', filter: `rodaje_id=eq.${id}` },
+        async () => {
+          const { data } = await supabase.from('rodaje_stickers').select('*').eq('rodaje_id', id).order('z')
+          if (data) { setStickers(data as RodajeSticker[]); setUltimaActualizacion(new Date()) }
         },
       )
       .subscribe()
