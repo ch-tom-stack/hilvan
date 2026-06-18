@@ -181,6 +181,7 @@ interface Props {
   clima: { temp_min: number; temp_max: number; condicion?: string; condicion_codigo?: number } | null
   logoBase64?: string
   stickers?: any[]
+  formato?: 'vertical' | 'tabloid'
 }
 
 
@@ -231,7 +232,8 @@ function ClimaIcono({ codigo }: { codigo: number }) {
   )
 }
 
-export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64, stickers }: Props): React.ReactElement {
+export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64, stickers, formato }: Props): React.ReactElement {
+  const tabloid = formato === 'tabloid'
   const fecha = rodaje.fecha
     ? parseFechaLocal(rodaje.fecha).toLocaleDateString('es-CL', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -256,7 +258,7 @@ export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64, stick
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size={tabloid ? 'TABLOID' : 'A4'} orientation={tabloid ? 'landscape' : 'portrait'} style={styles.page}>
 
         {/* ── HEADER FILA 1: logos + título ── */}
         <View style={styles.headerTop}>

@@ -24,6 +24,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const formato = new URL(request.url).searchParams.get('formato') === 'tabloid' ? 'tabloid' : 'vertical'
   const supabase = await createClient()
 
   // Autorización: la hoja de llamados solo se descarga desde el dashboard
@@ -122,10 +123,11 @@ export async function GET(
         clima,
         logoBase64,
         stickers: stickers || [],
+        formato,
       }) as unknown as ReactElement<DocumentProps>
     )
 
-    const nombre = `hoja-llamados-${rodaje.nombre.toLowerCase().replace(/\s+/g, '-')}.pdf`
+    const nombre = `hoja-llamados-${rodaje.nombre.toLowerCase().replace(/\s+/g, '-')}${formato === 'tabloid' ? '-tabloid' : ''}.pdf`
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {

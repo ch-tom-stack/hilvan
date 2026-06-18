@@ -351,6 +351,11 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                 className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors">
                 PDF
               </a>
+              <a href={`/api/rodaje/${id}/pdf?formato=tabloid`} target="_blank"
+                title="PDF apaisado tamaño tabloid (doble carta) para imprimir grande y pegar en set"
+                className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors">
+                PDF ⬌
+              </a>
               <a href={`/rodaje/${id}/ver`} target="_blank"
                 className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors">
                 ↗ Ver
