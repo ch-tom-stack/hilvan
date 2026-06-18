@@ -20,6 +20,9 @@ import SunCalc from 'suncalc'
 import { parseFechaLocal } from '@/lib/fechas'
 import PanelEquipo from '@/components/rodaje/PanelEquipo'
 import TablaPlan from '@/components/rodaje/TablaPlan'
+import StickerLayerEditor from '@/components/rodaje/StickerLayerEditor'
+import { getStickers } from '@/app/actions/rodaje-stickers'
+import type { RodajeSticker } from '@/types'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -38,6 +41,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
 
   const [rodaje, setRodaje] = useState<any>(null)
   const [bloques, setBloques] = useState<RodajeBloque[]>([])
+  const [stickers, setStickers] = useState<RodajeSticker[]>([])
   const [locaciones, setLocaciones] = useState<RodajeLocacion[]>([])
   const [sol, setSol] = useState<any>(null)
   const [clima, setClima] = useState<any>(null)
@@ -59,9 +63,10 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
 
   // Carga inicial
   const cargarTodo = useCallback(async () => {
-    const [r, b, l] = await Promise.all([getRodaje(id), getBloques(id), getLocaciones(id)])
+    const [r, b, l, sk] = await Promise.all([getRodaje(id), getBloques(id), getLocaciones(id), getStickers(id)])
     setRodaje(r)
     setBloques(b)
+    setStickers(sk)
     setLocaciones(l)
     setHistoria([b])
     setHistoriaIdx(0)
@@ -414,6 +419,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       {/* CONTENIDO */}
       <div className="max-w-[1400px] mx-auto lg:grid lg:grid-cols-[1fr_300px]">
         <div className={`${tabMobil !== 'plan' ? 'hidden lg:block' : ''} border-r border-ch-border`}>
+          <StickerLayerEditor rodajeId={id} iniciales={stickers}>
           <TablaPlan
             rodajeId={id}
             bloques={bloques}
@@ -440,6 +446,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
               }
             }}
           />
+          </StickerLayerEditor>
         </div>
         <div className={`${tabMobil !== 'equipo' ? 'hidden lg:block' : ''}`}>
           <PanelEquipo
