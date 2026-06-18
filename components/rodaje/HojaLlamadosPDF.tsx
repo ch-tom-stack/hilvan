@@ -180,6 +180,7 @@ interface Props {
   sol: { amanecer: string; atardecer: string; dorada_am: string; dorada_pm: string } | null
   clima: { temp_min: number; temp_max: number; condicion?: string; condicion_codigo?: number } | null
   logoBase64?: string
+  stickers?: any[]
 }
 
 
@@ -230,7 +231,7 @@ function ClimaIcono({ codigo }: { codigo: number }) {
   )
 }
 
-export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64 }: Props): React.ReactElement {
+export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64, stickers }: Props): React.ReactElement {
   const fecha = rodaje.fecha
     ? parseFechaLocal(rodaje.fecha).toLocaleDateString('es-CL', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -466,6 +467,27 @@ export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64 }: Pro
                 </View>
               </View>
             ))}
+          </View>
+        )}
+
+        {/* ── STICKERS (capa flotante sobre el plan) ── */}
+        {Array.isArray(stickers) && stickers.length > 0 && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+            {stickers.map((s: any) => {
+              const pos = {
+                position: 'absolute' as const,
+                left: `${(s.x ?? 0) * 100}%`,
+                top: `${(s.y ?? 0) * 100}%`,
+                width: `${(s.w ?? 0.25) * 100}%`,
+                transform: `rotate(${s.rot || 0}deg)`,
+                transformOrigin: 'top left',
+              }
+              if (s.tipo === 'texto') {
+                const fs = ({ sm: 9, md: 12, lg: 18, xl: 28 } as any)[s.estilo?.tamano] ?? 12
+                return <Text key={s.id} style={{ ...pos, color: s.estilo?.color || '#111', fontSize: fs }}>{s.contenido}</Text>
+              }
+              return s.imagen_url ? <Image key={s.id} src={s.imagen_url} style={pos} /> : null
+            })}
           </View>
         )}
 

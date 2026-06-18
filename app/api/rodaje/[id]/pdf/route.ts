@@ -58,6 +58,12 @@ export async function GET(
     .eq('rodaje_id', id)
     .order('orden')
 
+  const { data: stickers } = await supabase
+    .from('rodaje_stickers')
+    .select('*')
+    .eq('rodaje_id', id)
+    .order('z')
+
   const locacionPrincipal = locaciones?.find((l: any) => l.es_principal) || locaciones?.[0]
 
   let sol = null
@@ -115,6 +121,7 @@ export async function GET(
         sol,
         clima,
         logoBase64,
+        stickers: stickers || [],
       }) as unknown as ReactElement<DocumentProps>
     )
 
