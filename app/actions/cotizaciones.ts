@@ -402,7 +402,7 @@ export async function copiarCotizacion(
   }
 
   revalidatePath('/cotizaciones')
-  redirect(`/cotizaciones/${nueva.id}`)
+  return nueva.id as string
 }
 
 // ============================================================

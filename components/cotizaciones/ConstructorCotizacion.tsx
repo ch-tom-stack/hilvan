@@ -436,7 +436,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           <div className="flex items-center gap-1 border border-ch-border rounded overflow-hidden">
             <button
               onClick={() => startTransition(async () => {
-                try { await nuevaVersion(cot.id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear versión') }
+                try { const nid = await nuevaVersion(cot.id); if (nid) router.push(`/cotizaciones/${nid}`) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear versión') }
               })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
@@ -446,7 +446,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             <span className="w-px h-4 bg-ch-border" />
             <button
               onClick={() => startTransition(async () => {
-                try { await nuevaVariante(cot.id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear variante') }
+                try { const nid = await nuevaVariante(cot.id); if (nid) router.push(`/cotizaciones/${nid}`) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear variante') }
               })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
@@ -456,7 +456,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             <span className="w-px h-4 bg-ch-border" />
             <button
               onClick={() => startTransition(async () => {
-                try { await duplicarCotizacion(cot.id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al duplicar') }
+                try { const nid = await duplicarCotizacion(cot.id); if (nid) router.push(`/cotizaciones/${nid}`) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al duplicar') }
               })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
