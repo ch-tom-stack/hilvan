@@ -634,6 +634,35 @@ const baseHandler = createMcpHandler(
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-categoria', args)),
     )
 
+    server.registerTool(
+      'hilvan_cotizacion_agregar_items',
+      {
+        title: 'Agregar ítems a una cotización existente',
+        description:
+          'Inserta líneas NUEVAS en una cotización YA creada (lo que faltaba: agregar/copiar ítems sin rehacer la cotización). Cada ítem indica su `departamento` por NOMBRE (si no existe en la cotización, se crea) y opcional `subgrupo` por nombre. Campos del ítem: nombre (req), precio_cliente, cantidad, dias, unidad (día|hora|jornada|unidad|proyecto), tipo (rol|equipo_ch|equipo_externo|servicio|consumible|post_produccion|locacion|cast|otro), descripcion, incluido. Valida TODOS antes de escribir. Obtén el cotizacion_id con hilvan_buscar_cotizacion. Reversible con hilvan_deshacer (borra lo creado). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          cotizacion_id: z.string(),
+          items: z
+            .array(
+              z.object({
+                departamento: z.string().describe('nombre del departamento/categoría; se crea si no existe'),
+                subgrupo: z.string().optional().describe('nombre del subgrupo; se crea si no existe'),
+                nombre: z.string(),
+                precio_cliente: z.number().optional(),
+                cantidad: z.number().optional(),
+                dias: z.number().optional(),
+                unidad: z.string().optional(),
+                tipo: z.string().optional(),
+                descripcion: z.string().optional(),
+                incluido: z.boolean().optional(),
+              }),
+            )
+            .describe('líneas a agregar'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-agregar-items', args)),
+    )
+
     // ── Conciliación bancaria ────────────────────────────────────────────────
     server.registerTool(
       'hilvan_importar_movimientos',

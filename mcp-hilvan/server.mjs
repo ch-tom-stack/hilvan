@@ -461,6 +461,38 @@ const TOOLS = [
     run: (a) => api('POST', '/cotizacion-categoria', a),
   },
   {
+    name: 'hilvan_cotizacion_agregar_items',
+    description: 'Inserta líneas NUEVAS en una cotización YA creada (agregar/copiar ítems sin rehacer la cotización). Cada ítem indica su `departamento` por NOMBRE (se crea si no existe) y opcional `subgrupo` por nombre. Campos: nombre (req), precio_cliente, cantidad, dias, unidad (día|hora|jornada|unidad|proyecto), tipo (rol|equipo_ch|equipo_externo|servicio|consumible|post_produccion|locacion|cast|otro), descripcion, incluido. Valida TODOS antes de escribir. Obtén cotizacion_id con hilvan_buscar_cotizacion. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cotizacion_id: { type: 'string' },
+        items: {
+          type: 'array',
+          description: 'líneas a agregar',
+          items: {
+            type: 'object',
+            properties: {
+              departamento: { type: 'string', description: 'nombre del departamento; se crea si no existe' },
+              subgrupo: { type: 'string', description: 'nombre del subgrupo; se crea si no existe' },
+              nombre: { type: 'string' },
+              precio_cliente: { type: 'number' },
+              cantidad: { type: 'number' },
+              dias: { type: 'number' },
+              unidad: { type: 'string' },
+              tipo: { type: 'string' },
+              descripcion: { type: 'string' },
+              incluido: { type: 'boolean' },
+            },
+            required: ['departamento', 'nombre'],
+          },
+        },
+      },
+      required: ['cotizacion_id', 'items'],
+    },
+    run: (a) => api('POST', '/cotizacion-agregar-items', a),
+  },
+  {
     name: 'hilvan_importar_movimientos',
     description: 'Importa movimientos de tarjeta/cuenta (extracto). Recibe un array `movimientos`, cada uno con fecha (YYYY-MM-DD), monto (>0), tipo ("cargo"=salida | "abono"=entrada) y opcionalmente descripcion/fuente/referencia. Valida TODAS las filas antes de escribir; reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
     inputSchema: {

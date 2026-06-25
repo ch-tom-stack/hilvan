@@ -131,6 +131,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, borrados: ids.length })
   }
 
+  // ── Agregar ítems a cotización: borra lo creado (ítems + depto/subgrupo nuevos).
+  // Multi-fila: va ANTES del guard de resultado_tabla. Reversa en orden inverso
+  // (los hijos se crearon después → se borran primero, respetando las FKs).
+  if (accion.herramienta === 'cotizacion-agregar-items') {
+    if (!accion.ok) {
+      return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })
+    }
+    const payload = accion.payload as { creados?: { tabla: string; id: string }[] } | null
+    const creados = Array.isArray(payload?.creados) ? payload!.creados : []
+    const tablasOk = ['cotizacion_items', 'cotizacion_subgrupos', 'cotizacion_departamentos']
+    for (const c of [...creados].reverse()) {
+      if (!c?.tabla || !c?.id || !tablasOk.includes(c.tabla)) continue
+      const { error } = await admin.from(c.tabla).delete().eq('id', c.id)
+      if (error) return NextResponse.json({ error: `Error borrando ${c.tabla} ${c.id}: ${error.message}` }, { status: 500 })
+    }
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, borrados: creados.length })
+  }
+
   if (!accion.ok || !accion.resultado_tabla || !accion.resultado_id) {
     return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })
   }

@@ -134,7 +134,7 @@ function boolConDefault(v: unknown, fallback: boolean): boolean {
 
 // ── Validación de un ítem ─────────────────────────────────────────────────────
 
-function validarItem(
+export function validarItem(
   raw: any,
   ctx: string,
   ordenFallback: number,
