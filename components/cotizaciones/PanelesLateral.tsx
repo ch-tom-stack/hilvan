@@ -24,6 +24,14 @@ export function EncargoPanel({ cot, setCot }: { cot: Cotizacion; setCot: React.D
     await actualizarCotizacion(cot.id, { [field]: value || null } as any)
   }
 
+  // Agencia/Cliente: editable como texto libre. Al cambiarla, suelta el cliente
+  // formal heredado (típico al copiar una cotización y reapuntarla a otra marca).
+  async function saveAgencia(value: string) {
+    const v = value.trim()
+    await actualizarCotizacion(cot.id, { cliente_nombre_libre: v || null, cliente_id: null } as any)
+    setCot(c => ({ ...c, cliente_nombre_libre: v || undefined, cliente_id: undefined, cliente: undefined }))
+  }
+
   return (
     <div>
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between mb-2">
@@ -37,8 +45,10 @@ export function EncargoPanel({ cot, setCot }: { cot: Cotizacion; setCot: React.D
             placeholder="Nombre o contacto" className={iCls} />
 
           <label className={lCls}>Agencia / Cliente</label>
-          <input defaultValue={cot.cliente_nombre_libre ?? cot.cliente?.nombre ?? ''} readOnly
-            className={`${iCls} text-ch-muted cursor-default`} />
+          <input key={cot.cliente_nombre_libre ?? cot.cliente?.nombre ?? ''}
+            defaultValue={cot.cliente_nombre_libre ?? cot.cliente?.nombre ?? ''}
+            onBlur={e => saveAgencia(e.target.value)}
+            placeholder="Agencia o cliente" className={iCls} />
 
           <label className={lCls}>Cliente final</label>
           <input defaultValue={cot.cliente_final ?? ''} onBlur={e => save('cliente_final', e.target.value)}
