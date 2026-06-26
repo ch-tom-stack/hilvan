@@ -95,11 +95,17 @@ function coincideRubro(keywords: string[], titulo: string, md: string): boolean 
 // pilla (ej. dominio con "publicidad" pero giro real distinto).
 const RUBRO_SCHEMA = {
   type: 'object',
-  properties: { coincide: { type: 'boolean' }, giro: { type: 'string' } },
+  properties: {
+    coincide: { type: 'boolean' },
+    giro: { type: 'string' },
+    gancho: { type: 'string' },
+  },
   required: ['coincide', 'giro'],
 }
 function rubroPrompt(sector: string): string {
-  return `¿El negocio PRINCIPAL de este sitio web corresponde al rubro: "${sector}" (ignora la ciudad/país)? Marca coincide=true SOLO si el giro principal del negocio calza con ese rubro; si es de otro giro (aunque el dominio o algún texto sugiera lo contrario), coincide=false. Describe el giro real en "giro".`
+  return `Analiza este sitio web de una empresa.
+1) ¿Su negocio PRINCIPAL corresponde al rubro "${sector}" (ignora la ciudad/país)? Marca coincide=true SOLO si el giro principal calza; si es de otro giro (aunque el dominio o algún texto sugiera lo contrario), coincide=false. Pon el giro real en "giro".
+2) En "gancho", escribe 1 frase (máx 25 palabras) con algo REAL y específico de la marca útil para un acercamiento comercial: su propuesta, colección/producto, cliente, estilo o historia. IGNORA banners de envío, avisos de navegador/cookies, CTAs de WhatsApp y textos de menú. Si no hay nada sustantivo, deja "gancho" vacío.`
 }
 
 async function fcPost(path: string, body: unknown, apiKey: string): Promise<any> {
@@ -146,15 +152,24 @@ function ganchoDe(md: string, fallback: string | null): string | null {
   return g ? g.slice(0, 220) : null
 }
 
+export interface Descartado {
+  empresa: string
+  sitio: string
+  giro: string
+}
+
 /**
- * Descubre leads de un sector y arma su dossier. v2 con filtros de calidad.
+ * Descubre leads de un sector y arma su dossier. v3.
+ * - clasificador LLM de rubro (v2.1) que ADEMÁS extrae el gancho real (v3);
+ * - scrapes en PARALELO (v3, corta timeouts);
+ * - devuelve el detalle de descartados (v3, para auditar recall).
  * Requiere FIRECRAWL_API_KEY.
  */
 export async function buscarLeadsWeb(
   sector: string,
   max: number,
   apiKey: string,
-): Promise<{ candidatos: LeadDossier[]; revisados: number; descartados: number }> {
+): Promise<{ candidatos: LeadDossier[]; revisados: number; descartados: number; descartadosDetalle: Descartado[] }> {
   const keywords = keywordsSector(sector)
 
   // 1) Descubrir dominios candidatos (pedimos de más porque filtramos duro).
@@ -163,6 +178,7 @@ export async function buscarLeadsWeb(
 
   const vistos = new Set<string>()
   const semillas: { url: string; titulo: string; desc: string }[] = []
+  const topeSemillas = Math.min(max * 2, 12)
   for (const r of results) {
     const o = origen(r.url || '')
     const titulo = r.title || ''
@@ -170,58 +186,59 @@ export async function buscarLeadsWeb(
     if (JUNK_DOMINIO.test(r.url) || LISTICLE_TITULO.test(titulo) || LISTICLE_PATH.test(r.url)) continue // filtro 1
     vistos.add(o)
     semillas.push({ url: o, titulo, desc: r.description || '' })
-    if (semillas.length >= max * 2) break // tope para acotar tiempo/credito
+    if (semillas.length >= topeSemillas) break
   }
 
-  // 2) Leer cada candidato, validar rubro y extraer dossier. Paramos al llegar a `max`.
-  const candidatos: LeadDossier[] = []
-  let revisados = 0
-  let descartados = 0
-  for (const s of semillas) {
-    if (candidatos.length >= max) break
-    revisados++
-    let md = ''
-    let clasif: { coincide?: boolean; giro?: string } | null = null
-    try {
-      const sc = await fcPost(
+  // 2) Scrapear TODAS las semillas en paralelo (markdown + clasificación/gancho LLM).
+  const scraped = await Promise.all(
+    semillas.map(s =>
+      fcPost(
         '/scrape',
         { url: s.url, formats: ['markdown', { type: 'json', prompt: rubroPrompt(sector), schema: RUBRO_SCHEMA }] },
         apiKey,
       )
-      md = sc.data?.markdown || ''
-      clasif = sc.data?.json || null
-    } catch {
-      /* sigue */
-    }
+        .then(sc => ({ s, md: sc.data?.markdown || '', clasif: sc.data?.json as any }))
+        .catch(() => ({ s, md: '', clasif: null as any })),
+    ),
+  )
 
-    // filtro 2 (v2.1): clasificador LLM de rubro; fallback a keywords si no vino.
+  // 3) Filtrar por rubro y armar dossier (gancho del LLM, fallback a heurística).
+  const candidatos: LeadDossier[] = []
+  const descartadosDetalle: Descartado[] = []
+  let revisados = 0
+  for (const d of scraped) {
+    revisados++
     const enRubro =
-      clasif && typeof clasif.coincide === 'boolean' ? clasif.coincide : coincideRubro(keywords, s.titulo, md)
+      d.clasif && typeof d.clasif.coincide === 'boolean' ? d.clasif.coincide : coincideRubro(keywords, d.s.titulo, d.md)
     if (!enRubro) {
-      descartados++
+      descartadosDetalle.push({ empresa: limpiarTitulo(d.s.titulo, d.s.url), sitio: d.s.url, giro: d.clasif?.giro || '—' })
       continue
     }
-
-    let email = mejorEmail(md, host(s.url)) // filtro 4: prioriza dominio propio
-    if (!email) {
-      try {
-        const sc2 = await fcPost('/scrape', { url: s.url.replace(/\/$/, '') + '/contacto', formats: ['markdown'] }, apiKey)
-        const md2 = sc2.data?.markdown || ''
-        email = mejorEmail(md2, host(s.url))
-        if (!md) md = md2
-      } catch {
-        /* ignore */
-      }
-    }
-
+    if (candidatos.length >= max) continue
+    const ganchoLLM = (d.clasif?.gancho || '').trim()
     candidatos.push({
-      empresa: limpiarTitulo(s.titulo, s.url),
-      sitio: s.url,
-      email,
-      canal: email ? 'email' : 'formulario',
-      gancho: ganchoDe(md, s.desc), // filtro 3: gancho limpio
+      empresa: limpiarTitulo(d.s.titulo, d.s.url),
+      sitio: d.s.url,
+      email: mejorEmail(d.md, host(d.s.url)),
+      canal: 'formulario', // se ajusta tras el fallback de correo
+      gancho: ganchoLLM || ganchoDe(d.md, d.s.desc),
     })
   }
 
-  return { candidatos, revisados, descartados }
+  // 4) Fallback de correo en /contacto (en paralelo) para los que no traen email.
+  await Promise.all(
+    candidatos
+      .filter(c => !c.email)
+      .map(async c => {
+        try {
+          const sc2 = await fcPost('/scrape', { url: c.sitio.replace(/\/$/, '') + '/contacto', formats: ['markdown'] }, apiKey)
+          c.email = mejorEmail(sc2.data?.markdown || '', host(c.sitio))
+        } catch {
+          /* ignore */
+        }
+      }),
+  )
+  for (const c of candidatos) c.canal = c.email ? 'email' : 'formulario'
+
+  return { candidatos, revisados, descartados: descartadosDetalle.length, descartadosDetalle }
 }

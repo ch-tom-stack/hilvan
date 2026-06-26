@@ -40,11 +40,13 @@ export async function POST(req: Request) {
   let candidatos
   let revisados = 0
   let descartados = 0
+  let descartadosDetalle: { empresa: string; sitio: string; giro: string }[] = []
   try {
     const r = await buscarLeadsWeb(sector, max, apiKey)
     candidatos = r.candidatos
     revisados = r.revisados
     descartados = r.descartados
+    descartadosDetalle = r.descartadosDetalle
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error buscando leads' }, { status: 502 })
   }
@@ -97,6 +99,7 @@ export async function POST(req: Request) {
     propuestas_creadas: creadas,
     duplicados_omitidos: candidatos.length - nuevas.length,
     detalle: candidatos.map(c => ({ empresa: c.empresa, sitio: c.sitio, email: c.email, canal: c.canal, gancho: c.gancho })),
+    descartados_detalle: descartadosDetalle,
     nota: 'Propuestas dejadas en la Bandeja (/crm/aprobaciones) para aprobar. Correos son GENÉRICOS de empresa, no del decisor.',
   })
 }
