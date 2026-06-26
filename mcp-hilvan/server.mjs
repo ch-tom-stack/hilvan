@@ -493,6 +493,58 @@ const TOOLS = [
     run: (a) => api('POST', '/cotizacion-agregar-items', a),
   },
   {
+    name: 'hilvan_cotizacion_editar',
+    description: 'Edita campos a nivel cotización (título, descripción, cliente, IVA, descuento, notas, formato y el Encargo). Debe venir al menos un campo. cliente_id enlaza un cliente formal; cliente_nombre_libre (alias agencia_cliente) es texto libre; cliente_final es la marca. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cotizacion_id: { type: 'string' },
+        nombre: { type: 'string' },
+        descripcion: { type: 'string' },
+        cliente_id: { type: ['string', 'null'], description: 'uuid de clientes; null para soltar el cliente formal' },
+        cliente_nombre_libre: { type: 'string', description: 'agencia/cliente como texto libre' },
+        cliente_email_libre: { type: 'string' },
+        con_iva: { type: 'boolean' },
+        descuento_global: { type: 'number' },
+        descuento_global_tipo: { type: 'string', description: 'porcentaje | monto' },
+        notas_cliente: { type: 'string' },
+        notas_internas: { type: 'string' },
+        formato_pdf: { type: 'string', description: 'simple | detallado' },
+        proyecto_id: { type: ['string', 'null'] },
+        solicita: { type: 'string' },
+        cliente_final: { type: 'string', description: 'marca o cliente final' },
+        medios: { type: 'string' },
+        referencia: { type: 'string' },
+      },
+      required: ['cotizacion_id'],
+    },
+    run: (a) => api('POST', '/cotizacion-editar', a),
+  },
+  {
+    name: 'hilvan_cotizacion_detalle',
+    description: 'Desglose CON precios de una cotización + RESUMEN (subtotal por departamento, neto, descuento, IVA, total). Cada ítem trae precio_cliente, cantidad, dias, unidad, incluido, con_boleta y su subtotal. Para verificar montos sin abrir el navegador. Pasa numero (ej. CH-COT-005) o cotizacion_id. Solo lectura.',
+    inputSchema: {
+      type: 'object',
+      properties: { numero: { type: 'string' }, cotizacion_id: { type: 'string' } },
+    },
+    run: (a) => {
+      const qs = new URLSearchParams()
+      if (a.numero) qs.set('numero', a.numero)
+      if (a.cotizacion_id) qs.set('cotizacion_id', a.cotizacion_id)
+      return api('GET', `/cotizacion-detalle?${qs.toString()}`)
+    },
+  },
+  {
+    name: 'hilvan_cotizacion_eliminar_item',
+    description: 'Elimina una línea (ítem) de una cotización. Obtén item_id con hilvan_cotizacion_detalle o hilvan_items_cotizacion. Reversible con hilvan_deshacer (re-inserta la fila). CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: { item_id: { type: 'string' }, motivo: { type: 'string' } },
+      required: ['item_id'],
+    },
+    run: (a) => api('POST', '/cotizacion-eliminar-item', a),
+  },
+  {
     name: 'hilvan_importar_movimientos',
     description: 'Importa movimientos de tarjeta/cuenta (extracto). Recibe un array `movimientos`, cada uno con fecha (YYYY-MM-DD), monto (>0), tipo ("cargo"=salida | "abono"=entrada) y opcionalmente descripcion/fuente/referencia. Valida TODAS las filas antes de escribir; reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
     inputSchema: {

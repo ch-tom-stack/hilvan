@@ -195,6 +195,19 @@ export async function POST(req: Request) {
     if (!previo) return NextResponse.json({ error: 'No se guardaron los valores previos' }, { status: 400 })
     const { error } = await admin.from('cotizacion_items').update(previo).eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'cotizacion-editar') {
+    // Restaurar los campos de cabecera editados. Va ANTES de la rama genérica
+    // resultado_tabla==='cotizaciones' (pago) para no colisionar.
+    const payload = accion.payload as { previo?: Record<string, unknown> } | null
+    if (!payload?.previo) return NextResponse.json({ error: 'No se guardaron los valores previos' }, { status: 400 })
+    const { error } = await admin.from('cotizaciones').update(payload.previo).eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'cotizacion-eliminar-item') {
+    // Re-insertar la fila del ítem que se borró (con su mismo id).
+    const payload = accion.payload as { fila?: Record<string, unknown> | null } | null
+    if (!payload?.fila) return NextResponse.json({ error: 'No se guardó la fila para restaurar' }, { status: 400 })
+    const { error } = await admin.from('cotizacion_items').insert(payload.fila)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'cotizacion-categoria') {
     // Ramifica por la acción original guardada en el payload.
     const payload = accion.payload as

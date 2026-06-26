@@ -663,6 +663,68 @@ const baseHandler = createMcpHandler(
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-agregar-items', args)),
     )
 
+    server.registerTool(
+      'hilvan_cotizacion_editar',
+      {
+        title: 'Editar campos de la cotización',
+        description:
+          'Edita campos a nivel cotización (título, descripción, cliente, IVA, descuento, notas, formato y el Encargo). Debe venir al menos un campo. cliente_id enlaza un cliente formal; cliente_nombre_libre (alias agencia_cliente) es texto libre. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          cotizacion_id: z.string(),
+          nombre: z.string().optional(),
+          descripcion: z.string().optional(),
+          cliente_id: z.string().nullable().optional().describe('uuid de clientes; null para soltar el cliente formal'),
+          cliente_nombre_libre: z.string().optional().describe('agencia/cliente como texto libre'),
+          cliente_email_libre: z.string().optional(),
+          con_iva: z.boolean().optional(),
+          descuento_global: z.number().optional(),
+          descuento_global_tipo: z.enum(['porcentaje', 'monto']).optional(),
+          notas_cliente: z.string().optional(),
+          notas_internas: z.string().optional(),
+          formato_pdf: z.enum(['simple', 'detallado']).optional(),
+          proyecto_id: z.string().nullable().optional(),
+          solicita: z.string().optional(),
+          cliente_final: z.string().optional().describe('marca o cliente final'),
+          medios: z.string().optional(),
+          referencia: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-editar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_cotizacion_detalle',
+      {
+        title: 'Detalle de cotización con precios',
+        description:
+          'Desglose CON precios de una cotización + RESUMEN (subtotal por departamento, neto, descuento, IVA, total). Cada ítem trae precio_cliente, cantidad, dias, unidad, incluido, con_boleta y su subtotal. Para verificar montos sin abrir el navegador. Pasa `numero` (ej. CH-COT-005) o `cotizacion_id`. Solo lectura.',
+        inputSchema: {
+          numero: z.string().optional(),
+          cotizacion_id: z.string().optional(),
+        },
+      },
+      async (args, extra) => {
+        const qs = new URLSearchParams()
+        if (args.numero) qs.set('numero', args.numero)
+        if (args.cotizacion_id) qs.set('cotizacion_id', args.cotizacion_id)
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/cotizacion-detalle?${qs.toString()}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_cotizacion_eliminar_item',
+      {
+        title: 'Eliminar ítem de cotización',
+        description:
+          'Elimina una línea (ítem) de una cotización. Obtén item_id con hilvan_cotizacion_detalle o hilvan_items_cotizacion. Reversible con hilvan_deshacer (re-inserta la fila). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          item_id: z.string(),
+          motivo: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-eliminar-item', args)),
+    )
+
     // ── Conciliación bancaria ────────────────────────────────────────────────
     server.registerTool(
       'hilvan_importar_movimientos',
