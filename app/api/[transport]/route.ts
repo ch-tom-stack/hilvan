@@ -725,6 +725,22 @@ const baseHandler = createMcpHandler(
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-eliminar-item', args)),
     )
 
+    server.registerTool(
+      'hilvan_cotizacion_duplicar',
+      {
+        title: 'Duplicar / versión / variante de cotización',
+        description:
+          'Copia una cotización completa (cabecera + departamentos + subgrupos + ítems, incluyendo precios de bundle). modo="copia" crea un grupo NUEVO con número nuevo (como "Duplicar" en la UI); modo="version" crea otra versión en el MISMO grupo (version = máx+1); modo="variante" crea una variante (misma versión, siguiente letra libre o la que pases en `variante`). Reversible con hilvan_deshacer (borra la copia completa, y el grupo si era "copia"). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          cotizacion_id: z.string(),
+          modo: z.enum(['copia', 'version', 'variante']),
+          variante: z.string().optional(),
+          nombre: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-duplicar', args)),
+    )
+
     // ── Conciliación bancaria ────────────────────────────────────────────────
     server.registerTool(
       'hilvan_importar_movimientos',

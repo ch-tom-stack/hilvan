@@ -33,10 +33,11 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
 //  - 'conciliar-vario': borra la fila de flujo_caja_manual creada (payload.flujo_id)
 //    y RECOMPUTA el movimiento desde el ledger (parcial si era mixto, no conciliado
 //    si era vario puro). resultado_id = movimiento_id.
-//  - 'crear-cotizacion': borra la cotización COMPLETA en cascada (items →
-//    subgrupos → departamentos → cotizaciones → cotizacion_grupos, este último
-//    por payload.grupo_id que la acción siempre crea). Va ANTES de la rama
-//    genérica resultado_tabla==='cotizaciones' (pago) para no colisionar.
+//  - 'crear-cotizacion' / 'cotizacion-duplicar': borra la cotización COMPLETA en
+//    cascada (items → subgrupos → departamentos → cotizaciones → cotizacion_grupos,
+//    este último solo si payload.grupo_id existe — en duplicar modo version/variante
+//    el grupo es compartido y NO se borra). Va ANTES de la rama genérica
+//    resultado_tabla==='cotizaciones' (pago) para no colisionar.
 //  - 'crear-cliente': borra la fila de clientes (resultado_id).
 //  - 'registrar-factura-emitida': UPDATE cotizaciones restaurando
 //    fecha_factura_emitida y numero_factura previos (payload.fecha_anterior /
@@ -232,11 +233,13 @@ export async function POST(req: Request) {
     } else {
       return NextResponse.json({ error: `No se sabe revertir la categoría (accion=${sub})` }, { status: 400 })
     }
-  } else if (accion.herramienta === 'crear-cotizacion') {
+  } else if (accion.herramienta === 'crear-cotizacion' || accion.herramienta === 'cotizacion-duplicar') {
     // Borrar la cotización COMPLETA en cascada por FKs. Va ANTES de la rama
     // genérica resultado_tabla==='cotizaciones' (que es el pago) para no colisionar.
     // Orden: items → subgrupos → departamentos (por cotizacion_id) → la cotización
-    // → el grupo (que SIEMPRE crea esta acción; guardado en payload.grupo_id).
+    // → el grupo (que crea esta acción solo en 'copia'/crear; guardado en payload.grupo_id).
+    // En 'cotizacion-duplicar' modo version/variante NO hay grupo_id → el grupo es
+    // compartido y NO se borra.
     const cotizacionId = accion.resultado_id
     const payload = accion.payload as { grupo_id?: string } | null
     const hijas = ['cotizacion_items', 'cotizacion_subgrupos', 'cotizacion_departamentos']

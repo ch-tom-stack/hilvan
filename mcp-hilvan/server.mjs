@@ -545,6 +545,21 @@ const TOOLS = [
     run: (a) => api('POST', '/cotizacion-eliminar-item', a),
   },
   {
+    name: 'hilvan_cotizacion_duplicar',
+    description: 'Copia una cotización completa (cabecera + departamentos + subgrupos + ítems, incluyendo precios de bundle). modo="copia" crea un grupo NUEVO con número nuevo (como "Duplicar" en la UI); modo="version" crea otra versión en el MISMO grupo (version = máx+1); modo="variante" crea una variante (misma versión, siguiente letra libre o la que pases en variante). Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cotizacion_id: { type: 'string' },
+        modo: { type: 'string', enum: ['copia', 'version', 'variante'] },
+        variante: { type: 'string' },
+        nombre: { type: 'string' },
+      },
+      required: ['cotizacion_id', 'modo'],
+    },
+    run: (a) => api('POST', '/cotizacion-duplicar', a),
+  },
+  {
     name: 'hilvan_importar_movimientos',
     description: 'Importa movimientos de tarjeta/cuenta (extracto). Recibe un array `movimientos`, cada uno con fecha (YYYY-MM-DD), monto (>0), tipo ("cargo"=salida | "abono"=entrada) y opcionalmente descripcion/fuente/referencia. Valida TODAS las filas antes de escribir; reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
     inputSchema: {
