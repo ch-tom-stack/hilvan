@@ -1059,6 +1059,19 @@ const TOOLS = [
     },
     run: (a) => api('POST', '/crm/resolver-aprobacion', a),
   },
+  {
+    name: 'hilvan_buscar_leads_web',
+    description: 'Descubre empresas de un sector en la web (Firecrawl), lee su sitio real y arma un dossier por cada una (sitio + correo GENÉRICO publicado + gancho), dejándolas como PROPUESTAS en la Bandeja del CRM. OJO: NO obtiene el correo personal del decisor (no está publicado en la web) — entrega el correo genérico de empresa (contacto@/marketing@) o, si no hay, el formulario, más contexto para personalizar. El humano aprueba en la Bandeja. v1: el método de descubrimiento se irá afinando. Útil para sectores donde el contacto sí se publica (agencias, empresas medianas, servicios).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sector: { type: 'string', description: 'qué buscar, ej: "agencias de publicidad Santiago" o "viñas boutique Chile"' },
+        max: { type: 'number', description: 'cuántas candidatas (1-10, default 6)' },
+      },
+      required: ['sector'],
+    },
+    run: (a) => api('POST', '/crm/leads-web', a),
+  },
 ]
 
 const server = new Server({ name: 'hilvan-mcp', version: '0.1.0' }, { capabilities: { tools: {} } })

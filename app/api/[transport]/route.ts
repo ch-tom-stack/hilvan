@@ -1318,6 +1318,20 @@ const baseHandler = createMcpHandler(
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/resolver-aprobacion', args)),
     )
+
+    server.registerTool(
+      'hilvan_buscar_leads_web',
+      {
+        title: 'Buscar leads web (CRM)',
+        description:
+          'Descubre empresas de un sector en la web (Firecrawl), lee su sitio real y arma un dossier (sitio + correo GENÉRICO publicado + gancho), dejándolas como PROPUESTAS en la Bandeja. NO obtiene el correo personal del decisor (no está publicado): entrega el correo genérico (contacto@/marketing@) o el formulario, más contexto. El humano aprueba en la Bandeja. Útil para agencias y empresas medianas que sí publican contacto.',
+        inputSchema: {
+          sector: z.string().describe('ej: "agencias de publicidad Santiago"'),
+          max: z.number().optional().describe('1-10, default 6'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/leads-web', args)),
+    )
   },
   {},
   {
