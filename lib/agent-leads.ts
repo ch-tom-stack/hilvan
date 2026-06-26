@@ -90,6 +90,18 @@ function coincideRubro(keywords: string[], titulo: string, md: string): boolean 
   return keywords.some(kw => texto.includes(kw) || (kw.length > 4 && texto.includes(kw.slice(0, kw.length - 1))))
 }
 
+// Clasificador de rubro (v2.1): Firecrawl extrae con LLM si el GIRO PRINCIPAL
+// del sitio calza con el sector. Discrimina casos que el filtro por palabra no
+// pilla (ej. dominio con "publicidad" pero giro real distinto).
+const RUBRO_SCHEMA = {
+  type: 'object',
+  properties: { coincide: { type: 'boolean' }, giro: { type: 'string' } },
+  required: ['coincide', 'giro'],
+}
+function rubroPrompt(sector: string): string {
+  return `¿El negocio PRINCIPAL de este sitio web corresponde al rubro: "${sector}" (ignora la ciudad/país)? Marca coincide=true SOLO si el giro principal del negocio calza con ese rubro; si es de otro giro (aunque el dominio o algún texto sugiera lo contrario), coincide=false. Describe el giro real en "giro".`
+}
+
 async function fcPost(path: string, body: unknown, apiKey: string): Promise<any> {
   const res = await fetch(`${FC}${path}`, {
     method: 'POST',
@@ -169,15 +181,23 @@ export async function buscarLeadsWeb(
     if (candidatos.length >= max) break
     revisados++
     let md = ''
+    let clasif: { coincide?: boolean; giro?: string } | null = null
     try {
-      const sc = await fcPost('/scrape', { url: s.url, formats: ['markdown'] }, apiKey)
+      const sc = await fcPost(
+        '/scrape',
+        { url: s.url, formats: ['markdown', { type: 'json', prompt: rubroPrompt(sector), schema: RUBRO_SCHEMA }] },
+        apiKey,
+      )
       md = sc.data?.markdown || ''
+      clasif = sc.data?.json || null
     } catch {
       /* sigue */
     }
 
-    // filtro 2: ¿calza con el rubro? (si no, se descarta — no ensucia la Bandeja)
-    if (!coincideRubro(keywords, s.titulo, md)) {
+    // filtro 2 (v2.1): clasificador LLM de rubro; fallback a keywords si no vino.
+    const enRubro =
+      clasif && typeof clasif.coincide === 'boolean' ? clasif.coincide : coincideRubro(keywords, s.titulo, md)
+    if (!enRubro) {
       descartados++
       continue
     }
