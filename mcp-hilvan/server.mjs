@@ -424,7 +424,7 @@ const TOOLS = [
   },
   {
     name: 'hilvan_cotizacion_editar_item',
-    description: 'Edita un ítem existente de una cotización: precio_cliente, nombre, descripcion, incluido, cantidad, dias. Debe venir al menos un campo. Obtén item_id con hilvan_items_cotizacion. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    description: 'Edita un ítem existente de una cotización: precio_cliente, nombre, descripcion, incluido, cantidad, dias, con_boleta, tasa_boleta. Debe venir al menos un campo. tasa_boleta va como FRACCIÓN (0.1525 = 15,25%); si activas con_boleta sin tasa y el ítem la tenía en 0, se rellena con la retención del año (Ley 21.133). Obtén item_id con hilvan_cotizacion_detalle. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -435,6 +435,8 @@ const TOOLS = [
         incluido: { type: 'boolean', description: 'true = "Incluida", no suma al total' },
         cantidad: { type: 'number' },
         dias: { type: 'number' },
+        con_boleta: { type: 'boolean', description: 'true = el proveedor emite boleta de honorarios (retención)' },
+        tasa_boleta: { type: 'number', description: 'retención como fracción 0–1, ej. 0.1525 = 15,25% (2026)' },
       },
       required: ['item_id'],
     },

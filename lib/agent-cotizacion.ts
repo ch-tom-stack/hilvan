@@ -10,6 +10,7 @@
 // faltante para paridad con una cotización creada por un usuario en la UI.
 
 import type { TipoItem, UnidadItem, TipoDescuento } from '@/types'
+import { tasaRetencionBoleta } from '@/lib/rendiciones-calc'
 
 export const TIPOS_ITEM: readonly TipoItem[] = [
   'rol',
@@ -171,7 +172,11 @@ export function validarItem(
   }
 
   // Números (defaults reales de la UI: cantidad/dias 1, precios/tasas/descuento 0).
-  const tasa_boleta = numOpcional(raw.tasa_boleta, 0)
+  // tasa_boleta: si el ítem lleva boleta y NO se entregó tasa, usar la retención
+  // del año actual (Ley 21.133, ej. 15,25% en 2026) en vez de 0 — así una boleta
+  // de honorarios no queda con retención 0% por omisión. Sin boleta → 0.
+  const con_boleta = boolConDefault(raw.con_boleta, false)
+  const tasa_boleta = numOpcional(raw.tasa_boleta, con_boleta ? tasaRetencionBoleta() : 0)
   const precio_neto_proveedor = numOpcional(raw.precio_neto_proveedor, 0)
   const precio_bruto = numOpcional(raw.precio_bruto, 0)
   const precio_cliente = numOpcional(raw.precio_cliente, 0)
@@ -204,7 +209,7 @@ export function validarItem(
       tarifa_id: strOpcional(raw.tarifa_id),
       nombre,
       descripcion: strOpcional(raw.descripcion),
-      con_boleta: boolConDefault(raw.con_boleta, false),
+      con_boleta,
       tasa_boleta: tasa_boleta!,
       precio_neto_proveedor: precio_neto_proveedor!,
       precio_bruto: precio_bruto!,

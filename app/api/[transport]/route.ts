@@ -594,7 +594,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Editar ítem de cotización',
         description:
-          'Edita un ítem existente: precio_cliente, nombre, descripcion, incluido, cantidad, dias. Debe venir al menos un campo. Si mandas precio_cliente se marca como precio personalizado. Obtén item_id con hilvan_items_cotizacion. Reversible con hilvan_deshacer (restaura los valores previos). CONFIRMA con el usuario antes de llamar.',
+          'Edita un ítem existente: precio_cliente, nombre, descripcion, incluido, cantidad, dias, con_boleta, tasa_boleta. Debe venir al menos un campo. Si mandas precio_cliente se marca como precio personalizado. tasa_boleta va como FRACCIÓN (0.1525 = 15,25%); si activas con_boleta sin tasa y el ítem la tenía en 0, se rellena con la retención del año (Ley 21.133). Obtén item_id con hilvan_cotizacion_detalle. Reversible con hilvan_deshacer (restaura los valores previos). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           item_id: z.string(),
           precio_cliente: z.number().optional().describe('precio al cliente (≥0)'),
@@ -603,6 +603,8 @@ const baseHandler = createMcpHandler(
           incluido: z.boolean().optional().describe('true = "Incluida", no suma al total'),
           cantidad: z.number().optional(),
           dias: z.number().optional(),
+          con_boleta: z.boolean().optional().describe('true = el proveedor emite boleta de honorarios (retención)'),
+          tasa_boleta: z.number().optional().describe('retención como fracción 0–1, ej. 0.1525 = 15,25% (2026)'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-editar-item', args)),
