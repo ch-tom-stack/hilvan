@@ -39,10 +39,12 @@ export async function POST(req: Request) {
   // 1) Descubrir + enriquecer.
   let candidatos
   let revisados = 0
+  let descartados = 0
   try {
     const r = await buscarLeadsWeb(sector, max, apiKey)
     candidatos = r.candidatos
     revisados = r.revisados
+    descartados = r.descartados
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error buscando leads' }, { status: 502 })
   }
@@ -90,6 +92,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     sector,
     revisados,
+    descartados_por_filtro: descartados,
     candidatos: candidatos.length,
     propuestas_creadas: creadas,
     duplicados_omitidos: candidatos.length - nuevas.length,
