@@ -1322,15 +1322,29 @@ const baseHandler = createMcpHandler(
     server.registerTool(
       'hilvan_buscar_leads_web',
       {
-        title: 'Buscar leads web (CRM)',
+        title: 'Buscar/enriquecer leads web (CRM)',
         description:
-          'Descubre empresas de un sector en la web (Firecrawl), lee su sitio real y arma un dossier (sitio + correo GENÉRICO publicado + gancho), dejándolas como PROPUESTAS en la Bandeja. NO obtiene el correo personal del decisor (no está publicado): entrega el correo genérico (contacto@/marketing@) o el formulario, más contexto. El humano aprueba en la Bandeja. Útil para agencias y empresas medianas que sí publican contacto.',
+          'Enriquece empresas y las deja como PROPUESTAS en la Bandeja (sitio + correo GENÉRICO publicado + gancho real, vía Firecrawl+LLM). DOS modos: (a) DIRIGIDO con `objetivos` (dominios/nombres ya aprobados, idealmente de hilvan_descubrir_marcas); (b) BÚSQUEDA con solo `sector` (más superficial). Flujo recomendado: descubrir_marcas → podar → buscar_leads_web con objetivos. NO obtiene el correo personal del decisor: entrega genérico (contacto@/marketing@) o formulario. El humano aprueba en la Bandeja.',
         inputSchema: {
-          sector: z.string().describe('ej: "agencias de publicidad Santiago"'),
-          max: z.number().optional().describe('1-10, default 6'),
+          sector: z.string().describe('rubro/contexto, ej: "marca de vestuario Chile" (clasifica rubro + gancho)'),
+          objetivos: z.array(z.string()).optional().describe('modo dirigido: dominios o nombres de marca a enriquecer'),
+          max: z.number().optional().describe('modo búsqueda: 1-15, default 6'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/leads-web', args)),
+    )
+
+    server.registerTool(
+      'hilvan_descubrir_marcas',
+      {
+        title: 'Descubrir marcas (CRM, paso 1)',
+        description:
+          'PASO 1 del descubrimiento: dado un sector, minea FUENTES curadas (listicles/guías/directorios) y extrae con LLM la LISTA de marcas del rubro (nombre + sitio). NO scrapea cada marca ni escribe en la Bandeja — devuelve la lista para revisar/podar. Luego enriquece las aprobadas con hilvan_buscar_leads_web pasando `objetivos`. Mejor que buscar a ciegas.',
+        inputSchema: {
+          sector: z.string().describe('rubro a descubrir, ej: "marcas de vestuario independiente Chile"'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/descubrir-marcas', args)),
     )
   },
   {},

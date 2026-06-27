@@ -1061,16 +1061,29 @@ const TOOLS = [
   },
   {
     name: 'hilvan_buscar_leads_web',
-    description: 'Descubre empresas de un sector en la web (Firecrawl), lee su sitio real y arma un dossier por cada una (sitio + correo GENÉRICO publicado + gancho), dejándolas como PROPUESTAS en la Bandeja del CRM. OJO: NO obtiene el correo personal del decisor (no está publicado en la web) — entrega el correo genérico de empresa (contacto@/marketing@) o, si no hay, el formulario, más contexto para personalizar. El humano aprueba en la Bandeja. v1: el método de descubrimiento se irá afinando. Útil para sectores donde el contacto sí se publica (agencias, empresas medianas, servicios).',
+    description: 'Enriquece empresas y las deja como PROPUESTAS en la Bandeja del CRM (sitio + correo GENÉRICO publicado + gancho real, vía Firecrawl+LLM). DOS modos: (a) DIRIGIDO — pasa `objetivos` (lista de dominios o nombres ya aprobada, idealmente de hilvan_descubrir_marcas); (b) BÚSQUEDA — pasa solo `sector` y descubre por buscador (más superficial). Recomendado el flujo: hilvan_descubrir_marcas → revisas/podas → hilvan_buscar_leads_web con objetivos. OJO: NO obtiene el correo personal del decisor (no está publicado) — entrega genérico (contacto@/marketing@) o el formulario. El humano aprueba en la Bandeja.',
     inputSchema: {
       type: 'object',
       properties: {
-        sector: { type: 'string', description: 'qué buscar, ej: "agencias de publicidad Santiago" o "viñas boutique Chile"' },
-        max: { type: 'number', description: 'cuántas candidatas (1-10, default 6)' },
+        sector: { type: 'string', description: 'rubro/contexto, ej: "agencias de publicidad Santiago" o "marca de vestuario Chile" (se usa para clasificar rubro y gancho)' },
+        objetivos: { type: 'array', items: { type: 'string' }, description: 'modo dirigido: dominios (dilema.cl) o nombres de marca a enriquecer; si lo pasas, no busca a ciegas' },
+        max: { type: 'number', description: 'cuántas en modo búsqueda (1-15, default 6)' },
       },
       required: ['sector'],
     },
     run: (a) => api('POST', '/crm/leads-web', a),
+  },
+  {
+    name: 'hilvan_descubrir_marcas',
+    description: 'PASO 1 del descubrimiento de leads: dado un sector, minea FUENTES curadas (listicles/guías/directorios) y extrae con LLM la LISTA de marcas del rubro (nombre + sitio si aparece). NO scrapea cada marca ni escribe en la Bandeja — devuelve la lista para que un humano la revise/pode. Luego enriquece las aprobadas con hilvan_buscar_leads_web pasando `objetivos`. Mucho mejor que buscar a ciegas: las marcas salen de listas que un humano ya curó.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sector: { type: 'string', description: 'rubro a descubrir, ej: "marcas de vestuario independiente Chile"' },
+      },
+      required: ['sector'],
+    },
+    run: (a) => api('POST', '/crm/descubrir-marcas', a),
   },
 ]
 

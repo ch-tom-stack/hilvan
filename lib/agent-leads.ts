@@ -169,24 +169,29 @@ export async function buscarLeadsWeb(
   sector: string,
   max: number,
   apiKey: string,
+  objetivos?: string[],
 ): Promise<{ candidatos: LeadDossier[]; revisados: number; descartados: number; descartadosDetalle: Descartado[] }> {
   const keywords = keywordsSector(sector)
 
-  // 1) Descubrir dominios candidatos (pedimos de más porque filtramos duro).
-  const search = await fcPost('/search', { query: sector, limit: 20, location: 'Chile' }, apiKey)
-  const results: any[] = Array.isArray(search.data) ? search.data : (search.data?.web || search.web || [])
-
-  const vistos = new Set<string>()
-  const semillas: { url: string; titulo: string; desc: string }[] = []
-  const topeSemillas = Math.min(max * 2, 12)
-  for (const r of results) {
-    const o = origen(r.url || '')
-    const titulo = r.title || ''
-    if (!o || vistos.has(o)) continue
-    if (JUNK_DOMINIO.test(r.url) || LISTICLE_TITULO.test(titulo) || LISTICLE_PATH.test(r.url)) continue // filtro 1
-    vistos.add(o)
-    semillas.push({ url: o, titulo, desc: r.description || '' })
-    if (semillas.length >= topeSemillas) break
+  // 1) Obtener semillas: modo DIRIGIDO (lista de objetivos aprobada) o BÚSQUEDA.
+  let semillas: { url: string; titulo: string; desc: string }[]
+  if (objetivos && objetivos.length) {
+    semillas = await seedsFromObjetivos(objetivos, apiKey)
+  } else {
+    const search = await fcPost('/search', { query: sector, limit: 20, location: 'Chile' }, apiKey)
+    const results: any[] = Array.isArray(search.data) ? search.data : (search.data?.web || search.web || [])
+    const vistos = new Set<string>()
+    semillas = []
+    const topeSemillas = Math.min(max * 2, 12)
+    for (const r of results) {
+      const o = origen(r.url || '')
+      const titulo = r.title || ''
+      if (!o || vistos.has(o)) continue
+      if (JUNK_DOMINIO.test(r.url) || LISTICLE_TITULO.test(titulo) || LISTICLE_PATH.test(r.url)) continue // filtro 1
+      vistos.add(o)
+      semillas.push({ url: o, titulo, desc: r.description || '' })
+      if (semillas.length >= topeSemillas) break
+    }
   }
 
   // 2) Scrapear TODAS las semillas en paralelo (markdown + clasificación/gancho LLM).
@@ -241,4 +246,118 @@ export async function buscarLeadsWeb(
   for (const c of candidatos) c.canal = c.email ? 'email' : 'formulario'
 
   return { candidatos, revisados, descartados: descartadosDetalle.length, descartadosDetalle }
+}
+
+// ── Modo dirigido: convierte una lista de objetivos (dominios o nombres) en semillas ──
+async function seedsFromObjetivos(
+  objetivos: string[],
+  apiKey: string,
+): Promise<{ url: string; titulo: string; desc: string }[]> {
+  const out: { url: string; titulo: string; desc: string }[] = []
+  await Promise.all(
+    objetivos.slice(0, 15).map(async raw => {
+      const t = (raw || '').trim()
+      if (!t) return
+      // ¿es dominio/URL?
+      if (/^https?:\/\//i.test(t) || /^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i.test(t)) {
+        const og = origen(t.startsWith('http') ? t : 'https://' + t)
+        if (og) out.push({ url: og, titulo: host(og), desc: '' })
+        return
+      }
+      // es un nombre → resolver su sitio oficial
+      try {
+        const sr = await fcPost('/search', { query: `${t} sitio oficial`, limit: 3, location: 'Chile' }, apiKey)
+        const rs: any[] = Array.isArray(sr.data) ? sr.data : (sr.data?.web || [])
+        const hit = rs.find(r => r.url && !JUNK_DOMINIO.test(r.url) && !LISTICLE_PATH.test(r.url))
+        const og = hit && origen(hit.url)
+        if (og) out.push({ url: og, titulo: t, desc: hit.description || '' })
+      } catch {
+        /* ignore */
+      }
+    }),
+  )
+  return out
+}
+
+// ── Paso 1 de descubrimiento: minar FUENTES curadas (listicles/guías) y extraer ──
+// la LISTA de marcas del rubro con el LLM de Firecrawl. NO scrapea cada marca ni
+// escribe nada: devuelve la lista para que un humano la pode antes de enriquecer.
+const MARCAS_SCHEMA = {
+  type: 'object',
+  properties: {
+    marcas: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { nombre: { type: 'string' }, sitio: { type: 'string' } },
+        required: ['nombre'],
+      },
+    },
+  },
+  required: ['marcas'],
+}
+function marcasPrompt(sector: string): string {
+  return `Esta página menciona varias marcas/empresas del rubro "${sector}". Extrae TODAS las que aparezcan, con su "nombre" y su "sitio" web si se indica.
+REGLAS:
+- Solo marcas reales del rubro indicado.
+- Si el rubro menciona un país (ej. "Chile"), incluye SOLO marcas de ESE país; descarta las extranjeras/internacionales.
+- NO incluyas el medio/blog que publica la nota, ni secciones genéricas del sitio, ni nombres que no sean una marca.`
+}
+
+export interface MarcaDescubierta {
+  nombre: string
+  sitio: string | null
+  fuente: string
+}
+
+export async function descubrirMarcas(
+  sector: string,
+  apiKey: string,
+  maxFuentes = 5,
+): Promise<{ marcas: MarcaDescubierta[]; fuentes: number }> {
+  // 1) Buscar fuentes curadas (acá SÍ queremos listicles/guías como materia prima).
+  const queries = [`mejores marcas ${sector}`, `${sector} marcas recomendadas`, sector]
+  const urls = new Set<string>()
+  const fuentes: string[] = []
+  for (const q of queries) {
+    if (fuentes.length >= maxFuentes) break
+    try {
+      const sr = await fcPost('/search', { query: q, limit: 6, location: 'Chile' }, apiKey)
+      const rs: any[] = Array.isArray(sr.data) ? sr.data : (sr.data?.web || [])
+      for (const r of rs) {
+        const o = origen(r.url || '')
+        if (!o || urls.has(o)) continue
+        if (/youtube|facebook|instagram|tiktok|x\.com|pinterest/i.test(r.url)) continue
+        urls.add(o)
+        fuentes.push(r.url)
+        if (fuentes.length >= maxFuentes) break
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // 2) Scrapear cada fuente en paralelo y extraer la lista de marcas (LLM).
+  const extr = await Promise.all(
+    fuentes.map(u =>
+      fcPost('/scrape', { url: u, formats: [{ type: 'json', prompt: marcasPrompt(sector), schema: MARCAS_SCHEMA }] }, apiKey)
+        .then(sc => ({ u, marcas: (sc.data?.json?.marcas as any[]) || [] }))
+        .catch(() => ({ u, marcas: [] as any[] })),
+    ),
+  )
+
+  // 3) Agregar y deduplicar por nombre.
+  const map = new Map<string, MarcaDescubierta>()
+  for (const e of extr) {
+    for (const m of e.marcas) {
+      const nombre = (m?.nombre || '').trim()
+      if (!nombre || nombre.length < 2) continue
+      const k = deaccent(nombre)
+      let sitio: string | null = (m?.sitio || '').trim() || null
+      if (sitio && /^(n\/?a|na|-|—|none|no|sin sitio|s\/i)$/i.test(sitio)) sitio = null
+      if (!map.has(k)) map.set(k, { nombre, sitio, fuente: e.u })
+      else if (!map.get(k)!.sitio && sitio) map.get(k)!.sitio = sitio
+    }
+  }
+  return { marcas: [...map.values()], fuentes: fuentes.length }
 }

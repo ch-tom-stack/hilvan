@@ -34,7 +34,11 @@ export async function POST(req: Request) {
 
   const sector = typeof body?.sector === 'string' ? body.sector.trim() : ''
   if (!sector) return NextResponse.json({ error: 'Falta "sector" (ej: "agencias de publicidad Santiago")' }, { status: 400 })
-  const max = Math.min(10, Math.max(1, parseInt(String(body?.max ?? 6), 10) || 6))
+  const max = Math.min(15, Math.max(1, parseInt(String(body?.max ?? 6), 10) || 6))
+  // Modo dirigido: lista de dominios/marcas ya aprobada (de hilvan_descubrir_marcas).
+  const objetivos = Array.isArray(body?.objetivos)
+    ? body.objetivos.filter((o: unknown) => typeof o === 'string' && o.trim()).map((o: string) => o.trim())
+    : undefined
 
   // 1) Descubrir + enriquecer.
   let candidatos
@@ -42,7 +46,7 @@ export async function POST(req: Request) {
   let descartados = 0
   let descartadosDetalle: { empresa: string; sitio: string; giro: string }[] = []
   try {
-    const r = await buscarLeadsWeb(sector, max, apiKey)
+    const r = await buscarLeadsWeb(sector, max, apiKey, objetivos)
     candidatos = r.candidatos
     revisados = r.revisados
     descartados = r.descartados
