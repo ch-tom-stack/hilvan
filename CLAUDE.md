@@ -109,9 +109,15 @@ GMAIL_APP_PASSWORD             ← contraseña de aplicación Gmail (nodemailer 
 GOOGLE_SERVICE_ACCOUNT_EMAIL   ← hilvan-calendar@hilvan-casahiedra.iam.gserviceaccount.com
 GOOGLE_CALENDAR_ID             ← estudiocasahiedra@gmail.com
 GOOGLE_SERVICE_ACCOUNT_KEY     ← JSON completo de la service account
+APIGATEWAY_API_TOKEN           ← token de API Gateway (apigateway.cl) para traer RCV+BHE del SII
+SII_RUT                        ← RUT del contribuyente (Casa Hiedra) para consultar el SII
+SII_CLAVE                      ← credencial SII (idealmente un usuario delegado de SOLO consulta)
+APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl
 ```
 
 > **Email:** se usa Gmail SMTP vía nodemailer (reemplazó a Resend). No hay `RESEND_API_KEY`.
+
+> **SII (API Gateway):** `hilvan_sii_sync` (endpoint `/api/agent/sii-sync`, SOLO LECTURA) trae facturas compradas/recibidas (RCV) + boletas de honorarios recibidas de un período y las normaliza al shape de gasto; la carga la hace `hilvan_crear_gastos_bulk`. Auth en dos capas: header `Authorization: Token <APIGATEWAY_API_TOKEN>` + body `{auth:{pass:{rut,clave}}}`. El mapeo de campos de la respuesta SII vive en `lib/agent-sii.ts` y se afina tras la primera corrida real (usar `incluir_crudo=true`). La **cartola bancaria NO pasa por el SII** — se importa/concilia aparte.
 
 ---
 

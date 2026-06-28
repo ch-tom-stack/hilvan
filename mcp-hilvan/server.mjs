@@ -244,6 +244,20 @@ const TOOLS = [
     run: (a) => api('POST', '/crear-gastos-bulk', a),
   },
   {
+    name: 'hilvan_sii_sync',
+    description: 'SOLO LECTURA. Trae del SII (vía API Gateway) las facturas compradas/recibidas (RCV compras) y las boletas de honorarios recibidas de un período, normalizadas al shape de gasto, marcando cuáles ya están cargadas en Hilván (ya_cargado por rut+folio). NO escribe nada. Flujo: 1) llamar esto, 2) clasificar cada fila NUEVA (origen mensual/proyecto, categoría o cotizacion_item_id) con el usuario, 3) cargar con hilvan_crear_gastos_bulk. periodo en formato AAAAMM (ej. 202606). Si los montos se ven raros, repetir con incluir_crudo=true.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        periodo: { type: 'string', description: 'AAAAMM, ej. 202606' },
+        tipo: { type: 'string', enum: ['ambos', 'rcv', 'bhe'], description: 'qué traer (default ambos)' },
+        incluir_crudo: { type: 'boolean', description: 'incluye el registro SII original por fila (debug de mapeo)' },
+      },
+      required: ['periodo'],
+    },
+    run: (a) => api('POST', '/sii-sync', a),
+  },
+  {
     name: 'hilvan_deshacer',
     description: 'Revierte una escritura previa del agente, usando el accion_id del log de auditoría.',
     inputSchema: { type: 'object', properties: { accion_id: { type: 'string' } }, required: ['accion_id'] },

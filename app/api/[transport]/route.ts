@@ -352,6 +352,21 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_sii_sync',
+      {
+        title: 'Traer documentos del SII (RCV + honorarios)',
+        description:
+          'SOLO LECTURA. Trae del SII (vía API Gateway) las FACTURAS COMPRADAS/RECIBIDAS (RCV compras) y las BOLETAS DE HONORARIOS RECIBIDAS de un período, ya normalizadas al shape de gasto, y marca cuáles YA están cargadas en Hilván (ya_cargado por rut+folio). NO escribe nada. Flujo: 1) llamas esto, 2) clasificas cada fila NUEVA (origen mensual/proyecto, categoría o cotizacion_item_id) con el usuario, 3) cargas con hilvan_crear_gastos_bulk. periodo en formato AAAAMM (ej. 202606). Si los montos se ven raros, vuelve a llamar con incluir_crudo=true para ver el registro original del SII.',
+        inputSchema: {
+          periodo: z.string().describe('AAAAMM, ej. 202606'),
+          tipo: z.enum(['ambos', 'rcv', 'bhe']).optional().describe('qué traer (default ambos)'),
+          incluir_crudo: z.boolean().optional().describe('incluye el registro SII original por fila (debug de mapeo)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/sii-sync', args)),
+    )
+
+    server.registerTool(
       'hilvan_buscar_gastos',
       {
         title: 'Buscar gastos',
