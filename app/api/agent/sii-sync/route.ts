@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import {
   normalizarCompra,
   normalizarBhe,
-  extraerDocumentos,
   claveDedup,
   type FilaSugerida,
 } from '@/lib/agent-sii'
@@ -79,30 +78,31 @@ export async function POST(req: Request) {
   let compras: FilaSugerida[] = []
   let honorarios: FilaSugerida[] = []
 
-  // ── RCV compras (facturas recibidas) — detalle JSON ───────────────────────
+  // ── RCV compras (facturas recibidas) ──────────────────────────────────────
+  // tipo=rcv_csv devuelve TODOS los DTE del período como array en `data`
+  // (tipo=rcv con dte=0 da 500; solo sirve por dte específico). Respuesta:
+  // { data: [ {dte,rut,razon_social,folio,fecha,neto,iva,total,...}, ... ], metadata }.
   if (tipo === 'ambos' || tipo === 'rcv') {
-    const r = await ag(`/sii/rcv/compras/detalle/${rut}/${periodo}/0/REGISTRO?tipo=rcv`)
+    const r = await ag(`/sii/rcv/compras/detalle/${rut}/${periodo}/0/REGISTRO?tipo=rcv_csv`)
     if (!r.ok) errores.push(`RCV compras: HTTP ${r.status} ${JSON.stringify(r.json)?.slice(0, 200)}`)
-    else compras = extraerDocumentos(r.json).map(normalizarCompra)
+    else compras = (Array.isArray(r.json?.data) ? r.json.data : []).map(normalizarCompra)
   }
 
-  // ── BHE recibidas — paginado defensivo (sigue pagina_sig_codigo) ──────────
+  // ── BHE recibidas — paginado por n_paginas ────────────────────────────────
+  // `pagina` es obligatorio (incluso la primera). Respuesta:
+  // { data: { n_paginas, n_boletas, boletas: [ ... ] }, metadata }.
   if (tipo === 'ambos' || tipo === 'bhe') {
     let pagina = 1
-    let sigCodigo: string | null = null
-    for (let i = 0; i < 50; i++) {
-      const qs = pagina > 1 ? `?pagina=${pagina}&pagina_sig_codigo=${sigCodigo ?? '00000000000000'}` : ''
-      const r = await ag(`/sii/bhe/recibidas/documentos/${rut}/${periodo}${qs}`)
+    let nPaginas = 1
+    do {
+      const r = await ag(`/sii/bhe/recibidas/documentos/${rut}/${periodo}?pagina=${pagina}`)
       if (!r.ok) { errores.push(`BHE recibidas (pág ${pagina}): HTTP ${r.status} ${JSON.stringify(r.json)?.slice(0, 200)}`); break }
-      const docs = extraerDocumentos(r.json)
-      if (docs.length === 0) break
-      honorarios.push(...docs.map(normalizarBhe))
-      // Continuar solo si la respuesta declara una página siguiente.
-      const sig = r.json?.pagina_sig_codigo ?? r.json?.paginaSigCodigo ?? r.json?.siguiente
-      if (!sig || String(sig) === '00000000000000') break
-      sigCodigo = String(sig)
+      const d = r.json?.data ?? {}
+      const boletas = Array.isArray(d.boletas) ? d.boletas : []
+      honorarios.push(...boletas.map(normalizarBhe))
+      nPaginas = Number(d.n_paginas) || 1
       pagina++
-    }
+    } while (pagina <= nPaginas && pagina <= 50)
   }
 
   // ── Dedup contra lo ya cargado en Hilván (rut + folio) ────────────────────

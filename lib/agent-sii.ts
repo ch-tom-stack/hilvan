@@ -97,11 +97,14 @@ export function normalizarCompra(rec: Record<string, any>): FilaSugerida {
 /** Normaliza una BHE recibida (boleta de honorarios de un tercero) a fila sugerida. */
 export function normalizarBhe(rec: Record<string, any>): FilaSugerida {
   // El SII entrega el BRUTO de la boleta (honorarios totales) y la retención.
-  const bruto = numCL(pick(rec, 'montoBruto', 'monto_bruto', 'brutos', 'totalBruto', 'honorarios'))
-  const liquido = numCL(pick(rec, 'montoLiquido', 'monto_liquido', 'liquido'))
-  const razon = pick(rec, 'nombreEmisor', 'razonSocial', 'razon_social', 'emisor') ?? null
+  // Nombres de campo aún NO confirmados contra la API en vivo (el throttle impidió
+  // capturar un sample) → candidatos defensivos; afinar con incluir_crudo=true.
+  const bruto = numCL(pick(rec, 'montoBruto', 'monto_bruto', 'brutos', 'totalBruto', 'brutoTotal',
+    'honorarios', 'honorariosTotales', 'totalHonorarios', 'montoTotal', 'total'))
+  const liquido = numCL(pick(rec, 'montoLiquido', 'monto_liquido', 'liquido', 'liquidos', 'totalLiquido'))
+  const razon = pick(rec, 'nombreEmisor', 'razonSocial', 'razon_social', 'nombre', 'emisor', 'contribuyente') ?? null
   const rut = pick(rec, 'rutEmisor', 'rut_emisor', 'rut') ?? null
-  const folio = pick(rec, 'folio', 'numero', 'nroBoleta', 'numeroBoleta') ?? null
+  const folio = pick(rec, 'folio', 'numero', 'nroBoleta', 'numeroBoleta', 'nro_boleta', 'numero_boleta') ?? null
   const fecha = fechaISO(pick(rec, 'fechaEmision', 'fecha_emision', 'fecha'))
   return {
     fuente: 'bhe_recibida',
