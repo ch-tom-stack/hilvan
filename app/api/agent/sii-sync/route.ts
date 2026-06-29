@@ -43,7 +43,10 @@ export async function POST(req: Request) {
   const incluirCrudo = body?.incluir_crudo === true
 
   const token = process.env.APIGATEWAY_API_TOKEN
-  const rut = process.env.SII_RUT
+  const rut = process.env.SII_RUT // empresa cuyos documentos se consultan (receptor en la URL)
+  // Quién inicia sesión en el SII: el usuario DELEGADO de solo consulta (su propio
+  // RUT) si está configurado; si no, la propia empresa (compat con la clave admin).
+  const loginRut = process.env.SII_LOGIN_RUT || rut
   const clave = process.env.SII_CLAVE
   if (!token || !rut || !clave) {
     return NextResponse.json(
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
   // La API v2 vive bajo /api/v2 (ej. https://app.apigateway.cl/api/v2/sii/...).
   const baseUrl = (process.env.APIGATEWAY_API_URL || 'https://app.apigateway.cl/api/v2').replace(/\/$/, '')
 
-  const auth = { auth: { pass: { rut, clave } } }
+  const auth = { auth: { pass: { rut: loginRut, clave } } }
   const headers = { 'Content-Type': 'application/json', Authorization: `Token ${token}` }
 
   // Llamada POST a API Gateway. Devuelve { ok, status, json } sin filtrar la clave.

@@ -110,8 +110,9 @@ GOOGLE_SERVICE_ACCOUNT_EMAIL   ← hilvan-calendar@hilvan-casahiedra.iam.gservic
 GOOGLE_CALENDAR_ID             ← estudiocasahiedra@gmail.com
 GOOGLE_SERVICE_ACCOUNT_KEY     ← JSON completo de la service account
 APIGATEWAY_API_TOKEN           ← token de API Gateway (apigateway.cl) para traer RCV+BHE del SII
-SII_RUT                        ← RUT del contribuyente (Casa Hiedra) para consultar el SII
-SII_CLAVE                      ← credencial SII (idealmente un usuario delegado de SOLO consulta)
+SII_RUT                        ← RUT de la EMPRESA cuyos documentos se consultan (77151117-1) — receptor en la URL
+SII_LOGIN_RUT                  ← opcional: RUT del usuario DELEGADO de solo consulta que inicia sesión; si falta, usa SII_RUT
+SII_CLAVE                      ← clave del que inicia sesión (idealmente el delegado de SOLO consulta, NO la clave admin del contador)
 APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl/api/v2
 ```
 
