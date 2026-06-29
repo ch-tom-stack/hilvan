@@ -112,7 +112,7 @@ GOOGLE_SERVICE_ACCOUNT_KEY     ← JSON completo de la service account
 APIGATEWAY_API_TOKEN           ← token de API Gateway (apigateway.cl) para traer RCV+BHE del SII
 SII_RUT                        ← RUT del contribuyente (Casa Hiedra) para consultar el SII
 SII_CLAVE                      ← credencial SII (idealmente un usuario delegado de SOLO consulta)
-APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl
+APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl/api/v2
 ```
 
 > **Email:** se usa Gmail SMTP vía nodemailer (reemplazó a Resend). No hay `RESEND_API_KEY`.

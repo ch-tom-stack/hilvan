@@ -52,7 +52,8 @@ export async function POST(req: Request) {
       { status: 503 },
     )
   }
-  const baseUrl = (process.env.APIGATEWAY_API_URL || 'https://app.apigateway.cl').replace(/\/$/, '')
+  // La API v2 vive bajo /api/v2 (ej. https://app.apigateway.cl/api/v2/sii/...).
+  const baseUrl = (process.env.APIGATEWAY_API_URL || 'https://app.apigateway.cl/api/v2').replace(/\/$/, '')
 
   const auth = { auth: { pass: { rut, clave } } }
   const headers = { 'Content-Type': 'application/json', Authorization: `Token ${token}` }
