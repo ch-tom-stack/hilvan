@@ -88,21 +88,32 @@ export async function POST(req: Request) {
     else compras = (Array.isArray(r.json?.data) ? r.json.data : []).map(normalizarCompra)
   }
 
-  // ── BHE recibidas — paginado por n_paginas ────────────────────────────────
-  // `pagina` es obligatorio (incluso la primera). Respuesta:
-  // { data: { n_paginas, n_boletas, boletas: [ ... ] }, metadata }.
+  // ── BHE recibidas — paginado ──────────────────────────────────────────────
+  // `pagina` es obligatorio (incluso la 1ª). Respuesta:
+  // { data: { n_paginas, n_boletas, boletas: [ {numero,rut,dv,nombre,fecha,
+  //   total_honorarios,total_retencion,total_liquido,anulada,codigo,...} ] }, metadata }.
+  // Descarta ANULADAS y dedup entre páginas por `codigo` (robusto aunque la API
+  // ignore `pagina`). Corta cuando no llegan boletas nuevas o se alcanza n_paginas.
   if (tipo === 'ambos' || tipo === 'bhe') {
+    const vistos = new Set<string>()
     let pagina = 1
-    let nPaginas = 1
-    do {
+    for (let i = 0; i < 50; i++) {
       const r = await ag(`/sii/bhe/recibidas/documentos/${rut}/${periodo}?pagina=${pagina}`)
       if (!r.ok) { errores.push(`BHE recibidas (pág ${pagina}): HTTP ${r.status} ${JSON.stringify(r.json)?.slice(0, 200)}`); break }
       const d = r.json?.data ?? {}
-      const boletas = Array.isArray(d.boletas) ? d.boletas : []
-      honorarios.push(...boletas.map(normalizarBhe))
-      nPaginas = Number(d.n_paginas) || 1
+      const boletas = (Array.isArray(d.boletas) ? d.boletas : []).filter((b: any) => !b.anulada)
+      const nuevas = boletas.filter((b: any) => {
+        const k = String(b.codigo ?? `${b.rut}-${b.numero}`)
+        if (vistos.has(k)) return false
+        vistos.add(k)
+        return true
+      })
+      if (nuevas.length === 0) break
+      honorarios.push(...nuevas.map(normalizarBhe))
+      const nPag = Number(d.n_paginas) || 0
+      if (nPag > 0 && pagina >= nPag) break
       pagina++
-    } while (pagina <= nPaginas && pagina <= 50)
+    }
   }
 
   // ── Dedup contra lo ya cargado en Hilván (rut + folio) ────────────────────

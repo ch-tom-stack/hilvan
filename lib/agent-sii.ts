@@ -96,16 +96,18 @@ export function normalizarCompra(rec: Record<string, any>): FilaSugerida {
 
 /** Normaliza una BHE recibida (boleta de honorarios de un tercero) a fila sugerida. */
 export function normalizarBhe(rec: Record<string, any>): FilaSugerida {
-  // El SII entrega el BRUTO de la boleta (honorarios totales) y la retención.
-  // Nombres de campo aún NO confirmados contra la API en vivo (el throttle impidió
-  // capturar un sample) → candidatos defensivos; afinar con incluir_crudo=true.
-  const bruto = numCL(pick(rec, 'montoBruto', 'monto_bruto', 'brutos', 'totalBruto', 'brutoTotal',
-    'honorarios', 'honorariosTotales', 'totalHonorarios', 'montoTotal', 'total'))
-  const liquido = numCL(pick(rec, 'montoLiquido', 'monto_liquido', 'liquido', 'liquidos', 'totalLiquido'))
-  const razon = pick(rec, 'nombreEmisor', 'razonSocial', 'razon_social', 'nombre', 'emisor', 'contribuyente') ?? null
-  const rut = pick(rec, 'rutEmisor', 'rut_emisor', 'rut') ?? null
-  const folio = pick(rec, 'folio', 'numero', 'nroBoleta', 'numeroBoleta', 'nro_boleta', 'numero_boleta') ?? null
-  const fecha = fechaISO(pick(rec, 'fechaEmision', 'fecha_emision', 'fecha'))
+  // Campos CONFIRMADOS de API Gateway (BHE recibidas):
+  //   numero, rut, dv, nombre, fecha, total_honorarios (BRUTO), total_retencion,
+  //   total_liquido, sociedad_profesional, comuna, estado, anulada, codigo.
+  const bruto = numCL(pick(rec, 'total_honorarios', 'montoBruto', 'honorarios'))
+  const liquido = numCL(pick(rec, 'total_liquido', 'montoLiquido', 'liquido'))
+  const razon = pick(rec, 'nombre', 'nombreEmisor', 'razonSocial', 'razon_social') ?? null
+  // El RUT viene partido en rut + dv → recomponer "12345678-9".
+  const rutBase = pick(rec, 'rut', 'rutEmisor', 'rut_emisor')
+  const dv = pick(rec, 'dv')
+  const rut = rutBase != null ? (dv != null ? `${rutBase}-${dv}` : String(rutBase)) : null
+  const folio = pick(rec, 'numero', 'folio', 'nroBoleta') ?? null
+  const fecha = fechaISO(pick(rec, 'fecha', 'fechaEmision', 'fecha_emision'))
   return {
     fuente: 'bhe_recibida',
     tipo_documento: 'boleta',
