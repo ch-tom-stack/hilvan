@@ -55,13 +55,17 @@ const DTE_EXENTOS = new Set([34, 41]) // 34 factura exenta, 41 BHE exenta (no ap
 export interface FilaSugerida {
   fuente: 'rcv_compra' | 'bhe_recibida'
   // Campos que entiende crear-gastos-bulk:
-  tipo_documento: 'factura' | 'exenta' | 'boleta'
+  tipo_documento: 'factura' | 'exenta' | 'boleta' | 'nota_credito'
   monto: number
   monto_es: 'neto' | 'bruto'
   rut_emisor: string | null
   razon_social_emisor: string | null
   folio: string | null
   fecha_documento: string | null
+  // Solo NC (dte 61): folio/tipo del documento que la NC anula o reduce
+  // (se llena en el route con el formato rcv por-dte). Para crear-nota-credito.
+  referencia_folio?: string | null
+  referencia_tipo?: number | null
   // Sugerencia de descripción para el humano (no obligatoria en bulk):
   descripcion_sugerida: string
   // PENDIENTES de clasificación humana (no se rellenan aquí):
@@ -79,17 +83,24 @@ export function normalizarCompra(rec: Record<string, any>): FilaSugerida {
   const rut = pick(rec, 'rutEmisor', 'rut_emisor', 'RUTEmisor', 'detRutDoc', 'rut') ?? null
   const folio = pick(rec, 'folio', 'Folio', 'nroDoc', 'detNroDoc') ?? null
   const fecha = fechaISO(pick(rec, 'fechaEmision', 'fecha_emision', 'FchEmis', 'detFchDoc', 'fecha'))
-  // Para facturas se persiste el TOTAL (con IVA) como bruto; si no hay total, el neto.
+  // dte 61 = nota de crédito (RESTA una factura previa) → tipo_documento
+  // 'nota_credito'; se carga con crear-nota-credito (monto absoluto, se persiste
+  // negativo). dte 34 = exenta. Resto = factura. Para todas se guarda el TOTAL
+  // (con IVA) como bruto; si no hay total, el neto.
+  const tipo_documento = dte === 61 ? 'nota_credito' : exenta ? 'exenta' : 'factura'
+  const esNC = tipo_documento === 'nota_credito'
   return {
     fuente: 'rcv_compra',
-    tipo_documento: exenta ? 'exenta' : 'factura',
+    tipo_documento,
     monto: total > 0 ? total : neto,
     monto_es: 'bruto',
     rut_emisor: rut != null ? String(rut) : null,
     razon_social_emisor: razon != null ? String(razon) : null,
     folio: folio != null ? String(folio) : null,
     fecha_documento: fecha,
-    descripcion_sugerida: razon ? String(razon) : `Factura ${folio ?? ''}`.trim(),
+    descripcion_sugerida: razon
+      ? `${esNC ? 'Nota de crédito ' : ''}${razon}`
+      : `${esNC ? 'Nota de crédito' : 'Factura'} ${folio ?? ''}`.trim(),
     crudo: rec,
   }
 }

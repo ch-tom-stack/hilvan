@@ -245,7 +245,7 @@ const TOOLS = [
   },
   {
     name: 'hilvan_sii_sync',
-    description: 'SOLO LECTURA. Trae del SII (vía API Gateway) las facturas compradas/recibidas (RCV compras) y las boletas de honorarios recibidas de un período, normalizadas al shape de gasto, marcando cuáles ya están cargadas en Hilván (ya_cargado por rut+folio). NO escribe nada. Flujo: 1) llamar esto, 2) clasificar cada fila NUEVA (origen mensual/proyecto, categoría o cotizacion_item_id) con el usuario, 3) cargar con hilvan_crear_gastos_bulk. periodo en formato AAAAMM (ej. 202606). Si los montos se ven raros, repetir con incluir_crudo=true.',
+    description: 'SOLO LECTURA. Trae del SII (vía API Gateway) las facturas compradas/recibidas (RCV compras), las notas de crédito recibidas (dte 61, en notas_credito) y las boletas de honorarios recibidas (honorarios) de un período, normalizadas, marcando cuáles ya están cargadas (ya_cargado por rut+folio). Guarda cada documento en sii_documentos (respaldo para el contador). NO escribe gastos. Flujo: 1) llamar esto; 2) clasificar las filas NUEVAS de compras/honorarios y cargarlas con hilvan_crear_gastos_bulk; 3) las de notas_credito van con hilvan_crear_nota_credito (monto positivo, referencia_folio = factura que anula). periodo AAAAMM (ej. 202606). incluir_crudo=true muestra el registro original.',
     inputSchema: {
       type: 'object',
       properties: {

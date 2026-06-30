@@ -117,7 +117,32 @@ export async function POST(req: Request) {
     }
   }
 
-  const todas = [...compras, ...honorarios]
+  // ── Notas de crédito (dte 61): separarlas de las facturas ─────────────────
+  // Una NC RESTA una factura previa → NO va como gasto positivo por crear-gastos-bulk:
+  // se carga con hilvan_crear_nota_credito (gasto negativo, sin retención). El rcv_csv
+  // no trae el folio referenciado; lo pedimos en formato rcv por dte 61 (detNroDoc =
+  // folio de la NC; detFolioDocRef/detTipoDocRef = el documento que anula/reduce).
+  const notasCredito = compras.filter((f) => f.tipo_documento === 'nota_credito')
+  compras = compras.filter((f) => f.tipo_documento !== 'nota_credito')
+  if (notasCredito.length > 0 && (tipo === 'ambos' || tipo === 'rcv')) {
+    const rr = await ag(`/sii/rcv/compras/detalle/${rut}/${periodo}/61/REGISTRO?tipo=rcv`)
+    const arr: any[] = rr.ok && Array.isArray(rr.json?.data?.data) ? rr.json.data.data : []
+    const refPorFolio = new Map<string, { folio: string | null; tipo: number | null }>()
+    for (const x of arr) {
+      if (x?.detNroDoc == null) continue
+      refPorFolio.set(String(x.detNroDoc), {
+        folio: x.detFolioDocRef != null ? String(x.detFolioDocRef) : null,
+        tipo: x.detTipoDocRef != null ? Number(x.detTipoDocRef) : null,
+      })
+    }
+    for (const nc of notasCredito) {
+      const ref = nc.folio != null ? refPorFolio.get(nc.folio) : undefined
+      nc.referencia_folio = ref?.folio ?? null
+      nc.referencia_tipo = ref?.tipo ?? null
+    }
+  }
+
+  const todas = [...compras, ...notasCredito, ...honorarios]
   const admin = createAdminClient()
 
   // ── Dedup contra lo ya cargado como gasto en Hilván (rut + folio) ──────────
@@ -154,6 +179,8 @@ export async function POST(req: Request) {
       monto: f.monto,
       codigo: c.codigo ?? null,
       anulada: !!c.anulada,
+      doc_ref_folio: f.referencia_folio ?? null,
+      doc_ref_tipo: f.referencia_tipo ?? null,
       raw: c,
       sincronizado_at: ahora,
     }
@@ -179,22 +206,26 @@ export async function POST(req: Request) {
     return out
   }
   const comprasOut = compras.map(marcar)
+  const notasCreditoOut = notasCredito.map(marcar)
   const honorariosOut = honorarios.map(marcar)
   const nuevos = (arr: any[]) => arr.filter((f) => !f.ya_cargado).length
 
   return NextResponse.json({
     periodo,
     compras: comprasOut,
+    notas_credito: notasCreditoOut,
     honorarios: honorariosOut,
     resumen: {
       compras: compras.length,
       compras_nuevas: nuevos(comprasOut),
+      notas_credito: notasCredito.length,
+      notas_credito_nuevas: nuevos(notasCreditoOut),
       honorarios: honorarios.length,
       honorarios_nuevas: nuevos(honorariosOut),
-      ya_cargados: comprasOut.concat(honorariosOut).filter((f) => f.ya_cargado).length,
+      ya_cargados: comprasOut.concat(notasCreditoOut, honorariosOut).filter((f) => f.ya_cargado).length,
     },
     registro,
-    nota: 'Solo lectura. Cada documento queda guardado en sii_documentos (respaldo fiel para el contador). Clasifica las filas nuevas (origen mensual/proyecto, categoría o cotizacion_item_id) y cárgalas con hilvan_crear_gastos_bulk.',
+    nota: 'Solo lectura. Cada documento queda guardado en sii_documentos (respaldo fiel para el contador). Facturas y boletas NUEVAS: clasifícalas (origen mensual/proyecto, categoría o cotizacion_item_id) y cárgalas con hilvan_crear_gastos_bulk. Las NOTAS DE CRÉDITO (notas_credito) NO van por ahí: cárgalas con hilvan_crear_nota_credito (monto = el valor mostrado en POSITIVO; se persiste negativo; pasa referencia_folio = la factura que anula).',
     ...(errores.length ? { errores } : {}),
   })
 }

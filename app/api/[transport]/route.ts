@@ -356,7 +356,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Traer documentos del SII (RCV + honorarios)',
         description:
-          'SOLO LECTURA. Trae del SII (vía API Gateway) las FACTURAS COMPRADAS/RECIBIDAS (RCV compras) y las BOLETAS DE HONORARIOS RECIBIDAS de un período, ya normalizadas al shape de gasto, y marca cuáles YA están cargadas en Hilván (ya_cargado por rut+folio). NO escribe nada. Flujo: 1) llamas esto, 2) clasificas cada fila NUEVA (origen mensual/proyecto, categoría o cotizacion_item_id) con el usuario, 3) cargas con hilvan_crear_gastos_bulk. periodo en formato AAAAMM (ej. 202606). Si los montos se ven raros, vuelve a llamar con incluir_crudo=true para ver el registro original del SII.',
+          'SOLO LECTURA. Trae del SII (vía API Gateway) las FACTURAS COMPRADAS/RECIBIDAS (RCV compras), las NOTAS DE CRÉDITO recibidas (dte 61, en `notas_credito`) y las BOLETAS DE HONORARIOS RECIBIDAS (`honorarios`) de un período, ya normalizadas, marcando cuáles YA están cargadas (ya_cargado por rut+folio). Además guarda cada documento en sii_documentos (respaldo fiel para el contador). NO escribe gastos. Flujo: 1) llamas esto; 2) clasificas las filas NUEVAS de `compras` y `honorarios` (origen mensual/proyecto, categoría o cotizacion_item_id) y las cargas con hilvan_crear_gastos_bulk; 3) las de `notas_credito` NO van por ahí: cárgalas con hilvan_crear_nota_credito (monto en positivo, referencia_folio = la factura que anula). periodo en formato AAAAMM (ej. 202606). incluir_crudo=true muestra el registro original del SII.',
         inputSchema: {
           periodo: z.string().describe('AAAAMM, ej. 202606'),
           tipo: z.enum(['ambos', 'rcv', 'bhe']).optional().describe('qué traer (default ambos)'),
