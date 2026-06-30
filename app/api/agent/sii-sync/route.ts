@@ -5,6 +5,7 @@ import {
   normalizarCompra,
   normalizarBhe,
   claveDedup,
+  numCL,
   type FilaSugerida,
 } from '@/lib/agent-sii'
 
@@ -116,16 +117,60 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── Dedup contra lo ya cargado en Hilván (rut + folio) ────────────────────
   const todas = [...compras, ...honorarios]
+  const admin = createAdminClient()
+
+  // ── Dedup contra lo ya cargado como gasto en Hilván (rut + folio) ──────────
   const folios = [...new Set(todas.map((f) => f.folio).filter(Boolean) as string[])]
   const yaCargado = new Set<string>()
   if (folios.length > 0) {
-    const admin = createAdminClient()
     for (const tabla of ['rendicion_gastos', 'rendicion_mensual_gastos'] as const) {
       const { data } = await admin.from(tabla).select('rut_emisor, folio').in('folio', folios)
       for (const row of data ?? []) yaCargado.add(claveDedup(row.rut_emisor, row.folio))
     }
+  }
+
+  // ── Registro/auditoría: upsert idempotente del snapshot fiel del SII ───────
+  // Guarda TODOS los documentos (con su registro crudo) en sii_documentos, para
+  // validar con el contador independiente de lo que se cargue como gasto.
+  // Resiliente: si falla (p.ej. tabla aún sin migrar), NO rompe el sync.
+  const ahora = new Date().toISOString()
+  const filaARow = (f: FilaSugerida) => {
+    const c: any = f.crudo || {}
+    const esRcv = f.fuente === 'rcv_compra'
+    const n = (v: unknown) => { const x = Math.round(numCL(v)); return x ? x : null }
+    return {
+      periodo,
+      fuente: f.fuente,
+      dte: esRcv ? Number(c.dte) || 0 : 0,
+      tipo_documento: f.tipo_documento,
+      rut_emisor: f.rut_emisor,
+      razon_social_emisor: f.razon_social_emisor,
+      folio: f.folio,
+      fecha_documento: f.fecha_documento,
+      neto: esRcv ? n(c.neto) : null,
+      iva: esRcv ? n(c.iva) : null,
+      total: esRcv ? n(c.total) : n(c.total_honorarios),
+      monto: f.monto,
+      codigo: c.codigo ?? null,
+      anulada: !!c.anulada,
+      raw: c,
+      sincronizado_at: ahora,
+    }
+  }
+  let registro: { guardados: number; error?: string }
+  try {
+    const rows = todas.map(filaARow).filter((r) => r.rut_emisor && r.folio)
+    if (rows.length === 0) {
+      registro = { guardados: 0 }
+    } else {
+      const { error } = await admin
+        .from('sii_documentos')
+        .upsert(rows, { onConflict: 'fuente,rut_emisor,folio,dte' })
+      registro = error ? { guardados: 0, error: error.message } : { guardados: rows.length }
+    }
+  } catch (e: any) {
+    registro = { guardados: 0, error: e?.message ?? 'fallo al guardar el registro' }
   }
 
   const marcar = (f: FilaSugerida) => {
@@ -148,7 +193,8 @@ export async function POST(req: Request) {
       honorarios_nuevas: nuevos(honorariosOut),
       ya_cargados: comprasOut.concat(honorariosOut).filter((f) => f.ya_cargado).length,
     },
-    nota: 'Solo lectura. Clasifica cada fila (origen mensual/proyecto, categoría o cotizacion_item_id) y cárgalas con hilvan_crear_gastos_bulk. Revisa montos: el mapeo de campos del SII se afina tras la primera corrida real (usa incluir_crudo=true para ver el registro original).',
+    registro,
+    nota: 'Solo lectura. Cada documento queda guardado en sii_documentos (respaldo fiel para el contador). Clasifica las filas nuevas (origen mensual/proyecto, categoría o cotizacion_item_id) y cárgalas con hilvan_crear_gastos_bulk.',
     ...(errores.length ? { errores } : {}),
   })
 }
