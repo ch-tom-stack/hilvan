@@ -336,6 +336,21 @@ export async function POST(req: Request) {
       })
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'pagar-gasto') {
+    // Restaurar pagado/fecha_pago/comprobante previos (no borra la fila).
+    const payload = accion.payload as
+      | { previo?: { pagado?: boolean; fecha_pago?: string | null; comprobante_pago_url?: string | null } | null }
+      | null
+    const previo = payload?.previo ?? null
+    const { error } = await admin
+      .from(accion.resultado_tabla)
+      .update({
+        pagado: previo?.pagado ?? false,
+        fecha_pago: previo?.fecha_pago ?? null,
+        comprobante_pago_url: previo?.comprobante_pago_url ?? null,
+      })
+      .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'eliminar-gasto') {
     // Borrado reversible: re-insertar la fila completa que se guardó al eliminar
     // (con su mismo id). Va ANTES de la rama genérica TABLAS_DELETE para no

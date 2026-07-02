@@ -557,6 +557,22 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_pagar_gasto',
+      {
+        title: 'Marcar gasto como pagado',
+        description:
+          'Marca un gasto (proyecto o mensual) como PAGADO directo: setea pagado=true + fecha_pago (default hoy). Para el caso "tengo el comprobante" sin importar movimiento + conciliar. NO toca `estado` (pago y aprobación son ortogonales) ni crea entrada en el ledger (es "pagado sin conciliar" → cuando llegue la cartola, ese cargo se importa/concilia aparte). Obtén gasto_id y origen con hilvan_buscar_gastos. Reversible con hilvan_deshacer (restaura pagado/fecha_pago previos). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          gasto_id: z.string(),
+          origen: z.enum(['proyecto', 'mensual']),
+          fecha_pago: z.string().optional().describe('YYYY-MM-DD; default hoy'),
+          comprobante_pago_url: z.string().optional().describe('URL del comprobante de pago (opcional)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/pagar-gasto', args)),
+    )
+
+    server.registerTool(
       'hilvan_eliminar_gasto',
       {
         title: 'Eliminar gasto',

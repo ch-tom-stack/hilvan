@@ -396,6 +396,21 @@ const TOOLS = [
     run: (a) => api('POST', '/editar-gasto', a),
   },
   {
+    name: 'hilvan_pagar_gasto',
+    description: 'Marca un gasto (proyecto o mensual) como PAGADO directo: setea pagado=true + fecha_pago (default hoy). Para "tengo el comprobante" sin importar movimiento + conciliar. NO toca estado (pago y aprobación son ortogonales) ni crea entrada en el ledger ("pagado sin conciliar" → cuando llegue la cartola, ese cargo se importa/concilia aparte). Obtén gasto_id y origen con hilvan_buscar_gastos. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        gasto_id: { type: 'string' },
+        origen: { type: 'string', description: 'proyecto | mensual' },
+        fecha_pago: { type: 'string', description: 'YYYY-MM-DD; default hoy' },
+        comprobante_pago_url: { type: 'string', description: 'URL del comprobante de pago (opcional)' },
+      },
+      required: ['gasto_id', 'origen'],
+    },
+    run: (a) => api('POST', '/pagar-gasto', a),
+  },
+  {
     name: 'hilvan_eliminar_gasto',
     description: 'Elimina un gasto ya cargado (proyecto o mensual). Sirve para resolver DUPLICADOS creados por humanos o en sesiones anteriores, que hilvan_deshacer no puede revertir. motivo es OBLIGATORIO y queda en el log de auditoría. Reversible: hilvan_deshacer re-inserta el gasto completo. Obtén gasto_id y origen con hilvan_buscar_gastos. CONFIRMA SIEMPRE con el usuario antes de llamar.',
     inputSchema: {

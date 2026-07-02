@@ -80,8 +80,38 @@ export async function POST(req: Request) {
     })
   }
 
-  // ── 2. Insertar fila por fila, acumulando los creados ───────────────────────
+  // ── 2. Dedup: no re-importar movimientos ya existentes ──────────────────────
+  // Clave exacta = fecha|monto|tipo|(referencia||descripcion): salta re-imports
+  // idénticos (mismo extracto dos veces). Además marca "posibles duplicados"
+  // (misma fecha+monto+tipo, otra glosa) — ej. el cargo manual vs el de la cartola
+  // real — que se INSERTAN pero flaggeados (no se descartan, por si son cargos
+  // legítimos distintos); el humano/agente los revisa.
   const admin = createAdminClient()
+  const norm = (s: string | null) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  const claveExacta = (m: any) => `${m.fecha}|${m.monto}|${m.tipo}|${norm(m.referencia || m.descripcion)}`
+  const claveLaxa = (m: any) => `${m.fecha}|${m.monto}|${m.tipo}`
+
+  const fechas = [...new Set(preparados.map((p) => p.fecha))]
+  const { data: existentes } = await admin
+    .from('movimientos_bancarios')
+    .select('fecha, monto, tipo, referencia, descripcion')
+    .in('fecha', fechas)
+  const setExacto = new Set((existentes ?? []).map(claveExacta))
+  const setLaxo = new Set((existentes ?? []).map(claveLaxa))
+
+  const seen = new Set<string>()
+  const aInsertar: Record<string, any>[] = []
+  const saltados: Record<string, any>[] = []
+  const posiblesDuplicados: Record<string, any>[] = []
+  for (const p of preparados) {
+    const ke = claveExacta(p)
+    if (setExacto.has(ke) || seen.has(ke)) { saltados.push(p); continue }
+    seen.add(ke)
+    if (setLaxo.has(claveLaxa(p))) posiblesDuplicados.push(p)
+    aInsertar.push(p)
+  }
+
+  // ── 3. Insertar los NUEVOS, acumulando los creados ──────────────────────────
   const creados: { tabla: string; id: string }[] = []
 
   async function falloAMitad(mensaje: string) {
@@ -93,29 +123,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: mensaje, creados }, { status: 500 })
   }
 
-  for (let i = 0; i < preparados.length; i++) {
+  for (let i = 0; i < aInsertar.length; i++) {
     const { data, error } = await admin
       .from('movimientos_bancarios')
-      .insert(preparados[i])
+      .insert(aInsertar[i])
       .select('id')
       .single()
     if (error) return await falloAMitad(`insertar movimiento (fila ${i}): ${error.message}`)
     creados.push({ tabla: 'movimientos_bancarios', id: data.id })
   }
 
-  // ── 3. Éxito ────────────────────────────────────────────────────────────────
-  const cargos = preparados.filter((p) => p.tipo === 'cargo').length
-  const abonos = preparados.filter((p) => p.tipo === 'abono').length
+  // ── 4. Éxito ────────────────────────────────────────────────────────────────
+  const cargos = aInsertar.filter((p) => p.tipo === 'cargo').length
+  const abonos = aInsertar.filter((p) => p.tipo === 'abono').length
 
-  await registrarAccion({
-    herramienta: 'importar-movimientos',
-    payload: { creados, resumen: { total: creados.length, cargos, abonos } },
-    ok: true,
-  })
+  if (creados.length > 0) {
+    await registrarAccion({
+      herramienta: 'importar-movimientos',
+      payload: { creados, resumen: { total: creados.length, cargos, abonos } },
+      ok: true,
+    })
+  }
 
   return NextResponse.json({
     creados: creados.length,
+    duplicados_saltados: saltados.length,
     detalle: { cargos, abonos },
+    ...(posiblesDuplicados.length
+      ? {
+          posibles_duplicados: posiblesDuplicados.map((p) => ({
+            fecha: p.fecha, monto: p.monto, tipo: p.tipo, descripcion: p.descripcion,
+          })),
+          aviso: 'Hay movimientos con misma fecha+monto+tipo que otros ya existentes pero con distinta glosa (posible cargo manual vs cartola). Se insertaron; revísalos por si son duplicados.',
+        }
+      : {}),
     ids: creados,
   })
 }

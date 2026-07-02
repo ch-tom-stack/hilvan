@@ -274,8 +274,17 @@ export function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechaz
             </button>
           )}
 
+          {/* Aprobación y PAGO son dimensiones independientes (ortogonales).
+              'pago_aprobado' = aprobado PARA pago (no implica pagado); el pago real
+              es g.pagado/g.fecha_pago (lo setea la conciliación / hilvan_pagar_gasto). */}
           {g.estado === 'pago_aprobado' && (
-            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-green/30 text-ch-green">Pagado</span>
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-blue-500/30 text-blue-400">Aprobado p/pago</span>
+          )}
+          {g.pagado ? (
+            <span title={g.fecha_pago ? `Pagado ${g.fecha_pago}` : 'Pagado'}
+              className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-green/40 text-ch-green">✓ Pagado</span>
+          ) : g.estado === 'pago_aprobado' && (
+            <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-gold/30 text-ch-gold">Impaga</span>
           )}
           {g.estado === 'rechazada' && (
             <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-red-500/30 text-red-400">Rechazada</span>

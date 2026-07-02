@@ -271,8 +271,8 @@ export default function AdminRendiciones({
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex gap-4 text-ch-muted font-body text-[10px] tracking-wider">
           <span>{todosGastos.filter(g => g.estado === 'enviada').length} enviados</span>
-          <span>{todosGastos.filter(g => g.estado === 'aprobada').length} por pagar</span>
-          <span>{todosGastos.filter(g => g.estado === 'pago_aprobado').length} pagados</span>
+          <span>{todosGastos.filter(g => (g.estado === 'aprobada' || g.estado === 'pago_aprobado') && !g.pagado).length} por pagar</span>
+          <span>{todosGastos.filter(g => g.pagado).length} pagados</span>
         </div>
         <button onClick={() => setModalNuevaRendicion(true)}
           disabled={cotizacionesDisponibles.length === 0}
