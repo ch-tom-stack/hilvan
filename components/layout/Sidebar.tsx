@@ -17,6 +17,7 @@ const BASE_NAV_ITEMS = [
   { label: 'Clientes',      href: '/clientes',      disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
   { label: 'Usuarios',      href: '/usuarios',      disponible: false, rolesPermitidos: ['admin'],         ocultarPara: null },
   { label: 'Calendario',   href: '/calendario',    disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
+  { label: 'Reuniones',    href: '/reuniones',     disponible: true,  rolesPermitidos: ['admin', 'productor'], ocultarPara: null },
   { label: 'Rental',        href: '/rental',        disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
 ]
 
