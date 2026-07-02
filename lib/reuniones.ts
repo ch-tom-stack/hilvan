@@ -26,6 +26,10 @@ export const REUNIONES_CONFIG = {
   } as Record<number, [number, number]>,
   // Días de semana SIEMPRE cerrados (además de sáb/dom). Ej. [1] cierra los lunes.
   diasCerrados: [] as number[],
+  // Cierra (cupo 0) el PRIMER día del rango cuyo día de semana esté acá — para que
+  // siempre haya un día "bajo" en cero (sensación de escasez). [1,5] = lun o vie,
+  // el que caiga primero.
+  cerrarPrimerDow: [1, 5] as number[],
 }
 
 export interface SlotEstado { inicio: Date; fin: Date; disponible: boolean }
@@ -81,12 +85,17 @@ export function generarDias(ahora: Date, ocupados: { start: string; end: string 
   const libreCal = (ini: number, fin: number) => !busy.some((b) => ini - bufferMs < b.fin && fin + bufferMs > b.ini)
 
   const dias: DiaDisponibilidad[] = []
+  let cerroPrimero = false
   for (let off = 0; off <= cfg.horizonteDias; off++) {
     const ref = new Date(ahora.getTime() + off * 86400000)
     const { y, m, d, dow, key } = fechaEnTz(cfg.tz, ref)
-    const cerrado = cfg.diasCerrados.includes(dow)
+    const esHabil = cfg.cuposPorDow[dow] !== undefined || cfg.diasCerrados.includes(dow)
+    if (!esHabil) continue // sáb/dom → no se muestra
+    // Cierra el PRIMER día hábil cuyo dow esté en cerrarPrimerDow (lun/vie).
+    let forzarCero = false
+    if (!cerroPrimero && (cfg.cerrarPrimerDow ?? []).includes(dow)) { forzarCero = true; cerroPrimero = true }
+    const cerrado = cfg.diasCerrados.includes(dow) || forzarCero
     const rango = cerrado ? undefined : cfg.cuposPorDow[dow]
-    if (!rango && !cerrado) continue // no es día hábil (sáb/dom) → no se muestra
 
     // Grilla completa de candidatos del día (para mostrar bloqueados).
     const candidatos: { inicio: number; fin: number; elegible: boolean }[] = []

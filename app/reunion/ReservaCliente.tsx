@@ -13,10 +13,10 @@ const LINEA = '#0A0A0A22'
 
 const SITIO = 'https://casahiedra.com'
 const NAV_LINKS = [
+  { href: SITIO, label: 'Inicio' },
   { href: `${SITIO}/productos`, label: 'Productos' },
   { href: `${SITIO}/archivo`, label: 'Archivo' },
   { href: `${SITIO}/la-casa`, label: 'La casa' },
-  { href: `${SITIO}/lectura`, label: 'La Lectura' },
 ]
 
 const fmtDiaLabel = (d: Date) =>
