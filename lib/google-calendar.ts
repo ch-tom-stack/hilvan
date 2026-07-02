@@ -27,6 +27,27 @@ export async function listarEventosGCal(fechaMin: Date, fechaMax: Date) {
   return res.data.items ?? []
 }
 
+// Intervalos OCUPADOS del calendario en un rango (para calcular disponibilidad).
+export async function freeBusyGCal(
+  fechaMin: Date,
+  fechaMax: Date,
+): Promise<{ start: string; end: string }[]> {
+  const calendar = await getCalendarClient()
+  const calId = process.env.GOOGLE_CALENDAR_ID!
+  const res = await calendar.freebusy.query({
+    requestBody: {
+      timeMin: fechaMin.toISOString(),
+      timeMax: fechaMax.toISOString(),
+      timeZone: 'America/Santiago',
+      items: [{ id: calId }],
+    },
+  })
+  const busy = res.data.calendars?.[calId]?.busy ?? []
+  return busy
+    .filter((b) => b.start && b.end)
+    .map((b) => ({ start: b.start as string, end: b.end as string }))
+}
+
 export async function crearEventoGCal(
   titulo: string,
   inicio: Date,
