@@ -77,6 +77,7 @@ export default function RendicionMensualView({
     rut_emisor: '',
     razon_social_emisor: '',
     factura_casa_hiedra: false,
+    documento_recibido: true,
     fecha_documento: '',
   })
   const [uploadingFile, setUploadingFile] = useState(false)
@@ -156,10 +157,11 @@ export default function RendicionMensualView({
           rut_emisor: form.rut_emisor || null,
           razon_social_emisor: form.razon_social_emisor || null,
           factura_casa_hiedra: form.factura_casa_hiedra,
+          documento_recibido: form.documento_recibido,
           fecha_documento: form.fecha_documento || null,
         })
         setRendicion(r => r ? { ...r, gastos: [...(r.gastos ?? []), gasto] } : r)
-        setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false, fecha_documento: '' })
+        setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false, documento_recibido: true, fecha_documento: '' })
         setInputEsBruto(false)
         setModalAbierto(false)
         router.refresh()
@@ -456,6 +458,13 @@ export default function RendicionMensualView({
                       <span className="text-[9px] text-ch-muted">(crédito fiscal IVA)</span>
                     </label>
                   )}
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked={!form.documento_recibido}
+                      onChange={e => setForm(f => ({ ...f, documento_recibido: !e.target.checked }))}
+                      className="w-4 h-4 accent-ch-gold" />
+                    <span className="text-xs text-ch-cream">Documento pendiente</span>
+                    <span className="text-[9px] text-ch-muted">(boleta/factura aún no emitida)</span>
+                  </label>
                 </div>
               )}
 

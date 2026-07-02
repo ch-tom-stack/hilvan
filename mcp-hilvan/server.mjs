@@ -390,6 +390,7 @@ const TOOLS = [
         sin_documento_aceptado: { type: 'boolean', description: 'true = sin respaldo aceptado a propósito (baja la alerta a info)' },
         folio_compartido: { type: 'boolean', description: 'true = parte de una factura que cubre varias cotizaciones (no es duplicado)' },
         referencia_externa: { type: 'string', description: 'número de invoice de proveedor extranjero sin folio chileno' },
+        documento_recibido: { type: 'boolean', description: 'false = documento (boleta/factura) pendiente de emisión; true = ya la tenemos' },
       },
       required: ['gasto_id', 'origen'],
     },
@@ -409,6 +410,19 @@ const TOOLS = [
       required: ['gasto_id', 'origen'],
     },
     run: (a) => api('POST', '/pagar-gasto', a),
+  },
+  {
+    name: 'hilvan_cerrar_item',
+    description: 'Marca un ítem de cotización como RENDIDO/CERRADO (el "cuadre" del presupuesto del ítem contra los gastos reales). Úsalo cuando el productor da la instrucción de cerrar un ítem aunque sobre o se exceda el presupuesto. Devuelve el cuadre (presupuesto vs gastado vs diferencia). cerrado=false lo reabre. Obtén cotizacion_item_id con hilvan_cotizacion_detalle / hilvan_items_cotizacion. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cotizacion_item_id: { type: 'string' },
+        cerrado: { type: 'boolean', description: 'true = cerrar/rendir (default); false = reabrir' },
+      },
+      required: ['cotizacion_item_id'],
+    },
+    run: (a) => api('POST', '/cerrar-item', a),
   },
   {
     name: 'hilvan_eliminar_gasto',

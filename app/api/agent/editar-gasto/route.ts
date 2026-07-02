@@ -40,6 +40,7 @@ export async function POST(req: Request) {
     sin_documento_aceptado,
     folio_compartido,
     referencia_externa,
+    documento_recibido,
   } = body ?? {}
 
   // ── Validaciones ──────────────────────────────────────────────────────────
@@ -55,14 +56,18 @@ export async function POST(req: Request) {
   const tieneSinDocAcept = sin_documento_aceptado !== undefined
   const tieneFolioComp = folio_compartido !== undefined
   const tieneRefExt = referencia_externa !== undefined
-  if (!tieneTipo && !tieneFolio && !tieneSinDocAcept && !tieneFolioComp && !tieneRefExt) {
+  const tieneDocRecibido = documento_recibido !== undefined
+  if (!tieneTipo && !tieneFolio && !tieneSinDocAcept && !tieneFolioComp && !tieneRefExt && !tieneDocRecibido) {
     return NextResponse.json(
       {
         error:
-          'Debe venir al menos uno de: tipo_documento, folio, sin_documento_aceptado, folio_compartido, referencia_externa',
+          'Debe venir al menos uno de: tipo_documento, folio, sin_documento_aceptado, folio_compartido, referencia_externa, documento_recibido',
       },
       { status: 400 },
     )
+  }
+  if (tieneDocRecibido && typeof documento_recibido !== 'boolean') {
+    return NextResponse.json({ error: 'documento_recibido debe ser boolean' }, { status: 400 })
   }
   if (tieneTipo) {
     if (typeof tipo_documento !== 'string' || !TIPOS_DOC_VALIDOS.includes(tipo_documento)) {
@@ -92,7 +97,7 @@ export async function POST(req: Request) {
   // ── Leer valores actuales (para poder deshacer) ───────────────────────────
   const { data: fila, error: eLeer } = await admin
     .from(tabla)
-    .select('id, tipo_documento, folio, sin_documento_aceptado, folio_compartido, referencia_externa')
+    .select('id, tipo_documento, folio, sin_documento_aceptado, folio_compartido, referencia_externa, documento_recibido')
     .eq('id', gasto_id)
     .maybeSingle()
 
@@ -105,6 +110,7 @@ export async function POST(req: Request) {
     sin_documento_aceptado: fila.sin_documento_aceptado ?? false,
     folio_compartido: fila.folio_compartido ?? false,
     referencia_externa: fila.referencia_externa ?? null,
+    documento_recibido: fila.documento_recibido ?? true,
   }
 
   // ── Armar UPDATE solo con los campos provistos ────────────────────────────
@@ -114,6 +120,7 @@ export async function POST(req: Request) {
   if (tieneSinDocAcept) cambios.sin_documento_aceptado = sin_documento_aceptado
   if (tieneFolioComp) cambios.folio_compartido = folio_compartido
   if (tieneRefExt) cambios.referencia_externa = referencia_externa || null
+  if (tieneDocRecibido) cambios.documento_recibido = documento_recibido
 
   const { error: eUpdate } = await admin.from(tabla).update(cambios).eq('id', gasto_id)
 

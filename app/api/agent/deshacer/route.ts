@@ -321,6 +321,7 @@ export async function POST(req: Request) {
             sin_documento_aceptado?: boolean
             folio_compartido?: boolean
             referencia_externa?: string | null
+            documento_recibido?: boolean
           } | null
         }
       | null
@@ -333,6 +334,7 @@ export async function POST(req: Request) {
         sin_documento_aceptado: previo?.sin_documento_aceptado ?? false,
         folio_compartido: previo?.folio_compartido ?? false,
         referencia_externa: previo?.referencia_externa ?? null,
+        documento_recibido: previo?.documento_recibido ?? true,
       })
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -349,6 +351,14 @@ export async function POST(req: Request) {
         fecha_pago: previo?.fecha_pago ?? null,
         comprobante_pago_url: previo?.comprobante_pago_url ?? null,
       })
+      .eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'cerrar-item') {
+    // Restaurar rendicion_completada previo del ítem de cotización.
+    const payload = accion.payload as { previo?: { rendicion_completada?: boolean } | null } | null
+    const { error } = await admin
+      .from('cotizacion_items')
+      .update({ rendicion_completada: payload?.previo?.rendicion_completada ?? false })
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'eliminar-gasto') {

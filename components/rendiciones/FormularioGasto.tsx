@@ -63,6 +63,7 @@ export default function FormularioGasto({
     rut_emisor: '',
     razon_social_emisor: '',
     factura_casa_hiedra: false,
+    documento_recibido: true,
     fecha_documento: '',
   })
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
@@ -153,7 +154,7 @@ export default function FormularioGasto({
   }
 
   const resetForm = () => {
-    setForm({ tipo: tipoInicial as TipoRendicion | '', monto: '', descripcion: '', tipo_documento: '' as TipoDocRendicion | '', foto_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false, fecha_documento: '' })
+    setForm({ tipo: tipoInicial as TipoRendicion | '', monto: '', descripcion: '', tipo_documento: '' as TipoDocRendicion | '', foto_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false, documento_recibido: true, fecha_documento: '' })
     setFotoPreview(null)
     setArchivoNombre(null)
     setInputEsBruto(false)
@@ -180,6 +181,7 @@ export default function FormularioGasto({
           rut_emisor: form.rut_emisor || null,
           razon_social_emisor: form.razon_social_emisor || null,
           factura_casa_hiedra: form.factura_casa_hiedra,
+          documento_recibido: form.documento_recibido,
           fecha_documento: form.fecha_documento || null,
         })
         if (continuar) {
@@ -245,6 +247,13 @@ export default function FormularioGasto({
               className="w-4 h-4 accent-ch-green" />
             <span className="font-body text-xs text-ch-cream">Factura emitida a nombre de Casa Hiedra</span>
             <span className="font-body text-[9px] text-ch-muted">(crédito fiscal IVA)</span>
+          </label>
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input type="checkbox" checked={!form.documento_recibido}
+              onChange={e => set('documento_recibido', !e.target.checked)}
+              className="w-4 h-4 accent-ch-gold" />
+            <span className="font-body text-xs text-ch-cream">Documento pendiente</span>
+            <span className="font-body text-[9px] text-ch-muted">(boleta/factura aún no emitida)</span>
           </label>
         </div>
       )}

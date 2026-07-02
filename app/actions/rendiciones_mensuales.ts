@@ -75,6 +75,7 @@ export async function agregarGastoMensual(payload: {
   rut_emisor?: string | null
   razon_social_emisor?: string | null
   factura_casa_hiedra?: boolean
+  documento_recibido?: boolean
   fecha_documento?: string | null
 }): Promise<RendicionMensualGasto> {
   const supabase = await createClient()

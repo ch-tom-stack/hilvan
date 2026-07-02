@@ -286,6 +286,11 @@ export function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechaz
           ) : g.estado === 'pago_aprobado' && (
             <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-gold/30 text-ch-gold">Impaga</span>
           )}
+          {/* Documento: aspecto independiente. Solo se muestra el AVISO cuando falta. */}
+          {g.documento_recibido === false && (
+            <span title="Documento (boleta/factura) pendiente de emisión"
+              className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-gold/40 text-ch-gold">Falta doc</span>
+          )}
           {g.estado === 'rechazada' && (
             <span className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-red-500/30 text-red-400">Rechazada</span>
           )}

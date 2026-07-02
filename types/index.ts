@@ -489,6 +489,7 @@ export interface RendicionGasto {
   factura_casa_hiedra: boolean
   pagado?: boolean
   fecha_pago?: string | null
+  documento_recibido?: boolean
   created_at: string
   updated_at: string
   colaborador?: { id: string; nombre: string; email: string; banco?: string; tipo_cuenta?: string; numero_cuenta?: string; rut?: string } | null
@@ -558,6 +559,7 @@ export interface RendicionMensualGasto {
   factura_casa_hiedra: boolean
   pagado?: boolean
   fecha_pago?: string | null
+  documento_recibido?: boolean
   created_at: string
 }
 

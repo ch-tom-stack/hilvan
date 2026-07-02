@@ -530,6 +530,7 @@ const baseHandler = createMcpHandler(
           'sin_documento_aceptado=true: el gasto no tiene respaldo y se acepta así a propósito → la auditoría lo baja de alta a info. ' +
           'folio_compartido=true: el gasto es parte de una factura que cubre varias cotizaciones (mismo RUT+folio a propósito) → la auditoría no lo marca como duplicado. ' +
           'referencia_externa: número de invoice de un proveedor extranjero sin folio chileno (Anthropic, Spotify, etc.) → resuelve el hallazgo de folio faltante. ' +
+          'documento_recibido: false = "pagado/cargado pero el proveedor aún no emitió la boleta/factura" (documento pendiente); true = ya la tenemos. Independiente del pago. ' +
           'Reversible con hilvan_deshacer (restaura los valores previos, no borra el gasto). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           gasto_id: z.string(),
@@ -551,6 +552,10 @@ const baseHandler = createMcpHandler(
             .string()
             .optional()
             .describe('número de invoice de proveedor extranjero sin folio chileno'),
+          documento_recibido: z
+            .boolean()
+            .optional()
+            .describe('false = documento (boleta/factura) pendiente de emisión; true = ya la tenemos'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/editar-gasto', args)),
@@ -570,6 +575,20 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/pagar-gasto', args)),
+    )
+
+    server.registerTool(
+      'hilvan_cerrar_item',
+      {
+        title: 'Cerrar/rendir ítem de cotización',
+        description:
+          'Marca un ítem de cotización como RENDIDO/CERRADO (el "cuadre" del presupuesto del ítem contra los gastos reales). Úsalo cuando el productor da la instrucción de cerrar un ítem aunque sobre o se exceda el presupuesto. Devuelve el cuadre (presupuesto vs gastado vs diferencia). cerrado=false lo reabre. Obtén cotizacion_item_id con hilvan_cotizacion_detalle / hilvan_items_cotizacion. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          cotizacion_item_id: z.string(),
+          cerrado: z.boolean().optional().describe('true = cerrar/rendir (default); false = reabrir'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cerrar-item', args)),
     )
 
     server.registerTool(
