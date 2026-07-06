@@ -11,6 +11,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url)
   }
 
+  // Subdominio reuniones — la raíz sirve el agendamiento público; /api/reunion,
+  // /_next y assets pasan tal cual.
+  if (hostname === 'reuniones.casahiedra.com' && pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/reunion'
+    return NextResponse.rewrite(url)
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
