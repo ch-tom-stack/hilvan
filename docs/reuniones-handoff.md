@@ -24,18 +24,17 @@ sitio: ya existe y está en producción.
 
 ---
 
-## 1. DNS — apuntar el subdominio (bloquea el lanzamiento)
+## 1. DNS — apuntar el subdominio ✅ RESUELTO
 
-`reuniones.casahiedra.com` debe apuntar al proyecto **Hilván** en Vercel. Que sea un subdominio nuevo **no choca** con el sitio principal `casahiedra.com` (esté en Vercel, Wix o donde sea) — los subdominios son independientes.
+`reuniones.casahiedra.com` ya apunta al proyecto **Hilván** en Vercel y figura como
+**"Valid Configuration" / Production** (jul 2026). El DNS de `casahiedra.com` se
+gestiona en **Wix** (NO Cloudflare, como decía una versión previa de este doc). El
+subdominio `rental.casahiedra.com` también quedó válido y en producción por la misma vía.
 
-1. **Vercel** (proyecto **Hilván**, no el del sitio) → *Settings → Domains* → agregar `reuniones.casahiedra.com`. Vercel mostrará el registro DNS exacto que espera.
-2. **Cloudflare** (zona `casahiedra.com`) → *DNS → Records → Add record*:
-   - **Type:** `CNAME`
-   - **Name:** `reuniones`
-   - **Target:** `cname.vercel-dns.com` (o el valor que muestre Vercel)
-   - **Proxy status: DNS only** → nube **gris**, NO naranja. ⚠️ Con nube naranja (proxied) Vercel no emite bien el SSL y puede dar loops. Si ya quedó naranja y falla, el fix es cambiar a gris.
-   - **TTL:** Auto.
-3. Propaga en minutos–~2 h; Vercel muestra **"Valid Configuration"** y emite el **SSL** solo.
+Para referencia, si hubiera que rehacerlo:
+1. **Vercel** (proyecto **Hilván**) → *Settings → Domains* → agregar el subdominio. Vercel muestra el registro DNS exacto que espera (un `CNAME` a `cname.vercel-dns.com`).
+2. **Wix** (administrador de DNS de `casahiedra.com`) → agregar ese `CNAME`.
+3. Propaga y Vercel muestra **"Valid Configuration"** + emite el **SSL** solo.
 4. **Ya resuelto en Hilván:** la **raíz** del subdominio sirve la página (rewrite en `proxy.ts`), no hay que escribir `/reunion`.
 
 ---
@@ -79,7 +78,7 @@ La página `/reunion` **recrea** el nav del sitio (Inicio / Productos / Archivo 
 - ✅ Env `REUNIONES_CALENDAR_ID` en Vercel; calendario "Reuniones web" compartido con el service account; migraciones corridas; rewrite del subdominio.
 
 **Falta (lado web/dominio):**
-- ⏳ **DNS** del subdominio (sección 1) — único bloqueante para lanzar.
+- ✅ **DNS** del subdominio (sección 1) — RESUELTO, ya en Production (Wix).
 - ⏳ **Enlace** desde el sitio (sección 2).
 - ⏳ **Cached Egress** de Supabase (sección 3) — antes del 3-ago-2026.
 - 🔵 La Lectura webhook (sección 4) — opcional/futuro.
@@ -88,8 +87,8 @@ La página `/reunion` **recrea** el nav del sitio (Inicio / Productos / Archivo 
 
 ## 7. Datos técnicos de referencia
 
-- Subdominio: `reuniones.casahiedra.com` → proyecto **Hilván** en Vercel.
-- Cloudflare CNAME: `reuniones` → `cname.vercel-dns.com`, **DNS only**.
+- Subdominio: `reuniones.casahiedra.com` → proyecto **Hilván** en Vercel (Valid Configuration / Production).
+- DNS gestionado en **Wix** (no Cloudflare): CNAME `reuniones` → `cname.vercel-dns.com`.
 - Google Calendar de reuniones: calendario secundario "Reuniones web" bajo `tomas@casahiedra.com` (gratis, no es un usuario nuevo). ID en env `REUNIONES_CALENDAR_ID` de Hilván.
 - Service account: `hilvan-calendar@hilvan-casahiedra.iam.gserviceaccount.com` (client_id `109396074919355664608`, con delegación de dominio para el scope calendar).
 - El calendario general del estudio (`estudiocasahiedra@gmail.com`) **no se tocó** — sigue para el sync general.
