@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { freeBusyGCal, crearEventoGCal } from '@/lib/google-calendar'
+import { freeBusyGCal, crearReunionConMeet } from '@/lib/google-calendar'
 import { slotDisponible, REUNIONES_CONFIG } from '@/lib/reuniones'
 import { sendEmail } from '@/lib/email'
+import { emailVisitante, emailInterno } from '@/lib/reuniones-email'
 
 export const runtime = 'nodejs'
 
-// Aviso interno: quién recibe la notificación de una reunión nueva.
+// Aviso interno: quién recibe la notificación + puede responder (Gmail compose).
 const INTERNOS = ['tomas@casahiedra.com', 'natalia@casahiedra.com']
+const RESPONSABLES = [
+  { nombre: 'Tomás', tel: '+56991653035' },
+  { nombre: 'Natalia', tel: '+56957121713' },
+]
+const APP = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.casahiedra.com').replace(/\/$/, '')
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // POST /api/reunion (público) — reserva directa de una reunión desde la web.
@@ -70,8 +76,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Ese horario ya no está disponible. Elige otro.' }, { status: 409 })
   }
 
-  // Crear el evento en Google Calendar (con el link de videollamada si está).
-  const meetLink = process.env.REUNIONES_MEET_LINK || null
+  // Crear el evento en el calendario de reuniones (Workspace) CON Meet único.
   const descripcion = [
     'Reunión agendada desde la web.',
     `Nombre: ${nombre}`,
@@ -79,48 +84,43 @@ export async function POST(req: Request) {
     sitio_web ? `Sitio: ${sitio_web}` : null,
     instagram ? `Instagram: ${instagram}` : null,
     motivo ? `Motivo: ${motivo}` : null,
-    meetLink ? `Videollamada: ${meetLink}` : null,
   ].filter(Boolean).join('\n')
 
   let gcalId: string | null = null
+  let meetLink: string | null = null
   try {
-    const ev = await crearEventoGCal(`Reunión · ${nombre}`, slot.inicio, slot.fin, descripcion)
-    gcalId = ev.id ?? null
+    const ev = await crearReunionConMeet(`Reunión · ${nombre}`, slot.inicio, slot.fin, descripcion)
+    gcalId = ev.id
+    meetLink = ev.meetLink
   } catch (e: any) {
     return NextResponse.json({ error: 'No pudimos agendar. Intenta de nuevo.' }, { status: 502 })
   }
 
+  const token = crypto.randomUUID()
   const { error: eIns } = await admin.from('reuniones_web').insert({
     nombre, email, sitio_web, instagram, motivo,
     inicio: slot.inicio.toISOString(), fin: slot.fin.toISOString(),
-    modalidad: 'videollamada', estado: 'agendada', gcal_event_id: gcalId, ip,
+    modalidad: 'videollamada', estado: 'agendada', gcal_event_id: gcalId, meet_link: meetLink, ip, token,
   })
   if (eIns) {
     // El evento ya se creó en GCal; no rompemos, solo lo registramos.
     console.error('reuniones_web insert falló:', eIns.message)
   }
 
-  // ── Correos (PROVISIONAL — comportamiento/copy a definir con Tomás) ────────
-  const cuando = new Intl.DateTimeFormat('es-CL', {
-    timeZone: 'America/Santiago', weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(slot.inicio)
+  // ── Correos ────────────────────────────────────────────────────────────────
+  // 1) Al visitante: acuse suave + La Lectura (la respuesta personal la mandan
+  //    Tomás/Natalia después, desde su correo, vía el botón del correo interno).
+  // 2) Interno a Tomás+Natalia: toda la info + botones "Responder" (Gmail compose
+  //    pre-cargado) + link "Marcar como atendida" (token, sin login).
+  const datos = { nombre, email, sitio_web, instagram, motivo, inicio: slot.inicio.toISOString() }
   try {
-    await sendEmail({
-      from: 'Casa Hiedra <natalia@casahiedra.com>',
-      to: email,
-      subject: 'Quedó agendada tu reunión con Casa Hiedra',
-      html: `<p>Hola ${nombre},</p><p>Quedó agendada: <strong>${cuando}</strong> (hora de Santiago).</p>${meetLink ? `<p>Nos vemos acá: <a href="${meetLink}">${meetLink}</a></p>` : ''}<p>Si necesitas cambiar el horario, respóndenos a este correo.</p><p>— Casa Hiedra</p>`,
-      contexto: 'reuniones:confirmacion',
-    })
-  } catch (e) { console.error('email confirmacion falló', e) }
+    const c1 = emailVisitante(nombre)
+    await sendEmail({ from: 'Casa Hiedra <natalia@casahiedra.com>', to: email, subject: c1.subject, html: c1.html, contexto: 'reuniones:acuse' })
+  } catch (e) { console.error('email visitante falló', e) }
   try {
-    await sendEmail({
-      from: 'Hilván <natalia@casahiedra.com>',
-      to: INTERNOS.join(', '),
-      subject: `Nueva reunión agendada: ${nombre}`,
-      html: `<p><strong>${nombre}</strong> agendó una reunión.</p><ul><li>Cuándo: ${cuando}</li><li>Email: ${email}</li>${sitio_web ? `<li>Sitio: ${sitio_web}</li>` : ''}${instagram ? `<li>IG: ${instagram}</li>` : ''}${motivo ? `<li>Motivo: ${motivo}</li>` : ''}</ul>`,
-      contexto: 'reuniones:aviso_interno',
-    })
+    const confirmarUrl = `${APP}/api/reunion/confirmar?token=${token}`
+    const ci = emailInterno(datos, RESPONSABLES, confirmarUrl, meetLink)
+    await sendEmail({ from: 'Hilván <natalia@casahiedra.com>', to: INTERNOS.join(', '), subject: ci.subject, html: ci.html, contexto: 'reuniones:aviso_interno' })
   } catch (e) { console.error('email interno falló', e) }
 
   return NextResponse.json({ ok: true, inicio: slot.inicio.toISOString() })

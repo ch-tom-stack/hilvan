@@ -15,6 +15,7 @@ interface ReunionWeb {
   inicio: string
   fin: string
   estado: string
+  confirmada: boolean
   created_at: string
 }
 
@@ -29,7 +30,9 @@ function Fila({ r }: { r: ReunionWeb }) {
     <div className="border border-ch-border/60 bg-ch-surface px-4 py-3 flex flex-wrap items-start gap-x-6 gap-y-1">
       <div className="min-w-[150px]">
         <p className="font-body text-sm text-ch-cream capitalize">{fmtFecha(r.inicio)}</p>
-        <p className="font-body text-[10px] tracking-wider uppercase text-ch-muted mt-0.5">{r.estado}</p>
+        <span className={`inline-block font-body text-[9px] tracking-wider uppercase px-2 py-0.5 mt-1 border ${r.confirmada ? 'border-ch-green/40 text-ch-green' : 'border-ch-gold/40 text-ch-gold'}`}>
+          {r.confirmada ? '✓ Atendida' : 'Pendiente'}
+        </span>
       </div>
       <div className="flex-1 min-w-[200px]">
         <p className="font-body text-sm text-ch-cream">{r.nombre}</p>
@@ -56,7 +59,7 @@ export default async function ReunionesPage() {
 
   const { data } = await supabase
     .from('reuniones_web')
-    .select('id, nombre, email, sitio_web, instagram, motivo, inicio, fin, estado, created_at')
+    .select('id, nombre, email, sitio_web, instagram, motivo, inicio, fin, estado, confirmada, created_at')
     .order('inicio', { ascending: false })
   const reuniones = (data ?? []) as ReunionWeb[]
 
