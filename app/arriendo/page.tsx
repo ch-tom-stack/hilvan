@@ -1,13 +1,22 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Equipo, CategoriaEquipo } from '@/types'
 import CatalogoCliente from './CatalogoCliente'
-import VideoPromoPopup from './VideoPromoPopup'
-import BundleCamionBtn from './BundleCamionBtn'
 
 export const metadata = {
-  title: 'Arriendo de equipos — Casa Hiedra',
-  description: 'Catálogo de equipos audiovisuales disponibles para arriendo. Cámaras, luces, audio y más.',
+  title: 'Arriendo de equipos · Casa Hiedra',
+  description: 'Catálogo de equipos audiovisuales para arriendo. Arma tu cotización al instante: cámaras, luces, audio y más.',
 }
+
+const SITIO = 'https://casahiedra.com'
+const NAV_LINKS = [
+  { href: SITIO, label: 'Inicio' },
+  { href: `${SITIO}/productos`, label: 'Productos' },
+  { href: `${SITIO}/archivo`, label: 'Archivo' },
+  { href: `${SITIO}/la-casa`, label: 'La casa' },
+]
+const TINTA = '#0A0A0A'
+const OPACO = '#353135'
+const LINEA = '#0A0A0A22'
 
 export default async function ArriendoPage() {
   const admin = createAdminClient()
@@ -21,37 +30,43 @@ export default async function ArriendoPage() {
   const cats = (categorias ?? []) as CategoriaEquipo[]
 
   return (
-    <div className="min-h-screen bg-ch-black text-ch-cream">
-      <VideoPromoPopup />
-      <BundleCamionBtn />
-
-      {/* Header */}
-      <header className="border-b border-ch-border px-6 py-4 flex items-center justify-between">
-        <img src="/logos/logo-horizontal-negro.png" alt="Casa Hiedra" className="h-5 opacity-90 invert" />
-        <span className="font-body text-[10px] tracking-[0.4em] uppercase text-ch-subtle">Arriendo de equipos</span>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {/* Nav */}
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 40px', borderBottom: `1px solid ${LINEA}`, flexShrink: 0 }}>
+        <a href={SITIO} aria-label="Casa Hiedra — inicio">
+          {/* logo-horizontal-blanco = logo oscuro para FONDOS CLAROS (convención del repo). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logos/logo-horizontal-blanco.png" alt="Casa Hiedra" style={{ height: 26, display: 'block' }} />
+        </a>
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
+          {NAV_LINKS.map((l) => (
+            <a key={l.href} href={l.href} style={{ fontSize: 14, color: TINTA, textDecoration: 'none' }} className="ch-navlink">{l.label}</a>
+          ))}
+        </nav>
       </header>
 
       {/* Hero */}
-      <div className="border-b border-ch-border px-6 py-16 text-center">
-        <p className="font-body text-[9px] tracking-[0.55em] uppercase text-ch-muted mb-4">Casa Hiedra · Rental</p>
-        <h1 className="font-display italic text-5xl lg:text-7xl text-ch-cream leading-none mb-6">Equipos en arriendo</h1>
-        <p className="font-body text-sm text-ch-muted max-w-md mx-auto leading-relaxed">
-          Arriendo de equipos audiovisuales profesionales por jornada.
-          Precios a consultar para paquetes o días múltiples.
+      <div style={{ padding: '54px 40px 40px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
+        <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: OPACO, margin: '0 0 10px' }}>Casa Hiedra · Rental</p>
+        <h1 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.02, margin: '0 0 14px', maxWidth: 640 }}>
+          Arriendo de equipos
+        </h1>
+        <p style={{ fontSize: 16, lineHeight: 1.5, color: OPACO, maxWidth: 560, margin: 0 }}>
+          Elige tus fechas, arma tu selección y obtén una cotización al instante. Precios por jornada a la vista, con descuento por volumen. La reserva la confirmamos nosotros.
         </p>
       </div>
 
-      {/* Catálogo — maneja su propio layout según estado del carrito */}
-      <div className="px-6 py-12 pb-24 lg:pb-12">
+      {/* Catálogo + cotizador */}
+      <div style={{ flex: 1, padding: '0 40px 60px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
         <CatalogoCliente equipos={equipos} categorias={cats} />
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-ch-border px-6 py-8 text-center">
-        <img src="/logos/logo-horizontal-negro.png" alt="Casa Hiedra" className="h-4 opacity-50 invert mx-auto mb-4" />
-        <p className="font-body text-[10px] text-ch-subtle tracking-[0.3em]">Casa Hiedra · casahiedra.com</p>
+      <footer style={{ borderTop: `1px solid ${LINEA}`, padding: '26px 40px', textAlign: 'center', flexShrink: 0 }}>
+        <p style={{ fontSize: 13, color: OPACO, margin: 0 }}>
+          Casa Hiedra · <a href={SITIO} style={{ color: TINTA, textDecoration: 'none' }}>casahiedra.com</a> · <a href="mailto:rental@casahiedra.com" style={{ color: TINTA, textDecoration: 'none' }}>rental@casahiedra.com</a>
+        </p>
       </footer>
-
     </div>
   )
 }

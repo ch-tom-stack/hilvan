@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
+import { diasArriendoInclusive, descuentoVolumen, formatCLP } from '@/lib/cotizaciones-calc'
 
-interface ItemCotizacion {
+interface ItemEntrada {
+  equipo_id?: string | null
   nombre: string
   codigo: string
   cantidad: number
@@ -12,135 +15,207 @@ interface Body {
   nombre: string
   email: string
   mensaje?: string
-  equipos: ItemCotizacion[]
-  jornadas: number
+  desde: string
+  hasta: string
+  equipos: ItemEntrada[]
 }
 
+const FECHA = /^\d{4}-\d{2}-\d{2}$/
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const ROJO = '#C11700'
+const TINTA = '#0A0A0A'
+const OPACO = '#353135'
+const FONT = "-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+const APP = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.casahiedra.com').replace(/\/$/, '')
+
+const fmtFecha = (d: string) =>
+  new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(d + 'T12:00:00'))
+
 export async function POST(request: NextRequest) {
+  let body: Body
   try {
-    const body: Body = await request.json()
-    const { nombre, email, mensaje, equipos, jornadas } = body
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Cuerpo inválido' }, { status: 400 })
+  }
 
-    if (!nombre || !email || !equipos?.length) {
-      return NextResponse.json({ error: 'Datos incompletos' }, { status: 400 })
-    }
+  const nombre = (body.nombre ?? '').trim()
+  const email = (body.email ?? '').trim()
+  const mensaje = (body.mensaje ?? '').trim()
+  const { desde, hasta } = body
+  const equipos = Array.isArray(body.equipos) ? body.equipos : []
 
-    // Calcular totales
-    const totalJornada = equipos.reduce((sum, e) => sum + (e.precio_jornada ?? 0) * e.cantidad, 0)
-    const totalGeneral = totalJornada * jornadas
-    const hayConsultar = equipos.some(e => !e.precio_jornada || e.precio_jornada === 0)
+  if (!nombre || !EMAIL_RE.test(email) || !equipos.length) {
+    return NextResponse.json({ error: 'Datos incompletos' }, { status: 400 })
+  }
+  if (!FECHA.test(desde ?? '') || !FECHA.test(hasta ?? '') || hasta < desde) {
+    return NextResponse.json({ error: 'Fechas inválidas' }, { status: 400 })
+  }
 
-    const filasEquipos = equipos.map(e => `
-      <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #383836;font-family:'DM Sans',sans-serif;font-size:13px;color:#f5f0e8;">
-          ${e.nombre}${e.cantidad > 1 ? ` <span style="color:#9a9a92">×${e.cantidad}</span>` : ''}
-        </td>
-        <td style="padding:10px 12px;border-bottom:1px solid #383836;font-family:'DM Sans',sans-serif;font-size:13px;color:#9a9a92;text-align:right;">
-          ${e.precio_jornada && e.precio_jornada > 0
-            ? `$${(e.precio_jornada * e.cantidad).toLocaleString('es-CL')} / jornada`
-            : 'A consultar'}
-        </td>
-      </tr>
-    `).join('')
+  const dias = diasArriendoInclusive(desde, hasta)
+  if (dias < 1) return NextResponse.json({ error: 'Rango de fechas inválido' }, { status: 400 })
 
-    const resumenTotal = totalGeneral > 0
-      ? `<tr>
-          <td style="padding:14px 12px;font-family:'DM Sans',sans-serif;font-size:12px;color:#9a9a92;text-transform:uppercase;letter-spacing:0.1em;">
-            Total (${jornadas} jornada${jornadas > 1 ? 's' : ''})
-          </td>
-          <td style="padding:14px 12px;font-family:'DM Sans',sans-serif;font-size:20px;color:#f5f0e8;text-align:right;font-style:italic;">
-            $${totalGeneral.toLocaleString('es-CL')}
-          </td>
-        </tr>`
-      : ''
+  // Normalizar ítems: precio numérico y finito, cantidad ≥ 1
+  const items = equipos
+    .map((e) => {
+      const precio = Number(e.precio_jornada)
+      const cantidad = Math.max(1, Math.round(Number(e.cantidad) || 1))
+      return {
+        equipo_id: e.equipo_id ?? null,
+        nombre: String(e.nombre ?? '').slice(0, 200),
+        codigo: String(e.codigo ?? '').slice(0, 60),
+        cantidad,
+        precio: Number.isFinite(precio) && precio > 0 ? Math.round(precio) : 0,
+      }
+    })
+    .filter((e) => e.nombre)
 
-    const notaConsultar = hayConsultar
-      ? `<p style="font-family:'DM Sans',sans-serif;font-size:11px;color:#c9a84c;margin:8px 0 0;">* Algunos equipos tienen precio a confirmar</p>`
-      : ''
+  if (!items.length) return NextResponse.json({ error: 'Sin equipos válidos' }, { status: 400 })
 
-    const htmlInterno = `
-      <div style="background:#111110;padding:40px 32px;max-width:560px;margin:0 auto;">
-        <p style="font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.4em;text-transform:uppercase;color:#9a9a92;margin:0 0 24px;">
-          Casa Hiedra · Rental
-        </p>
-        <h1 style="font-family:Georgia,serif;font-style:italic;font-size:32px;color:#f5f0e8;margin:0 0 8px;line-height:1;">
-          Nueva solicitud de arriendo
-        </h1>
-        <p style="font-family:'DM Sans',sans-serif;font-size:13px;color:#9a9a92;margin:0 0 32px;">
-          De parte de <strong style="color:#f5f0e8;">${nombre}</strong> — ${email}
-        </p>
+  const neto = items.reduce((s, i) => s + i.precio * i.cantidad * dias, 0)
+  const { pct: descuentoPct, consultar } = descuentoVolumen(neto)
+  const descuentoMonto = Math.round(neto * descuentoPct / 100)
+  const netoConDescuento = neto - descuentoMonto
+  const iva = Math.round(netoConDescuento * 0.19)
+  const total = netoConDescuento + iva
+  const hayConsultar = items.some((i) => i.precio === 0)
 
-        <table style="width:100%;border-collapse:collapse;border:1px solid #383836;margin-bottom:8px;">
-          ${filasEquipos}
-          ${resumenTotal}
-        </table>
-        ${notaConsultar}
+  const admin = createAdminClient()
 
-        ${mensaje ? `
-        <div style="margin-top:24px;padding:16px;border:1px solid #383836;">
-          <p style="font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.35em;text-transform:uppercase;color:#9a9a92;margin:0 0 8px;">Mensaje</p>
-          <p style="font-family:'DM Sans',sans-serif;font-size:13px;color:#f5f0e8;margin:0;white-space:pre-wrap;">${mensaje}</p>
-        </div>` : ''}
+  // ── Número correlativo R-XXX ──────────────────────────────────────────
+  const { data: ultima } = await admin
+    .from('rental_cotizaciones')
+    .select('numero')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<{ numero: string }>()
 
-        <div style="margin-top:32px;padding-top:24px;border-top:1px solid #383836;">
-          <p style="font-family:'DM Sans',sans-serif;font-size:11px;color:#8c8c86;margin:0;">
-            Responder a: <a href="mailto:${email}" style="color:#7a9e7e;">${email}</a>
-          </p>
-        </div>
-      </div>
-    `
+  let siguiente = 1
+  const match = ultima?.numero?.match(/R-(\d+)/)
+  if (match) siguiente = parseInt(match[1]) + 1
+  const numero = `R-${String(siguiente).padStart(3, '0')}`
 
-    const htmlCliente = `
-      <div style="background:#111110;padding:40px 32px;max-width:560px;margin:0 auto;">
-        <p style="font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.4em;text-transform:uppercase;color:#9a9a92;margin:0 0 24px;">
-          Casa Hiedra · Rental
-        </p>
-        <h1 style="font-family:Georgia,serif;font-style:italic;font-size:32px;color:#f5f0e8;margin:0 0 8px;line-height:1;">
-          Tu solicitud de arriendo
-        </h1>
-        <p style="font-family:'DM Sans',sans-serif;font-size:13px;color:#9a9a92;margin:0 0 32px;">
-          Hola ${nombre}, recibimos tu solicitud. Te respondemos a la brevedad.
-        </p>
+  const periodo = `Período solicitado: ${desde} al ${hasta} (${dias} ${dias === 1 ? 'jornada' : 'jornadas'}). Retiro desde 08:00, devolución hasta 22:00.`
+  const notasInternas = [
+    'Generada desde el sitio web (rental.casahiedra.com).',
+    periodo,
+    mensaje ? `Nota del cliente: ${mensaje}` : '',
+  ].filter(Boolean).join('\n')
 
-        <table style="width:100%;border-collapse:collapse;border:1px solid #383836;margin-bottom:8px;">
-          ${filasEquipos}
-          ${resumenTotal}
-        </table>
-        ${notaConsultar}
+  // ── Cabecera de la cotización ─────────────────────────────────────────
+  const { data: cot, error: errCot } = await admin
+    .from('rental_cotizaciones')
+    .insert({
+      numero,
+      estado: 'enviada',
+      con_iva: true,
+      descuento_global: descuentoPct,
+      descuento_global_tipo: 'porcentaje',
+      cliente_nombre_libre: nombre,
+      cliente_email_libre: email,
+      notas_internas: notasInternas,
+    })
+    .select('id')
+    .single<{ id: string }>()
 
-        ${mensaje ? `
-        <div style="margin-top:24px;padding:16px;border:1px solid #383836;">
-          <p style="font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.35em;text-transform:uppercase;color:#9a9a92;margin:0 0 8px;">Tu mensaje</p>
-          <p style="font-family:'DM Sans',sans-serif;font-size:13px;color:#f5f0e8;margin:0;white-space:pre-wrap;">${mensaje}</p>
-        </div>` : ''}
+  if (errCot || !cot) {
+    console.error('[arriendo] insert cotizacion:', errCot)
+    return NextResponse.json({ error: 'No se pudo generar la cotización' }, { status: 500 })
+  }
 
-        <div style="margin-top:32px;padding-top:24px;border-top:1px solid #383836;">
-          <p style="font-family:'DM Sans',sans-serif;font-size:11px;color:#8c8c86;margin:0;">
-            Cualquier consulta: <a href="mailto:rental@casahiedra.com" style="color:#7a9e7e;">rental@casahiedra.com</a>
-          </p>
-        </div>
-      </div>
-    `
+  // ── Sección + ítems ───────────────────────────────────────────────────
+  const { data: seccion } = await admin
+    .from('rental_cotizacion_secciones')
+    .insert({ cotizacion_id: cot.id, nombre: 'Equipos', orden: 1 })
+    .select('id')
+    .single<{ id: string }>()
 
-    // Enviar a rental@ (notificación interna) y al cliente
+  const filasItems = items.map((it, idx) => ({
+    cotizacion_id: cot.id,
+    seccion_id: seccion?.id ?? null,
+    equipo_id: it.equipo_id,
+    maleta_id: null,
+    descripcion: it.codigo ? `${it.codigo} · ${it.nombre}` : it.nombre,
+    cantidad: it.cantidad,
+    dias,
+    precio_unitario: it.precio,
+    descuento: 0,
+    descuento_tipo: 'porcentaje',
+    incluido: false,
+    orden: idx + 1,
+  }))
+
+  const { error: errItems } = await admin.from('rental_cotizacion_items').insert(filasItems)
+  if (errItems) {
+    console.error('[arriendo] insert items:', errItems)
+    // La cabecera ya existe; se puede completar a mano. No abortamos el correo.
+  }
+
+  // ── Correos (marca Casa Hiedra, fondo claro) ──────────────────────────
+  const filasHTML = items.map((it) => `
+    <tr>
+      <td style="padding:9px 0;border-bottom:1px solid #0A0A0A14;font-size:14px;color:${TINTA};">
+        ${it.codigo ? `${it.codigo} · ` : ''}${it.nombre}${it.cantidad > 1 ? ` <span style="color:${OPACO}">×${it.cantidad}</span>` : ''}
+      </td>
+      <td style="padding:9px 0;border-bottom:1px solid #0A0A0A14;font-size:14px;color:${OPACO};text-align:right;white-space:nowrap;">
+        ${it.precio > 0 ? formatCLP(it.precio * it.cantidad * dias) : 'A confirmar'}
+      </td>
+    </tr>`).join('')
+
+  const filaTotal = (etq: string, val: string, fuerte = false) => `
+    <tr>
+      <td style="padding:6px 0;font-size:${fuerte ? 15 : 13}px;color:${fuerte ? TINTA : OPACO};${fuerte ? 'font-weight:600;' : ''}">${etq}</td>
+      <td style="padding:6px 0;font-size:${fuerte ? 17 : 13}px;color:${fuerte ? TINTA : OPACO};text-align:right;${fuerte ? 'font-weight:600;' : ''}">${val}</td>
+    </tr>`
+
+  const bloqueTotales = `
+    <table style="width:100%;border-collapse:collapse;margin-top:6px;">
+      ${filaTotal('Neto', formatCLP(neto))}
+      ${descuentoPct > 0 ? filaTotal(`Descuento por volumen (${descuentoPct}%)`, `− ${formatCLP(descuentoMonto)}`) : ''}
+      ${filaTotal('IVA (19%)', formatCLP(iva))}
+      ${filaTotal('Total', formatCLP(total), true)}
+    </table>`
+
+  const notas: string[] = []
+  if (hayConsultar) notas.push('Algunos equipos tienen precio a confirmar; te lo afinamos al responder.')
+  if (consultar) notas.push('Por este volumen podemos ofrecerte un valor especial: consúltanos al responder este correo.')
+
+  const cuerpo = (intro: string, mostrarContacto: boolean) => `
+    <div style="font-family:${FONT};max-width:580px;margin:0 auto;padding:8px 4px;color:${TINTA};">
+      <img src="${APP}/logos/logo-horizontal-blanco.png" alt="Casa Hiedra" style="height:24px;margin:8px 0 26px;" />
+      <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:${OPACO};margin:0 0 6px;">Cotización de arriendo · ${numero}</p>
+      <p style="font-size:16px;line-height:1.5;margin:0 0 18px;">${intro}</p>
+      <p style="font-size:13px;color:${OPACO};margin:0 0 4px;">${periodo}</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0 4px;">${filasHTML}</table>
+      ${bloqueTotales}
+      ${notas.map((n) => `<p style="font-size:12px;color:${ROJO};margin:12px 0 0;">${n}</p>`).join('')}
+      ${mensaje ? `<div style="margin-top:20px;padding:14px 16px;border:1px solid #0A0A0A22;border-radius:2px;"><p style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:${OPACO};margin:0 0 6px;">Nota</p><p style="font-size:14px;color:${TINTA};margin:0;white-space:pre-wrap;">${mensaje}</p></div>` : ''}
+      ${mostrarContacto ? `<p style="font-size:13px;line-height:1.5;color:${OPACO};margin:26px 0 0;">Esto es una estimación referencial sujeta a disponibilidad. Te escribimos para confirmar y coordinar retiro/devolución. Cualquier duda, responde este correo o escríbenos a <a href="mailto:rental@casahiedra.com" style="color:${TINTA};">rental@casahiedra.com</a>.</p>` : ''}
+      <p style="font-size:13px;color:${OPACO};margin:22px 0 0;">— Casa Hiedra</p>
+    </div>`
+
+  try {
     await Promise.all([
       sendEmail({
         to: 'rental@casahiedra.com',
-        subject: `Solicitud de arriendo — ${nombre}`,
-        html: htmlInterno,
-        contexto: 'arriendo:cotizacion_interna',
+        subject: `Nueva cotización web ${numero} — ${nombre}`,
+        html: cuerpo(
+          `<strong>${nombre}</strong> (${email}) generó una cotización desde el sitio. Revísala en <a href="${APP}/rental/cotizaciones" style="color:${TINTA};">Hilván</a> para aprobar o ajustar.`,
+          false,
+        ),
+        contexto: 'arriendo:cotizacion_web_interna',
       }),
       sendEmail({
         to: email,
-        subject: 'Tu solicitud de arriendo · Casa Hiedra',
-        html: htmlCliente,
-        contexto: 'arriendo:cotizacion_cliente',
+        subject: `Tu cotización de arriendo ${numero} · Casa Hiedra`,
+        html: cuerpo(`Hola ${nombre}, acá está tu cotización.`, true),
+        contexto: 'arriendo:cotizacion_web_cliente',
       }),
     ])
-
-    return NextResponse.json({ ok: true })
-  } catch (error: any) {
-    console.error('Error enviando cotización:', error)
-    return NextResponse.json({ error: 'Error al enviar' }, { status: 500 })
+  } catch (e) {
+    console.error('[arriendo] email cotización web:', e)
+    // El correo no aborta: la cotización ya quedó registrada en Hilván.
   }
+
+  return NextResponse.json({ ok: true, numero, total, dias, descuentoPct, consultar })
 }

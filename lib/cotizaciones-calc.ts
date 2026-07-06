@@ -128,6 +128,27 @@ export function subtotalRentalItem(item: RentalCotizacionItem): number {
   return Math.round(base - item.descuento)
 }
 
+// ── Arriendo web (rental.casahiedra.com) ──────────────────────────────────
+// Jornadas inclusivas: lun→mié = 3. Retiro desde 08:00, devolución hasta 22:00.
+export function diasArriendoInclusive(desde: string, hasta: string): number {
+  // desde/hasta en 'YYYY-MM-DD'. Se cuentan ambos extremos.
+  const a = new Date(desde + 'T12:00:00')
+  const b = new Date(hasta + 'T12:00:00')
+  const ms = b.getTime() - a.getTime()
+  if (!Number.isFinite(ms) || ms < 0) return 0
+  return Math.round(ms / 86_400_000) + 1
+}
+
+// Descuento estándar por volumen sobre el neto (escalera acordada con el dueño).
+// ≥$2.000.000 mantiene 15% y además avisa "consúltanos por un valor especial".
+export function descuentoVolumen(neto: number): { pct: number; consultar: boolean } {
+  if (neto >= 2_000_000) return { pct: 15, consultar: true }
+  if (neto >= 1_500_000) return { pct: 15, consultar: false }
+  if (neto >= 1_000_000) return { pct: 10, consultar: false }
+  if (neto >= 500_000) return { pct: 5, consultar: false }
+  return { pct: 0, consultar: false }
+}
+
 export function calcularTotalesRental(cotizacion: RentalCotizacion): {
   neto: number
   descuento_global_monto: number
