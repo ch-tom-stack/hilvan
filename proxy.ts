@@ -50,6 +50,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/arriendo') ||
     pathname.startsWith('/api/arriendo/') ||
     pathname.startsWith('/api/agent/') ||
+    pathname === '/api/lectura-lead' ||
     pathname === '/api/mcp' ||
     pathname === '/api/sse' ||
     pathname.startsWith('/m/') ||
