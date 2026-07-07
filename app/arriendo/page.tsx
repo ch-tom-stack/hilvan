@@ -31,6 +31,12 @@ export default async function ArriendoPage() {
   const cats = (categorias ?? []) as CategoriaEquipo[]
   const promo = promoArriendoActiva()
 
+  // Separar el camión (hero) y los kits (banda destacada) del catálogo individual.
+  const camion = equipos.find((e) => e.codigo === 'CH-CAMION') ?? null
+  const kits = equipos.filter((e) => e.categoria_codigo === 'KIT' && e.codigo !== 'CH-CAMION')
+  const individuales = equipos.filter((e) => e.categoria_codigo !== 'KIT')
+  const catsIndividuales = cats.filter((c) => c.codigo !== 'KIT')
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* Banner promo */}
@@ -67,7 +73,7 @@ export default async function ArriendoPage() {
 
       {/* Catálogo + cotizador */}
       <div style={{ flex: 1, padding: '0 40px 60px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
-        <CatalogoCliente equipos={equipos} categorias={cats} />
+        <CatalogoCliente equipos={individuales} categorias={catsIndividuales} kits={kits} camion={camion} />
       </div>
 
       {/* Footer */}

@@ -18,20 +18,41 @@ const input: React.CSSProperties = { width: '100%', fontSize: 14, padding: '8px 
 
 interface EquipoRental extends Equipo { categoria?: CategoriaEquipo }
 interface ItemCarrito { equipo: EquipoRental; cantidad: number }
-interface Props { equipos: EquipoRental[]; categorias: CategoriaEquipo[] }
+interface Props { equipos: EquipoRental[]; categorias: CategoriaEquipo[]; kits?: EquipoRental[]; camion?: EquipoRental | null }
+
+// Valor suelto de referencia por kit (para mostrar el ahorro tachado vs. el pack).
+const SUELTO: Record<string, number> = {
+  'CH-KIT-001': 313000, 'CH-KIT-002': 345000, 'CH-KIT-003': 116000,
+  'CH-KIT-004': 167000, 'CH-KIT-005': 140000, 'CH-KIT-006': 121000, 'CH-CAMION': 950000,
+}
+// URL del video del camión. Cuando exista, se activa el botón "Ver el camión".
+const VIDEO_CAMION = ''
+// Manifiesto descriptivo del camión (lo que carga).
+const CAMION_CARGA: { h: string; it: string[] }[] = [
+  { h: 'Cámaras', it: ['Sony A7S III', 'Sony A7 IV'] },
+  { h: 'Óptica · G Master', it: ['14 · 24 · 35', '50 · 85 · 90'] },
+  { h: 'Luces', it: ['Nanlux 1200B + fresnel', 'Nanlite Forza 720B', '2× Nanlux 150C', 'Pack Godox (2×SL150 + SL300 + ML100)', 'Aputure Spotlight'] },
+  { h: 'Movimiento', it: ['DJI Ronin RS2', 'Edelkrone slider', 'Follow Focus DJI (LiDAR)', 'Trípodes'] },
+  { h: 'Grip / soportes', it: ['6 C-stands · 4 barras', '1 pie faena heavy-duty', '6 pie de foco', '7 pesas · 2 apple box', 'Yegua/carro · escalera'] },
+  { h: 'Difusión', it: ['Tamizador 4×4 (→ 2× 2×2) con silks', '4 telas negras', '6 banderas'] },
+  { h: 'Monitores', it: ['Atomos Ninja', 'Seetec', 'Hollyland Mars', 'LCD cliente (extra)'] },
+  { h: 'Cables · audio', it: ['10× extensión 10 m', 'Cable HDMI 10 m', 'Lav Lark Max'] },
+]
 
 const hoyISO = () => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function CatalogoCliente({ equipos, categorias }: Props) {
+export default function CatalogoCliente({ equipos, categorias, kits = [], camion = null }: Props) {
   const [categoriaActiva, setCategoriaActiva] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [bloqueos, setBloqueos] = useState<Record<string, number>>({})
+  const [kitDetalle, setKitDetalle] = useState<EquipoRental | null>(null)
+  const [videoOpen, setVideoOpen] = useState(false)
 
   // Fechas por defecto: hoy → hoy (1 jornada). En efecto para evitar mismatch de hidratación.
   useEffect(() => {
@@ -112,6 +133,27 @@ export default function CatalogoCliente({ equipos, categorias }: Props) {
   const panelProps = { carrito, desde, hasta, dias, cotizacion, onEliminar: eliminar }
 
   return (
+    <>
+      {/* ── Camión (hero) ── */}
+      {camion && (
+        <CamionHero
+          camion={camion}
+          enCarrito={cantidadEnCarrito(camion.id) > 0}
+          onAdd={() => agregar(camion)}
+          onVer={() => setVideoOpen(true)}
+        />
+      )}
+
+      {/* ── Banda de kits y packs ── */}
+      {kits.length > 0 && (
+        <KitsBand
+          kits={kits}
+          carrito={carrito}
+          onDetalle={setKitDetalle}
+          onAdd={agregar}
+        />
+      )}
+
     <div style={carritoActivo
       ? { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 36, alignItems: 'start' }
       : {}}
@@ -119,6 +161,9 @@ export default function CatalogoCliente({ equipos, categorias }: Props) {
     >
       {/* ── Columna principal ── */}
       <div>
+        {(camion || kits.length > 0) && (
+          <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', margin: '0 0 16px' }}>Equipo individual</h2>
+        )}
         {/* Selector de fechas */}
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${LINEA_SUAVE}` }}>
           <div>
@@ -195,6 +240,20 @@ export default function CatalogoCliente({ equipos, categorias }: Props) {
         @media (min-width: 901px) { .ch-arriendo-mobile { display: none !important; } }
       `}</style>
     </div>
+
+      {/* ── Modal de detalle de kit ── */}
+      {kitDetalle && (
+        <KitModal
+          kit={kitDetalle}
+          enCarrito={cantidadEnCarrito(kitDetalle.id) > 0}
+          onAdd={() => { agregar(kitDetalle); setKitDetalle(null) }}
+          onClose={() => setKitDetalle(null)}
+        />
+      )}
+
+      {/* ── Modal de video del camión ── */}
+      {videoOpen && VIDEO_CAMION && <VideoModal onClose={() => setVideoOpen(false)} />}
+    </>
   )
 }
 
@@ -455,6 +514,199 @@ function MobileCarrito(props: PanelProps) {
           <ContenidoCarrito {...props} />
         </div>
       )}
+    </div>
+  )
+}
+
+/* ── Camión (hero) ── */
+const kick: React.CSSProperties = { fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: OPACO, margin: '0 0 8px' }
+
+function CamionHero({ camion, enCarrito, onAdd, onVer }: {
+  camion: EquipoRental; enCarrito: boolean; onAdd: () => void; onVer: () => void
+}) {
+  const precio = camion.precio_jornada ?? 0
+  const suelto = SUELTO[camion.codigo]
+  const foto = camion.fotos?.[0] || camion.foto_url
+  return (
+    <div style={{ border: `1px solid ${LINEA}`, borderRadius: 2, overflow: 'hidden', marginBottom: 30 }}>
+      <div className="ch-camion-hero" style={{ display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: 26, padding: '26px 28px 20px', alignItems: 'center' }}>
+        <div>
+          <p style={kick}>Casa Hiedra · Rental</p>
+          <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.02, margin: '0 0 8px' }}>Camión Completo</h2>
+          <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 4px' }}>Shineray T32 · doble cabina · encarrozado cerrado</p>
+          <p style={{ fontSize: 14, lineHeight: 1.5, color: OPACO, margin: '6px 0 16px' }}>Una producción entera en un solo arriendo: cámaras, óptica, luces grandes, grip, monitores y movimiento — llega todo en el camión.</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <b style={{ fontSize: 30, fontWeight: 800 }}>{formatCLP(precio)}</b>
+            <span style={{ fontSize: 14, color: OPACO }}>/ jornada</span>
+          </div>
+          {suelto ? <p style={{ fontSize: 12, color: OPACO, margin: '2px 0 0' }}><s style={{ color: GRIS }}>{formatCLP(suelto)}</s> suelto</p> : null}
+          <p style={{ fontSize: 12.5, color: OPACO, margin: '10px 0 16px', lineHeight: 1.45 }}>Incluye <b style={{ color: TINTA }}>asistente de gaffer que conduce</b> + hasta <b style={{ color: TINTA }}>$25.000</b> en bencina.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <button onClick={onAdd} style={{ background: enCarrito ? TINTA : ROJO, color: '#fff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.13em', fontSize: 12.5, padding: '12px 22px', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {enCarrito ? '✓ En tu cotización' : 'Cotizar el camión'}
+            </button>
+            {VIDEO_CAMION ? (
+              <button onClick={onVer} style={{ background: 'none', border: 'none', color: TINTA, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'inherit' }}>
+                <span style={{ width: 22, height: 22, border: `1px solid ${TINTA}`, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>▶</span> Ver el camión
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div>
+          <div style={{ background: FONDO_SUAVE, borderRadius: 2, padding: 14 }}>
+            {foto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={foto} alt="Camión Casa Hiedra" style={{ width: '100%', display: 'block', borderRadius: 2 }} />
+            ) : <TruckSVG />}
+          </div>
+          {!foto && <p style={{ fontSize: 10.5, letterSpacing: '0.04em', color: '#9a978f', textAlign: 'center', margin: '8px 0 0' }}>Ilustración provisional — se reemplaza por la foto real del camión</p>}
+        </div>
+      </div>
+      <div style={{ borderTop: `1px solid ${LINEA_SUAVE}`, padding: '18px 28px 24px' }}>
+        <p style={{ ...kick, marginBottom: 14 }}>Lo que carga</p>
+        <div className="ch-carga-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '18px 22px' }}>
+          {CAMION_CARGA.map((c) => (
+            <div key={c.h}>
+              <h4 style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: ROJO, margin: '0 0 6px', fontWeight: 700 }}>{c.h}</h4>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                {c.it.map((x, i) => <li key={i} style={{ fontSize: 12, color: TINTA, lineHeight: 1.55 }}>{x}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`@media (max-width:640px){ .ch-camion-hero{ grid-template-columns:1fr !important; } .ch-carga-grid{ grid-template-columns:repeat(2,1fr) !important; } }`}</style>
+    </div>
+  )
+}
+
+function TruckSVG() {
+  return (
+    <svg viewBox="0 0 520 250" role="img" aria-label="Camión Shineray T32 doble cabina con encarrozado cerrado y rin sobre la cabina" style={{ display: 'block', width: '100%', height: 'auto' }}>
+      <line x1="34" y1="210" x2="492" y2="210" stroke="#0A0A0A22" strokeWidth="2" />
+      <path d="M250,206 L250,100 L360,100 L398,152 L446,154 L446,206 Z" fill="#fff" stroke="#0A0A0A" strokeWidth="3" />
+      <rect x="262" y="108" width="44" height="30" fill="#ECEAE6" stroke="#0A0A0A" strokeWidth="1.5" />
+      <rect x="312" y="108" width="40" height="30" fill="#ECEAE6" stroke="#0A0A0A" strokeWidth="1.5" />
+      <path d="M360,108 L392,148 L360,148 Z" fill="#ECEAE6" stroke="#0A0A0A" strokeWidth="1.5" />
+      <line x1="308" y1="138" x2="308" y2="206" stroke="#0A0A0A" strokeWidth="1.5" />
+      <line x1="282" y1="150" x2="294" y2="150" stroke="#0A0A0A" strokeWidth="2" />
+      <line x1="320" y1="150" x2="332" y2="150" stroke="#0A0A0A" strokeWidth="2" />
+      <rect x="430" y="156" width="16" height="20" fill="#E4E2DE" stroke="#0A0A0A" strokeWidth="1.5" />
+      <line x1="430" y1="163" x2="446" y2="163" stroke="#0A0A0A" strokeWidth="1" />
+      <line x1="430" y1="169" x2="446" y2="169" stroke="#0A0A0A" strokeWidth="1" />
+      <rect x="431" y="178" width="15" height="9" fill="#ECEAE6" stroke="#0A0A0A" strokeWidth="1.5" />
+      <rect x="443" y="188" width="9" height="16" fill="#fff" stroke="#0A0A0A" strokeWidth="2" />
+      <circle cx="437" cy="198" r="2.5" fill="#C11700" />
+      <path d="M42,206 L42,50 L344,50 L344,100 L250,100 L250,206 Z" fill="#fff" stroke="#0A0A0A" strokeWidth="3" />
+      <line x1="42" y1="66" x2="344" y2="66" stroke="#0A0A0A" strokeWidth="1.5" />
+      <line x1="250" y1="66" x2="250" y2="100" stroke="#0A0A0A22" strokeWidth="1.5" />
+      <line x1="58" y1="66" x2="58" y2="206" stroke="#0A0A0A22" strokeWidth="1.5" />
+      <circle cx="50" cy="150" r="3" fill="#0A0A0A" />
+      <circle cx="146" cy="120" r="15" fill="#C11700" />
+      <text x="146" y="124" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">CH</text>
+      <text x="146" y="152" textAnchor="middle" fontSize="10" letterSpacing="1.5" fontWeight="700" fill="#0A0A0A">CASA HIEDRA</text>
+      <line x1="42" y1="206" x2="446" y2="206" stroke="#0A0A0A" strokeWidth="2" />
+      <circle cx="118" cy="206" r="30" fill="#fff" stroke="#0A0A0A" strokeWidth="4" />
+      <circle cx="118" cy="206" r="11" fill="#0A0A0A" />
+      <circle cx="118" cy="206" r="4" fill="#C11700" />
+      <circle cx="392" cy="206" r="30" fill="#fff" stroke="#0A0A0A" strokeWidth="4" />
+      <circle cx="392" cy="206" r="11" fill="#0A0A0A" />
+      <circle cx="392" cy="206" r="4" fill="#C11700" />
+    </svg>
+  )
+}
+
+/* ── Banda de kits ── */
+function KitsBand({ kits, carrito, onDetalle, onAdd }: {
+  kits: EquipoRental[]; carrito: ItemCarrito[]; onDetalle: (k: EquipoRental) => void; onAdd: (k: EquipoRental) => void
+}) {
+  return (
+    <div style={{ marginBottom: 36 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', margin: '0 0 4px' }}>Kits y packs</h2>
+      <p style={{ fontSize: 13, color: OPACO, margin: '0 0 16px' }}>Paquetes armados con descuento sobre el valor suelto.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+        {kits.map((k) => (
+          <KitCard key={k.id} kit={k} enCarrito={carrito.some((i) => i.equipo.id === k.id)} onDetalle={() => onDetalle(k)} onAdd={() => onAdd(k)} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function KitCard({ kit, enCarrito, onDetalle, onAdd }: {
+  kit: EquipoRental; enCarrito: boolean; onDetalle: () => void; onAdd: () => void
+}) {
+  const precio = kit.precio_jornada ?? 0
+  const suelto = SUELTO[kit.codigo]
+  const foto = kit.fotos?.[0] || kit.foto_url
+  return (
+    <div style={{ border: `1px solid ${enCarrito ? TINTA : LINEA}`, borderRadius: 2, background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {foto ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={foto} alt={kit.nombre} style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block' }} />
+      ) : (
+        <div style={{ aspectRatio: '4 / 3', background: FONDO_SUAVE, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#B9B6B0', textAlign: 'center', lineHeight: 1.3 }}>{kit.nombre}</span>
+        </div>
+      )}
+      <div style={{ padding: 14, display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <p style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: ROJO, margin: '0 0 4px', fontWeight: 700 }}>Kit</p>
+        <h3 style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, margin: '0 0 4px' }}>{kit.nombre}</h3>
+        <p style={{ fontSize: 12, color: OPACO, margin: '0 0 10px', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{kit.descripcion}</p>
+        <div style={{ marginTop: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <b style={{ fontSize: 16, fontWeight: 800 }}>{formatCLP(precio)}</b>
+            <span style={{ fontSize: 11, color: OPACO }}>/ jornada</span>
+            {suelto ? <s style={{ fontSize: 11, color: GRIS }}>{formatCLP(suelto)}</s> : null}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onDetalle} style={{ flex: 1, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px', cursor: 'pointer', border: `1px solid ${TINTA}`, borderRadius: 2, background: '#fff', color: TINTA, fontFamily: 'inherit' }}>Detalle</button>
+            <button onClick={onAdd} style={{ flex: 1, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px', cursor: 'pointer', border: 'none', borderRadius: 2, background: enCarrito ? TINTA : ROJO, color: '#fff', fontFamily: 'inherit' }}>{enCarrito ? '✓ Agregado' : 'Agregar'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function KitModal({ kit, enCarrito, onAdd, onClose }: {
+  kit: EquipoRental; enCarrito: boolean; onAdd: () => void; onClose: () => void
+}) {
+  const precio = kit.precio_jornada ?? 0
+  const suelto = SUELTO[kit.codigo]
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(10,10,10,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 2, maxWidth: 460, width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: '24px 26px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div>
+            <p style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: ROJO, margin: '0 0 4px', fontWeight: 700 }}>Kit · Casa Hiedra</p>
+            <h3 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>{kit.nombre}</h3>
+          </div>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: OPACO, lineHeight: 1, fontFamily: 'inherit' }}>✕</button>
+        </div>
+        <p style={{ fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: OPACO, margin: '18px 0 8px' }}>Incluye</p>
+        <p style={{ fontSize: 14, lineHeight: 1.6, color: TINTA, margin: 0, whiteSpace: 'pre-wrap' }}>{kit.descripcion}</p>
+        <div style={{ borderTop: `1px solid ${LINEA_SUAVE}`, marginTop: 18, paddingTop: 16, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <b style={{ fontSize: 26, fontWeight: 800 }}>{formatCLP(precio)}</b>
+          <span style={{ fontSize: 13, color: OPACO }}>/ jornada</span>
+          {suelto ? <s style={{ fontSize: 13, color: GRIS }}>{formatCLP(suelto)} suelto</s> : null}
+        </div>
+        <button onClick={onAdd} style={{ marginTop: 16, width: '100%', background: enCarrito ? TINTA : ROJO, color: '#fff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.13em', fontSize: 12.5, padding: '13px', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {enCarrito ? '✓ En tu cotización' : 'Agregar a la cotización'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function VideoModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(10,10,10,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 900 }}>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 13, cursor: 'pointer', marginBottom: 8, fontFamily: 'inherit' }}>Cerrar ✕</button>
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+        <video src={VIDEO_CAMION} controls autoPlay style={{ width: '100%', display: 'block' }} />
+      </div>
     </div>
   )
 }
