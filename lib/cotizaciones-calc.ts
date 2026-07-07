@@ -149,6 +149,58 @@ export function descuentoVolumen(neto: number): { pct: number; consultar: boolea
   return { pct: 0, consultar: false }
 }
 
+// Mínimo de arriendo web (neto): bajo esto no se genera cotización, para cubrir
+// el costo fijo de gestión (retiro en bodega, preparación, entrega/recepción).
+export const ARRIENDO_MINIMO = 50_000
+
+// Promo de lanzamiento: −30% sobre arriendos ≥ $500.000 neto, sólo Julio–Agosto
+// 2026. Se apila con el descuento por volumen. Se apaga sola el 1-sep.
+export const PROMO_ARRIENDO = {
+  desde: '2026-07-01',
+  hasta: '2026-08-31',
+  pct: 30,
+  umbral: 500_000,
+  etiqueta: 'Promo Julio–Agosto',
+}
+
+function fechaSantiago(d: Date): string {
+  // 'YYYY-MM-DD' en zona America/Santiago (en-CA formatea ISO).
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d)
+}
+
+export function promoArriendoActiva(hoy: Date = new Date()): boolean {
+  const iso = fechaSantiago(hoy)
+  return iso >= PROMO_ARRIENDO.desde && iso <= PROMO_ARRIENDO.hasta
+}
+
+// Cálculo canónico del arriendo web (front y back usan esto). Descuentos fuertes
+// (promo + volumen) SÓLO sobre $500.000; bajo eso, precio lista.
+export function calcularArriendoWeb(neto: number, hoy: Date = new Date()): {
+  minimoOk: boolean
+  promoActiva: boolean
+  promoPct: number
+  volumenPct: number
+  descuentoPct: number
+  descuentoMonto: number
+  netoConDescuento: number
+  iva: number
+  total: number
+  consultar: boolean
+} {
+  const minimoOk = neto >= ARRIENDO_MINIMO
+  const { pct: volumenPct, consultar } = descuentoVolumen(neto) // ya sólo ≥500k
+  const promoActiva = promoArriendoActiva(hoy) && neto >= PROMO_ARRIENDO.umbral
+  const promoPct = promoActiva ? PROMO_ARRIENDO.pct : 0
+  const descuentoPct = promoPct + volumenPct
+  const descuentoMonto = Math.round(neto * descuentoPct / 100)
+  const netoConDescuento = neto - descuentoMonto
+  const iva = Math.round(netoConDescuento * 0.19)
+  const total = netoConDescuento + iva
+  return { minimoOk, promoActiva, promoPct, volumenPct, descuentoPct, descuentoMonto, netoConDescuento, iva, total, consultar }
+}
+
 export function calcularTotalesRental(cotizacion: RentalCotizacion): {
   neto: number
   descuento_global_monto: number

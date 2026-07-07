@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import type { Equipo, CategoriaEquipo } from '@/types'
-import { diasArriendoInclusive, descuentoVolumen, formatCLP } from '@/lib/cotizaciones-calc'
+import { diasArriendoInclusive, calcularArriendoWeb, ARRIENDO_MINIMO, formatCLP } from '@/lib/cotizaciones-calc'
 
 const ROJO = '#C11700'
 const TINTA = '#0A0A0A'
@@ -103,14 +103,10 @@ export default function CatalogoCliente({ equipos, categorias }: Props) {
   const cotizacion = useMemo(() => {
     const netoPorJornada = carrito.reduce((s, i) => s + (i.equipo.precio_jornada ?? 0) * i.cantidad, 0)
     const neto = netoPorJornada * dias
-    const { pct, consultar } = descuentoVolumen(neto)
-    const descuentoMonto = Math.round(neto * pct / 100)
-    const netoConDescuento = neto - descuentoMonto
-    const iva = Math.round(netoConDescuento * 0.19)
-    const total = netoConDescuento + iva
+    const calc = calcularArriendoWeb(neto)
     const hayConsultar = carrito.some((i) => !i.equipo.precio_jornada || i.equipo.precio_jornada === 0)
     const totalItems = carrito.reduce((s, i) => s + i.cantidad, 0)
-    return { neto, pct, consultar, descuentoMonto, iva, total, hayConsultar, totalItems }
+    return { neto, ...calc, hayConsultar, totalItems }
   }, [carrito, dias])
 
   const panelProps = { carrito, desde, hasta, dias, cotizacion, onEliminar: eliminar }
@@ -303,7 +299,11 @@ interface PanelProps {
   desde: string
   hasta: string
   dias: number
-  cotizacion: { neto: number; pct: number; consultar: boolean; descuentoMonto: number; iva: number; total: number; hayConsultar: boolean; totalItems: number }
+  cotizacion: {
+    neto: number; minimoOk: boolean; promoActiva: boolean; promoPct: number; volumenPct: number
+    descuentoPct: number; descuentoMonto: number; iva: number; total: number
+    consultar: boolean; hayConsultar: boolean; totalItems: number
+  }
   onEliminar: (id: string) => void
 }
 
@@ -315,7 +315,7 @@ function ContenidoCarrito({ carrito, desde, hasta, dias, cotizacion, onEliminar 
   const [msg, setMsg] = useState('')
   const [numero, setNumero] = useState('')
 
-  const puedeEnviar = !!nombre.trim() && EMAIL_RE.test(email.trim()) && carrito.length > 0 && dias > 0 && estado !== 'enviando'
+  const puedeEnviar = !!nombre.trim() && EMAIL_RE.test(email.trim()) && carrito.length > 0 && dias > 0 && cotizacion.minimoOk && estado !== 'enviando'
 
   async function enviar() {
     if (!puedeEnviar) return
@@ -381,12 +381,27 @@ function ContenidoCarrito({ carrito, desde, hasta, dias, cotizacion, onEliminar 
       {/* Totales */}
       <div style={{ borderTop: `1px solid ${LINEA_SUAVE}`, paddingTop: 12, marginBottom: 14 }}>
         <Fila etq="Neto" val={formatCLP(cotizacion.neto)} />
-        {cotizacion.pct > 0 && <Fila etq={`Descuento volumen ${cotizacion.pct}%`} val={`− ${formatCLP(cotizacion.descuentoMonto)}`} />}
+        {cotizacion.descuentoPct > 0 && (
+          <Fila
+            etq={cotizacion.promoPct > 0 && cotizacion.volumenPct > 0
+              ? `Promo 30% + volumen ${cotizacion.volumenPct}%`
+              : cotizacion.promoPct > 0
+                ? 'Promo Julio–Agosto 30%'
+                : `Descuento volumen ${cotizacion.volumenPct}%`}
+            val={`− ${formatCLP(cotizacion.descuentoMonto)}`}
+          />
+        )}
         <Fila etq="IVA 19%" val={formatCLP(cotizacion.iva)} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 6 }}>
           <span style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', color: TINTA, fontWeight: 600 }}>Total</span>
           <span style={{ fontSize: 20, fontWeight: 800, color: TINTA }}>{cotizacion.neto > 0 ? formatCLP(cotizacion.total) : '—'}</span>
         </div>
+        {cotizacion.promoPct > 0 && (
+          <p style={{ fontSize: 11, color: ROJO, margin: '8px 0 0', fontWeight: 500 }}>✓ Promo Julio–Agosto aplicada (−30% sobre $500.000).</p>
+        )}
+        {cotizacion.neto > 0 && !cotizacion.minimoOk && (
+          <p style={{ fontSize: 11, color: ROJO, margin: '8px 0 0' }}>Arriendo mínimo {formatCLP(ARRIENDO_MINIMO)} neto — agrega equipos o jornadas.</p>
+        )}
         {cotizacion.hayConsultar && <p style={{ fontSize: 11, color: ROJO, margin: '8px 0 0' }}>* Algunos precios a confirmar.</p>}
         {cotizacion.consultar && <p style={{ fontSize: 11, color: ROJO, margin: '8px 0 0' }}>Por este volumen consúltanos por un valor especial.</p>}
       </div>

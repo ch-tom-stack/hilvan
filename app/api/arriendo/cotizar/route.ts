@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
-import { diasArriendoInclusive, descuentoVolumen, formatCLP } from '@/lib/cotizaciones-calc'
+import { diasArriendoInclusive, calcularArriendoWeb, ARRIENDO_MINIMO, formatCLP } from '@/lib/cotizaciones-calc'
 
 interface ItemEntrada {
   equipo_id?: string | null
@@ -73,11 +73,10 @@ export async function POST(request: NextRequest) {
   if (!items.length) return NextResponse.json({ error: 'Sin equipos válidos' }, { status: 400 })
 
   const neto = items.reduce((s, i) => s + i.precio * i.cantidad * dias, 0)
-  const { pct: descuentoPct, consultar } = descuentoVolumen(neto)
-  const descuentoMonto = Math.round(neto * descuentoPct / 100)
-  const netoConDescuento = neto - descuentoMonto
-  const iva = Math.round(netoConDescuento * 0.19)
-  const total = netoConDescuento + iva
+  if (neto < ARRIENDO_MINIMO) {
+    return NextResponse.json({ error: `Arriendo mínimo ${formatCLP(ARRIENDO_MINIMO)} neto` }, { status: 400 })
+  }
+  const { promoPct, volumenPct, descuentoPct, descuentoMonto, iva, total, consultar } = calcularArriendoWeb(neto)
   const hayConsultar = items.some((i) => i.precio === 0)
 
   const admin = createAdminClient()
@@ -96,9 +95,13 @@ export async function POST(request: NextRequest) {
   const numero = `R-${String(siguiente).padStart(3, '0')}`
 
   const periodo = `Período solicitado: ${desde} al ${hasta} (${dias} ${dias === 1 ? 'jornada' : 'jornadas'}). Retiro desde 08:00, devolución hasta 22:00.`
+  const detalleDesc = descuentoPct > 0
+    ? `Descuento aplicado: ${descuentoPct}%${promoPct > 0 ? ` (promo Jul–Ago ${promoPct}%${volumenPct > 0 ? ` + volumen ${volumenPct}%` : ''})` : ` (volumen)`}.`
+    : ''
   const notasInternas = [
     'Generada desde el sitio web (rental.casahiedra.com).',
     periodo,
+    detalleDesc,
     mensaje ? `Nota del cliente: ${mensaje}` : '',
   ].filter(Boolean).join('\n')
 
@@ -171,7 +174,11 @@ export async function POST(request: NextRequest) {
   const bloqueTotales = `
     <table style="width:100%;border-collapse:collapse;margin-top:6px;">
       ${filaTotal('Neto', formatCLP(neto))}
-      ${descuentoPct > 0 ? filaTotal(`Descuento por volumen (${descuentoPct}%)`, `− ${formatCLP(descuentoMonto)}`) : ''}
+      ${descuentoPct > 0 ? filaTotal(
+        promoPct > 0 && volumenPct > 0 ? `Promo Jul–Ago 30% + volumen ${volumenPct}%`
+          : promoPct > 0 ? 'Promo Julio–Agosto (30%)'
+          : `Descuento por volumen (${volumenPct}%)`,
+        `− ${formatCLP(descuentoMonto)}`) : ''}
       ${filaTotal('IVA (19%)', formatCLP(iva))}
       ${filaTotal('Total', formatCLP(total), true)}
     </table>`

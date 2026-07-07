@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Equipo, CategoriaEquipo } from '@/types'
+import { promoArriendoActiva } from '@/lib/cotizaciones-calc'
 import CatalogoCliente from './CatalogoCliente'
 
 export const metadata = {
@@ -28,9 +29,17 @@ export default async function ArriendoPage() {
 
   const equipos = (equiposData ?? []) as (Equipo & { categoria?: CategoriaEquipo })[]
   const cats = (categorias ?? []) as CategoriaEquipo[]
+  const promo = promoArriendoActiva()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {/* Banner promo */}
+      {promo && (
+        <div style={{ background: '#C11700', color: '#fff', textAlign: 'center', padding: '9px 16px', fontSize: 13, letterSpacing: '0.06em' }}>
+          <strong>Promo Julio–Agosto</strong> · −30% en arriendos sobre $500.000
+        </div>
+      )}
+
       {/* Nav */}
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 40px', borderBottom: `1px solid ${LINEA}`, flexShrink: 0 }}>
         <a href={SITIO} aria-label="Casa Hiedra — inicio">
