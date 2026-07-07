@@ -23,7 +23,7 @@ interface Props { equipos: EquipoRental[]; categorias: CategoriaEquipo[]; kits?:
 // Valor suelto de referencia por kit (para mostrar el ahorro tachado vs. el pack).
 const SUELTO: Record<string, number> = {
   'CH-KIT-001': 313000, 'CH-KIT-002': 345000, 'CH-KIT-003': 116000,
-  'CH-KIT-004': 167000, 'CH-KIT-006': 490000, 'CH-ILU-012': 31000, 'CH-CAMION': 950000,
+  'CH-KIT-004': 167000, 'CH-KIT-006': 490000, 'CH-ILU-012': 46000, 'CH-CAMION': 950000,
 }
 // URL del video del camión. Cuando exista, se activa el botón "Ver el camión".
 const VIDEO_CAMION = ''
@@ -633,6 +633,70 @@ function KitsBand({ kits, carrito, onDetalle, onAdd }: {
   )
 }
 
+// Íconos placeholder por kit (mientras no haya foto). Se muestran cuando el kit no tiene imagen.
+function kitIcon(codigo: string): React.ReactNode {
+  const p = { width: 76, height: 76, viewBox: '0 0 100 100', fill: 'none', stroke: TINTA, strokeWidth: 3, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  switch (codigo) {
+    case 'CH-KIT-001': // Maleta de Cámara — estuche + 2 cámaras + lentes
+      return (
+        <svg {...p}>
+          <path d="M42 24 v-4 h16 v4" /><path d="M14 34 v-6 a4 4 0 0 1 4 -4 h64 a4 4 0 0 1 4 4 v6" />
+          <rect x="14" y="34" width="72" height="50" rx="4" />
+          <rect x="22" y="45" width="24" height="15" rx="2" /><circle cx="34" cy="52" r="4.5" /><circle cx="34" cy="52" r="1.8" fill={ROJO} stroke="none" />
+          <rect x="54" y="45" width="24" height="15" rx="2" /><circle cx="66" cy="52" r="4.5" />
+          <circle cx="30" cy="72" r="6" /><circle cx="50" cy="72" r="6" /><circle cx="70" cy="72" r="6" />
+        </svg>
+      )
+    case 'CH-KIT-002': // Entrevista — 2 cámaras sobre trípodes
+      return (
+        <svg {...p}>
+          <path d="M30 47 L19 84 M30 47 L30 82 M30 47 L41 84" />
+          <rect x="20" y="30" width="20" height="14" rx="2" /><circle cx="30" cy="37" r="4.2" /><circle cx="30" cy="37" r="1.7" fill={ROJO} stroke="none" />
+          <path d="M70 47 L59 84 M70 47 L70 82 M70 47 L81 84" />
+          <rect x="60" y="30" width="20" height="14" rx="2" /><circle cx="70" cy="37" r="4.2" />
+        </svg>
+      )
+    case 'CH-KIT-003': // Lentes Athena — 5 lentes
+      return (
+        <svg {...p}>
+          <circle cx="30" cy="60" r="15" /><circle cx="30" cy="60" r="6.5" fill={ROJO} stroke="none" />
+          <circle cx="56" cy="62" r="12.5" /><circle cx="56" cy="62" r="5.5" />
+          <circle cx="76" cy="58" r="10.5" /><circle cx="76" cy="58" r="4.5" />
+          <circle cx="44" cy="34" r="10" /><circle cx="44" cy="34" r="4" />
+          <circle cx="66" cy="34" r="8.5" /><circle cx="66" cy="34" r="3.5" />
+        </svg>
+      )
+    case 'CH-KIT-004': // Luz 3 Puntos — luz en C-stand + paño negro
+      return (
+        <svg {...p}>
+          <path d="M32 44 v38 M22 86 L32 78 L42 86" />
+          <rect x="20" y="26" width="24" height="18" rx="2" /><line x1="18" y1="24" x2="13" y2="19" /><line x1="46" y1="24" x2="51" y2="19" />
+          <circle cx="34" cy="35" r="2.2" fill={ROJO} stroke="none" />
+          <line x1="56" y1="24" x2="88" y2="24" /><rect x="61" y="26" width="22" height="38" rx="1" fill={TINTA} stroke="none" />
+        </svg>
+      )
+    case 'CH-KIT-006': // Producto — producto + luz
+      return (
+        <svg {...p}>
+          <rect x="15" y="20" width="22" height="16" rx="2" /><line x1="30" y1="36" x2="45" y2="55" />
+          <line x1="20" y1="76" x2="80" y2="76" />
+          <rect x="45" y="57" width="24" height="19" rx="2" /><path d="M45 57 l6 -5 h24 l-6 5" /><path d="M69 57 l6 -5 v19 l-6 5" />
+          <circle cx="21" cy="24" r="2.6" fill={ROJO} stroke="none" />
+        </svg>
+      )
+    case 'CH-ILU-012': // Pack Godox — foco COB con olla
+      return (
+        <svg {...p}>
+          <path d="M44 36 L22 26 L22 66 L44 56 Z" /><rect x="44" y="38" width="22" height="16" rx="2" />
+          <line x1="16" y1="30" x2="9" y2="25" /><line x1="14" y1="46" x2="6" y2="46" /><line x1="16" y1="62" x2="9" y2="67" />
+          <path d="M66 46 v30 M56 80 L66 72 L76 80" /><circle cx="55" cy="46" r="2.4" fill={ROJO} stroke="none" />
+        </svg>
+      )
+    default:
+      return null
+  }
+}
+
 function KitCard({ kit, enCarrito, onDetalle, onAdd }: {
   kit: EquipoRental; enCarrito: boolean; onDetalle: () => void; onAdd: () => void
 }) {
@@ -646,7 +710,7 @@ function KitCard({ kit, enCarrito, onDetalle, onAdd }: {
         <img src={foto} alt={kit.nombre} style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block' }} />
       ) : (
         <div style={{ aspectRatio: '4 / 3', background: FONDO_SUAVE, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#B9B6B0', textAlign: 'center', lineHeight: 1.3 }}>{kit.nombre}</span>
+          {kitIcon(kit.codigo) ?? <span style={{ fontSize: 13, fontWeight: 700, color: '#B9B6B0', textAlign: 'center', lineHeight: 1.3 }}>{kit.nombre}</span>}
         </div>
       )}
       <div style={{ padding: 14, display: 'flex', flexDirection: 'column', flex: 1 }}>
