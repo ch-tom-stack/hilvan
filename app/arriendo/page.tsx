@@ -33,7 +33,9 @@ export default async function ArriendoPage() {
 
   // Separar el camión (hero) y los kits (banda destacada) del catálogo individual.
   const camion = equipos.find((e) => e.codigo === 'CH-CAMION') ?? null
-  const kits = equipos.filter((e) => e.categoria_codigo === 'KIT' && e.codigo !== 'CH-CAMION')
+  const kits = equipos
+    .filter((e) => e.categoria_codigo === 'KIT' && e.codigo !== 'CH-CAMION')
+    .sort((a, b) => (b.precio_jornada ?? 0) - (a.precio_jornada ?? 0))
   const individuales = equipos.filter((e) => e.categoria_codigo !== 'KIT')
   const catsIndividuales = cats.filter((c) => c.codigo !== 'KIT')
 

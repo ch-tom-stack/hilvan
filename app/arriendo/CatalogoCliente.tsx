@@ -23,7 +23,7 @@ interface Props { equipos: EquipoRental[]; categorias: CategoriaEquipo[]; kits?:
 // Valor suelto de referencia por kit (para mostrar el ahorro tachado vs. el pack).
 const SUELTO: Record<string, number> = {
   'CH-KIT-001': 313000, 'CH-KIT-002': 345000, 'CH-KIT-003': 116000,
-  'CH-KIT-004': 167000, 'CH-KIT-005': 140000, 'CH-KIT-006': 359000, 'CH-CAMION': 950000,
+  'CH-KIT-004': 167000, 'CH-KIT-006': 490000, 'CH-ILU-012': 31000, 'CH-CAMION': 950000,
 }
 // URL del video del camión. Cuando exista, se activa el botón "Ver el camión".
 const VIDEO_CAMION = ''
