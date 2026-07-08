@@ -134,6 +134,64 @@ export function normalizarBhe(rec: Record<string, any>): FilaSugerida {
   }
 }
 
+// ── RCV VENTAS (facturas EMITIDAS por Casa Hiedra) ─────────────────────────
+// El endpoint de ventas es distinto al de compras: primero /ventas/resumen da
+// los DTE del período (con rsmnLink=true los que tienen detalle) y luego
+// /ventas/detalle/{rut}/{periodo}/{dte}?tipo=rcv_csv (SIN /REGISTRO, dte puntual).
+// En ventas los campos rut/razon_social son el RECEPTOR = el CLIENTE.
+export interface FilaVenta {
+  fuente: 'rcv_venta'
+  tipo_dte: number
+  tipo_documento: 'factura' | 'exenta' | 'boleta' | 'nota_credito'
+  folio: string | null
+  fecha_emision: string | null
+  receptor_rut: string | null
+  receptor_razon_social: string | null
+  monto_neto: number
+  iva: number
+  monto_total: number
+  // NC emitida (dte 61): documento que reduce/anula.
+  referencia_folio?: string | null
+  referencia_tipo?: number | null
+  crudo: Record<string, any>
+}
+
+/** Normaliza un DTE emitido (RCV ventas) a fila de venta. rut = receptor = cliente. */
+export function normalizarVenta(rec: Record<string, any>): FilaVenta {
+  const dte = Number(pick(rec, 'dte', 'tipoDte', 'tipo_dte', 'TipoDTE')) || 0
+  const neto = numCL(pick(rec, 'neto', 'montoNeto', 'monto_neto', 'MntNeto'))
+  const iva = numCL(pick(rec, 'iva', 'IVA', 'montoIva', 'MntIVA'))
+  const total = numCL(pick(rec, 'total', 'montoTotal', 'monto_total', 'MntTotal'))
+  const rut = pick(rec, 'rut', 'rutReceptor', 'rut_receptor', 'RUTRecep', 'receptor_rut') ?? null
+  const razon = pick(rec, 'razon_social', 'razonSocial', 'razonSocialReceptor', 'RznSocRecep') ?? null
+  const folio = pick(rec, 'folio', 'Folio', 'nroDoc') ?? null
+  const fecha = fechaISO(pick(rec, 'fecha', 'fechaEmision', 'fecha_emision', 'FchEmis'))
+  const tipo_documento: FilaVenta['tipo_documento'] =
+    dte === 61 ? 'nota_credito' : DTE_EXENTOS.has(dte) ? 'exenta' : dte === 39 ? 'boleta' : 'factura'
+  const refFolio = pick(rec, 'referencia_folio', 'referenciaFolio', 'detFolioDocRef') ?? null
+  const refTipo = pick(rec, 'referencia_tipo', 'referenciaTipo', 'detTipoDocRef') ?? null
+  return {
+    fuente: 'rcv_venta',
+    tipo_dte: dte,
+    tipo_documento,
+    folio: folio != null ? String(folio) : null,
+    fecha_emision: fecha,
+    receptor_rut: rut != null ? String(rut) : null,
+    receptor_razon_social: razon != null ? String(razon) : null,
+    monto_neto: neto,
+    iva,
+    monto_total: total > 0 ? total : neto,
+    referencia_folio: refFolio != null ? String(refFolio) : null,
+    referencia_tipo: refTipo != null ? Number(refTipo) || null : null,
+    crudo: rec,
+  }
+}
+
+/** Normaliza un RUT chileno para comparar (sin puntos/espacios, dv en mayúscula). */
+export function normalizarRut(rut: string | null | undefined): string {
+  return String(rut ?? '').replace(/[.\s]/g, '').toUpperCase().trim()
+}
+
 /** Extrae el array de documentos de una respuesta de API Gateway (shape variable). */
 export function extraerDocumentos(payload: any): Record<string, any>[] {
   if (Array.isArray(payload)) return payload

@@ -258,6 +258,19 @@ const TOOLS = [
     run: (a) => api('POST', '/sii-sync', a),
   },
   {
+    name: 'hilvan_sii_sync_ventas',
+    description: 'SOLO LECTURA. Trae del SII (vía API Gateway) las FACTURAS EMITIDAS por Casa Hiedra (RCV ventas) de un período — DTE 33/34/39 en facturas y las notas de crédito emitidas (dte 61) en notas_credito. Cada fila trae receptor (=cliente), folio, fecha, montos y cotizacion_sugerida {id, numero, confianza} cruzando RUT receptor + monto + fecha; ya_registrada marca si ese folio ya está en una cotización. Guarda todo en sii_documentos (respaldo del contador). NO escribe en cotizaciones. Flujo: 1) llamar esto; 2) para matches de confianza ALTA confirmados: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio); 3) el cobro va por su carril. NUNCA inventar el match. periodo AAAAMM (ej. 202606). incluir_crudo=true muestra el registro original.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        periodo: { type: 'string', description: 'AAAAMM, ej. 202606' },
+        incluir_crudo: { type: 'boolean', description: 'incluye el registro SII original por fila (debug de mapeo)' },
+      },
+      required: ['periodo'],
+    },
+    run: (a) => api('POST', '/sii-sync-ventas', a),
+  },
+  {
     name: 'hilvan_deshacer',
     description: 'Revierte una escritura previa del agente, usando el accion_id del log de auditoría.',
     inputSchema: { type: 'object', properties: { accion_id: { type: 'string' } }, required: ['accion_id'] },

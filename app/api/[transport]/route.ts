@@ -367,6 +367,20 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_sii_sync_ventas',
+      {
+        title: 'Traer facturas EMITIDAS del SII (RCV ventas)',
+        description:
+          'SOLO LECTURA. Trae del SII (vía API Gateway) las FACTURAS EMITIDAS por Casa Hiedra (RCV ventas) de un período — DTE 33/34/39 en `facturas` y las NOTAS DE CRÉDITO emitidas (dte 61) en `notas_credito`. Cada fila trae receptor (=cliente), folio, fecha, montos y `cotizacion_sugerida` {id, numero, confianza alta/media} cruzando RUT receptor + monto + fecha; `ya_registrada` marca si ese folio ya está en una cotización. Guarda todo en sii_documentos (respaldo del contador). NO escribe en cotizaciones. Flujo: 1) llamas esto; 2) para los matches de confianza ALTA ya confirmados: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio); 3) el cobro va por su carril (movimientos/conciliar o registrar_pago). NUNCA inventes el match — si no hay cotizacion_sugerida, pregunta. periodo AAAAMM (ej. 202606). incluir_crudo=true muestra el registro SII original.',
+        inputSchema: {
+          periodo: z.string().describe('AAAAMM, ej. 202606'),
+          incluir_crudo: z.boolean().optional().describe('incluye el registro SII original por fila (debug de mapeo)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/sii-sync-ventas', args)),
+    )
+
+    server.registerTool(
       'hilvan_buscar_gastos',
       {
         title: 'Buscar gastos',
