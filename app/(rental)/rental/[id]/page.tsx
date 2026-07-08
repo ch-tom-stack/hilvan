@@ -33,7 +33,7 @@ export default async function FichaEquipoRentalPage({
 
   if (error || !equipo) notFound()
 
-  const fotos = equipo.fotos ?? (equipo.foto_url ? [equipo.foto_url] : [])
+  const fotos = equipo.fotos ?? []
 
   return (
     <div className="p-6 lg:p-10 max-w-5xl">

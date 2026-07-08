@@ -274,7 +274,7 @@ function Card({ eq, dias, enCarrito, stockLibre, bloqueado, onAgregar, onQuitar 
   eq: EquipoRental; dias: number; enCarrito: number; stockLibre: number; bloqueado: boolean
   onAgregar: () => void; onQuitar: () => void
 }) {
-  const foto = eq.fotos?.[0] || eq.foto_url
+  const foto = eq.fotos?.[0]
   // La disponibilidad real por fechas la dan las reservas (bloqueado). 'en_uso' es
   // estado interno del módulo de equipos, no bloquea un arriendo futuro; sólo
   // mantención / pendiente de compra se muestran como fuera de servicio.
@@ -527,7 +527,7 @@ function CamionHero({ camion, suelto, enCarrito, onAdd, onVer }: {
   camion: EquipoRental; suelto?: number; enCarrito: boolean; onAdd: () => void; onVer: () => void
 }) {
   const precio = camion.precio_jornada ?? 0
-  const foto = camion.fotos?.[0] || camion.foto_url
+  const foto = camion.fotos?.[0]
   return (
     <div style={{ border: `1px solid ${LINEA}`, borderRadius: 2, overflow: 'hidden', marginBottom: 30 }}>
       <div className="ch-camion-hero" style={{ display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: 26, padding: '26px 28px 20px', alignItems: 'center' }}>
@@ -712,7 +712,7 @@ function KitCard({ kit, suelto, enCarrito, onDetalle, onAdd }: {
   kit: EquipoRental; suelto?: number; enCarrito: boolean; onDetalle: () => void; onAdd: () => void
 }) {
   const precio = kit.precio_jornada ?? 0
-  const foto = kit.fotos?.[0] || kit.foto_url
+  const foto = kit.fotos?.[0]
   return (
     <div style={{ border: `1px solid ${enCarrito ? TINTA : LINEA}`, borderRadius: 2, background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {foto ? (

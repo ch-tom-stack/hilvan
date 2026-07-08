@@ -49,7 +49,6 @@ export interface Equipo {
   subcategoria?: string
   estado: EstadoEquipo
   precio_jornada?: number
-  foto_url?: string
   fotos?: string[]
   cantidad?: number
   rentable?: boolean

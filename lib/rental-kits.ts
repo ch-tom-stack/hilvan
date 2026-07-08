@@ -87,3 +87,13 @@ export function expandirOcupacion(
 
   return load
 }
+
+// Dada la lista de códigos reservados (con la nueva reserva incluida), devuelve
+// los códigos que quedan SOBRE-comprometidos (ocupado > stock), expandiendo kits.
+// Se usa en la aprobación de reservas para frenar el doble-booking de verdad.
+export function sobrecupo(reservados: string[], stockPorCodigo: Record<string, number>): string[] {
+  const load = expandirOcupacion(reservados, stockPorCodigo)
+  return Object.entries(load)
+    .filter(([codigo, n]) => n > (stockPorCodigo[codigo] ?? 1))
+    .map(([codigo]) => codigo)
+}

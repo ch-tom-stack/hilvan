@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/email'
 import { crearEventoGCal } from '@/lib/google-calendar'
+import { sobrecupo } from '@/lib/rental-kits'
 import type {
   RentalReserva,
   EstadoRental,
@@ -27,6 +28,54 @@ async function getAdminEmails(): Promise<string[]> {
     .select('email')
     .in('rol', ['admin', 'productor'])
   return (data ?? []).map((p: { email: string }) => p.email).filter(Boolean)
+}
+
+// Verifica si aprobar/entregar una reserva sobre-compromete algún equipo,
+// contando la composición de los kits. Devuelve un mensaje de error o null.
+async function verificarSobrecupoReserva(
+  admin: ReturnType<typeof createAdminClient>,
+  reservaId: string,
+): Promise<string | null> {
+  const { data: r } = await admin
+    .from('rental_reservas')
+    .select('equipo_id, fecha_inicio, fecha_fin')
+    .eq('id', reservaId)
+    .single<{ equipo_id: string | null; fecha_inicio: string; fecha_fin: string }>()
+  if (!r?.equipo_id) return null // las maletas no usan el modelo de kits
+
+  const [{ data: equipos }, { data: overlap }] = await Promise.all([
+    admin.from('equipos').select('id, codigo, cantidad, nombre'),
+    admin
+      .from('rental_reservas')
+      .select('equipo_id')
+      .in('estado', ['aprobada', 'entregada'])
+      .not('equipo_id', 'is', null)
+      .neq('id', reservaId)
+      .lte('fecha_inicio', r.fecha_fin)
+      .gte('fecha_fin', r.fecha_inicio),
+  ])
+
+  const idToCodigo: Record<string, string> = {}
+  const stock: Record<string, number> = {}
+  const nombrePorCodigo: Record<string, string> = {}
+  for (const e of (equipos ?? []) as { id: string; codigo: string; cantidad: number | null; nombre: string }[]) {
+    idToCodigo[e.id] = e.codigo
+    stock[e.codigo] = e.cantidad ?? 1
+    nombrePorCodigo[e.codigo] = e.nombre
+  }
+
+  const esteCodigo = idToCodigo[r.equipo_id]
+  if (!esteCodigo) return null
+
+  const reservados = [
+    ...((overlap ?? []) as { equipo_id: string }[]).map((x) => idToCodigo[x.equipo_id]).filter(Boolean),
+    esteCodigo,
+  ]
+  const conflictos = sobrecupo(reservados, stock)
+  if (!conflictos.length) return null
+
+  const nombres = conflictos.map((c) => nombrePorCodigo[c] ?? c).slice(0, 6)
+  return `No se puede aprobar: se cruza con otra reserva confirmada en estas fechas — ${nombres.join(', ')}. Revisa en /rental/reservas.`
 }
 
 // ─── Listar todas las reservas con joins ─────────────────────────────────────
@@ -278,6 +327,15 @@ export async function actualizarEstadoReserva(
   }
 
   const admin = createAdminClient()
+
+  // Anti doble-booking: al aprobar/entregar, no permitir sobre-comprometer un
+  // equipo considerando la composición de los kits (arrendar la Maleta ocupa la
+  // A7S III individual y viceversa).
+  if (estado === 'aprobada' || estado === 'entregada') {
+    const conflicto = await verificarSobrecupoReserva(admin, id)
+    if (conflicto) return { error: conflicto }
+  }
+
   const updateData: Record<string, unknown> = { estado }
   if (estado === 'aprobada') updateData.aprobada_por = user.id
 
