@@ -177,6 +177,28 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_editar_cliente',
+      {
+        title: 'Editar cliente',
+        description:
+          'Edita datos de un cliente existente (típico: cargarle el RUT para que el auto-match de facturas emitidas suba a confianza alta). Solo cambia los campos que pases. Reversible con hilvan_deshacer (restaura el valor previo). Usa hilvan_buscar_cliente para obtener el cliente_id.',
+        inputSchema: {
+          cliente_id: z.string().describe('id del cliente a editar'),
+          rut: z.string().optional().describe('RUT, ej. 77551028-5'),
+          nombre: z.string().optional(),
+          empresa: z.string().optional(),
+          email: z.string().optional(),
+          telefono: z.string().optional(),
+          direccion: z.string().optional(),
+          ciudad: z.string().optional(),
+          pais: z.string().optional(),
+          notas: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cliente-editar', args)),
+    )
+
+    server.registerTool(
       'hilvan_crear_cotizacion',
       {
         title: 'Crear cotización',

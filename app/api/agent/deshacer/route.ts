@@ -338,6 +338,14 @@ export async function POST(req: Request) {
       })
       .eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'editar-cliente') {
+    // Restaura los campos editados a su valor previo (payload.previo). No borra.
+    const payload = accion.payload as { previo?: Record<string, string | null> } | null
+    const previo = payload?.previo ?? {}
+    if (Object.keys(previo).length > 0) {
+      const { error } = await admin.from('clientes').update(previo).eq('id', accion.resultado_id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
   } else if (accion.herramienta === 'pagar-gasto') {
     // Restaurar pagado/fecha_pago/comprobante previos (no borra la fila).
     const payload = accion.payload as

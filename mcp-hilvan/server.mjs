@@ -130,6 +130,27 @@ const TOOLS = [
     run: (a) => api('POST', '/cliente', a),
   },
   {
+    name: 'hilvan_editar_cliente',
+    description: 'Edita datos de un cliente existente (típico: cargarle el RUT para que el auto-match de facturas emitidas suba a confianza alta). Solo cambia los campos que pases. Reversible con hilvan_deshacer. Usa hilvan_buscar_cliente para el cliente_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cliente_id: { type: 'string', description: 'id del cliente a editar' },
+        rut: { type: 'string', description: 'RUT, ej. 77551028-5' },
+        nombre: { type: 'string' },
+        empresa: { type: 'string' },
+        email: { type: 'string' },
+        telefono: { type: 'string' },
+        direccion: { type: 'string' },
+        ciudad: { type: 'string' },
+        pais: { type: 'string' },
+        notas: { type: 'string' },
+      },
+      required: ['cliente_id'],
+    },
+    run: (a) => api('POST', '/cliente-editar', a),
+  },
+  {
     name: 'hilvan_crear_cotizacion',
     description: 'Crea una cotización COMPLETA, idéntica a la de un usuario y 100% editable en la app después. Define nombre (requerido) y, opcionalmente, cliente (cliente_id o cliente_nombre_libre), proyecto, IVA, descuento global, notas y la estructura de departamentos → subgrupos → ítems. Si no entregas departamentos, crea los 8 por defecto (como "Nueva cotización"). Devuelve {cotizacion_id, numero, url}. Reversible con hilvan_deshacer (borra todo en cascada). CONFIRMA con el usuario antes de llamar; crea una cotización editable en la app.',
     inputSchema: {
