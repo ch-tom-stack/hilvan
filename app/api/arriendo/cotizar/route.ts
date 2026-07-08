@@ -55,17 +55,29 @@ export async function POST(request: NextRequest) {
   const dias = diasArriendoInclusive(desde, hasta)
   if (dias < 1) return NextResponse.json({ error: 'Rango de fechas inválido' }, { status: 400 })
 
-  // Normalizar ítems: precio numérico y finito, cantidad ≥ 1
+  const admin = createAdminClient()
+
+  // Precios REALES desde la DB (no se confía en el precio que manda el cliente).
+  const idsPedidos = equipos.map((e) => e.equipo_id).filter((v): v is string => typeof v === 'string' && v.length > 0)
+  const precioPorId: Record<string, number> = {}
+  if (idsPedidos.length) {
+    const { data: eqs } = await admin.from('equipos').select('id, precio_jornada').in('id', idsPedidos)
+    for (const e of (eqs ?? []) as { id: string; precio_jornada: number | null }[]) {
+      precioPorId[e.id] = Number.isFinite(e.precio_jornada) && (e.precio_jornada ?? 0) > 0 ? Math.round(e.precio_jornada as number) : 0
+    }
+  }
+
+  // Normalizar ítems: precio tomado de la DB por equipo_id; cantidad ≥ 1.
   const items = equipos
     .map((e) => {
-      const precio = Number(e.precio_jornada)
       const cantidad = Math.max(1, Math.round(Number(e.cantidad) || 1))
+      const precio = e.equipo_id ? (precioPorId[e.equipo_id] ?? 0) : 0
       return {
         equipo_id: e.equipo_id ?? null,
         nombre: String(e.nombre ?? '').slice(0, 200),
         codigo: String(e.codigo ?? '').slice(0, 60),
         cantidad,
-        precio: Number.isFinite(precio) && precio > 0 ? Math.round(precio) : 0,
+        precio,
       }
     })
     .filter((e) => e.nombre)
@@ -78,8 +90,6 @@ export async function POST(request: NextRequest) {
   }
   const { promoPct, volumenPct, descuentoPct, descuentoMonto, iva, total, consultar } = calcularArriendoWeb(neto)
   const hayConsultar = items.some((i) => i.precio === 0)
-
-  const admin = createAdminClient()
 
   // ── Número correlativo R-XXX ──────────────────────────────────────────
   const { data: ultima } = await admin

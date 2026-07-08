@@ -18,13 +18,12 @@ const input: React.CSSProperties = { width: '100%', fontSize: 14, padding: '8px 
 
 interface EquipoRental extends Equipo { categoria?: CategoriaEquipo }
 interface ItemCarrito { equipo: EquipoRental; cantidad: number }
-interface Props { equipos: EquipoRental[]; categorias: CategoriaEquipo[]; kits?: EquipoRental[]; camion?: EquipoRental | null }
-
-// Valor suelto de referencia por kit (para mostrar el ahorro tachado vs. el pack).
-const SUELTO: Record<string, number> = {
-  'CH-KIT-001': 313000, 'CH-KIT-002': 345000, 'CH-KIT-003': 116000,
-  'CH-KIT-004': 179000, 'CH-KIT-006': 492000, 'CH-ILU-012': 46000, 'CH-CAMION': 950000,
+interface Props {
+  equipos: EquipoRental[]; categorias: CategoriaEquipo[]
+  kits?: EquipoRental[]; camion?: EquipoRental | null
+  suelto?: Record<string, number> // valor suelto por kit (derivado de sus componentes)
 }
+
 // URL del video del camión. Cuando exista, se activa el botón "Ver el camión".
 const VIDEO_CAMION = ''
 // Manifiesto descriptivo del camión (lo que carga).
@@ -44,7 +43,7 @@ const hoyISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function CatalogoCliente({ equipos, categorias, kits = [], camion = null }: Props) {
+export default function CatalogoCliente({ equipos, categorias, kits = [], camion = null, suelto = {} }: Props) {
   const [categoriaActiva, setCategoriaActiva] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
@@ -138,6 +137,7 @@ export default function CatalogoCliente({ equipos, categorias, kits = [], camion
       {camion && (
         <CamionHero
           camion={camion}
+          suelto={suelto[camion.codigo]}
           enCarrito={cantidadEnCarrito(camion.id) > 0}
           onAdd={() => agregar(camion)}
           onVer={() => setVideoOpen(true)}
@@ -149,6 +149,7 @@ export default function CatalogoCliente({ equipos, categorias, kits = [], camion
         <KitsBand
           kits={kits}
           carrito={carrito}
+          suelto={suelto}
           onDetalle={setKitDetalle}
           onAdd={agregar}
         />
@@ -245,6 +246,7 @@ export default function CatalogoCliente({ equipos, categorias, kits = [], camion
       {kitDetalle && (
         <KitModal
           kit={kitDetalle}
+          suelto={suelto[kitDetalle.codigo]}
           enCarrito={cantidadEnCarrito(kitDetalle.id) > 0}
           onAdd={() => { agregar(kitDetalle); setKitDetalle(null) }}
           onClose={() => setKitDetalle(null)}
@@ -521,11 +523,10 @@ function MobileCarrito(props: PanelProps) {
 /* ── Camión (hero) ── */
 const kick: React.CSSProperties = { fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: OPACO, margin: '0 0 8px' }
 
-function CamionHero({ camion, enCarrito, onAdd, onVer }: {
-  camion: EquipoRental; enCarrito: boolean; onAdd: () => void; onVer: () => void
+function CamionHero({ camion, suelto, enCarrito, onAdd, onVer }: {
+  camion: EquipoRental; suelto?: number; enCarrito: boolean; onAdd: () => void; onVer: () => void
 }) {
   const precio = camion.precio_jornada ?? 0
-  const suelto = SUELTO[camion.codigo]
   const foto = camion.fotos?.[0] || camion.foto_url
   return (
     <div style={{ border: `1px solid ${LINEA}`, borderRadius: 2, overflow: 'hidden', marginBottom: 30 }}>
@@ -539,7 +540,7 @@ function CamionHero({ camion, enCarrito, onAdd, onVer }: {
             <b style={{ fontSize: 30, fontWeight: 800 }}>{formatCLP(precio)}</b>
             <span style={{ fontSize: 14, color: OPACO }}>/ jornada</span>
           </div>
-          {suelto ? <p style={{ fontSize: 12, color: OPACO, margin: '2px 0 0' }}><s style={{ color: GRIS }}>{formatCLP(suelto)}</s> suelto</p> : null}
+          {suelto && suelto > precio ? <p style={{ fontSize: 12, color: OPACO, margin: '2px 0 0' }}><s style={{ color: GRIS }}>{formatCLP(suelto)}</s> suelto</p> : null}
           <p style={{ fontSize: 12.5, color: OPACO, margin: '10px 0 16px', lineHeight: 1.45 }}>Incluye <b style={{ color: TINTA }}>asistente de gaffer que conduce</b> + hasta <b style={{ color: TINTA }}>$25.000</b> en bencina.</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <button onClick={onAdd} style={{ background: enCarrito ? TINTA : ROJO, color: '#fff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.13em', fontSize: 12.5, padding: '12px 22px', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -617,8 +618,9 @@ function TruckSVG() {
 }
 
 /* ── Banda de kits ── */
-function KitsBand({ kits, carrito, onDetalle, onAdd }: {
-  kits: EquipoRental[]; carrito: ItemCarrito[]; onDetalle: (k: EquipoRental) => void; onAdd: (k: EquipoRental) => void
+function KitsBand({ kits, carrito, suelto, onDetalle, onAdd }: {
+  kits: EquipoRental[]; carrito: ItemCarrito[]; suelto: Record<string, number>
+  onDetalle: (k: EquipoRental) => void; onAdd: (k: EquipoRental) => void
 }) {
   return (
     <div style={{ marginBottom: 36 }}>
@@ -626,7 +628,7 @@ function KitsBand({ kits, carrito, onDetalle, onAdd }: {
       <p style={{ fontSize: 13, color: OPACO, margin: '0 0 16px' }}>Paquetes armados con descuento sobre el valor suelto.</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
         {kits.map((k) => (
-          <KitCard key={k.id} kit={k} enCarrito={carrito.some((i) => i.equipo.id === k.id)} onDetalle={() => onDetalle(k)} onAdd={() => onAdd(k)} />
+          <KitCard key={k.id} kit={k} suelto={suelto[k.codigo]} enCarrito={carrito.some((i) => i.equipo.id === k.id)} onDetalle={() => onDetalle(k)} onAdd={() => onAdd(k)} />
         ))}
       </div>
     </div>
@@ -692,16 +694,24 @@ function kitIcon(codigo: string): React.ReactNode {
           <path d="M66 46 v30 M56 80 L66 72 L76 80" /><circle cx="55" cy="46" r="2.4" fill={ROJO} stroke="none" />
         </svg>
       )
+    case 'CH-KIT-007': // Pack Nanlux — foco fresnel
+      return (
+        <svg {...p}>
+          <rect x="24" y="30" width="26" height="40" rx="4" />
+          <circle cx="60" cy="50" r="18" /><circle cx="60" cy="50" r="11" /><circle cx="60" cy="50" r="5" fill={ROJO} stroke="none" />
+          <line x1="82" y1="34" x2="89" y2="29" /><line x1="84" y1="50" x2="93" y2="50" /><line x1="82" y1="66" x2="89" y2="71" />
+          <path d="M37 70 v12 M28 88 L37 81 L46 88" />
+        </svg>
+      )
     default:
       return null
   }
 }
 
-function KitCard({ kit, enCarrito, onDetalle, onAdd }: {
-  kit: EquipoRental; enCarrito: boolean; onDetalle: () => void; onAdd: () => void
+function KitCard({ kit, suelto, enCarrito, onDetalle, onAdd }: {
+  kit: EquipoRental; suelto?: number; enCarrito: boolean; onDetalle: () => void; onAdd: () => void
 }) {
   const precio = kit.precio_jornada ?? 0
-  const suelto = SUELTO[kit.codigo]
   const foto = kit.fotos?.[0] || kit.foto_url
   return (
     <div style={{ border: `1px solid ${enCarrito ? TINTA : LINEA}`, borderRadius: 2, background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -721,7 +731,7 @@ function KitCard({ kit, enCarrito, onDetalle, onAdd }: {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
             <b style={{ fontSize: 16, fontWeight: 800 }}>{formatCLP(precio)}</b>
             <span style={{ fontSize: 11, color: OPACO }}>/ jornada</span>
-            {suelto ? <s style={{ fontSize: 11, color: GRIS }}>{formatCLP(suelto)}</s> : null}
+            {suelto && suelto > precio ? <s style={{ fontSize: 11, color: GRIS }}>{formatCLP(suelto)}</s> : null}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={onDetalle} style={{ flex: 1, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px', cursor: 'pointer', border: `1px solid ${TINTA}`, borderRadius: 2, background: '#fff', color: TINTA, fontFamily: 'inherit' }}>Detalle</button>
@@ -733,11 +743,10 @@ function KitCard({ kit, enCarrito, onDetalle, onAdd }: {
   )
 }
 
-function KitModal({ kit, enCarrito, onAdd, onClose }: {
-  kit: EquipoRental; enCarrito: boolean; onAdd: () => void; onClose: () => void
+function KitModal({ kit, suelto, enCarrito, onAdd, onClose }: {
+  kit: EquipoRental; suelto?: number; enCarrito: boolean; onAdd: () => void; onClose: () => void
 }) {
   const precio = kit.precio_jornada ?? 0
-  const suelto = SUELTO[kit.codigo]
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(10,10,10,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 2, maxWidth: 460, width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: '24px 26px' }}>
@@ -753,7 +762,7 @@ function KitModal({ kit, enCarrito, onAdd, onClose }: {
         <div style={{ borderTop: `1px solid ${LINEA_SUAVE}`, marginTop: 18, paddingTop: 16, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <b style={{ fontSize: 26, fontWeight: 800 }}>{formatCLP(precio)}</b>
           <span style={{ fontSize: 13, color: OPACO }}>/ jornada</span>
-          {suelto ? <s style={{ fontSize: 13, color: GRIS }}>{formatCLP(suelto)} suelto</s> : null}
+          {suelto && suelto > precio ? <s style={{ fontSize: 13, color: GRIS }}>{formatCLP(suelto)} suelto</s> : null}
         </div>
         <button onClick={onAdd} style={{ marginTop: 16, width: '100%', background: enCarrito ? TINTA : ROJO, color: '#fff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.13em', fontSize: 12.5, padding: '13px', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: 'inherit' }}>
           {enCarrito ? '✓ En tu cotización' : 'Agregar a la cotización'}
