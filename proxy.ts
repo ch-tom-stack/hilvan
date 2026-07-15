@@ -51,6 +51,12 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/arriendo/') ||
     pathname.startsWith('/api/agent/') ||
     pathname === '/api/lectura-lead' ||
+    // /.well-known/* debe caer en 404 LIMPIO, nunca redirigir al login: ante un 401
+    // de /api/mcp los clientes MCP sondean aquí el descubrimiento OAuth. Si les
+    // devolvemos el HTML del login, creen que hay OAuth, intentan registrarse y
+    // fallan ("No se pudo registrar con el servicio de inicio de sesión"), en vez
+    // de caer limpio al Bearer token.
+    pathname.startsWith('/.well-known/') ||
     pathname === '/api/mcp' ||
     pathname === '/api/sse' ||
     pathname.startsWith('/m/') ||
