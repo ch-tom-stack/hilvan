@@ -111,7 +111,7 @@ export default function PopupLead() {
               {DESCUENTO}% en tu primera producción
             </h2>
             <p style={{ fontSize: 14, lineHeight: 1.5, color: OPACO, margin: '0 0 16px' }}>
-              Déjanos tu correo y te lo guardamos. Además del rental, producimos: banco de contenido, lookbooks y spots.
+              Déjanos tu correo y te lo guardamos para cuando lo quieras usar.
             </p>
 
             <div style={{ display: 'grid', gap: 9 }}>
