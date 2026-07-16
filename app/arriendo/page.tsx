@@ -3,6 +3,8 @@ import type { Equipo, CategoriaEquipo } from '@/types'
 import { promoArriendoActiva } from '@/lib/cotizaciones-calc'
 import { sueltoKit } from '@/lib/rental-kits'
 import CatalogoCliente from './CatalogoCliente'
+import NavArriendo from './NavArriendo'
+import PopupLead from './PopupLead'
 
 export const metadata = {
   title: 'Arriendo de equipos · Casa Hiedra',
@@ -10,12 +12,6 @@ export const metadata = {
 }
 
 const SITIO = 'https://casahiedra.com'
-const NAV_LINKS = [
-  { href: SITIO, label: 'Inicio' },
-  { href: `${SITIO}/productos`, label: 'Productos' },
-  { href: `${SITIO}/archivo`, label: 'Archivo' },
-  { href: `${SITIO}/la-casa`, label: 'La casa' },
-]
 const TINTA = '#0A0A0A'
 const OPACO = '#353135'
 const LINEA = '#0A0A0A22'
@@ -61,24 +57,13 @@ export default async function ArriendoPage() {
         </div>
       )}
 
-      {/* Nav */}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 40px', borderBottom: `1px solid ${LINEA}`, flexShrink: 0 }}>
-        <a href={SITIO} aria-label="Casa Hiedra — inicio">
-          {/* logo-horizontal-blanco = logo oscuro para FONDOS CLAROS (convención del repo). */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logos/logo-horizontal-blanco.png" alt="Casa Hiedra" style={{ height: 26, display: 'block' }} />
-        </a>
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
-          {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href} style={{ fontSize: 14, color: TINTA, textDecoration: 'none' }} className="ch-navlink">{l.label}</a>
-          ))}
-        </nav>
-      </header>
+      {/* Nav (responsivo: hamburguesa + drawer bajo 768px) */}
+      <NavArriendo />
 
       {/* Hero */}
-      <div style={{ padding: '54px 40px 40px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
+      <div className="ch-pad" style={{ padding: '54px 40px 40px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
         <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: OPACO, margin: '0 0 10px' }}>Casa Hiedra · Rental</p>
-        <h1 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.02, margin: '0 0 14px', maxWidth: 640 }}>
+        <h1 className="ch-h1" style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.02, margin: '0 0 14px', maxWidth: 640 }}>
           Arriendo de equipos
         </h1>
         <p style={{ fontSize: 16, lineHeight: 1.5, color: OPACO, maxWidth: 560, margin: 0 }}>
@@ -87,9 +72,19 @@ export default async function ArriendoPage() {
       </div>
 
       {/* Catálogo + cotizador */}
-      <div style={{ flex: 1, padding: '0 40px 60px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
+      <div className="ch-pad" style={{ flex: 1, padding: '0 40px 60px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
         <CatalogoCliente equipos={individuales} categorias={catsIndividuales} kits={kits} camion={camion} suelto={suelto} />
       </div>
+
+      {/* Captura de lead (10% primera producción) → misma Bandeja de Aprobación */}
+      <PopupLead />
+
+      <style>{`
+        @media (max-width: 768px) {
+          .ch-pad { padding-left: 20px !important; padding-right: 20px !important; }
+          .ch-h1 { font-size: 32px !important; }
+        }
+      `}</style>
 
       {/* Footer */}
       <footer style={{ borderTop: `1px solid ${LINEA}`, padding: '26px 40px', textAlign: 'center', flexShrink: 0 }}>
