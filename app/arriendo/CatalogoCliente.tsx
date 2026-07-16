@@ -540,7 +540,7 @@ function CamionHero({ camion, suelto, enCarrito, onAdd, onVer }: {
             <b style={{ fontSize: 30, fontWeight: 800 }}>{formatCLP(precio)}</b>
             <span style={{ fontSize: 14, color: OPACO }}>/ jornada</span>
           </div>
-          {suelto && suelto > precio ? <p style={{ fontSize: 12, color: OPACO, margin: '2px 0 0' }}><s style={{ color: GRIS }}>{formatCLP(suelto)}</s> suelto</p> : null}
+          {suelto && suelto > precio ? <p style={{ fontSize: 12, color: OPACO, margin: '2px 0 0' }}><s style={{ color: ROJO }}>{formatCLP(suelto)}</s> suelto</p> : null}
           <p style={{ fontSize: 12.5, color: OPACO, margin: '10px 0 16px', lineHeight: 1.45 }}>Incluye <b style={{ color: TINTA }}>asistente de gaffer que conduce</b> + hasta <b style={{ color: TINTA }}>$25.000</b> en bencina.</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <button onClick={onAdd} style={{ background: enCarrito ? TINTA : ROJO, color: '#fff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.13em', fontSize: 12.5, padding: '12px 22px', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -731,7 +731,7 @@ function KitCard({ kit, suelto, enCarrito, onDetalle, onAdd }: {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
             <b style={{ fontSize: 16, fontWeight: 800 }}>{formatCLP(precio)}</b>
             <span style={{ fontSize: 11, color: OPACO }}>/ jornada</span>
-            {suelto && suelto > precio ? <s style={{ fontSize: 11, color: GRIS }}>{formatCLP(suelto)}</s> : null}
+            {suelto && suelto > precio ? <s style={{ fontSize: 11, color: ROJO }}>{formatCLP(suelto)}</s> : null}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={onDetalle} style={{ flex: 1, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px', cursor: 'pointer', border: `1px solid ${TINTA}`, borderRadius: 2, background: '#fff', color: TINTA, fontFamily: 'inherit' }}>Detalle</button>
@@ -762,7 +762,7 @@ function KitModal({ kit, suelto, enCarrito, onAdd, onClose }: {
         <div style={{ borderTop: `1px solid ${LINEA_SUAVE}`, marginTop: 18, paddingTop: 16, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <b style={{ fontSize: 26, fontWeight: 800 }}>{formatCLP(precio)}</b>
           <span style={{ fontSize: 13, color: OPACO }}>/ jornada</span>
-          {suelto && suelto > precio ? <s style={{ fontSize: 13, color: GRIS }}>{formatCLP(suelto)} suelto</s> : null}
+          {suelto && suelto > precio ? <s style={{ fontSize: 13, color: ROJO }}>{formatCLP(suelto)} suelto</s> : null}
         </div>
         <button onClick={onAdd} style={{ marginTop: 16, width: '100%', background: enCarrito ? TINTA : ROJO, color: '#fff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.13em', fontSize: 12.5, padding: '13px', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: 'inherit' }}>
           {enCarrito ? '✓ En tu cotización' : 'Agregar a la cotización'}
