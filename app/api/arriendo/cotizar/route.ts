@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
 import { diasArriendoInclusive, calcularArriendoWeb, ARRIENDO_MINIMO, formatCLP } from '@/lib/cotizaciones-calc'
+import { validarCodigo, normalizarCodigo } from '@/lib/descuento-codigos'
 
 interface ItemEntrada {
   equipo_id?: string | null
@@ -18,6 +19,7 @@ interface Body {
   desde: string
   hasta: string
   equipos: ItemEntrada[]
+  codigo?: string // código de descuento del pop-up; SIEMPRE se re-valida en el servidor
 }
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/
@@ -88,7 +90,13 @@ export async function POST(request: NextRequest) {
   if (neto < ARRIENDO_MINIMO) {
     return NextResponse.json({ error: `Arriendo mínimo ${formatCLP(ARRIENDO_MINIMO)} neto` }, { status: 400 })
   }
-  const { promoPct, volumenPct, descuentoPct, descuentoMonto, iva, total, consultar } = calcularArriendoWeb(neto)
+  // Código de descuento: se RE-VALIDA en el servidor (el cliente nunca decide el %).
+  const codigoIn = normalizarCodigo(body?.codigo)
+  const val = codigoIn ? await validarCodigo(admin, codigoIn) : { valido: false, pct: 0 }
+  const codigoAplicado = val.valido ? codigoIn : null
+
+  const { promoPct, volumenPct, codigoPct, descuentoPct, descuentoMonto, iva, total, consultar } =
+    calcularArriendoWeb(neto, new Date(), val.valido ? val.pct : 0)
   const hayConsultar = items.some((i) => i.precio === 0)
 
   // ── Número correlativo R-XXX ──────────────────────────────────────────
@@ -105,8 +113,13 @@ export async function POST(request: NextRequest) {
   const numero = `R-${String(siguiente).padStart(3, '0')}`
 
   const periodo = `Período solicitado: ${desde} al ${hasta} (${dias} ${dias === 1 ? 'jornada' : 'jornadas'}). Retiro desde 08:00, devolución hasta 22:00.`
+  const partes = [
+    promoPct > 0 ? `promo Jul–Ago ${promoPct}%` : '',
+    volumenPct > 0 ? `volumen ${volumenPct}%` : '',
+    codigoPct > 0 ? `código ${codigoAplicado} ${codigoPct}%` : '',
+  ].filter(Boolean)
   const detalleDesc = descuentoPct > 0
-    ? `Descuento aplicado: ${descuentoPct}%${promoPct > 0 ? ` (promo Jul–Ago ${promoPct}%${volumenPct > 0 ? ` + volumen ${volumenPct}%` : ''})` : ` (volumen)`}.`
+    ? `Descuento aplicado: ${descuentoPct}%${partes.length ? ` (${partes.join(' + ')})` : ''}.`
     : ''
   const notasInternas = [
     'Generada desde el sitio web (rental.casahiedra.com).',
@@ -185,9 +198,7 @@ export async function POST(request: NextRequest) {
     <table style="width:100%;border-collapse:collapse;margin-top:6px;">
       ${filaTotal('Neto', formatCLP(neto))}
       ${descuentoPct > 0 ? filaTotal(
-        promoPct > 0 && volumenPct > 0 ? `Promo Jul–Ago 30% + volumen ${volumenPct}%`
-          : promoPct > 0 ? 'Promo Julio–Agosto (30%)'
-          : `Descuento por volumen (${volumenPct}%)`,
+        `Descuento ${descuentoPct}%${partes.length ? ` (${partes.join(' + ')})` : ''}`,
         `− ${formatCLP(descuentoMonto)}`) : ''}
       ${filaTotal('IVA (19%)', formatCLP(iva))}
       ${filaTotal('Total', formatCLP(total), true)}
@@ -234,5 +245,16 @@ export async function POST(request: NextRequest) {
     // El correo no aborta: la cotización ya quedó registrada en Hilván.
   }
 
-  return NextResponse.json({ ok: true, numero, total, dias, descuentoPct, consultar })
+  // Deja registrada la última cotización que aplicó el código (informativo: no lo
+  // quema — se marca 'usado' recién cuando se confirma la reserva).
+  if (codigoAplicado && cot?.id) {
+    try { await admin.from('descuento_codigos').update({ cotizacion_id: cot.id }).eq('codigo', codigoAplicado) }
+    catch (e) { console.error('[arriendo] no se pudo linkear el código:', e) }
+  }
+
+  return NextResponse.json({
+    ok: true, numero, total, dias, descuentoPct, consultar,
+    codigo: codigoAplicado, codigo_pct: codigoPct,
+    ...(codigoIn && !val.valido ? { codigo_rechazado: val.motivo } : {}),
+  })
 }

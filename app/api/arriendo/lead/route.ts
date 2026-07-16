@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { crearPropuestaLead } from '@/lib/lead-inbound'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { emitirCodigo } from '@/lib/descuento-codigos'
+import { emailCodigoDescuento } from '@/lib/descuento-email'
+import { sendEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 
@@ -42,17 +46,39 @@ export async function POST(req: NextRequest) {
   const descuento = Number(body?.descuento)
   const pct = Number.isFinite(descuento) && descuento > 0 && descuento <= 50 ? Math.round(descuento) : 10
 
+  const email = String(body?.email ?? '').trim()
+  const nombre = body?.nombre ? String(body.nombre).trim() : null
+
+  // 1) Código único (idempotente: un correo = un código mientras siga vigente).
+  const admin = createAdminClient()
+  const codigo = await emitirCodigo(admin, { email, nombre, pct, origen: 'rental' })
+
+  // 2) Lead a la Bandeja (con el código en las notas, para que el humano lo vea).
   const r = await crearPropuestaLead(
     {
       email: body?.email,
       nombre: body?.nombre,
       empresa: body?.empresa,
       origen: 'rental',
-      nota: `Pop-up Rental — se le ofreció ${pct}% de descuento en su primera producción. Entró por la campaña de rental.casahiedra.com.`,
+      nota: codigo
+        ? `Pop-up Rental — código ${codigo.codigo} (${codigo.pct}% en su primer arriendo, vence ${codigo.vence_at}). Entró por la campaña de rental.casahiedra.com.`
+        : `Pop-up Rental — se le ofreció ${pct}% en su primer arriendo. Entró por la campaña de rental.casahiedra.com.`,
       url: 'https://rental.casahiedra.com',
     },
-    `Lead capturado en el pop-up de Rental (${pct}% dcto. primera producción). Tráfico de campaña Meta.`,
+    `Lead capturado en el pop-up de Rental (${pct}% dcto. primer arriendo). Tráfico de campaña Meta.`,
   )
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
-  return NextResponse.json(r)
+
+  // 3) Enviarle su código. NO bloqueante: el lead y el código ya están guardados;
+  // si el correo falla se registra, pero no se le devuelve error al visitante.
+  if (codigo) {
+    try {
+      const { subject, html } = emailCodigoDescuento({ ...codigo, nombre })
+      await sendEmail({ to: email, subject, html, contexto: 'arriendo:codigo_descuento' })
+    } catch (e) {
+      console.error('[arriendo/lead] no se pudo enviar el código:', e)
+    }
+  }
+
+  return NextResponse.json({ ...r, codigo: codigo?.codigo ?? null, pct: codigo?.pct ?? pct })
 }

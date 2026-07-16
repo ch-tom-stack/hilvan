@@ -52,6 +52,11 @@ export default function CatalogoCliente({ equipos, categorias, kits = [], camion
   const [bloqueos, setBloqueos] = useState<Record<string, number>>({})
   const [kitDetalle, setKitDetalle] = useState<EquipoRental | null>(null)
   const [videoOpen, setVideoOpen] = useState(false)
+  // Código de descuento (del pop-up). El % lo dicta el servidor, acá solo se muestra.
+  const [codigo, setCodigo] = useState('')
+  const [codigoPct, setCodigoPct] = useState(0)
+  const [codigoMsg, setCodigoMsg] = useState<string | null>(null)
+  const [validandoCodigo, setValidandoCodigo] = useState(false)
 
   // Fechas por defecto: hoy → hoy (1 jornada). En efecto para evitar mismatch de hidratación.
   useEffect(() => {
@@ -123,13 +128,31 @@ export default function CatalogoCliente({ equipos, categorias, kits = [], camion
   const cotizacion = useMemo(() => {
     const netoPorJornada = carrito.reduce((s, i) => s + (i.equipo.precio_jornada ?? 0) * i.cantidad, 0)
     const neto = netoPorJornada * dias
-    const calc = calcularArriendoWeb(neto)
+    const calc = calcularArriendoWeb(neto, new Date(), codigoPct)
     const hayConsultar = carrito.some((i) => !i.equipo.precio_jornada || i.equipo.precio_jornada === 0)
     const totalItems = carrito.reduce((s, i) => s + i.cantidad, 0)
     return { neto, ...calc, hayConsultar, totalItems }
-  }, [carrito, dias])
+  }, [carrito, dias, codigoPct])
 
-  const panelProps = { carrito, desde, hasta, dias, cotizacion, onEliminar: eliminar }
+  // Valida el código contra el servidor (el % nunca lo decide el cliente).
+  const aplicarCodigo = useCallback(async () => {
+    const c = codigo.trim().toUpperCase()
+    if (!c) { setCodigoPct(0); setCodigoMsg(null); return }
+    setValidandoCodigo(true); setCodigoMsg(null)
+    try {
+      const res = await fetch(`/api/arriendo/codigo?codigo=${encodeURIComponent(c)}`)
+      const d = await res.json().catch(() => ({}))
+      if (d?.valido) { setCodigoPct(d.pct); setCodigoMsg(`✓ Código aplicado: ${d.pct}% extra`) }
+      else { setCodigoPct(0); setCodigoMsg(d?.motivo || 'Código no válido.') }
+    } catch {
+      setCodigoPct(0); setCodigoMsg('No pudimos validar el código.')
+    } finally { setValidandoCodigo(false) }
+  }, [codigo])
+
+  const panelProps = {
+    carrito, desde, hasta, dias, cotizacion, onEliminar: eliminar,
+    codigo, setCodigo, codigoPct, codigoMsg, validandoCodigo, aplicarCodigo,
+  }
 
   return (
     <>
@@ -362,13 +385,19 @@ interface PanelProps {
   dias: number
   cotizacion: {
     neto: number; minimoOk: boolean; promoActiva: boolean; promoPct: number; volumenPct: number
-    descuentoPct: number; descuentoMonto: number; iva: number; total: number
+    codigoPct: number; descuentoPct: number; descuentoMonto: number; iva: number; total: number
     consultar: boolean; hayConsultar: boolean; totalItems: number
   }
   onEliminar: (id: string) => void
+  codigo: string
+  setCodigo: (v: string) => void
+  codigoPct: number
+  codigoMsg: string | null
+  validandoCodigo: boolean
+  aplicarCodigo: () => void
 }
 
-function ContenidoCarrito({ carrito, desde, hasta, dias, cotizacion, onEliminar }: PanelProps) {
+function ContenidoCarrito({ carrito, desde, hasta, dias, cotizacion, onEliminar, codigo, setCodigo, codigoPct, codigoMsg, validandoCodigo, aplicarCodigo }: PanelProps) {
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [mensaje, setMensaje] = useState('')
@@ -386,6 +415,7 @@ function ContenidoCarrito({ carrito, desde, hasta, dias, cotizacion, onEliminar 
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre, email, mensaje, desde, hasta,
+          codigo: codigoPct > 0 ? codigo.trim().toUpperCase() : undefined,
           equipos: carrito.map((i) => ({
             equipo_id: i.equipo.id,
             nombre: i.equipo.nombre,
@@ -444,11 +474,11 @@ function ContenidoCarrito({ carrito, desde, hasta, dias, cotizacion, onEliminar 
         <Fila etq="Neto" val={formatCLP(cotizacion.neto)} />
         {cotizacion.descuentoPct > 0 && (
           <Fila
-            etq={cotizacion.promoPct > 0 && cotizacion.volumenPct > 0
-              ? `Promo 30% + volumen ${cotizacion.volumenPct}%`
-              : cotizacion.promoPct > 0
-                ? 'Promo Julio–Agosto 30%'
-                : `Descuento volumen ${cotizacion.volumenPct}%`}
+            etq={[
+              cotizacion.promoPct > 0 ? `Promo ${cotizacion.promoPct}%` : '',
+              cotizacion.volumenPct > 0 ? `volumen ${cotizacion.volumenPct}%` : '',
+              cotizacion.codigoPct > 0 ? `código ${cotizacion.codigoPct}%` : '',
+            ].filter(Boolean).join(' + ')}
             val={`− ${formatCLP(cotizacion.descuentoMonto)}`}
           />
         )}
@@ -465,6 +495,29 @@ function ContenidoCarrito({ carrito, desde, hasta, dias, cotizacion, onEliminar 
         )}
         {cotizacion.hayConsultar && <p style={{ fontSize: 11, color: ROJO, margin: '8px 0 0' }}>* Algunos precios a confirmar.</p>}
         {cotizacion.consultar && <p style={{ fontSize: 11, color: ROJO, margin: '8px 0 0' }}>Por este volumen consúltanos por un valor especial.</p>}
+
+        {/* Código de descuento (el del correo). Se suma a la promo y al volumen. */}
+        <div style={{ marginTop: 12 }}>
+          <label style={{ ...label, marginBottom: 6 }} htmlFor="codigo">¿Tienes un código?</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              id="codigo" value={codigo}
+              onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); aplicarCodigo() } }}
+              placeholder="CH10-XXXXX"
+              style={{ ...input, flex: 1, letterSpacing: '0.06em' }}
+            />
+            <button onClick={aplicarCodigo} disabled={validandoCodigo || !codigo.trim()} style={{
+              fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 12px',
+              border: `1px solid ${TINTA}`, borderRadius: 2, background: '#fff', color: TINTA,
+              cursor: validandoCodigo || !codigo.trim() ? 'not-allowed' : 'pointer',
+              opacity: validandoCodigo || !codigo.trim() ? 0.4 : 1, fontFamily: 'inherit',
+            }}>{validandoCodigo ? '…' : 'Aplicar'}</button>
+          </div>
+          {codigoMsg && (
+            <p style={{ fontSize: 11, margin: '6px 0 0', color: codigoPct > 0 ? '#2e7d32' : ROJO }}>{codigoMsg}</p>
+          )}
+        </div>
       </div>
 
       {/* Formulario */}

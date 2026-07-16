@@ -82,7 +82,7 @@ export default function PopupLead() {
       onClick={cerrar}
       role="dialog"
       aria-modal="true"
-      aria-label={`${DESCUENTO}% de descuento en tu primera producción`}
+      aria-label={`${DESCUENTO}% de descuento en tu primer arriendo`}
       style={{
         position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(10,10,10,0.55)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
@@ -99,19 +99,19 @@ export default function PopupLead() {
         {estado === 'ok' ? (
           <>
             <p style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: ROJO, margin: '0 0 8px', fontWeight: 700 }}>Listo</p>
-            <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 10px', lineHeight: 1.15 }}>Tu {DESCUENTO}% quedó guardado</h2>
+            <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 10px', lineHeight: 1.15 }}>Revisa tu correo</h2>
             <p style={{ fontSize: 14, lineHeight: 1.5, color: OPACO, margin: 0 }}>
-              Te escribimos a <strong style={{ color: TINTA }}>{email.trim()}</strong> para coordinar tu primera producción. Mientras, sigue armando tu cotización de arriendo.
+              Te mandamos tu código de {DESCUENTO}% a <strong style={{ color: TINTA }}>{email.trim()}</strong>. Pégalo en “¿Tienes un código?” al armar tu cotización.
             </p>
           </>
         ) : (
           <>
             <p style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: ROJO, margin: '0 0 8px', fontWeight: 700 }}>Casa Hiedra</p>
             <h2 style={{ fontSize: 25, fontWeight: 800, margin: '0 0 8px', lineHeight: 1.12, letterSpacing: '-0.01em' }}>
-              {DESCUENTO}% en tu primera producción
+              {DESCUENTO}% en tu primer arriendo
             </h2>
             <p style={{ fontSize: 14, lineHeight: 1.5, color: OPACO, margin: '0 0 16px' }}>
-              Déjanos tu correo y te lo guardamos para cuando lo quieras usar.
+              Déjanos tu correo y te mandamos un código único. Se suma a la promo y al descuento por volumen.
             </p>
 
             <div style={{ display: 'grid', gap: 9 }}>
@@ -142,7 +142,7 @@ export default function PopupLead() {
                 {estado === 'enviando' ? 'Guardando…' : `Quiero mi ${DESCUENTO}%`}
               </button>
               <p style={{ fontSize: 11, color: OPACO, textAlign: 'center', margin: 0 }}>
-                Sin spam. Solo te contactamos por tu producción.
+                Sin spam. Tu código vence en 90 días.
               </p>
             </div>
           </>

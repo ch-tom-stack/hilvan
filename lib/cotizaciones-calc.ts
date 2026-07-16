@@ -177,11 +177,15 @@ export function promoArriendoActiva(hoy: Date = new Date()): boolean {
 
 // Cálculo canónico del arriendo web (front y back usan esto). Descuentos fuertes
 // (promo + volumen) SÓLO sobre $500.000; bajo eso, precio lista.
-export function calcularArriendoWeb(neto: number, hoy: Date = new Date()): {
+// `codigoPct` = código de descuento del pop-up (10% primer arriendo). SE APILA con
+// promo y volumen, y a diferencia de esos aplica en CUALQUIER monto (bajo $500k
+// es el único descuento). El % SIEMPRE lo valida el servidor, nunca el cliente.
+export function calcularArriendoWeb(neto: number, hoy: Date = new Date(), codigoPct = 0): {
   minimoOk: boolean
   promoActiva: boolean
   promoPct: number
   volumenPct: number
+  codigoPct: number
   descuentoPct: number
   descuentoMonto: number
   netoConDescuento: number
@@ -193,12 +197,13 @@ export function calcularArriendoWeb(neto: number, hoy: Date = new Date()): {
   const { pct: volumenPct, consultar } = descuentoVolumen(neto) // ya sólo ≥500k
   const promoActiva = promoArriendoActiva(hoy) && neto >= PROMO_ARRIENDO.umbral
   const promoPct = promoActiva ? PROMO_ARRIENDO.pct : 0
-  const descuentoPct = promoPct + volumenPct
+  const cod = Number.isFinite(codigoPct) && codigoPct > 0 ? Math.min(50, Math.round(codigoPct)) : 0
+  const descuentoPct = promoPct + volumenPct + cod
   const descuentoMonto = Math.round(neto * descuentoPct / 100)
   const netoConDescuento = neto - descuentoMonto
   const iva = Math.round(netoConDescuento * 0.19)
   const total = netoConDescuento + iva
-  return { minimoOk, promoActiva, promoPct, volumenPct, descuentoPct, descuentoMonto, netoConDescuento, iva, total, consultar }
+  return { minimoOk, promoActiva, promoPct, volumenPct, codigoPct: cod, descuentoPct, descuentoMonto, netoConDescuento, iva, total, consultar }
 }
 
 export function calcularTotalesRental(cotizacion: RentalCotizacion): {
