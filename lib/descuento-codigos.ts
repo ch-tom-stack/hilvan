@@ -42,7 +42,7 @@ export interface CodigoEmitido { codigo: string; pct: number; vence_at: string; 
  */
 export async function emitirCodigo(
   admin: SupabaseClient,
-  { email, nombre, pct = PCT_DEFECTO, origen = 'rental' }: { email: string; nombre?: string | null; pct?: number; origen?: string },
+  { email, nombre, pct = PCT_DEFECTO, origen = 'rental', dias = DIAS_VIGENCIA }: { email: string; nombre?: string | null; pct?: number; origen?: string; dias?: number },
 ): Promise<CodigoEmitido | null> {
   try {
     // ¿ya tiene uno vigente y sin usar?
@@ -57,7 +57,7 @@ export async function emitirCodigo(
       .maybeSingle<{ codigo: string; pct: number; vence_at: string }>()
     if (previo) return { ...previo, nuevo: false }
 
-    const vence_at = venceISO(DIAS_VIGENCIA)
+    const vence_at = venceISO(dias)
     // Reintenta ante colisión de código (improbable: 30^5 ≈ 24M).
     for (let intento = 0; intento < 5; intento++) {
       const codigo = generarCodigo(pct)
@@ -97,4 +97,59 @@ export async function validarCodigo(admin: SupabaseClient, codigoRaw: unknown): 
     console.error('[descuento-codigos] validar:', e)
     return { valido: false, pct: 0, motivo: 'No pudimos validar el código.' }
   }
+}
+
+// ── Gestión (operador / agente) ────────────────────────────────────────────
+
+export interface CodigoRow {
+  codigo: string; email: string; nombre: string | null; pct: number
+  origen: string; estado: string; vence_at: string; usado_at: string | null
+  cotizacion_id: string | null; created_at: string
+}
+
+/** Lista códigos, con filtro opcional por estado (emitido/usado/anulado/vencido) o correo. */
+export async function listarCodigos(
+  admin: SupabaseClient,
+  { estado, email, limite = 50 }: { estado?: string; email?: string; limite?: number } = {},
+): Promise<CodigoRow[]> {
+  let q = admin.from('descuento_codigos').select('*').order('created_at', { ascending: false }).limit(Math.min(200, limite))
+  if (email) q = q.ilike('email', `%${email}%`)
+  // 'vencido' no es un estado en DB: es 'emitido' con vence_at pasado.
+  if (estado === 'vencido') q = q.eq('estado', 'emitido').lt('vence_at', hoyISO())
+  else if (estado && estado !== 'todos') q = q.eq('estado', estado)
+  const { data } = await q
+  return (data ?? []) as CodigoRow[]
+}
+
+/** Crea un código a mano (para un trato/persona puntual). Idempotente por correo. */
+export async function crearCodigoManual(
+  admin: SupabaseClient,
+  { email, nombre, pct = PCT_DEFECTO, dias = DIAS_VIGENCIA, origen = 'manual' }: { email: string; nombre?: string | null; pct?: number; dias?: number; origen?: string },
+): Promise<CodigoEmitido | null> {
+  return emitirCodigo(admin, { email, nombre, pct, origen, dias })
+}
+
+export interface CambioEstado { ok: boolean; error?: string; previo?: { estado: string; usado_at: string | null } }
+
+/** Marca un código como 'usado' (se quema al confirmar la reserva). Guarda el previo para deshacer. */
+export async function usarCodigo(admin: SupabaseClient, codigoRaw: unknown, cotizacion_id?: string | null): Promise<CambioEstado> {
+  const codigo = normalizarCodigo(codigoRaw)
+  const { data: actual } = await admin.from('descuento_codigos').select('estado, usado_at').eq('codigo', codigo).maybeSingle<{ estado: string; usado_at: string | null }>()
+  if (!actual) return { ok: false, error: 'Ese código no existe.' }
+  if (actual.estado === 'usado') return { ok: false, error: 'Ese código ya estaba usado.' }
+  if (actual.estado === 'anulado') return { ok: false, error: 'Ese código está anulado.' }
+  const { error } = await admin.from('descuento_codigos').update({ estado: 'usado', usado_at: new Date().toISOString(), ...(cotizacion_id ? { cotizacion_id } : {}) }).eq('codigo', codigo)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, previo: { estado: actual.estado, usado_at: actual.usado_at } }
+}
+
+/** Anula un código (lo mata). Guarda el previo para deshacer. */
+export async function anularCodigo(admin: SupabaseClient, codigoRaw: unknown): Promise<CambioEstado> {
+  const codigo = normalizarCodigo(codigoRaw)
+  const { data: actual } = await admin.from('descuento_codigos').select('estado, usado_at').eq('codigo', codigo).maybeSingle<{ estado: string; usado_at: string | null }>()
+  if (!actual) return { ok: false, error: 'Ese código no existe.' }
+  if (actual.estado === 'anulado') return { ok: false, error: 'Ese código ya estaba anulado.' }
+  const { error } = await admin.from('descuento_codigos').update({ estado: 'anulado' }).eq('codigo', codigo)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, previo: { estado: actual.estado, usado_at: actual.usado_at } }
 }

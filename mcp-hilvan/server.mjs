@@ -151,6 +151,52 @@ const TOOLS = [
     run: (a) => api('POST', '/cliente-editar', a),
   },
   {
+    name: 'hilvan_crear_codigo',
+    description: 'Emite un código de descuento para arriendo (CH10-XXXXX) a mano — para un trato/persona puntual. Idempotente por correo (si ya tiene uno vigente, devuelve el mismo). Se apila con promo y volumen en el cotizador web. enviar_correo=true lo manda por correo. pct default 10, dias default 90. Reversible con hilvan_deshacer.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', description: 'correo del cliente' },
+        nombre: { type: 'string' },
+        pct: { type: 'number', description: '% (1–50, default 10)' },
+        dias: { type: 'number', description: 'vigencia en días (default 90)' },
+        enviar_correo: { type: 'boolean', description: 'si true, manda el código por correo' },
+      },
+      required: ['email'],
+    },
+    run: (a) => api('POST', '/codigo-crear', a),
+  },
+  {
+    name: 'hilvan_listar_codigos',
+    description: 'Lista los códigos de descuento con estado (emitido/usado/vencido/anulado), correo y vencimiento. Filtra por estado o correo. Solo lectura.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        estado: { type: 'string', enum: ['emitido', 'usado', 'vencido', 'anulado', 'todos'] },
+        email: { type: 'string', description: 'filtrar por correo (parcial)' },
+        limite: { type: 'number' },
+      },
+    },
+    run: (a) => {
+      const qs = new URLSearchParams(Object.entries(a || {}).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])).toString()
+      return api('GET', `/codigos${qs ? `?${qs}` : ''}`)
+    },
+  },
+  {
+    name: 'hilvan_gestionar_codigo',
+    description: 'accion="usar" quema el código (marca usado — al CONFIRMAR la reserva, para que no se reutilice). accion="anular" lo mata. Reversible con hilvan_deshacer.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        codigo: { type: 'string', description: 'ej. CH10-K7M2P' },
+        accion: { type: 'string', enum: ['usar', 'anular'] },
+        cotizacion_id: { type: 'string', description: 'cotización que lo usó (con accion=usar)' },
+      },
+      required: ['codigo', 'accion'],
+    },
+    run: (a) => api('POST', '/codigo-estado', a),
+  },
+  {
     name: 'hilvan_crear_cotizacion',
     description: 'Crea una cotización COMPLETA, idéntica a la de un usuario y 100% editable en la app después. Define nombre (requerido) y, opcionalmente, cliente (cliente_id o cliente_nombre_libre), proyecto, IVA, descuento global, notas y la estructura de departamentos → subgrupos → ítems. Si no entregas departamentos, crea los 8 por defecto (como "Nueva cotización"). Devuelve {cotizacion_id, numero, url}. Reversible con hilvan_deshacer (borra todo en cascada). CONFIRMA con el usuario antes de llamar; crea una cotización editable en la app.',
     inputSchema: {

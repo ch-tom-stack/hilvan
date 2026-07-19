@@ -151,6 +151,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, borrados: creados.length })
   }
 
+  // Códigos de descuento: se identifican por `codigo` (no por resultado_id) →
+  // van ANTES del guard de resultado_id.
+  if (accion.herramienta === 'crear-codigo') {
+    if (!accion.ok) return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })
+    const payload = accion.payload as { codigo?: string; nuevo?: boolean } | null
+    if (payload?.nuevo === false) return NextResponse.json({ error: 'El código ya existía antes (idempotente): no hay nada que borrar.' }, { status: 400 })
+    if (!payload?.codigo) return NextResponse.json({ error: 'Acción sin código' }, { status: 400 })
+    // Solo borrar si sigue sin usarse (no quemar un código ya aplicado).
+    const { data: c } = await admin.from('descuento_codigos').select('estado').eq('codigo', payload.codigo).maybeSingle<{ estado: string }>()
+    if (c?.estado === 'usado') return NextResponse.json({ error: 'El código ya fue usado: no se borra.' }, { status: 400 })
+    const { error } = await admin.from('descuento_codigos').delete().eq('codigo', payload.codigo)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, borrado: payload.codigo })
+  }
+
+  if (accion.herramienta === 'codigo-estado') {
+    if (!accion.ok) return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })
+    const payload = accion.payload as { codigo?: string; previo?: { estado: string; usado_at: string | null } } | null
+    if (!payload?.codigo || !payload?.previo) return NextResponse.json({ error: 'Acción sin previo' }, { status: 400 })
+    const { error } = await admin.from('descuento_codigos')
+      .update({ estado: payload.previo.estado, usado_at: payload.previo.usado_at })
+      .eq('codigo', payload.codigo)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, restaurado: payload.codigo })
+  }
+
   if (!accion.ok || !accion.resultado_tabla || !accion.resultado_id) {
     return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })
   }

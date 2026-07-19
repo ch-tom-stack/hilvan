@@ -199,6 +199,58 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_crear_codigo',
+      {
+        title: 'Crear código de descuento',
+        description:
+          'Emite un código de descuento para arriendo (tipo CH10-XXXXX) a mano — para un trato o persona puntual. Idempotente por correo: si ese correo ya tiene uno vigente, devuelve el mismo. Se APILA con la promo y el descuento por volumen en el cotizador web. enviar_correo=true le manda el código al correo. pct default 10, dias default 90. Reversible con hilvan_deshacer.',
+        inputSchema: {
+          email: z.string().describe('correo del cliente'),
+          nombre: z.string().optional(),
+          pct: z.number().optional().describe('% de descuento (1–50, default 10)'),
+          dias: z.number().optional().describe('días de vigencia (default 90)'),
+          enviar_correo: z.boolean().optional().describe('si true, le manda el código por correo'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/codigo-crear', args)),
+    )
+
+    server.registerTool(
+      'hilvan_listar_codigos',
+      {
+        title: 'Listar códigos de descuento',
+        description:
+          'Lista los códigos de descuento con su estado (emitido/usado/vencido/anulado), correo y vencimiento. Filtra por estado o correo. Solo lectura.',
+        inputSchema: {
+          estado: z.enum(['emitido', 'usado', 'vencido', 'anulado', 'todos']).optional(),
+          email: z.string().optional().describe('filtrar por correo (parcial)'),
+          limite: z.number().optional(),
+        },
+      },
+      async (args, extra) => {
+        const qs = new URLSearchParams(
+          Object.entries(args as Record<string, unknown>).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]),
+        ).toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/codigos${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_gestionar_codigo',
+      {
+        title: 'Usar o anular un código',
+        description:
+          'accion="usar" quema el código (marca usado — hazlo al CONFIRMAR la reserva para que no se reutilice). accion="anular" lo mata. Reversible con hilvan_deshacer.',
+        inputSchema: {
+          codigo: z.string().describe('ej. CH10-K7M2P'),
+          accion: z.enum(['usar', 'anular']),
+          cotizacion_id: z.string().optional().describe('cotización que lo usó (solo con accion=usar)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/codigo-estado', args)),
+    )
+
+    server.registerTool(
       'hilvan_crear_cotizacion',
       {
         title: 'Crear cotización',
