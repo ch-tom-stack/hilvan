@@ -66,6 +66,8 @@ export interface FilaSugerida {
   // (se llena en el route con el formato rcv por-dte). Para crear-nota-credito.
   referencia_folio?: string | null
   referencia_tipo?: number | null
+  // Si el documento da crédito fiscal IVA (factura/exenta emitida a nuestro RUT).
+  factura_casa_hiedra?: boolean
   // Sugerencia de descripción para el humano (no obligatoria en bulk):
   descripcion_sugerida: string
   // PENDIENTES de clasificación humana (no se rellenan aquí):
@@ -101,6 +103,10 @@ export function normalizarCompra(rec: Record<string, any>): FilaSugerida {
     descripcion_sugerida: razon
       ? `${esNC ? 'Nota de crédito ' : ''}${razon}`
       : `${esNC ? 'Nota de crédito' : 'Factura'} ${folio ?? ''}`.trim(),
+    // El RCV compras SOLO lista documentos donde Casa Hiedra es la compradora
+    // (nuestro RUT) → toda factura/exenta real da crédito fiscal IVA por defecto.
+    // (NC no importa: se carga aparte con crear-nota-credito, no por este flujo.)
+    factura_casa_hiedra: !esNC,
     crudo: rec,
   }
 }

@@ -14,7 +14,7 @@ import {
   _getHonorariosContador,
 } from '@/app/actions/financiero-config'
 import { calcularRetencion } from '@/types'
-import { normalizarPeriodo, periodoActual } from '@/lib/agent-estado-financiero'
+import { normalizarPeriodo, periodoActual, fechaTributariaGasto } from '@/lib/agent-estado-financiero'
 import { ensamblarResumenContador } from '@/lib/agent-resumen-contador'
 
 export const runtime = 'nodejs'
@@ -37,8 +37,6 @@ export async function GET(req: Request) {
   const periodo = normalizarPeriodo(searchParams.get('periodo')) ?? periodoActual()
   const inicio = inicioPeriodo(periodo)
   const fin = finPeriodo(periodo)
-  const finTs = `${fin}T23:59:59`
-
   const honorariosParam = searchParams.get('honorarios')
   const honorariosOverride =
     honorariosParam != null && Number.isFinite(parseFloat(honorariosParam))
@@ -63,13 +61,14 @@ export async function GET(req: Request) {
       .select(COT_FINANCIERO_SELECT)
       .gte('fecha_factura_emitida', inicio)
       .lte('fecha_factura_emitida', fin),
-    // Gastos de proyecto aprobados en el período → retención + IVA crédito.
+    // Gastos de proyecto aprobados → retención + IVA crédito. Se filtra por
+    // fecha_documento (la fecha real del documento) en JS, NO por created_at:
+    // los gastos sincronizados del SII se crean el día del sync, no el día de
+    // la factura, y quedarían en el mes equivocado si se filtrara por created_at.
     admin
       .from('rendicion_gastos')
-      .select('monto, tipo_documento, factura_casa_hiedra')
-      .in('estado', ['aprobada', 'pago_aprobado'])
-      .gte('created_at', inicio)
-      .lte('created_at', finTs),
+      .select('monto, tipo_documento, factura_casa_hiedra, fecha_documento, created_at')
+      .in('estado', ['aprobada', 'pago_aprobado']),
     // Gastos operacionales del período.
     admin
       .from('rendicion_mensual_gastos')
@@ -90,7 +89,11 @@ export async function GET(req: Request) {
   const firstErr = eCot || eGP || eGO || eInv
   if (firstErr) return NextResponse.json({ error: firstErr.message }, { status: 500 })
 
-  const todosGastos = [...((gastosProy ?? []) as any[]), ...((gastosOp ?? []) as any[])]
+  const gastosProyDelPeriodo = ((gastosProy ?? []) as any[]).filter((g) => {
+    const f = fechaTributariaGasto(g)
+    return f != null && f.slice(0, 10) >= inicio && f.slice(0, 10) <= fin
+  })
+  const todosGastos = [...gastosProyDelPeriodo, ...((gastosOp ?? []) as any[])]
 
   // ── Cálculo tributario (idéntico a financiero-resultados.ts) ────────────────
   const retenciones_bh = todosGastos

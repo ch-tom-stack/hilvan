@@ -12,6 +12,7 @@ import {
 } from './financiero-helpers'
 import { _getPPMTasa, _getPreviredMensual, _getIUSCMensual, _getNomina, _getHonorariosContador } from './financiero-config'
 import { ensamblarResumenContador, type ResumenContadorTotal } from '@/lib/agent-resumen-contador'
+import { fechaTributariaGasto } from '@/lib/agent-estado-financiero'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS PÚBLICOS
@@ -111,7 +112,6 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
   ])
   const inicio = inicioPeriodo(mes)
   const fin = finPeriodo(mes)
-  const finTs = `${fin}T23:59:59`
 
   const [
     { data: cotPorFacturar },
@@ -147,12 +147,12 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
       .gte('fecha_factura_emitida', inicio)
       .lte('fecha_factura_emitida', fin),
 
-    // Gastos de proyectos aprobados en el período
+    // Gastos de proyectos aprobados. Se filtra por fecha_documento en JS (no
+    // created_at): los gastos sincronizados del SII se crean el día del sync,
+    // no el día real de la factura, y quedarían en el mes equivocado.
     supabase.from('rendicion_gastos')
-      .select('id, descripcion, monto, tipo_documento, factura_casa_hiedra, rendicion:rendiciones(cotizacion:cotizaciones(nombre))')
-      .in('estado', ['aprobada', 'pago_aprobado'])
-      .gte('created_at', inicio)
-      .lte('created_at', finTs),
+      .select('id, descripcion, monto, tipo_documento, factura_casa_hiedra, fecha_documento, created_at, rendicion:rendiciones(cotizacion:cotizaciones(nombre))')
+      .in('estado', ['aprobada', 'pago_aprobado']),
 
     // Gastos operacionales del período
     supabase.from('rendicion_mensual_gastos')
@@ -207,7 +207,11 @@ export async function getDatosFinancieros(mes: string, ppmTasa?: number, previre
   }))
 
   // ── Egresos ────────────────────────────────────────────────────────────────
-  const gastosProyectosRows: FilaGasto[] = (gastosProyectos ?? []).map((g: any) => ({
+  const gastosProyectosDelPeriodo = (gastosProyectos ?? []).filter((g: any) => {
+    const f = fechaTributariaGasto(g)
+    return f != null && f.slice(0, 10) >= inicio && f.slice(0, 10) <= fin
+  })
+  const gastosProyectosRows: FilaGasto[] = gastosProyectosDelPeriodo.map((g: any) => ({
     id: g.id,
     descripcion: g.descripcion,
     monto: g.monto,
@@ -522,25 +526,23 @@ export async function getResumenContador(mes: number, año: number): Promise<Res
   // Último día del mes
   const lastDay = new Date(año, mes, 0).getDate()
   const fin = `${año}-${mesStr}-${String(lastDay).padStart(2, '0')}`
-  const finTs = `${fin}T23:59:59`
 
   const [
     { data: gastosProyRaw },
     { data: gastosOpRaw },
     { data: inversionesRaw },
   ] = await Promise.all([
-    // Gastos de proyectos aprobados con updated_at en el período
+    // Gastos de proyectos aprobados. Se filtra por fecha_documento en JS (no
+    // updated_at, que se mueve con cada cambio de estado/pago y con el sync
+    // del SII — nunca refleja la fecha real de la factura).
     supabase
       .from('rendicion_gastos')
       .select(`
         id, descripcion, monto, tipo_documento, factura_casa_hiedra,
-        foto_url, rut_emisor, razon_social_emisor, updated_at,
+        foto_url, rut_emisor, razon_social_emisor, fecha_documento, created_at,
         rendicion:rendiciones(cotizacion:cotizaciones(nombre))
       `)
-      .in('estado', ['aprobada', 'pago_aprobado'])
-      .gte('updated_at', inicio)
-      .lte('updated_at', finTs)
-      .order('updated_at'),
+      .in('estado', ['aprobada', 'pago_aprobado']),
 
     // Gastos operacionales del período
     supabase
@@ -562,10 +564,15 @@ export async function getResumenContador(mes: number, año: number): Promise<Res
       .order('fecha_compra'),
   ])
 
-  const gastosProyectos: GastoContador[] = (gastosProyRaw ?? []).map((g: any) => {
+  const gastosProyDelPeriodo = (gastosProyRaw ?? []).filter((g: any) => {
+    const f = fechaTributariaGasto(g)
+    return f != null && f.slice(0, 10) >= inicio && f.slice(0, 10) <= fin
+  })
+
+  const gastosProyectos: GastoContador[] = gastosProyDelPeriodo.map((g: any) => {
     const calc = calcularCamposContador(g.monto, g.tipo_documento, g.factura_casa_hiedra ?? false)
     return {
-      fecha: g.updated_at?.slice(0, 10) ?? inicio,
+      fecha: fechaTributariaGasto(g)?.slice(0, 10) ?? inicio,
       tipo: 'Gasto proyecto',
       descripcion: g.descripcion,
       proyecto: (g.rendicion as any)?.cotizacion?.nombre ?? undefined,
