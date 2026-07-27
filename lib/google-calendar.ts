@@ -52,6 +52,15 @@ export async function crearReunionConMeet(
   return { id: res.data.id ?? null, meetLink: res.data.hangoutLink ?? null }
 }
 
+// Elimina un evento del calendario de reuniones (creado por crearReunionConMeet).
+// Best-effort: si ya no existe o falla, el llamador decide si es bloqueante.
+export async function eliminarReunionGCal(eventId: string): Promise<void> {
+  const subject = process.env.REUNIONES_IMPERSONATE || 'tomas@casahiedra.com'
+  const calId = process.env.REUNIONES_CALENDAR_ID!
+  const calendar = google.calendar({ version: 'v3', auth: getAuthImpersonando(subject) })
+  await calendar.events.delete({ calendarId: calId, eventId })
+}
+
 export async function listarEventosGCal(fechaMin: Date, fechaMax: Date) {
   const calendar = await getCalendarClient()
   const res = await calendar.events.list({

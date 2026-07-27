@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { Profile } from '@/types'
+import NuevaReunionModal from '@/components/reuniones/NuevaReunionModal'
+import AccionesReunion from '@/components/reuniones/AccionesReunion'
 
 export const metadata = { title: 'Reuniones — Hilván' }
 export const dynamic = 'force-dynamic'
@@ -16,6 +18,7 @@ interface ReunionWeb {
   fin: string
   estado: string
   confirmada: boolean
+  meet_link: string | null
   created_at: string
 }
 
@@ -25,14 +28,28 @@ const fmtFecha = (iso: string) =>
     hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(new Date(iso))
 
-function Fila({ r }: { r: ReunionWeb }) {
+const ESTADO_BADGE: Record<string, { label: string; cls: string }> = {
+  realizada: { label: 'Realizada', cls: 'border-ch-green/40 text-ch-green' },
+  cancelada: { label: 'Cancelada', cls: 'border-red-400/40 text-red-400' },
+  agendada: { label: 'Agendada', cls: 'border-ch-gold/40 text-ch-gold' },
+}
+
+function Fila({ r, accionable }: { r: ReunionWeb; accionable: boolean }) {
+  const badge = ESTADO_BADGE[r.estado] ?? ESTADO_BADGE.agendada
   return (
-    <div className="border border-ch-border/60 bg-ch-surface px-4 py-3 flex flex-wrap items-start gap-x-6 gap-y-1">
+    <div className="border border-ch-border/60 bg-ch-surface px-4 py-3 flex flex-wrap items-start gap-x-6 gap-y-2">
       <div className="min-w-[150px]">
         <p className="font-body text-sm text-ch-cream capitalize">{fmtFecha(r.inicio)}</p>
-        <span className={`inline-block font-body text-[9px] tracking-wider uppercase px-2 py-0.5 mt-1 border ${r.confirmada ? 'border-ch-green/40 text-ch-green' : 'border-ch-gold/40 text-ch-gold'}`}>
-          {r.confirmada ? '✓ Atendida' : 'Pendiente'}
-        </span>
+        <div className="flex items-center gap-1.5 mt-1">
+          <span className={`inline-block font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border ${badge.cls}`}>
+            {badge.label}
+          </span>
+          {r.estado === 'agendada' && (
+            <span className={`inline-block font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border ${r.confirmada ? 'border-ch-green/40 text-ch-green' : 'border-ch-gold/40 text-ch-gold'}`}>
+              {r.confirmada ? '✓ Atendida' : 'Pendiente'}
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex-1 min-w-[200px]">
         <p className="font-body text-sm text-ch-cream">{r.nombre}</p>
@@ -46,6 +63,12 @@ function Fila({ r }: { r: ReunionWeb }) {
         )}
       </div>
       {r.motivo && <p className="font-body text-xs text-ch-muted flex-1 min-w-[200px] italic">“{r.motivo}”</p>}
+      {r.meet_link && (
+        <a href={r.meet_link} target="_blank" rel="noreferrer" className="font-body text-[10px] tracking-wider uppercase text-ch-green hover:text-ch-green-light transition-colors shrink-0 self-center">
+          Meet →
+        </a>
+      )}
+      {accionable && <AccionesReunion id={r.id} />}
     </div>
   )
 }
@@ -59,7 +82,7 @@ export default async function ReunionesPage() {
 
   const { data } = await supabase
     .from('reuniones_web')
-    .select('id, nombre, email, sitio_web, instagram, motivo, inicio, fin, estado, confirmada, created_at')
+    .select('id, nombre, email, sitio_web, instagram, motivo, inicio, fin, estado, confirmada, meet_link, created_at')
     .order('inicio', { ascending: false })
   const reuniones = (data ?? []) as ReunionWeb[]
 
@@ -68,26 +91,32 @@ export default async function ReunionesPage() {
   const pasadas = reuniones.filter((r) => !(new Date(r.inicio).getTime() >= ahora && r.estado === 'agendada'))
 
   return (
-    <div className="max-w-4xl">
-      <h1 className="font-display italic text-3xl text-ch-cream mb-1">Reuniones web</h1>
+    <div className="p-6 lg:p-10 max-w-4xl">
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <h1 className="font-display italic text-3xl text-ch-cream">Reuniones web</h1>
+        <NuevaReunionModal />
+      </div>
       <p className="font-body text-sm text-ch-muted mb-8">
-        Reservas agendadas desde <span className="text-ch-subtle">reuniones.casahiedra.com</span>. También quedan en tu Google Calendar.
+        Reservas agendadas desde <span className="text-ch-subtle">reuniones.casahiedra.com</span> y las que creas acá. Todas quedan también en tu Google Calendar.
       </p>
 
       {reuniones.length === 0 ? (
-        <p className="font-body text-sm text-ch-muted">Aún no hay reuniones agendadas.</p>
+        <div className="border border-dashed border-ch-border px-6 py-10 text-center">
+          <p className="font-body text-sm text-ch-muted mb-1">Aún no hay reuniones agendadas.</p>
+          <p className="font-body text-xs text-ch-subtle">Aparecerán acá las que vengan de la web, o crea una tú con “+ Nueva reunión”.</p>
+        </div>
       ) : (
         <>
           {proximas.length > 0 && (
             <section className="mb-8">
               <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-3">Próximas · {proximas.length}</p>
-              <div className="flex flex-col gap-2">{proximas.map((r) => <Fila key={r.id} r={r} />)}</div>
+              <div className="flex flex-col gap-2">{proximas.map((r) => <Fila key={r.id} r={r} accionable />)}</div>
             </section>
           )}
           {pasadas.length > 0 && (
             <section className="opacity-60">
               <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-3">Pasadas · {pasadas.length}</p>
-              <div className="flex flex-col gap-2">{pasadas.map((r) => <Fila key={r.id} r={r} />)}</div>
+              <div className="flex flex-col gap-2">{pasadas.map((r) => <Fila key={r.id} r={r} accionable={false} />)}</div>
             </section>
           )}
         </>
