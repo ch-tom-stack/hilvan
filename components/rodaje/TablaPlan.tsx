@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { toastError } from '@/lib/toast'
-import { actualizarImagenBloque } from '@/app/actions/rodaje-plan'
+import { actualizarImagenBloque, desanclarBloque } from '@/app/actions/rodaje-plan'
 import { subirImagenBloque, eliminarImagenBloque } from '@/lib/supabase/storage-rodaje'
 import {
   RodajeBloque, RodajeLocacion, BloqueEstilo, PLANTILLAS_BLOQUES,
@@ -140,6 +140,19 @@ export default function TablaPlan({
     const valorMin = campo === 'duracion' ? parseInt(valorStr) : horaAMinutos(valorStr)
     if (isNaN(valorMin)) return
     onActualizar(aplicarCambioTiempo(bloques, bloqueId, campo, valorMin))
+  }
+
+  // Ancla el bloque a su hora actual de cascada (la congela ahí). Solo tiene
+  // sentido si ya hay una hora calculada (si no, el usuario debe tipearla).
+  const anclarAqui = (bloqueId: string, inicioMin: number | undefined) => {
+    if (inicioMin === undefined) return
+    onActualizar(aplicarCambioTiempo(bloques, bloqueId, 'inicio', inicioMin))
+  }
+
+  // Quita el ancla: el bloque vuelve a seguir el fin del bloque anterior.
+  const desanclar = (bloqueId: string) => {
+    onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, hora_inicio_fija: undefined, es_anclado: false } : b))
+    desanclarBloque(bloqueId, rodajeId).catch(() => toastError('No se pudo desanclar el bloque'))
   }
 
   const mover = (idx: number, dir: 1 | -1) => {
@@ -374,9 +387,17 @@ export default function TablaPlan({
                   </div>
 
                   {/* INICIO */}
-                  <div className="px-1">
+                  <div className="px-1 flex items-center gap-0.5">
                     <TimeInput value={bloque.hora_inicio_fija} onBlur={v => actualizarTiempo(bloque.id, 'inicio', v)}
                       className="text-ch-cream w-full" />
+                    <button
+                      type="button"
+                      onClick={() => bloque.hora_inicio_fija ? desanclar(bloque.id) : anclarAqui(bloque.id, casc.inicio_min)}
+                      title={bloque.hora_inicio_fija ? 'Anclado — clic para liberar y seguir al bloque anterior' : 'Libre — sigue al bloque anterior. Clic para anclar acá'}
+                      className={`shrink-0 text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${bloque.hora_inicio_fija ? '!opacity-100 text-ch-gold' : 'text-ch-border hover:text-ch-muted'}`}
+                    >
+                      📌
+                    </button>
                   </div>
 
                   {/* FIN */}
@@ -482,7 +503,17 @@ export default function TablaPlan({
                             className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1 text-sm text-ch-cream focus:outline-none font-mono" />
                         </div>
                         <div>
-                          <label className="text-xs text-ch-subtle mb-1 block">Inicio</label>
+                          <label className="text-xs text-ch-subtle mb-1 flex items-center gap-1">
+                            Inicio
+                            <button
+                              type="button"
+                              onClick={() => bloque.hora_inicio_fija ? desanclar(bloque.id) : anclarAqui(bloque.id, casc.inicio_min)}
+                              title={bloque.hora_inicio_fija ? 'Anclado — clic para liberar' : 'Libre — clic para anclar acá'}
+                              className={`text-[10px] leading-none ${bloque.hora_inicio_fija ? 'text-ch-gold' : 'text-ch-border'}`}
+                            >
+                              📌
+                            </button>
+                          </label>
                           <TimeInput value={bloque.hora_inicio_fija} onBlur={v => actualizarTiempo(bloque.id, 'inicio', v)}
                             className="w-full bg-ch-surface border border-ch-border rounded-[2px] px-2 py-1 text-sm text-ch-cream" />
                         </div>

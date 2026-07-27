@@ -250,6 +250,21 @@ export async function guardarBloques(
   }
 }
 
+// Quita el ancla de un bloque: vuelve a seguir la cascada (hereda el fin del
+// bloque anterior en vez de tener una hora congelada). Update directo (no pasa
+// por guardarBloques) porque necesita mandar `null` explícito — un `hora_inicio_fija:
+// undefined` en el payload genérico se elimina al serializar y la columna no se
+// limpiaría en la base.
+export async function desanclarBloque(id: string, rodajeId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('rodaje_bloques')
+    .update({ hora_inicio_fija: null, es_anclado: false })
+    .eq('id', id)
+  if (error) throw error
+  revalidatePath(`/rodaje/${rodajeId}`)
+}
+
 export async function eliminarBloque(id: string, rodajeId: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('rodaje_bloques').delete().eq('id', id)

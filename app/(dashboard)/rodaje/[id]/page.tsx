@@ -171,8 +171,6 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
 
   const resolverYCrear = (payload: Partial<RodajeBloque> & { titulo: string }) => {
     const bloquesRaiz = bloquesRef.current.filter(b => !b.padre_id).sort((a, b) => a.orden - b.orden)
-    const cascada = calcularCascada(bloquesRaiz)
-    const ultimoFin = cascada.length > 0 ? cascada[cascada.length - 1].fin_min : undefined
     const tempId = `temp-${Date.now()}`
 
     const bloqueOptimista: RodajeBloque = {
@@ -189,7 +187,11 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       locacion_id: payload.locacion_id,
       descripcion: payload.descripcion,
       nota_previa: payload.nota_previa,
-      hora_inicio_fija: ultimoFin !== undefined ? minutosAHora(ultimoFin) : undefined,
+      // Sin hora_inicio_fija: el bloque nace SIGUIENDO la cascada (hereda el fin
+      // del bloque anterior dinámicamente). Si se fija acá con un valor congelado,
+      // deja de seguir al bloque de arriba en cuanto ese cambie — hay que anclarlo
+      // a mano (toggle de la columna Inicio) si de verdad se quiere una hora fija.
+      hora_inicio_fija: undefined,
       hora_fin: undefined,
       duracion_min: payload.duracion_min ?? 30,
       es_paralelo: false,
@@ -214,7 +216,6 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
 
     crearBloque(id, {
       ...payload,
-      hora_inicio_fija: ultimoFin !== undefined ? minutosAHora(ultimoFin) : undefined,
       duracion_min: payload.duracion_min ?? 30,
     }).then(real => {
       const realBloque = real as RodajeBloque
