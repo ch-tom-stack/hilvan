@@ -243,22 +243,27 @@ export default function TablaPlan({
         onChange={handleArchivoSeleccionado}
       />
 
-      {/* Headers desktop */}
-      <div className="hidden lg:grid border-b border-ch-border px-2 py-1.5 text-xs text-ch-border uppercase tracking-wider select-none"
-        style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 60px 60px 50px 40px 56px' }}>
-        <span />
-        <span>↓</span>
-        <span>Scenes</span>
-        <span>Descripción</span>
-        <span>Char #</span>
-        <span>Notas</span>
-        <span className="text-center">D/N</span>
-        <span className="text-center">I/E</span>
-        <span>Inicio</span>
-        <span>Fin</span>
-        <span>Dur</span>
-        <span>Img</span>
-        <span />
+      {/* Desktop: scroll horizontal en vez de recortar columnas si no entra el ancho */}
+      <div className="hidden lg:block overflow-x-auto">
+        <div className="min-w-[900px]">
+          {/* Headers desktop */}
+          <div className="grid border-b border-ch-border px-2 py-1.5 text-xs text-ch-border uppercase tracking-wider select-none"
+            style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 76px 60px 50px 40px 56px' }}>
+            <span />
+            <span>↓</span>
+            <span>Scenes</span>
+            <span>Descripción</span>
+            <span>Char #</span>
+            <span>Notas</span>
+            <span className="text-center">D/N</span>
+            <span className="text-center">I/E</span>
+            <span>Inicio</span>
+            <span>Fin</span>
+            <span>Dur</span>
+            <span>Img</span>
+            <span />
+          </div>
+        </div>
       </div>
 
       {vistaTimeline ? (
@@ -272,7 +277,8 @@ export default function TablaPlan({
           </button>
         </div>
       ) : (
-        <div onClick={() => { setVisibilidadAbierta(null); setColorPickerAbierto(null) }}>
+        <div className="lg:overflow-x-auto" onClick={() => { setVisibilidadAbierta(null); setColorPickerAbierto(null) }}>
+        <div className="lg:min-w-[900px]">
           {bloquesRaiz.map((bloque, idx) => {
             // Bloque libre: lienzo expresivo a todo lo ancho (fuera de la grilla).
             if (bloque.tipo === 'libre') {
@@ -301,7 +307,7 @@ export default function TablaPlan({
                 {/* FILA DESKTOP */}
                 <div
                   className="hidden lg:grid border-b border-ch-border/30 hover:bg-ch-surface/40 transition-colors group items-center min-h-[34px]"
-                  style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 60px 60px 50px 40px 56px' }}
+                  style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 76px 60px 50px 40px 56px' }}
                 >
                   {/* Orden */}
                   <div className="flex flex-col items-center justify-center gap-0 opacity-0 group-hover:opacity-100">
@@ -387,14 +393,14 @@ export default function TablaPlan({
                   </div>
 
                   {/* INICIO */}
-                  <div className="px-1 flex items-center gap-0.5">
+                  <div className="px-1 flex items-center gap-0.5 min-w-0">
                     <TimeInput value={bloque.hora_inicio_fija} onBlur={v => actualizarTiempo(bloque.id, 'inicio', v)}
-                      className="text-ch-cream w-full" />
+                      className="text-ch-cream w-10 shrink-0" />
                     <button
                       type="button"
                       onClick={() => bloque.hora_inicio_fija ? desanclar(bloque.id) : anclarAqui(bloque.id, casc.inicio_min)}
                       title={bloque.hora_inicio_fija ? 'Anclado — clic para liberar y seguir al bloque anterior' : 'Libre — sigue al bloque anterior. Clic para anclar acá'}
-                      className={`shrink-0 text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${bloque.hora_inicio_fija ? '!opacity-100 text-ch-gold' : 'text-ch-border hover:text-ch-muted'}`}
+                      className={`shrink-0 w-3 text-[9px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${bloque.hora_inicio_fija ? '!opacity-100 text-ch-gold' : 'text-ch-border hover:text-ch-muted'}`}
                     >
                       📌
                     </button>
@@ -552,6 +558,7 @@ export default function TablaPlan({
               </div>
             )
           })}
+        </div>
         </div>
       )}
     </div>
