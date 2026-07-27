@@ -248,7 +248,7 @@ export default function TablaPlan({
         <div className="min-w-[900px]">
           {/* Headers desktop */}
           <div className="grid border-b border-ch-border px-2 py-1.5 text-xs text-ch-border uppercase tracking-wider select-none"
-            style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 76px 60px 50px 40px 56px' }}>
+            style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 84px 60px 50px 40px 56px' }}>
             <span />
             <span>↓</span>
             <span>Scenes</span>
@@ -307,7 +307,7 @@ export default function TablaPlan({
                 {/* FILA DESKTOP */}
                 <div
                   className="hidden lg:grid border-b border-ch-border/30 hover:bg-ch-surface/40 transition-colors group items-center min-h-[34px]"
-                  style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 76px 60px 50px 40px 56px' }}
+                  style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 84px 60px 50px 40px 56px' }}
                 >
                   {/* Orden */}
                   <div className="flex flex-col items-center justify-center gap-0 opacity-0 group-hover:opacity-100">
@@ -395,7 +395,7 @@ export default function TablaPlan({
                   {/* INICIO */}
                   <div className="px-1 flex items-center gap-0.5 min-w-0">
                     <TimeInput value={bloque.hora_inicio_fija} onBlur={v => actualizarTiempo(bloque.id, 'inicio', v)}
-                      className="text-ch-cream w-10 shrink-0" />
+                      className="text-ch-cream w-12 !px-0 shrink-0" />
                     <button
                       type="button"
                       onClick={() => bloque.hora_inicio_fija ? desanclar(bloque.id) : anclarAqui(bloque.id, casc.inicio_min)}
