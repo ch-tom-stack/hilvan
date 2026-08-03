@@ -62,7 +62,16 @@ export default function ReservaCliente({ dias }: { dias: DiaISO[] }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div className="reunion-root" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <style>{`
+        @media (max-width: 720px) {
+          .reunion-root { height: auto !important; min-height: 100vh; overflow: visible !important; }
+          .reunion-nav { padding: 12px 18px !important; }
+          .reunion-navlinks { display: none !important; }
+          .reunion-main { flex-direction: column !important; gap: 24px !important; padding: 20px 18px 32px !important; }
+          .reunion-col-form { width: 100% !important; }
+        }
+      `}</style>
       <Nav />
       {estado === 'ok' ? (
         <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -78,9 +87,9 @@ export default function ReservaCliente({ dias }: { dias: DiaISO[] }) {
           </div>
         </main>
       ) : (
-        <main style={{ flex: 1, minHeight: 0, display: 'flex', gap: 40, padding: '28px 40px 24px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
+        <main className="reunion-main" style={{ flex: 1, minHeight: 0, display: 'flex', gap: 40, padding: '28px 40px 24px', maxWidth: 1180, width: '100%', margin: '0 auto' }}>
           {/* Columna izquierda: intro + formulario + CTA */}
-          <div style={{ width: 380, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="reunion-col-form" style={{ width: 380, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
             <p style={label}>Agenda una reunión</p>
             <h1 style={{ fontSize: 30, fontWeight: 800, margin: '6px 0 8px', letterSpacing: '-0.01em' }}>Conversemos</h1>
             <p style={{ fontSize: 15, lineHeight: 1.45, color: OPACO, marginBottom: 20 }}>
@@ -167,16 +176,20 @@ export default function ReservaCliente({ dias }: { dias: DiaISO[] }) {
 
 function Nav() {
   return (
-    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 40px', borderBottom: `1px solid ${LINEA}`, flexShrink: 0 }}>
+    <header className="reunion-nav" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 40px', borderBottom: `1px solid ${LINEA}`, flexShrink: 0 }}>
       <a href={SITIO} aria-label="Casa Hiedra — inicio">
         {/* logo-horizontal-blanco = logo oscuro para FONDOS CLAROS (convención del repo). */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logos/logo-horizontal-blanco.png" alt="Casa Hiedra" style={{ height: 26, display: 'block' }} />
       </a>
       <nav style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
-        {NAV_LINKS.map((l) => (
-          <a key={l.href} href={l.href} style={{ fontSize: 14, color: TINTA, textDecoration: 'none' }}>{l.label}</a>
-        ))}
+        {/* Links al sitio: se ocultan en móvil para que el header no desborde;
+            el logo ya lleva al inicio y el botón Hablemos se mantiene. */}
+        <span className="reunion-navlinks" style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
+          {NAV_LINKS.map((l) => (
+            <a key={l.href} href={l.href} style={{ fontSize: 14, color: TINTA, textDecoration: 'none' }}>{l.label}</a>
+          ))}
+        </span>
         <a href="mailto:hola@casahiedra.com" style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', color: TINTA, textDecoration: 'none', border: `1px solid ${TINTA}`, borderRadius: 2, padding: '7px 16px' }}>
           Hablemos
         </a>
