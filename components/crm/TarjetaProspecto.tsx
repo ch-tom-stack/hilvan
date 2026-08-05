@@ -10,12 +10,16 @@ const SCORE_STYLES: Record<string, string> = {
   baja:  'border-ch-border text-ch-subtle',
 }
 
-// Escala de calor del contador: 0 contactos = frío (azul) → muy trabajado = caliente (rojo).
-// Hue 210 (azul) a 0 (rojo); satura a 8+ contactos.
+// Mapa de calor del contador (no arcoíris): celeste (frío) → rama cálida
+// amarillo/dorado/naranja → rojo (caliente). Sin azul ni verde.
+// Satura en 16 contactos (≈ el 80% de los calificados acepta cerca del toque 16).
 function heatColor(n: number): string {
-  const t = Math.min(Math.max(n, 0) / 8, 1)
-  const hue = Math.round(210 * (1 - t))
-  return `hsl(${hue}, 78%, 62%)`
+  if (n <= 0) return '#74CDE4'   // celeste — frío, sin tocar
+  if (n <= 3) return '#E6D45E'   // amarillo
+  if (n <= 7) return '#E6B93E'   // dorado
+  if (n <= 11) return '#EC8E3A'  // naranja
+  if (n <= 15) return '#E85E33'  // naranja-rojo
+  return '#E5462F'               // rojo — caliente (16+)
 }
 
 export function Tag({ children, className = '' }: { children: React.ReactNode; className?: string }) {
