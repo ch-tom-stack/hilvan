@@ -70,11 +70,11 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       onClick={() => router.push(`/crm/${p.id}`)}
       className="block bg-ch-surface/30 border border-ch-border p-4 hover:border-ch-muted transition-colors group cursor-pointer"
     >
-      {/* Epígrafe: contador de contactos con código de calor */}
+      {/* Epígrafe: contador de toques con código de calor */}
       <div className="flex items-center justify-between mb-3 pb-3 border-b border-ch-border">
         <div className="flex items-baseline gap-1.5" style={{ color: heat }}>
-          <span className="font-body font-bold text-3xl leading-none tabular-nums">{n}</span>
-          <span className="font-body font-bold text-[9px] tracking-[0.25em] uppercase">
+          <span className="font-body font-bold text-2xl leading-none tabular-nums">{n}</span>
+          <span className="font-body font-bold text-[9px] tracking-[0.25em] uppercase leading-none">
             contacto{n === 1 ? '' : 's'}
           </span>
         </div>
@@ -86,9 +86,10 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
             <button
               type="button"
               onClick={e => { e.stopPropagation(); onAddContacto(p) }}
-              className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-green hover:text-ch-green-light transition-colors"
+              title="Registrar contacto"
+              className="font-body text-2xl leading-none text-ch-green hover:text-ch-green-light transition-colors px-1"
             >
-              + contacto
+              +
             </button>
           )}
         </div>
