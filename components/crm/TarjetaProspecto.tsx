@@ -10,19 +10,21 @@ const SCORE_STYLES: Record<string, string> = {
   baja:  'border-ch-border text-ch-subtle',
 }
 
-// Mapa de calor del contador (no arcoíris): cada número su propio shade.
-// 0 = celeste (frío, sin tocar). 1→16 = rampa cálida CONTINUA amarillo→dorado
-// →naranja→rojo (sin azul ni verde). Satura en 16 (≈ el 80% de los calificados
-// acepta cerca del toque 16).
+// Mapa de calor del contador. Frío alargado con pasos definidos:
+// 0 = azul, 1 = celeste, 2 = celeste desaturado, 3 = amarillo; de 3 a 16 la
+// rampa cálida (amarillo→dorado→naranja→rojo) comprimida. Satura en 16
+// (≈ el 80% de los calificados acepta cerca del toque 16).
 function heatColor(n: number): string {
-  if (n <= 0) return '#74CDE4'
+  if (n <= 0) return '#2F6FD1'   // azul — sin tocar
+  if (n === 1) return '#74CDE4'  // celeste
+  if (n === 2) return '#96C7D6'  // celeste desaturado
   const stops: { t: number; c: [number, number, number] }[] = [
-    { t: 0.00, c: [230, 212, 94] },  // amarillo
+    { t: 0.00, c: [230, 212, 94] },  // amarillo (n=3)
     { t: 0.40, c: [230, 175, 60] },  // dorado
     { t: 0.72, c: [233, 120, 52] },  // naranja
-    { t: 1.00, c: [229, 70, 47] },   // rojo
+    { t: 1.00, c: [229, 70, 47] },   // rojo (n=16)
   ]
-  const t = Math.min((n - 1) / 15, 1)
+  const t = Math.min((n - 3) / 13, 1)
   let a = stops[0], b = stops[stops.length - 1]
   for (let i = 0; i < stops.length - 1; i++) {
     if (t >= stops[i].t && t <= stops[i + 1].t) { a = stops[i]; b = stops[i + 1]; break }
