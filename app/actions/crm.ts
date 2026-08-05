@@ -8,6 +8,7 @@ import type {
   Prospecto,
   CrmInteraccion,
   CrmContacto,
+  CrmBorrador,
   CrmLectura,
   CrmAprobacion,
   EtapaProspecto,
@@ -73,6 +74,7 @@ export async function getProspecto(id: string): Promise<{
   prospecto: Prospecto | null
   interacciones: CrmInteraccion[]
   contactos: CrmContacto[]
+  borradores: CrmBorrador[]
   lecturas: CrmLectura[]
 }> {
   const supabase = await createClient()
@@ -97,6 +99,12 @@ export async function getProspecto(id: string): Promise<{
     .order('es_decisor', { ascending: false })
     .order('created_at', { ascending: true })
 
+  const { data: borradores } = await supabase
+    .from('crm_borradores')
+    .select('*')
+    .eq('prospecto_id', id)
+    .order('updated_at', { ascending: false })
+
   const { data: lecturas } = await supabase
     .from('crm_lecturas')
     .select('*')
@@ -107,6 +115,7 @@ export async function getProspecto(id: string): Promise<{
     prospecto: (prospecto as unknown as Prospecto) ?? null,
     interacciones: (interacciones ?? []) as CrmInteraccion[],
     contactos: (contactos ?? []) as CrmContacto[],
+    borradores: (borradores ?? []) as CrmBorrador[],
     lecturas: (lecturas ?? []) as CrmLectura[],
   }
 }
@@ -464,6 +473,65 @@ export async function eliminarContacto(
   const acceso = await verificarAccesoCrm()
   if (!acceso.ok) return { error: acceso.error }
   const { error } = await acceso.supabase.from('crm_contactos').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+// ── Casilla de borradores de respuesta ───────────────────────────────────────
+
+export interface BorradorInput {
+  id?: string
+  asunto?: string
+  cuerpo?: string
+  links?: string[]
+  adjuntos?: string[]
+  estado?: string
+  contacto_id?: string
+}
+
+const ESTADOS_BORRADOR = ['borrador', 'listo', 'enviado']
+
+export async function guardarBorrador(
+  prospectoId: string,
+  input: BorradorInput,
+): Promise<{ ok?: true; id?: string; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const payload = {
+    asunto: limpiar(input.asunto),
+    cuerpo: limpiar(input.cuerpo),
+    links: (input.links ?? []).map(s => s.trim()).filter(Boolean),
+    adjuntos: (input.adjuntos ?? []).map(s => s.trim()).filter(Boolean),
+    estado: input.estado && ESTADOS_BORRADOR.includes(input.estado) ? input.estado : 'borrador',
+    contacto_id: input.contacto_id || null,
+  }
+
+  if (input.id) {
+    const { error } = await acceso.supabase.from('crm_borradores').update(payload).eq('id', input.id)
+    if (error) return { error: error.message }
+    revalidatePath(`/crm/${prospectoId}`)
+    return { ok: true, id: input.id }
+  }
+
+  const { data, error } = await acceso.supabase
+    .from('crm_borradores')
+    .insert({ prospecto_id: prospectoId, autor: 'operador', ...payload })
+    .select('id')
+    .single()
+  if (error) return { error: error.message }
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true, id: data.id }
+}
+
+export async function eliminarBorrador(
+  id: string,
+  prospectoId: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+  const { error } = await acceso.supabase.from('crm_borradores').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath(`/crm/${prospectoId}`)
   return { ok: true }

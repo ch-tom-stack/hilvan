@@ -1173,6 +1173,18 @@ const TOOLS = [
     run: () => api('GET', '/crm/biblioteca'),
   },
   {
+    name: 'hilvan_borrador_leer',
+    description: 'Lee la casilla de borradores de respuesta de un prospecto (correos redactados con material, links y paquetes en PDF).',
+    inputSchema: { type: 'object', properties: { prospecto_id: { type: 'string' } }, required: ['prospecto_id'] },
+    run: (a) => api('GET', `/crm/borrador?prospecto_id=${encodeURIComponent(a.prospecto_id)}`),
+  },
+  {
+    name: 'hilvan_borrador_escribir',
+    description: 'Rellena/actualiza la casilla de borrador de respuesta de un prospecto. Campos: prospecto_id (REQUERIDO), asunto, cuerpo, links[] (material propio), adjuntos[] (paquetes/PDF), estado (borrador|listo|enviado), id (para actualizar uno existente), contacto_id. NO envía el correo: solo deja el borrador para que un humano lo revise/envíe.',
+    inputSchema: { type: 'object', properties: { prospecto_id: { type: 'string' }, id: { type: 'string' }, asunto: { type: 'string' }, cuerpo: { type: 'string' }, links: { type: 'array', items: { type: 'string' } }, adjuntos: { type: 'array', items: { type: 'string' } }, estado: { type: 'string' }, contacto_id: { type: 'string' } }, required: ['prospecto_id'] },
+    run: (a) => api('POST', '/crm/borrador', a),
+  },
+  {
     name: 'hilvan_listar_aprobaciones',
     description: 'Lista la Bandeja de Aprobación del CRM (crm_aprobaciones). estado: pendiente (default) | aprobado | descartado | todos.',
     inputSchema: { type: 'object', properties: { estado: { type: 'string' } } },

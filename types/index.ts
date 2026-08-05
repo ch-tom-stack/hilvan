@@ -1118,6 +1118,21 @@ export interface CrmContacto {
   created_at: string
 }
 
+// Casilla de borrador de respuesta: la rellena el operador (humano o IA).
+export interface CrmBorrador {
+  id: string
+  prospecto_id: string
+  contacto_id?: string | null
+  asunto?: string | null
+  cuerpo?: string | null
+  links?: string[] | null      // links a material propio dentro del correo
+  adjuntos?: string[] | null   // paquetes / PDF
+  estado?: string | null       // borrador | listo | enviado
+  autor?: string | null
+  created_at: string
+  updated_at?: string
+}
+
 export interface CrmLectura {
   id: string
   prospecto_id: string

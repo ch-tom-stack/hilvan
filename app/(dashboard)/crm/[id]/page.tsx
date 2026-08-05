@@ -8,7 +8,7 @@ export default async function ProspectoPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [{ prospecto, interacciones, contactos, lecturas }, responsables] = await Promise.all([
+  const [{ prospecto, interacciones, contactos, borradores, lecturas }, responsables] = await Promise.all([
     getProspecto(id),
     getResponsablesCrm(),
   ])
@@ -19,6 +19,7 @@ export default async function ProspectoPage({
       prospecto={prospecto}
       interacciones={interacciones}
       contactos={contactos}
+      borradores={borradores}
       lecturas={lecturas}
       responsables={responsables}
     />

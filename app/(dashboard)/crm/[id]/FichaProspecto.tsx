@@ -3,23 +3,27 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Prospecto, CrmInteraccion, CrmContacto, CrmLectura, EtapaProspecto, ChecklistItem } from '@/types'
+import type { Prospecto, CrmInteraccion, CrmContacto, CrmBorrador, CrmLectura, EtapaProspecto, ChecklistItem } from '@/types'
 import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO } from '@/types'
 import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable, asignarPrioridad } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
 import ContactosProspecto from '@/components/crm/ContactosProspecto'
+import BorradorRespuesta from '@/components/crm/BorradorRespuesta'
 import { Tag } from '@/components/crm/TarjetaProspecto'
+import { playAdvance, playWin } from '@/lib/sfx'
+import { confetti } from '@/lib/celebrate'
 
 interface Props {
   prospecto: Prospecto
   interacciones: CrmInteraccion[]
   contactos: CrmContacto[]
+  borradores: CrmBorrador[]
   lecturas: CrmLectura[]
   responsables: { id: string; nombre: string }[]
 }
 
-export default function FichaProspecto({ prospecto, interacciones, contactos, lecturas, responsables }: Props) {
+export default function FichaProspecto({ prospecto, interacciones, contactos, borradores, lecturas, responsables }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
@@ -59,6 +63,8 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, le
       const res = await moverEtapa(p.id, etapa)
       if (res.error) { toastError(res.error); return }
       toastOk(`Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`)
+      if (etapa === 'confirmado') { playWin(); confetti() }
+      else if (etapa === 'contacto' || etapa === 'conversacion') playAdvance()
       router.refresh()
     })
   }
@@ -175,6 +181,9 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, le
 
           {/* Árbol de contactos */}
           <ContactosProspecto prospectoId={p.id} contactos={contactos} />
+
+          {/* Casilla de borrador de respuesta */}
+          <BorradorRespuesta prospectoId={p.id} borradores={borradores} />
 
           {/* Notas */}
           <div>

@@ -1,8 +1,10 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { playTick, playAdvance, playWin, sfxEnabled, setSfxEnabled } from '@/lib/sfx'
+import { confetti } from '@/lib/celebrate'
 import type { Prospecto, EtapaProspecto } from '@/types'
 import {
   ETAPA_PROSPECTO_LABELS,
@@ -46,6 +48,10 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   const [pendiente, setPendiente] = useState<{ id: string; etapa: EtapaProspecto } | null>(null)
   // registro rápido de contacto desde el pipeline
   const [contactoPara, setContactoPara] = useState<Prospecto | null>(null)
+  // gamificación: preferencia de sonido
+  const [sfxOn, setSfxOn] = useState(true)
+  useEffect(() => { setSfxOn(sfxEnabled()) }, [])
+  const toggleSfx = () => { const v = !sfxOn; setSfxEnabled(v); setSfxOn(v); if (v) playAdvance() }
 
   const responsables = useMemo(() => {
     const set = new Map<string, string>()
@@ -80,6 +86,8 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
       if (res.error) toastError(res.error)
       else {
         toastOk(`Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`)
+        if (etapa === 'confirmado') { playWin(); confetti() }
+        else if (etapa === 'contacto' || etapa === 'conversacion') playAdvance()
         router.refresh()
       }
     })
@@ -112,6 +120,13 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">CRM</h1>
         </div>
         <div className="flex gap-3 flex-shrink-0">
+          <button
+            onClick={toggleSfx}
+            title={sfxOn ? 'Silenciar sonidos' : 'Activar sonidos'}
+            className={`border border-ch-border font-body text-[10px] tracking-[0.35em] uppercase px-4 py-3 transition-colors ${sfxOn ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'}`}
+          >
+            {sfxOn ? 'Sonido' : 'Silencio'}
+          </button>
           <Link
             href="/crm/biblioteca"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
@@ -245,7 +260,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
         <QuickContacto
           prospecto={contactoPara}
           onClose={() => setContactoPara(null)}
-          onSaved={() => { setContactoPara(null); router.refresh() }}
+          onSaved={() => { setContactoPara(null); playTick(); router.refresh() }}
         />
       )}
     </>

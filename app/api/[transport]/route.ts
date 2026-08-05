@@ -1444,6 +1444,36 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_borrador_leer',
+      {
+        title: 'Leer borrador de respuesta (CRM)',
+        description: 'Lee la casilla de borradores de respuesta de un prospecto (correos redactados con material, links y paquetes en PDF).',
+        inputSchema: { prospecto_id: z.string() },
+      },
+      async ({ prospecto_id }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/borrador?prospecto_id=${encodeURIComponent(prospecto_id)}`)),
+    )
+
+    server.registerTool(
+      'hilvan_borrador_escribir',
+      {
+        title: 'Escribir borrador de respuesta (CRM)',
+        description: 'Rellena/actualiza la casilla de borrador de respuesta de un prospecto. prospecto_id REQUERIDO; asunto, cuerpo, links[] (material propio), adjuntos[] (paquetes/PDF), estado (borrador|listo|enviado), id (para actualizar), contacto_id. NO envía el correo: deja el borrador para que un humano lo revise/envíe.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          id: z.string().optional(),
+          asunto: z.string().optional(),
+          cuerpo: z.string().optional(),
+          links: z.array(z.string()).optional(),
+          adjuntos: z.array(z.string()).optional(),
+          estado: z.string().optional(),
+          contacto_id: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/borrador', args)),
+    )
+
+    server.registerTool(
       'hilvan_listar_aprobaciones',
       {
         title: 'Bandeja de aprobación (CRM)',
