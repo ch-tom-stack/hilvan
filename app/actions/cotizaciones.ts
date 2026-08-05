@@ -10,6 +10,7 @@ import type {
   Cliente,
   Proyecto,
 } from '@/types'
+import { numeroCotizacion } from '@/types'
 import { autoCrearProyectoDesdeAprobacion } from '@/app/actions/clientes'
 
 // ============================================================
@@ -356,7 +357,7 @@ export async function copiarCotizacion(
       notas_cliente: original.notas_cliente,
       created_by: user.id,
     })
-    .select()
+    .select('*, grupo:cotizacion_grupos(numero_base)')
     .single()
 
   if (nuevaError) throw new Error(nuevaError.message)
@@ -402,7 +403,10 @@ export async function copiarCotizacion(
   }
 
   revalidatePath('/cotizaciones')
-  return nueva.id as string
+  return {
+    id: nueva.id as string,
+    numero: numeroCotizacion({ grupo: nueva.grupo as any, version: nueva.version, variante: nueva.variante }),
+  }
 }
 
 // ============================================================

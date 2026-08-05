@@ -2,7 +2,6 @@
 
 import { useState, useTransition, useCallback } from 'react'
 import { useConfirm, usePrompt } from '@/components/ui/useConfirm'
-import { useRouter } from 'next/navigation'
 import { toastOk, toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
 import {
@@ -72,7 +71,6 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   } | null>(null)
   const [showInterno, setShowInterno] = useState(false)
   const [editandoNombre, setEditandoNombre] = useState(false)
-  const router = useRouter()
   const { confirm, ConfirmDialog } = useConfirm()
   const { prompt, PromptDialog } = usePrompt()
 
@@ -441,7 +439,10 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           <div className="flex items-center gap-1 border border-ch-border rounded overflow-hidden">
             <button
               onClick={() => startTransition(async () => {
-                try { const nid = await nuevaVersion(cot.id); if (nid) router.push(`/cotizaciones/${nid}`) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear versión') }
+                try {
+                  const r = await nuevaVersion(cot.id)
+                  if (r) { toastOk(`Nueva versión creada: ${r.numero}`); window.open(`/cotizaciones/${r.id}`, '_blank') }
+                } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear versión') }
               })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
@@ -451,7 +452,10 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             <span className="w-px h-4 bg-ch-border" />
             <button
               onClick={() => startTransition(async () => {
-                try { const nid = await nuevaVariante(cot.id); if (nid) router.push(`/cotizaciones/${nid}`) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear variante') }
+                try {
+                  const r = await nuevaVariante(cot.id)
+                  if (r) { toastOk(`Nueva variante creada: ${r.numero}`); window.open(`/cotizaciones/${r.id}`, '_blank') }
+                } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear variante') }
               })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
@@ -461,7 +465,10 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             <span className="w-px h-4 bg-ch-border" />
             <button
               onClick={() => startTransition(async () => {
-                try { const nid = await duplicarCotizacion(cot.id); if (nid) router.push(`/cotizaciones/${nid}`) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al duplicar') }
+                try {
+                  const r = await duplicarCotizacion(cot.id)
+                  if (r) { toastOk(`Cotización duplicada: ${r.numero}`); window.open(`/cotizaciones/${r.id}`, '_blank') }
+                } catch (e) { toastError(e instanceof Error ? e.message : 'Error al duplicar') }
               })}
               disabled={isPending}
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
