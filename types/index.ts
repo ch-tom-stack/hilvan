@@ -996,43 +996,46 @@ export {
 
 export type EtapaProspecto =
   | 'prospecto'
-  | 'calificado'
-  | 'lectura_entregada'
+  | 'contacto'
   | 'conversacion'
-  | 'producto_propuesto'
-  | 'cotizacion_enviada'
-  | 'seguimiento'
   | 'confirmado'
   | 'nurture'
   | 'descartado'
 
 export const ETAPA_PROSPECTO_LABELS: Record<EtapaProspecto, string> = {
-  prospecto:          'Prospecto',
-  calificado:         'Calificado',
-  lectura_entregada:  'Lectura entregada',
-  conversacion:       'Conversación',
-  producto_propuesto: 'Producto propuesto',
-  cotizacion_enviada: 'Cotización enviada',
-  seguimiento:        'Seguimiento',
-  confirmado:         'Confirmado',
-  nurture:            'Nurture',
-  descartado:         'Descartado',
+  prospecto:    'Prospecto',
+  contacto:     'Contacto',
+  conversacion: 'Conversación',
+  confirmado:   'Confirmado',
+  nurture:      'Nurture',
+  descartado:   'Descartado',
 }
 
-// Las 8 etapas que van en columnas del Kanban (en orden de pipeline)
+// Columnas del Kanban (en orden de pipeline). Los hitos (Lectura, Producto
+// propuesto, Cotización enviada, Reunión) ya NO son etapas: son un checklist
+// no ordinal en la tarjeta (ver CHECKLIST_PROSPECTO).
 export const ETAPAS_PIPELINE_ACTIVAS: EtapaProspecto[] = [
   'prospecto',
-  'calificado',
-  'lectura_entregada',
+  'contacto',
   'conversacion',
-  'producto_propuesto',
-  'cotizacion_enviada',
-  'seguimiento',
   'confirmado',
 ]
 
+// Etapas donde se registran contactos → contador + correo enviado en la tarjeta.
+export const ETAPAS_CON_CONTADOR: EtapaProspecto[] = ['contacto', 'conversacion']
+
 // Etapas que viven en el cajón lateral, fuera del flujo principal
 export const ETAPAS_CAJON: EtapaProspecto[] = ['nurture', 'descartado']
+
+// Checklist del prospecto — hitos marcables en CUALQUIER orden (no ordinales).
+export const CHECKLIST_PROSPECTO = ['lectura', 'producto_propuesto', 'cotizacion_enviada', 'reunion'] as const
+export type ChecklistItem = (typeof CHECKLIST_PROSPECTO)[number]
+export const CHECKLIST_LABELS: Record<ChecklistItem, string> = {
+  lectura:            'Lectura',
+  producto_propuesto: 'Producto propuesto',
+  cotizacion_enviada: 'Cotización enviada',
+  reunion:            'Reunión hecha',
+}
 
 export type Producto = 'banco' | 'lookbook' | 'spot'
 
@@ -1078,6 +1081,8 @@ export interface Prospecto {
   cliente_id?: string | null
   cliente?: Pick<Cliente, 'id' | 'nombre'> | null
   notas?: string | null
+  checklist?: string[] | null       // hitos marcados (ver CHECKLIST_PROSPECTO)
+  n_interacciones?: number           // contador de contactos (solo en el pipeline)
   created_at: string
   updated_at?: string
 }
@@ -1088,6 +1093,8 @@ export interface CrmInteraccion {
   fecha?: string | null
   tipo?: string | null
   resumen?: string | null
+  cuerpo?: string | null            // correo enviado adjunto (texto)
+  respondido?: boolean | null       // el contacto tuvo respuesta
   proximo_paso?: string | null
   fecha_proximo?: string | null
   gmail_thread?: string | null

@@ -3,9 +3,9 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Prospecto, CrmInteraccion, CrmLectura, EtapaProspecto } from '@/types'
-import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON } from '@/types'
-import { moverEtapa, eliminarProspecto, derivarBrief } from '@/app/actions/crm'
+import type { Prospecto, CrmInteraccion, CrmLectura, EtapaProspecto, ChecklistItem } from '@/types'
+import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS } from '@/types'
+import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
 import { Tag } from '@/components/crm/TarjetaProspecto'
@@ -28,6 +28,16 @@ export default function FichaProspecto({ prospecto, interacciones, lecturas }: P
       const res = await moverEtapa(p.id, etapa)
       if (res.error) { toastError(res.error); return }
       toastOk(`Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`)
+      router.refresh()
+    })
+  }
+
+  const marcados = new Set((p.checklist ?? []) as ChecklistItem[])
+
+  const toggle = (item: ChecklistItem) => {
+    startTransition(async () => {
+      const res = await toggleChecklist(p.id, item)
+      if (res.error) { toastError(res.error); return }
       router.refresh()
     })
   }
@@ -139,6 +149,30 @@ export default function FichaProspecto({ prospecto, interacciones, lecturas }: P
                 <option key={e} value={e}>{ETAPA_PROSPECTO_LABELS[e]}</option>
               ))}
             </select>
+          </div>
+
+          <div className="border border-ch-border bg-ch-surface/30 p-5">
+            <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted mb-3">Checklist</h2>
+            <div className="space-y-2">
+              {CHECKLIST_PROSPECTO.map(item => {
+                const on = marcados.has(item)
+                return (
+                  <button
+                    key={item}
+                    onClick={() => toggle(item)}
+                    disabled={isPending}
+                    className={`w-full flex items-center gap-3 px-3 py-2 border transition-colors disabled:opacity-50 ${
+                      on ? 'border-ch-green bg-ch-green/10 text-ch-green' : 'border-ch-border text-ch-muted hover:text-ch-cream'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 shrink-0 border flex items-center justify-center text-[10px] ${on ? 'border-ch-green' : 'border-ch-border'}`}>
+                      {on ? '✓' : ''}
+                    </span>
+                    <span className="font-body text-xs">{CHECKLIST_LABELS[item]}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <div className="border border-ch-border bg-ch-surface/30 p-5">

@@ -1048,8 +1048,8 @@ const TOOLS = [
   },
 
   // ── CH-10 CRM (pipeline de captación) ──────────────────────────────────────
-  // Etapas válidas: prospecto · calificado · lectura_entregada · conversacion ·
-  // producto_propuesto · cotizacion_enviada · seguimiento · confirmado · nurture · descartado
+  // Etapas válidas: prospecto · contacto · conversacion · confirmado · nurture · descartado
+  // Hitos NO ordinales (checklist): lectura · producto_propuesto · cotizacion_enviada · reunion
   {
     name: 'hilvan_crear_prospecto',
     description: 'Crea un prospecto en el CRM (pipeline de captación). Campos: empresa (REQUERIDO), nombre_contacto, email, telefono, origen (linkedin|instagram|referido|feria|web|correo|otro), score (alta|media|baja), decisor, angulo (gancho de acercamiento), producto_objetivo (banco|lookbook|spot|sin_definir), arquetipo (feed|temporadas|sin_definir), responsable_id (uuid de profiles), notas, etapa (default prospecto). Si pasas como_propuesta=true NO se crea: queda en la Bandeja de Aprobación para que un humano lo apruebe (úsalo cuando el lead viene de un correo entrante). CONFIRMA con el usuario antes de llamar.',

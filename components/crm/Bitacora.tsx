@@ -31,11 +31,13 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
     fecha: hoyISO(),
     tipo: 'correo',
     resumen: '',
+    cuerpo: '',
+    respondido: false,
     proximo_paso: '',
     fecha_proximo: '',
   })
 
-  const set = (k: keyof InteraccionInput, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const set = (patch: Partial<InteraccionInput>) => setForm(p => ({ ...p, ...patch }))
 
   const submit = () => {
     if (!form.resumen?.trim()) {
@@ -47,7 +49,7 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
         const res = await registrarInteraccion(prospectoId, form)
         if (res.error) { toastError(res.error); return }
         toastOk('Interacción registrada')
-        setForm({ fecha: hoyISO(), tipo: 'correo', resumen: '', proximo_paso: '', fecha_proximo: '' })
+        setForm({ fecha: hoyISO(), tipo: 'correo', resumen: '', cuerpo: '', respondido: false, proximo_paso: '', fecha_proximo: '' })
         setAbierto(false)
         router.refresh()
       } catch (e) {
@@ -73,29 +75,38 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Fecha</label>
-              <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} className="input-ch w-full" />
+              <input type="date" value={form.fecha} onChange={e => set({ fecha: e.target.value })} className="input-ch w-full" />
             </div>
             <div>
               <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Tipo</label>
-              <select value={form.tipo} onChange={e => set('tipo', e.target.value)} className="input-ch w-full capitalize">
+              <select value={form.tipo} onChange={e => set({ tipo: e.target.value })} className="input-ch w-full capitalize">
                 {TIPOS_INTERACCION.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
               </select>
             </div>
           </div>
           <div>
             <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Resumen</label>
-            <textarea value={form.resumen} onChange={e => set('resumen', e.target.value)} rows={2} className="input-ch w-full resize-none"
+            <textarea value={form.resumen} onChange={e => set({ resumen: e.target.value })} rows={2} className="input-ch w-full resize-none"
               placeholder="Qué pasó en este toque" />
           </div>
+          <div>
+            <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Correo enviado</label>
+            <textarea value={form.cuerpo} onChange={e => set({ cuerpo: e.target.value })} rows={4} className="input-ch w-full resize-none"
+              placeholder="Pega acá el correo que enviaste (opcional)" />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer font-body text-xs text-ch-cream">
+            <input type="checkbox" checked={form.respondido} onChange={e => set({ respondido: e.target.checked })} />
+            Tuvo respuesta
+          </label>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Próximo paso</label>
-              <input value={form.proximo_paso} onChange={e => set('proximo_paso', e.target.value)} className="input-ch w-full"
+              <input value={form.proximo_paso} onChange={e => set({ proximo_paso: e.target.value })} className="input-ch w-full"
                 placeholder="Qué sigue" />
             </div>
             <div>
               <label className="font-body text-[9px] text-ch-muted uppercase tracking-[0.3em] block mb-1.5">Fecha próximo paso</label>
-              <input type="date" value={form.fecha_proximo} onChange={e => set('fecha_proximo', e.target.value)} className="input-ch w-full" />
+              <input type="date" value={form.fecha_proximo} onChange={e => set({ fecha_proximo: e.target.value })} className="input-ch w-full" />
             </div>
           </div>
           <button onClick={submit} disabled={isPending || !form.resumen?.trim()}
@@ -120,9 +131,22 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
                       {i.tipo}
                     </span>
                   )}
+                  {i.respondido && (
+                    <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-green border border-ch-green px-2 py-0.5">
+                      Respondido
+                    </span>
+                  )}
                   <span className="font-body text-[11px] text-ch-muted">{formatFecha(i.fecha)}</span>
                 </div>
                 {i.resumen && <p className="font-body text-sm text-ch-cream mb-1">{i.resumen}</p>}
+                {i.cuerpo && (
+                  <details className="mb-1">
+                    <summary className="font-body text-[10px] tracking-[0.2em] uppercase text-ch-subtle hover:text-ch-cream cursor-pointer">
+                      Ver correo enviado
+                    </summary>
+                    <p className="font-body text-xs text-ch-muted whitespace-pre-wrap mt-1 border-l border-ch-border pl-3">{i.cuerpo}</p>
+                  </details>
+                )}
                 {i.proximo_paso && (
                   <p className="font-body text-xs text-ch-muted">
                     <span className="text-ch-subtle">Próximo: </span>

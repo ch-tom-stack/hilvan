@@ -1298,8 +1298,9 @@ const baseHandler = createMcpHandler(
     )
 
     // ── CH-10 CRM (pipeline de captación) ─────────────────────────────────────
-    // Etapas: prospecto · calificado · lectura_entregada · conversacion ·
-    // producto_propuesto · cotizacion_enviada · seguimiento · confirmado · nurture · descartado
+    // Etapas: prospecto · contacto · conversacion · confirmado · nurture · descartado
+    // Hitos NO ordinales (checklist en la ficha): lectura · producto_propuesto ·
+    // cotizacion_enviada · reunion
     server.registerTool(
       'hilvan_crear_prospecto',
       {

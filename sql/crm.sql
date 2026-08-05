@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.prospectos (
   producto_objetivo text,                 -- banco | lookbook | spot | sin_definir
   cliente_id        uuid REFERENCES public.clientes(id) ON DELETE SET NULL,
   notas             text,
+  checklist         text[] NOT NULL DEFAULT '{}',  -- hitos no ordinales: lectura | producto_propuesto | cotizacion_enviada | reunion
   created_at        timestamptz DEFAULT now(),
   updated_at        timestamptz DEFAULT now()
 );
@@ -57,6 +58,8 @@ CREATE TABLE IF NOT EXISTS public.crm_interacciones (
   fecha         date,
   tipo          text,        -- correo | reunion | lectura | llamada | mensaje
   resumen       text,
+  cuerpo        text,        -- correo enviado adjunto (texto)
+  respondido    boolean NOT NULL DEFAULT false,  -- el contacto tuvo respuesta
   proximo_paso  text,
   fecha_proximo date,        -- alimenta los recordatorios (F4)
   gmail_thread  text,

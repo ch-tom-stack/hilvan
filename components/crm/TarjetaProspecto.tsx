@@ -1,7 +1,8 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Prospecto } from '@/types'
+import { CHECKLIST_LABELS, type ChecklistItem } from '@/types'
 
 const SCORE_STYLES: Record<string, string> = {
   alta:  'border-ch-green text-ch-green',
@@ -23,18 +24,25 @@ interface Props {
   prospecto: Prospecto
   draggable?: boolean
   onDragStart?: (e: React.DragEvent) => void
-  /** marca un punto ch-gold (placeholder Bandeja, se activa en F2) */
+  /** marca un punto ch-gold (pendiente en la Bandeja) */
   pendiente?: boolean
+  /** muestra el contador de contactos y el botón "+ contacto" (Contacto/Conversación) */
+  contador?: boolean
+  /** abre el registro rápido de contacto en el pipeline */
+  onAddContacto?: (p: Prospecto) => void
 }
 
-export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente }: Props) {
+export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente, contador, onAddContacto }: Props) {
+  const router = useRouter()
   const p = prospecto
+  const checklist = (p.checklist ?? []).filter((x): x is ChecklistItem => x in CHECKLIST_LABELS)
+
   return (
-    <Link
-      href={`/crm/${p.id}`}
+    <div
       draggable={draggable}
       onDragStart={onDragStart}
-      className="block bg-ch-surface/30 border border-ch-border p-4 hover:border-ch-muted transition-colors group"
+      onClick={() => router.push(`/crm/${p.id}`)}
+      className="block bg-ch-surface/30 border border-ch-border p-4 hover:border-ch-muted transition-colors group cursor-pointer"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <h3 className="font-display italic text-lg text-ch-cream leading-tight group-hover:text-white transition-colors">
@@ -60,9 +68,36 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
         )}
       </div>
 
+      {/* Checklist (hitos marcados) */}
+      {checklist.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {checklist.map(item => (
+            <span key={item} className="inline-flex items-center gap-1 font-body text-[9px] tracking-[0.1em] uppercase text-ch-green">
+              <span aria-hidden>✓</span>{CHECKLIST_LABELS[item]}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Contador de contactos + registro rápido */}
+      {contador && (
+        <div className="flex items-center justify-between mb-3 border-t border-ch-border pt-2">
+          <span className="font-body text-[10px] text-ch-muted">
+            {p.n_interacciones ?? 0} contacto{(p.n_interacciones ?? 0) === 1 ? '' : 's'}
+          </span>
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onAddContacto?.(p) }}
+            className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-green hover:text-ch-green-light transition-colors"
+          >
+            + contacto
+          </button>
+        </div>
+      )}
+
       <p className="font-body text-[10px] tracking-[0.15em] uppercase text-ch-subtle">
         {p.responsable?.nombre ?? 'Sin asignar'}
       </p>
-    </Link>
+    </div>
   )
 }

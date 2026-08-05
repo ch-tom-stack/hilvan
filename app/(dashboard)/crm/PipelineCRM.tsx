@@ -7,6 +7,7 @@ import type { Prospecto, EtapaProspecto } from '@/types'
 import {
   ETAPA_PROSPECTO_LABELS,
   ETAPAS_PIPELINE_ACTIVAS,
+  ETAPAS_CON_CONTADOR,
   ETAPAS_CAJON,
   ORIGENES_PROSPECTO,
   SCORES_PROSPECTO,
@@ -14,6 +15,7 @@ import {
 import { moverEtapa } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import TarjetaProspecto, { Tag } from '@/components/crm/TarjetaProspecto'
+import QuickContacto from '@/components/crm/QuickContacto'
 import type { MetricasCrm } from '@/app/actions/crm'
 
 interface Props {
@@ -42,6 +44,8 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   const [dragOver, setDragOver] = useState<EtapaProspecto | null>(null)
   // confirmación inline al mover a 'confirmado'
   const [pendiente, setPendiente] = useState<{ id: string; etapa: EtapaProspecto } | null>(null)
+  // registro rápido de contacto desde el pipeline
+  const [contactoPara, setContactoPara] = useState<Prospecto | null>(null)
 
   const responsables = useMemo(() => {
     const set = new Map<string, string>()
@@ -142,9 +146,9 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           acento={metricas.porContactar > 0 ? 'gold' : undefined}
         />
         <MetricaCard
-          label="En seguimiento"
-          valor={`${metricas.enSeguimiento}`}
-          sub="esperando respuesta"
+          label="En conversación"
+          valor={`${metricas.enConversacion}`}
+          sub="con diálogo abierto"
         />
         <MetricaCard
           label="Confirmados"
@@ -225,9 +229,18 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           cajonAbierto={cajonAbierto}
           setCajonAbierto={setCajonAbierto}
           pendientesSet={pendientesSet}
+          onAddContacto={setContactoPara}
         />
       ) : (
         <TablaView prospectos={filtrados} />
+      )}
+
+      {contactoPara && (
+        <QuickContacto
+          prospecto={contactoPara}
+          onClose={() => setContactoPara(null)}
+          onSaved={() => { setContactoPara(null); router.refresh() }}
+        />
       )}
     </>
   )
@@ -245,7 +258,7 @@ function MetricaCard({ label, valor, sub, acento }: { label: string; valor: stri
 }
 
 function KanbanView({
-  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, setCajonAbierto, pendientesSet,
+  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, setCajonAbierto, pendientesSet, onAddContacto,
 }: {
   porEtapa: Map<EtapaProspecto, Prospecto[]>
   dragOver: EtapaProspecto | null
@@ -255,6 +268,7 @@ function KanbanView({
   cajonAbierto: boolean
   setCajonAbierto: (v: boolean) => void
   pendientesSet: Set<string>
+  onAddContacto: (p: Prospecto) => void
 }) {
   return (
     <div className="flex gap-4">
@@ -263,13 +277,15 @@ function KanbanView({
         <div className="flex gap-3 min-w-max pb-4">
           {ETAPAS_PIPELINE_ACTIVAS.map(etapa => {
             const cards = porEtapa.get(etapa) ?? []
+            const conContador = ETAPAS_CON_CONTADOR.includes(etapa)
+            const ancho = etapa === 'confirmado' ? 'w-44' : 'w-64'
             return (
               <div
                 key={etapa}
                 onDragOver={e => { e.preventDefault(); setDragOver(etapa) }}
                 onDragLeave={() => setDragOver(null)}
                 onDrop={() => onDrop(etapa)}
-                className={`w-64 shrink-0 border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
+                className={`${ancho} shrink-0 border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
               >
                 <div className="px-3 py-3 border-b border-ch-border flex items-center justify-between">
                   <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted">
@@ -285,6 +301,8 @@ function KanbanView({
                       draggable
                       onDragStart={() => onDragStartCard(p.id)}
                       pendiente={pendientesSet.has(p.id)}
+                      contador={conContador}
+                      onAddContacto={onAddContacto}
                     />
                   ))}
                 </div>

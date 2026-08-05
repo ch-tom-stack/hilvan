@@ -12,7 +12,7 @@ import type {
   EtapaProspecto,
   Profile,
 } from '@/types'
-import { ETAPA_PROSPECTO_LABELS } from '@/types'
+import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO } from '@/types'
 import { aplicarEfectoAprobacion, AplicarError, type AprobacionRow } from '@/lib/crm-aprobaciones'
 
 // ── Acceso ───────────────────────────────────────────────────────────────────
@@ -50,15 +50,21 @@ function limpiar(v: string | null | undefined): string | null {
 const PROSPECTO_SELECT =
   '*, responsable:profiles!prospectos_responsable_id_fkey(id, nombre), cliente:clientes(id, nombre)'
 
+// El pipeline agrega el contador de contactos (crm_interacciones) por tarjeta.
+const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count)`
+
 export async function getPipeline(): Promise<Prospecto[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('prospectos')
-    .select(PROSPECTO_SELECT)
+    .select(PIPELINE_SELECT)
     .order('updated_at', { ascending: false })
 
   if (error) return []
-  return (data ?? []) as unknown as Prospecto[]
+  return (data ?? []).map((r: any) => ({
+    ...r,
+    n_interacciones: Array.isArray(r.crm_interacciones) ? (r.crm_interacciones[0]?.count ?? 0) : 0,
+  })) as unknown as Prospecto[]
 }
 
 export async function getProspecto(id: string): Promise<{
@@ -109,7 +115,7 @@ export interface MetricasCrm {
   totalPipeline: number
   totalGanados: number
   porContactar: number
-  enSeguimiento: number
+  enConversacion: number
   porEtapa: Record<string, number>
   porResponsable: { nombre: string; total: number }[]
 }
@@ -137,7 +143,7 @@ export async function getMetricasCrm(): Promise<MetricasCrm> {
     totalPipeline: pipeline.length,
     totalGanados: ganados.length,
     porContactar: porEtapa['prospecto'] ?? 0,
-    enSeguimiento: porEtapa['seguimiento'] ?? 0,
+    enConversacion: porEtapa['conversacion'] ?? 0,
     porEtapa,
     porResponsable: Array.from(responsablesMap.entries())
       .map(([nombre, total]) => ({ nombre, total }))
@@ -248,6 +254,8 @@ export interface InteraccionInput {
   fecha?: string          // YYYY-MM-DD (plano, no convertir con new Date)
   tipo?: string
   resumen?: string
+  cuerpo?: string         // correo enviado adjunto
+  respondido?: boolean    // el contacto tuvo respuesta
   proximo_paso?: string
   fecha_proximo?: string  // YYYY-MM-DD
   gmail_thread?: string
@@ -265,14 +273,43 @@ export async function registrarInteraccion(
     fecha: input.fecha || null,
     tipo: limpiar(input.tipo),
     resumen: limpiar(input.resumen),
+    cuerpo: limpiar(input.cuerpo),
+    respondido: input.respondido ?? false,
     proximo_paso: limpiar(input.proximo_paso),
     fecha_proximo: input.fecha_proximo || null,
     gmail_thread: limpiar(input.gmail_thread),
   })
 
   if (error) return { error: error.message }
+  revalidatePath('/crm')
   revalidatePath(`/crm/${prospectoId}`)
   return { ok: true }
+}
+
+// Marca/desmarca un hito del checklist del prospecto (no ordinal).
+export async function toggleChecklist(
+  id: string,
+  item: string,
+): Promise<{ ok?: true; checklist?: string[]; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+  if (!(CHECKLIST_PROSPECTO as readonly string[]).includes(item)) return { error: 'Ítem de checklist inválido' }
+
+  const { data: p } = await acceso.supabase
+    .from('prospectos')
+    .select('checklist')
+    .eq('id', id)
+    .maybeSingle<{ checklist: string[] | null }>()
+  if (!p) return { error: 'Prospecto no encontrado' }
+
+  const actual = p.checklist ?? []
+  const nuevo = actual.includes(item) ? actual.filter(x => x !== item) : [...actual, item]
+
+  const { error } = await acceso.supabase.from('prospectos').update({ checklist: nuevo }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${id}`)
+  return { ok: true, checklist: nuevo }
 }
 
 export interface LecturaInput {
@@ -299,15 +336,16 @@ export async function registrarLectura(
   if (error) return { error: error.message }
 
   // Heurística E7: si la lectura derivó un producto y el prospecto aún no lo
-  // tiene definido, completarlo y avanzar la etapa a 'lectura_entregada'.
+  // tiene definido, completarlo. Además marca el hito 'lectura' en el checklist
+  // (no ordinal) y avanza a 'conversacion' si aún está antes.
   const { data: prospecto } = await acceso.supabase
     .from('prospectos')
-    .select('arquetipo, producto_objetivo, etapa')
+    .select('arquetipo, producto_objetivo, etapa, checklist')
     .eq('id', prospectoId)
-    .maybeSingle<{ arquetipo: string | null; producto_objetivo: string | null; etapa: string }>()
+    .maybeSingle<{ arquetipo: string | null; producto_objetivo: string | null; etapa: string; checklist: string[] | null }>()
 
   if (prospecto) {
-    const patch: Record<string, string> = {}
+    const patch: Record<string, unknown> = {}
     const prod = limpiar(input.producto_derivado)
     if (prod && (!prospecto.producto_objetivo || prospecto.producto_objetivo === 'sin_definir')) {
       patch.producto_objetivo = prod
@@ -316,9 +354,12 @@ export async function registrarLectura(
       if (prod === 'banco') patch.arquetipo = 'feed'
       else if (prod === 'lookbook') patch.arquetipo = 'temporadas'
     }
-    // Solo avanzar si la etapa actual es anterior a lectura_entregada
-    if (prospecto.etapa === 'prospecto' || prospecto.etapa === 'calificado') {
-      patch.etapa = 'lectura_entregada'
+    // Marcar el hito 'lectura' en el checklist.
+    const checklist = prospecto.checklist ?? []
+    if (!checklist.includes('lectura')) patch.checklist = [...checklist, 'lectura']
+    // Avanzar a conversación si aún está antes.
+    if (prospecto.etapa === 'prospecto' || prospecto.etapa === 'contacto') {
+      patch.etapa = 'conversacion'
     }
     if (Object.keys(patch).length) {
       await acceso.supabase.from('prospectos').update(patch).eq('id', prospectoId)

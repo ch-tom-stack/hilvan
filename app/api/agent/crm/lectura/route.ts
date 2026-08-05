@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 // POST /api/agent/crm/lectura { prospecto_id, url?, dossier_ref?, producto_derivado?, fecha? }
 // Guarda "La Lectura" y aplica la heurística E7: feed→banco, temporadas→lookbook.
 // Si el prospecto no tiene producto/arquetipo definido los completa y avanza a
-// lectura_entregada.
+// conversacion (y marca el hito 'lectura' en el checklist).
 export async function POST(req: Request) {
   const unauthorized = requireAgentToken(req)
   if (unauthorized) return unauthorized
@@ -32,9 +32,9 @@ export async function POST(req: Request) {
   const admin = createAdminClient()
   const { data: prospecto } = await admin
     .from('prospectos')
-    .select('id, arquetipo, producto_objetivo, etapa')
+    .select('id, arquetipo, producto_objetivo, etapa, checklist')
     .eq('id', prospectoId)
-    .maybeSingle<{ id: string; arquetipo: string | null; producto_objetivo: string | null; etapa: string }>()
+    .maybeSingle<{ id: string; arquetipo: string | null; producto_objetivo: string | null; etapa: string; checklist: string[] | null }>()
   if (!prospecto) return NextResponse.json({ error: 'prospecto_id no encontrado' }, { status: 404 })
 
   const { data, error } = await admin
@@ -48,13 +48,16 @@ export async function POST(req: Request) {
   }
 
   // ── Heurística E7 ───────────────────────────────────────────────────────────
-  const patch: Record<string, string> = {}
+  // Marca el hito 'lectura' en el checklist (no ordinal) y avanza a 'conversacion'.
+  const patch: Record<string, unknown> = {}
   if (prod && (!prospecto.producto_objetivo || prospecto.producto_objetivo === 'sin_definir')) patch.producto_objetivo = prod
   if (!prospecto.arquetipo || prospecto.arquetipo === 'sin_definir') {
     if (prod === 'banco') patch.arquetipo = 'feed'
     else if (prod === 'lookbook') patch.arquetipo = 'temporadas'
   }
-  if (prospecto.etapa === 'prospecto' || prospecto.etapa === 'calificado') patch.etapa = 'lectura_entregada'
+  const checklist = prospecto.checklist ?? []
+  if (!checklist.includes('lectura')) patch.checklist = [...checklist, 'lectura']
+  if (prospecto.etapa === 'prospecto' || prospecto.etapa === 'contacto') patch.etapa = 'conversacion'
   if (Object.keys(patch).length) await admin.from('prospectos').update(patch).eq('id', prospectoId)
 
   await registrarAccion({ herramienta: 'crm-lectura', payload: body, resultado_tabla: 'crm_lecturas', resultado_id: data.id, ok: true })
