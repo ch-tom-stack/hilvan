@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react'
 import type { Prospecto } from '@/types'
 import { registrarInteraccion, type InteraccionInput } from '@/app/actions/crm'
-import { toastOk, toastError } from '@/lib/toast'
+import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 
 function hoyISO(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
@@ -40,7 +41,7 @@ export default function QuickContacto({ prospecto, onClose, onSaved }: Props) {
       try {
         const res = await registrarInteraccion(prospecto.id, form)
         if (res.error) { toastError(res.error); return }
-        toastOk('Contacto registrado')
+        momento('crm.contacto')
         onSaved()
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al registrar')

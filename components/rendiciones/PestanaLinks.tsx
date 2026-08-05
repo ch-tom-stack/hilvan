@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import EstadoVacio from '@/components/ui/EstadoVacio'
+import { momento } from '@/lib/momentos'
 
 export interface LinkTemporal {
   id: string
@@ -74,7 +75,7 @@ export default function PestanaLinks({
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <button
-                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/r/${link.token}`)}
+                  onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/r/${link.token}`); momento('copiado') }}
                   className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors">
                   Copiar link
                 </button>

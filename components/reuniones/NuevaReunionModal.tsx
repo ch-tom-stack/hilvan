@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { crearReunionManual } from '@/app/actions/reuniones'
-import { toastOk, toastError } from '@/lib/toast'
+import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 
 export default function NuevaReunionModal() {
   const [abierto, setAbierto] = useState(false)
@@ -35,7 +36,7 @@ export default function NuevaReunionModal() {
           inicio: inicio.toISOString(), duracionMin: duracion,
         })
         if (r.error) { toastError(r.error); return }
-        toastOk('Reunión creada y agendada en el calendario')
+        momento('creado', { mensaje: 'Reunión creada y agendada en el calendario' })
         setAbierto(false)
         limpiar()
       } catch (e: any) {

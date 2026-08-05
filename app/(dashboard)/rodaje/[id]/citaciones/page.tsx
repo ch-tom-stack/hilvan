@@ -4,6 +4,7 @@ import { use, useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { getRodaje, generarCitaciones, marcarWhatsappEnviado, enviarEmailCitacion, actualizarMensajeCitacion } from '@/app/actions/rodaje'
 import { RodajeCitacion, RodajeEquipoTecnico, Rodaje, estadoCitacion, generarMensajeCitacion, resolverHoraLlamado, formatHora } from '@/types'
+import { momento } from '@/lib/momentos'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -39,6 +40,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
 
   const copiar = (texto: string, cid: string) => {
     navigator.clipboard.writeText(texto)
+    momento('copiado')
     setCopiado(cid)
     setTimeout(() => setCopiado(null), 2000)
   }
@@ -61,7 +63,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
             </a>
           )}
           <button
-            onClick={() => startTransition(async () => { await generarCitaciones(id); recargar() })}
+            onClick={() => startTransition(async () => { await generarCitaciones(id); momento('citaciones.enviadas'); recargar() })}
             disabled={isPending}
             className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
           >

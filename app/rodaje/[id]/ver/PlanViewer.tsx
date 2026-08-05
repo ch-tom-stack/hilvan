@@ -91,11 +91,12 @@ export default function PlanViewer({ id, rodajeInicial, bloquesIniciales, locaci
             {rodaje.cliente_logo_url && (
               <img src={rodaje.cliente_logo_url} alt="Cliente" className="h-8 w-auto object-contain" style={{ filter: 'invert(1)' }} />
             )}
-            {ultimaActualizacion && (
-              <span className="text-[10px] text-ch-subtle">
-                Actualizado {ultimaActualizacion.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
+            <span className="flex items-center gap-1.5 text-[10px] text-ch-subtle">
+              <span className="w-1.5 h-1.5 bg-ch-green ch-live-dot shrink-0" title="Actualizándose en vivo" />
+              {ultimaActualizacion
+                ? `Actualizado ${ultimaActualizacion.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`
+                : 'En vivo'}
+            </span>
           </div>
         </div>
 

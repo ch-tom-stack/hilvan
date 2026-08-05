@@ -86,7 +86,13 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // `mp3` está excluido para que los sonidos de interfaz (public/sounds/) se
+  // sirvan también en rutas públicas —QR de maleta, cotización del cliente,
+  // viewer de rodaje— y sin pagar un auth.getUser() por archivo.
+  // Son sonidos de librería (CC0 / licencia libre), sin dato sensible.
+  // OJO: no ampliar a otras extensiones a la ligera —public/templates/ tiene
+  // un .xlsx bancario que debe seguir detrás de la sesión.
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)',
   ],
 }

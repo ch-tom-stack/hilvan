@@ -106,6 +106,114 @@ input:-webkit-autofill:focus {
   color: #8c8c86;
 }
 
+/* ─── Vocabulario de movimiento ──────────────────────────────────────────────
+   Base del sistema de feedback. NO toca @theme ni los tokens ch-*: son clases
+   aditivas. Catálogo completo en docs/gamificacion/animaciones.md.
+
+   Reglas: desplazamiento máximo 8px, escala máxima 1.04 — es una app de
+   trabajo, no una landing. Todo se apaga bajo prefers-reduced-motion. */
+
+:root {
+  --ch-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Entrada de contenido */
+@keyframes ch-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.ch-fade-up { animation: ch-fade-up 0.3s var(--ch-ease) both; }
+
+/* Listas escalonadas: se aplica junto a .ch-fade-up con --i = índice */
+.ch-stagger { animation-delay: calc(var(--i, 0) * 30ms); }
+
+/* Algo cambió de valor (contador, badge, total) */
+@keyframes ch-pulse {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+.ch-pulse { animation: ch-pulse 0.2s var(--ch-ease); }
+
+/* Validación fallida — 4px, dos ciclos. Sacude el campo, no el formulario */
+@keyframes ch-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+.ch-shake { animation: ch-shake 0.25s ease-in-out 2; }
+
+/* Una fila se actualizó */
+@keyframes ch-flash-row {
+  from { background-color: rgba(122, 158, 126, 0.14); }
+  to   { background-color: transparent; }
+}
+.ch-flash-row { animation: ch-flash-row 0.6s ease-out; }
+
+/* Tarjeta soltada en el Kanban: aterriza, sin rebote de juguete */
+@keyframes ch-settle {
+  0%   { transform: translateY(-3px) scale(1.015); }
+  100% { transform: none; }
+}
+.ch-settle { animation: ch-settle 0.22s var(--ch-ease); }
+
+/* Aparece un pendiente */
+@keyframes ch-badge-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  70%  { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.ch-badge-pop { animation: ch-badge-pop 0.26s var(--ch-ease) both; }
+
+/* Hito alcanzado: el borde recorre verde → dorado y decae */
+@keyframes ch-glow-hito {
+  0%   { border-color: #7a9e7e; }
+  50%  { border-color: #c9a84c; }
+  100% { border-color: #383836; }
+}
+.ch-glow-hito { animation: ch-glow-hito 1.5s ease-out; }
+
+/* Realtime conectado: latido lento */
+@keyframes ch-live-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+.ch-live-dot { animation: ch-live-dot 2s ease-in-out infinite; }
+
+/* Skeleton con barrido — reemplaza animate-pulse */
+@keyframes ch-shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+.ch-shimmer {
+  background: linear-gradient(90deg, #242422 25%, #2e2e2b 50%, #242422 75%);
+  background-size: 200% 100%;
+  animation: ch-shimmer 1.4s linear infinite;
+}
+
+/* Barra que crece hasta --w */
+@keyframes ch-bar-fill {
+  from { width: 0; }
+  to   { width: var(--w, 100%); }
+}
+.ch-bar-fill { animation: ch-bar-fill 0.5s var(--ch-ease) both; }
+
+/* Micro-interacciones. Sin sombras: "elevar" es encender el borde. */
+.ch-press:active { transform: translateY(1px); }
+.ch-nudge { transition: transform 0.15s var(--ch-ease); }
+.ch-nudge-host:hover .ch-nudge { transform: translateX(3px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-fade-up, .ch-pulse, .ch-shake, .ch-flash-row, .ch-settle,
+  .ch-badge-pop, .ch-glow-hito, .ch-live-dot, .ch-shimmer, .ch-bar-fill {
+    animation: none !important;
+  }
+  .ch-fade-up { opacity: 1; transform: none; }
+  .ch-bar-fill { width: var(--w, 100%); }
+  .ch-press:active { transform: none; }
+  .ch-nudge, .ch-nudge-host:hover .ch-nudge { transition: none; transform: none; }
+}
+
 /* ─── FullCalendar — Hilván theme ───────────────────────────────────────────── */
 .fc-hilvan .fc {
   --fc-border-color:               #383836;

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { toastOk, toastError } from '@/lib/toast'
+import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import EstadoVacio from '@/components/ui/EstadoVacio'
 import {
   aprobarGasto, rechazarGasto, aprobarPagoGasto,
@@ -223,7 +224,7 @@ export default function AdminRendiciones({
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
       if (!res.ok) { toastError('Error al subir archivo'); return }
       const { url } = await res.json()
-      toastOk('Archivo subido')
+      momento('subido', { mensaje: 'Archivo subido' })
       const archivos = await agregarArchivoFactura(rendicionId, url)
       actualizarRendicion(rendicionId, { factura_archivos: archivos })
     } catch (e) {

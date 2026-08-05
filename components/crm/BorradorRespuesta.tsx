@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { CrmBorrador } from '@/types'
 import { guardarBorrador, eliminarBorrador, type BorradorInput } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 
 interface Props {
   prospectoId: string
@@ -60,7 +61,7 @@ export default function BorradorRespuesta({ prospectoId, borradores }: Props) {
       try {
         const res = await guardarBorrador(prospectoId, input)
         if (res.error) { toastError(res.error); return }
-        toastOk('Borrador guardado')
+        momento('guardado', { mensaje: 'Borrador guardado' })
         cerrar()
         router.refresh()
       } catch (e) {

@@ -11,8 +11,7 @@ import Bitacora from '@/components/crm/Bitacora'
 import ContactosProspecto from '@/components/crm/ContactosProspecto'
 import BorradorRespuesta from '@/components/crm/BorradorRespuesta'
 import { Tag } from '@/components/crm/TarjetaProspecto'
-import { playAdvance, playWin } from '@/lib/sfx'
-import { confetti } from '@/lib/celebrate'
+import { momento } from '@/lib/momentos'
 
 interface Props {
   prospecto: Prospecto
@@ -34,7 +33,7 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
     startTransition(async () => {
       const res = await actualizarNotas(p.id, notas)
       if (res.error) { toastError(res.error); return }
-      toastOk('Notas guardadas')
+      momento('guardado', { mensaje: 'Notas guardadas' })
       router.refresh()
     })
   }
@@ -61,10 +60,11 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
     if (etapa === p.etapa) return
     startTransition(async () => {
       const res = await moverEtapa(p.id, etapa)
-      if (res.error) { toastError(res.error); return }
-      toastOk(`Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`)
-      if (etapa === 'confirmado') { playWin(); confetti() }
-      else if (etapa === 'contacto' || etapa === 'conversacion') playAdvance()
+      if (res.error) { momento('error', { mensaje: res.error }); return }
+      const mensaje = `Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`
+      if (etapa === 'confirmado') momento('crm.cierre', { mensaje })
+      else if (etapa === 'descartado') momento('crm.retroceso', { mensaje })
+      else momento('crm.avance', { mensaje })
       router.refresh()
     })
   }
@@ -73,8 +73,10 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
 
   const toggle = (item: ChecklistItem) => {
     startTransition(async () => {
+      const marcando = !marcados.has(item)
       const res = await toggleChecklist(p.id, item)
-      if (res.error) { toastError(res.error); return }
+      if (res.error) { momento('error', { mensaje: res.error }); return }
+      momento(marcando ? 'checklist.marcado' : 'checklist.desmarcado')
       router.refresh()
     })
   }

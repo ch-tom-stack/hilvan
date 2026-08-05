@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { playTick, playAdvance, playWin, sfxEnabled, setSfxEnabled } from '@/lib/sfx'
-import { confetti } from '@/lib/celebrate'
+import { reproducir, sfxEnabled, setSfxEnabled } from '@/lib/sfx'
+import { momento } from '@/lib/momentos'
 import type { Prospecto, EtapaProspecto } from '@/types'
 import {
   ETAPA_PROSPECTO_LABELS,
@@ -14,7 +14,7 @@ import {
   SCORES_PROSPECTO,
 } from '@/types'
 import { moverEtapa } from '@/app/actions/crm'
-import { toastOk, toastError } from '@/lib/toast'
+
 import TarjetaProspecto, { Tag } from '@/components/crm/TarjetaProspecto'
 import QuickContacto from '@/components/crm/QuickContacto'
 import type { MetricasCrm } from '@/app/actions/crm'
@@ -42,6 +42,8 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
 
   // drag & drop
   const [draggedId, setDraggedId] = useState<string | null>(null)
+  // id de la tarjeta que acaba de cambiar de etapa, para que aterrice
+  const [recienMovido, setRecienMovido] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<EtapaProspecto | null>(null)
   // confirmación inline al mover a 'confirmado'
   const [pendiente, setPendiente] = useState<{ id: string; etapa: EtapaProspecto } | null>(null)
@@ -50,7 +52,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   // gamificación: preferencia de sonido
   const [sfxOn, setSfxOn] = useState(true)
   useEffect(() => { setSfxOn(sfxEnabled()) }, [])
-  const toggleSfx = () => { const v = !sfxOn; setSfxEnabled(v); setSfxOn(v); if (v) playAdvance() }
+  const toggleSfx = () => { const v = !sfxOn; setSfxEnabled(v); setSfxOn(v); if (v) reproducir('prog-avance') }
 
   const responsables = useMemo(() => {
     const set = new Map<string, string>()
@@ -82,11 +84,14 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   const ejecutarMovimiento = (id: string, etapa: EtapaProspecto) => {
     startTransition(async () => {
       const res = await moverEtapa(id, etapa)
-      if (res.error) toastError(res.error)
+      if (res.error) momento('error', { mensaje: res.error })
       else {
-        toastOk(`Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`)
-        if (etapa === 'confirmado') { playWin(); confetti() }
-        else if (etapa === 'contacto' || etapa === 'conversacion') playAdvance()
+        const mensaje = `Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`
+        if (etapa === 'confirmado') momento('crm.cierre', { mensaje })
+        else if (etapa === 'descartado') momento('crm.retroceso', { mensaje })
+        else momento('crm.avance', { mensaje })
+        setRecienMovido(id)
+        window.setTimeout(() => setRecienMovido(null), 700)
         router.refresh()
       }
     })
@@ -138,7 +143,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           >
             Bandeja
             {totalBandeja > 0 && (
-              <span className="absolute -top-2 -right-2 bg-ch-gold text-ch-black font-body text-[10px] font-medium w-5 h-5 flex items-center justify-center">
+              <span className="absolute -top-2 -right-2 bg-ch-gold text-ch-black font-body text-[10px] font-medium w-5 h-5 flex items-center justify-center ch-badge-pop">
                 {totalBandeja}
               </span>
             )}
@@ -255,6 +260,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           setDragOver={setDragOver}
           onDragStartCard={setDraggedId}
           onDrop={onDrop}
+          recienMovido={recienMovido}
           cajonAbierto={cajonAbierto}
           pendientesSet={pendientesSet}
           onAddContacto={setContactoPara}
@@ -267,7 +273,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
         <QuickContacto
           prospecto={contactoPara}
           onClose={() => setContactoPara(null)}
-          onSaved={() => { setContactoPara(null); playTick(); router.refresh() }}
+          onSaved={() => { setContactoPara(null); router.refresh() }}
         />
       )}
     </>
@@ -286,7 +292,7 @@ function MetricaCard({ label, valor, sub, acento }: { label: string; valor: stri
 }
 
 function KanbanView({
-  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, pendientesSet, onAddContacto,
+  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, pendientesSet, onAddContacto, recienMovido,
 }: {
   porEtapa: Map<EtapaProspecto, Prospecto[]>
   dragOver: EtapaProspecto | null
@@ -296,6 +302,7 @@ function KanbanView({
   cajonAbierto: boolean
   pendientesSet: Set<string>
   onAddContacto: (p: Prospecto) => void
+  recienMovido: string | null
 }) {
   const columnas: EtapaProspecto[] = cajonAbierto
     ? [...ETAPAS_PIPELINE_ACTIVAS, ...ETAPAS_CAJON]
@@ -335,6 +342,7 @@ function KanbanView({
                     onDragStart={() => onDragStartCard(p.id)}
                     pendiente={pendientesSet.has(p.id)}
                     onAddContacto={esCajon ? undefined : onAddContacto}
+                    recienMovido={recienMovido === p.id}
                   />
                 ))}
               </div>

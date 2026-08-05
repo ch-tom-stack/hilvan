@@ -54,9 +54,11 @@ interface Props {
   contador?: boolean
   /** abre el registro rápido de contacto en el pipeline */
   onAddContacto?: (p: Prospecto) => void
+  /** la tarjeta acaba de cambiar de etapa: aterriza con ch-settle */
+  recienMovido?: boolean
 }
 
-export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente, onAddContacto }: Props) {
+export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente, onAddContacto, recienMovido }: Props) {
   const router = useRouter()
   const p = prospecto
   const checklist = (p.checklist ?? []).filter((x): x is ChecklistItem => x in CHECKLIST_LABELS)
@@ -68,12 +70,12 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       draggable={draggable}
       onDragStart={onDragStart}
       onClick={() => router.push(`/crm/${p.id}`)}
-      className="block bg-ch-surface/30 border border-ch-border p-4 hover:border-ch-muted transition-colors group cursor-pointer"
+      className={`block bg-ch-surface/30 border border-ch-border p-4 hover:border-ch-muted transition-colors group cursor-pointer ${recienMovido ? 'ch-settle' : ''}`}
     >
       {/* Epígrafe: contador de toques con código de calor */}
       <div className="flex items-center justify-between mb-3 pb-3 border-b border-ch-border">
-        <div className="flex items-baseline gap-1.5" style={{ color: heat }}>
-          <span className="font-body font-bold text-2xl leading-none tabular-nums">{n}</span>
+        <div className="flex items-baseline gap-1.5 transition-colors duration-500" style={{ color: heat }}>
+          <span key={n} className="font-body font-bold text-2xl leading-none tabular-nums ch-pulse">{n}</span>
           <span className="font-body font-bold text-[9px] tracking-[0.25em] uppercase leading-none">
             contacto{n === 1 ? '' : 's'}
           </span>

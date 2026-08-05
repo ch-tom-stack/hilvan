@@ -23,6 +23,7 @@ import TablaPlan from '@/components/rodaje/TablaPlan'
 import StickerLayerEditor from '@/components/rodaje/StickerLayerEditor'
 import { getStickers } from '@/app/actions/rodaje-stickers'
 import type { RodajeSticker } from '@/types'
+import { momento } from '@/lib/momentos'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -247,12 +248,34 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     })
   }
 
+  // Arma la pizarra de la claqueta desde el Plan de Rodaje.
+  // Los campos que vienen vacíos se omiten: un rodaje sin equipo cargado no
+  // debe mostrar un "0" que parece un error (pasa de verdad — ver ALDO).
+  const datosClaqueta = () => {
+    const equipo = (rodaje?.equipo_tecnico ?? []) as { rol?: string | null; nombre: string }[]
+    // "Dirección de Foto" y "Asistencia de Dirección" también contienen la
+    // palabra: se exige coincidencia exacta.
+    const director = equipo.find(m => (m.rol ?? '').trim().toLowerCase() === 'dirección')
+    return {
+      nombre: rodaje?.nombre ?? 'Rodaje',
+      fecha: rodaje?.fecha ?? null,
+      locacion: rodaje?.locacion_nombre ?? null,
+      llamado: rodaje?.hora_llamado_general ?? null,
+      // Solo bloques de rodaje: pre-sets, pausas y montaje no son secuencias.
+      secuencias: bloquesRef.current.filter(b => b.tipo === 'rodaje' && !b.padre_id).length,
+      equipo: equipo.length,
+      direccion: director?.nombre ?? null,
+    }
+  }
+
   const cambiarEstado = async () => {
     const idx = ESTADO_CICLO.indexOf(rodaje.estado)
     const siguiente = ESTADO_CICLO[(idx + 1) % ESTADO_CICLO.length]
     try {
       await actualizarEstadoRodaje(id, siguiente)
       setRodaje((r: any) => ({ ...r, estado: siguiente }))
+      if (siguiente === 'confirmado')      momento('rodaje.publicado', { claqueta: datosClaqueta() })
+      else if (siguiente === 'completado') momento('rodaje.finalizado')
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al cambiar estado')
     }

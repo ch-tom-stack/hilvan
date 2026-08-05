@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Toaster } from 'sonner'
+import AudioBootstrap from '@/components/ui/AudioBootstrap'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body>
         {children}
+        <AudioBootstrap />
         <Toaster
           theme="dark"
           position="bottom-right"

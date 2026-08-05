@@ -4,6 +4,7 @@ import { useState, useTransition, useCallback } from 'react'
 import { useConfirm, usePrompt } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import {
   actualizarCotizacion,
   enviarCotizacion,
@@ -105,7 +106,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
       setLinkCopiado(true)
       setCot(c => ({ ...c, estado: 'enviada', token }))
       setTimeout(() => setLinkCopiado(false), 3000)
-      toastOk('Cotización enviada')
+      momento('cotizacion.enviada')
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al enviar')
     }
@@ -245,6 +246,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     try {
       if (itemModal?.mode === 'nuevo') {
         const data = await agregarItem(itemData)
+        momento('gasto.creado')
         if (itemModal.sgId) {
           actualizarSgLocal(itemModal.depId, itemModal.sgId, sg => ({
             ...sg,
@@ -410,7 +412,10 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                             try {
                               const res = await cambiarEstadoCotizacion(cot.id, key)
                               if (res.error) toastError(res.error)
-                              else setCot(c => ({ ...c, estado: key as typeof c.estado }))
+                              else {
+                                setCot(c => ({ ...c, estado: key as typeof c.estado }))
+                                if (key === 'aprobada') momento('cotizacion.aprobada', { monto: totales.total })
+                              }
                             } catch (e) {
                               toastError(e instanceof Error ? e.message : 'Error al cambiar estado')
                             }

@@ -4,7 +4,9 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { actualizarNombre, cambiarPassword } from '@/app/actions/perfil'
 import { logout } from '@/app/actions/auth'
+import PreferenciasFeedback from './PreferenciasFeedback'
 import type { Profile, Rol } from '@/types'
+import { momento } from '@/lib/momentos'
 
 const ROL_LABELS: Record<Rol, string> = {
   admin:         'Administrador',
@@ -47,6 +49,8 @@ export default function PerfilPage({ profile, email }: Props) {
   const [newPwd, setNewPwd]             = useState('')
   const [confirmPwd, setConfirmPwd]     = useState('')
   const [pwdMsg, setPwdMsg]             = useState('')
+  // dispara ch-shake en los campos cuando la validación falla
+  const [pwdError, setPwdError]         = useState(0)
 
   const [isPending, startTransition]    = useTransition()
 
@@ -76,8 +80,8 @@ export default function PerfilPage({ profile, email }: Props) {
   // ── Password ─────────────────────────────────────────────────
   const handleCambiarPassword = () => {
     setPwdMsg('')
-    if (newPwd.length < 8)    { setPwdMsg('Mínimo 8 caracteres'); return }
-    if (newPwd !== confirmPwd) { setPwdMsg('Las contraseñas no coinciden'); return }
+    if (newPwd.length < 8)    { setPwdMsg('Mínimo 8 caracteres'); setPwdError(n => n + 1); momento('atencion', { mensaje: 'Mínimo 8 caracteres' }); return }
+    if (newPwd !== confirmPwd) { setPwdMsg('Las contraseñas no coinciden'); setPwdError(n => n + 1); momento('atencion', { mensaje: 'Las contraseñas no coinciden' }); return }
 
     startTransition(async () => {
       const res = await cambiarPassword(newPwd)
@@ -201,7 +205,7 @@ export default function PerfilPage({ profile, email }: Props) {
         {/* ── Seguridad ── */}
         <section className="border border-ch-border bg-ch-surface/30 p-6">
           <h2 className="text-[9px] font-body tracking-[0.4em] uppercase text-ch-muted mb-5">Seguridad</h2>
-          <div className="space-y-3 max-w-xs">
+          <div key={pwdError} className={`space-y-3 max-w-xs ${pwdError ? 'ch-shake' : ''}`}>
             <div>
               <label className="block text-xs text-ch-muted mb-1.5">Nueva contraseña</label>
               <input
@@ -238,6 +242,9 @@ export default function PerfilPage({ profile, email }: Props) {
           </div>
         </section>
 
+        {/* ── Sonido y movimiento ── */}
+        <PreferenciasFeedback />
+
         {/* ── Notificaciones (placeholder) ── */}
         <section className="border border-ch-border border-dashed bg-ch-surface/10 p-6 select-none">
           <div className="flex items-center justify-between mb-2">
@@ -263,7 +270,7 @@ export default function PerfilPage({ profile, email }: Props) {
 
         {/* ── Cerrar sesión ── */}
         <div className="pt-2">
-          <form action={logout}>
+          <form action={logout} onSubmit={() => momento('sesion.fin')}>
             <button
               type="submit"
               className="text-xs font-body text-ch-muted hover:text-red-400 transition-colors border border-ch-border hover:border-red-400/40 px-4 py-2 rounded-[2px]"

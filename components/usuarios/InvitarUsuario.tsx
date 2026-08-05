@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { invitarUsuario } from '@/app/actions/usuarios'
 import type { Rol } from '@/types'
+import { momento } from '@/lib/momentos'
 
 const ROLES: { value: Rol; label: string }[] = [
   { value: 'productor',    label: 'Productor' },
@@ -38,6 +39,7 @@ export default function InvitarUsuario() {
 
   const copiar = async (texto: string) => {
     await navigator.clipboard.writeText(texto)
+    momento('copiado')
     setCopiado(true)
     setTimeout(() => setCopiado(false), 2000)
   }

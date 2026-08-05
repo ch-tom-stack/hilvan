@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import type { CrmInteraccion } from '@/types'
 import { TIPOS_INTERACCION } from '@/types'
 import { registrarInteraccion, eliminarInteraccion, type InteraccionInput } from '@/app/actions/crm'
-import { toastOk, toastError } from '@/lib/toast'
+import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import { formatFecha, parseFechaLocal } from '@/lib/fechas'
 
 function hoyISO(): string {
@@ -46,7 +47,7 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
       try {
         const res = await eliminarInteraccion(id, prospectoId)
         if (res.error) { toastError(res.error); return }
-        toastOk('Contacto eliminado')
+        momento('eliminado', { mensaje: 'Contacto eliminado' })
         setBorrar(null)
         router.refresh()
       } catch (e) {
@@ -64,7 +65,7 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
       try {
         const res = await registrarInteraccion(prospectoId, form)
         if (res.error) { toastError(res.error); return }
-        toastOk('Interacción registrada')
+        momento('crm.contacto', { mensaje: 'Interacción registrada' })
         setForm({ fecha: hoyISO(), tipo: 'correo', resumen: '', cuerpo: '', respondido: false, proximo_paso: '', fecha_proximo: '' })
         setAbierto(false)
         router.refresh()

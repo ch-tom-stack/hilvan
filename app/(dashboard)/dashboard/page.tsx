@@ -90,11 +90,12 @@ export default async function DashboardPage() {
             Módulos
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {MODULOS.map((mod) => (
+            {MODULOS.map((mod, i) => (
               <Link
                 key={mod.href}
                 href={mod.href}
-                className="border border-ch-border bg-ch-surface/30 p-5 hover:bg-ch-surface/60 hover:border-ch-border/80 transition-colors duration-150 block group"
+                style={{ '--i': i } as React.CSSProperties}
+                className="border border-ch-border bg-ch-surface/30 p-5 hover:bg-ch-surface/60 hover:border-ch-green/40 transition-colors duration-150 block group ch-nudge-host ch-fade-up ch-stagger"
               >
                 <h3 className="font-display text-xl text-ch-cream italic mb-1 group-hover:text-ch-cream">
                   {mod.nombre}
@@ -102,7 +103,7 @@ export default async function DashboardPage() {
                 <p className="text-ch-muted font-body text-xs leading-relaxed">{mod.desc}</p>
                 <div className="mt-4">
                   <span className="text-[8px] font-body tracking-[0.4em] text-ch-green uppercase group-hover:text-ch-green-light transition-colors">
-                    Abrir →
+                    Abrir <span className="ch-nudge inline-block">→</span>
                   </span>
                 </div>
               </Link>

@@ -1,7 +1,9 @@
 import { toast } from 'sonner'
 
-export const toastOk = (msg: string) =>
-  toast.success(msg, { duration: 3000 })
+// `duracion` opcional: los momentos de hito (pago, cierre) se dejan más rato
+// en pantalla que una confirmación corriente. Ver lib/momentos.ts.
+export const toastOk = (msg: string, duracion = 3000) =>
+  toast.success(msg, { duration: duracion })
 
 export const toastError = (msg: string) =>
   toast.error(msg, { duration: 4000 })

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { CrmContacto } from '@/types'
 import { crearContacto, actualizarContacto, eliminarContacto, type ContactoInput } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 
 interface Props {
   prospectoId: string
@@ -61,7 +62,7 @@ export default function ContactosProspecto({ prospectoId, contactos }: Props) {
           ? await crearContacto(prospectoId, input)
           : await actualizarContacto(editando as string, prospectoId, input)
         if (res.error) { toastError(res.error); return }
-        toastOk('Contacto guardado')
+        momento('guardado', { mensaje: 'Contacto guardado' })
         cerrar()
         router.refresh()
       } catch (e) {

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import {
   actualizarColaborador, eliminarColaborador, crearTarifa, eliminarTarifa,
   crearLinkTemporal, getLinksPorColaborador, crearLinkOnboarding,
@@ -61,7 +62,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
         await actualizarColaborador(colaborador.id, form)
         setGuardado(true)
         setTimeout(() => setGuardado(false), 2000)
-        toastOk('Cambios guardados')
+        momento('guardado')
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al guardar')
       }
@@ -135,7 +136,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
         a.download = `${tipo}-${colaborador.nombre.replace(/\s+/g, '-').toLowerCase()}.docx`
         a.click()
         URL.revokeObjectURL(url)
-        toastOk('Contrato generado')
+        momento('creado', { mensaje: 'Contrato generado' })
         router.refresh()
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al generar contrato')

@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { toastOk, toastError } from '@/lib/toast'
+import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
+import { calcularTotales, formatCLP } from '@/lib/cotizaciones-calc'
 import {
   registrarFacturaCotizacion,
   registrarPagoCotizacion,
@@ -29,7 +31,7 @@ export default function PanelFacturacion({ cot, setCot }: { cot: Cotizacion; set
         numero_factura: facturaForm.numero_factura,
       })
       setCot(c => ({ ...c, fecha_factura_emitida: facturaForm.fecha_factura_emitida, numero_factura: facturaForm.numero_factura }))
-      toastOk('Factura registrada')
+      momento('factura.emitida')
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al registrar factura')
     } finally {
@@ -43,7 +45,10 @@ export default function PanelFacturacion({ cot, setCot }: { cot: Cotizacion; set
     try {
       await registrarPagoCotizacion(cot.id, facturaForm.fecha_pago_recibido)
       setCot(c => ({ ...c, fecha_pago_recibido: facturaForm.fecha_pago_recibido }))
-      toastOk('Pago registrado')
+      // El momento cumbre de la app. La intensidad la define el monto real:
+      // un pago de $5M no se celebra igual que uno de $50k.
+      const total = calcularTotales(cot).total
+      momento('pago.recibido', { monto: total, montoTexto: formatCLP(total) })
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al registrar pago')
     } finally {

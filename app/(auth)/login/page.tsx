@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { momento } from '@/lib/momentos'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +29,7 @@ export default function LoginPage() {
       return
     }
 
+    momento('sesion.inicio')
     router.push('/dashboard')
     router.refresh()
   }
