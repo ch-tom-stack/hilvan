@@ -10,16 +10,26 @@ const SCORE_STYLES: Record<string, string> = {
   baja:  'border-ch-border text-ch-subtle',
 }
 
-// Mapa de calor del contador (no arcoíris): celeste (frío) → rama cálida
-// amarillo/dorado/naranja → rojo (caliente). Sin azul ni verde.
-// Satura en 16 contactos (≈ el 80% de los calificados acepta cerca del toque 16).
+// Mapa de calor del contador (no arcoíris): cada número su propio shade.
+// 0 = celeste (frío, sin tocar). 1→16 = rampa cálida CONTINUA amarillo→dorado
+// →naranja→rojo (sin azul ni verde). Satura en 16 (≈ el 80% de los calificados
+// acepta cerca del toque 16).
 function heatColor(n: number): string {
-  if (n <= 0) return '#74CDE4'   // celeste — frío, sin tocar
-  if (n <= 3) return '#E6D45E'   // amarillo
-  if (n <= 7) return '#E6B93E'   // dorado
-  if (n <= 11) return '#EC8E3A'  // naranja
-  if (n <= 15) return '#E85E33'  // naranja-rojo
-  return '#E5462F'               // rojo — caliente (16+)
+  if (n <= 0) return '#74CDE4'
+  const stops: { t: number; c: [number, number, number] }[] = [
+    { t: 0.00, c: [230, 212, 94] },  // amarillo
+    { t: 0.40, c: [230, 175, 60] },  // dorado
+    { t: 0.72, c: [233, 120, 52] },  // naranja
+    { t: 1.00, c: [229, 70, 47] },   // rojo
+  ]
+  const t = Math.min((n - 1) / 15, 1)
+  let a = stops[0], b = stops[stops.length - 1]
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (t >= stops[i].t && t <= stops[i + 1].t) { a = stops[i]; b = stops[i + 1]; break }
+  }
+  const k = (t - a.t) / ((b.t - a.t) || 1)
+  const mix = (x: number, y: number) => Math.round(x + (y - x) * k)
+  return `rgb(${mix(a.c[0], b.c[0])}, ${mix(a.c[1], b.c[1])}, ${mix(a.c[2], b.c[2])})`
 }
 
 export function Tag({ children, className = '' }: { children: React.ReactNode; className?: string }) {
