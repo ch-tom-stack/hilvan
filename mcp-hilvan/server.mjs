@@ -1167,6 +1167,12 @@ const TOOLS = [
     run: () => api('GET', '/crm/metricas'),
   },
   {
+    name: 'hilvan_biblioteca_contactos',
+    description: 'Biblioteca de contactos: insights empíricos por etapa del Kanban (promedio y mediana de toques, tasa de respuesta) + a qué toque cierran los confirmados vs a cuál se enfrían. Úsalo para fundamentar recomendaciones (ej. cuántos toques faltan para el cierre esperado). Solo lectura.',
+    inputSchema: { type: 'object', properties: {} },
+    run: () => api('GET', '/crm/biblioteca'),
+  },
+  {
     name: 'hilvan_listar_aprobaciones',
     description: 'Lista la Bandeja de Aprobación del CRM (crm_aprobaciones). estado: pendiente (default) | aprobado | descartado | todos.',
     inputSchema: { type: 'object', properties: { estado: { type: 'string' } } },

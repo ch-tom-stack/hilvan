@@ -15,6 +15,7 @@ import type {
 } from '@/types'
 import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO } from '@/types'
 import { aplicarEfectoAprobacion, AplicarError, type AprobacionRow } from '@/lib/crm-aprobaciones'
+import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 
 // ── Acceso ───────────────────────────────────────────────────────────────────
 // El CRM es admin + productor (oculto para contabilidad). Toda mutación verifica
@@ -159,6 +160,20 @@ export async function getMetricasCrm(): Promise<MetricasCrm> {
       .map(([nombre, total]) => ({ nombre, total }))
       .sort((a, b) => b.total - a.total),
   }
+}
+
+// Biblioteca de contactos: insights por etapa (empíricos) para mejorar
+// recomendaciones. Se computa en vivo desde prospectos + crm_interacciones.
+export async function getBibliotecaContactos(): Promise<BibliotecaContactos> {
+  const supabase = await createClient()
+  const [{ data: prospectos }, { data: interacciones }] = await Promise.all([
+    supabase.from('prospectos').select('id, etapa'),
+    supabase.from('crm_interacciones').select('prospecto_id, respondido'),
+  ])
+  return agregarBiblioteca(
+    (prospectos ?? []) as { id: string; etapa: string }[],
+    (interacciones ?? []) as { prospecto_id: string; respondido: boolean | null }[],
+  )
 }
 
 // ── Mutaciones ───────────────────────────────────────────────────────────────

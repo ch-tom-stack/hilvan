@@ -113,6 +113,12 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
         </div>
         <div className="flex gap-3 flex-shrink-0">
           <Link
+            href="/crm/biblioteca"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
+          >
+            Biblioteca
+          </Link>
+          <Link
             href="/crm/aprobaciones"
             className="relative border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
           >

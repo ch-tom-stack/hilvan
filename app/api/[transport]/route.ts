@@ -1434,6 +1434,16 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_biblioteca_contactos',
+      {
+        title: 'Biblioteca de contactos (CRM)',
+        description: 'Insights empíricos de contactos por etapa del Kanban (promedio y mediana de toques, tasa de respuesta) + a qué toque cierran los confirmados vs a cuál se enfrían. Úsalo para fundamentar recomendaciones. Solo lectura.',
+        inputSchema: {},
+      },
+      async (_args, extra) => ok(await callAgent(extra as ToolExtra, 'GET', '/crm/biblioteca')),
+    )
+
+    server.registerTool(
       'hilvan_listar_aprobaciones',
       {
         title: 'Bandeja de aprobación (CRM)',
