@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Prospecto, CrmInteraccion, CrmLectura, EtapaProspecto, ChecklistItem } from '@/types'
 import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS } from '@/types'
-import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist } from '@/app/actions/crm'
+import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
 import { Tag } from '@/components/crm/TarjetaProspecto'
@@ -14,13 +14,33 @@ interface Props {
   prospecto: Prospecto
   interacciones: CrmInteraccion[]
   lecturas: CrmLectura[]
+  responsables: { id: string; nombre: string }[]
 }
 
-export default function FichaProspecto({ prospecto, interacciones, lecturas }: Props) {
+export default function FichaProspecto({ prospecto, interacciones, lecturas, responsables }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
+  const [notas, setNotas] = useState(prospecto.notas ?? '')
   const p = prospecto
+
+  const guardarNotas = () => {
+    startTransition(async () => {
+      const res = await actualizarNotas(p.id, notas)
+      if (res.error) { toastError(res.error); return }
+      toastOk('Notas guardadas')
+      router.refresh()
+    })
+  }
+
+  const cambiarResponsable = (responsableId: string) => {
+    startTransition(async () => {
+      const res = await asignarResponsable(p.id, responsableId || null)
+      if (res.error) { toastError(res.error); return }
+      toastOk('Responsable actualizado')
+      router.refresh()
+    })
+  }
 
   const cambiarEtapa = (etapa: EtapaProspecto) => {
     if (etapa === p.etapa) return
@@ -86,7 +106,18 @@ export default function FichaProspecto({ prospecto, interacciones, lecturas }: P
 
       {/* Datos rápidos */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 mb-8 pb-8 border-b border-ch-border">
-        <Dato label="Responsable" valor={p.responsable?.nombre} />
+        <div>
+          <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Responsable</p>
+          <select
+            value={p.responsable?.id ?? ''}
+            onChange={e => cambiarResponsable(e.target.value)}
+            disabled={isPending}
+            className="input-ch w-full text-sm py-1"
+          >
+            <option value="">Sin asignar</option>
+            {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+          </select>
+        </div>
         <Dato label="Score" valor={p.score} capitalize />
         <Dato label="Producto objetivo" valor={p.producto_objetivo} capitalize />
         <Dato label="Arquetipo" valor={p.arquetipo?.replace('_', ' ')} capitalize />
@@ -124,12 +155,24 @@ export default function FichaProspecto({ prospecto, interacciones, lecturas }: P
           </div>
 
           {/* Notas */}
-          {p.notas && (
-            <div>
-              <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted mb-3">Notas</h2>
-              <p className="font-body text-sm text-ch-cream whitespace-pre-wrap">{p.notas}</p>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted">Notas</h2>
+              {notas !== (p.notas ?? '') && (
+                <button onClick={guardarNotas} disabled={isPending}
+                  className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-green hover:text-ch-green-light transition-colors disabled:opacity-50">
+                  {isPending ? 'Guardando…' : 'Guardar'}
+                </button>
+              )}
             </div>
-          )}
+            <textarea
+              value={notas}
+              onChange={e => setNotas(e.target.value)}
+              rows={4}
+              placeholder="Escribe notas sobre este prospecto…"
+              className="input-ch w-full resize-none text-sm"
+            />
+          </div>
 
           {/* Bitácora */}
           <Bitacora prospectoId={p.id} interacciones={interacciones} />

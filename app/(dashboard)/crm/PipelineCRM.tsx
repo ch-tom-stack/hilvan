@@ -273,19 +273,19 @@ function KanbanView({
   return (
     <div className="flex gap-4">
       {/* Tablero principal */}
-      <div className="flex-1 overflow-x-auto">
-        <div className="flex gap-3 min-w-max pb-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex gap-3 pb-4">
           {ETAPAS_PIPELINE_ACTIVAS.map(etapa => {
             const cards = porEtapa.get(etapa) ?? []
             const conContador = ETAPAS_CON_CONTADOR.includes(etapa)
-            const ancho = etapa === 'confirmado' ? 'w-44' : 'w-64'
+            const ancho = etapa === 'confirmado' ? 'flex-[0.6] min-w-[150px]' : 'flex-1 min-w-[200px]'
             return (
               <div
                 key={etapa}
                 onDragOver={e => { e.preventDefault(); setDragOver(etapa) }}
                 onDragLeave={() => setDragOver(null)}
                 onDrop={() => onDrop(etapa)}
-                className={`${ancho} shrink-0 border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
+                className={`${ancho} border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
               >
                 <div className="px-3 py-3 border-b border-ch-border flex items-center justify-between">
                   <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted">

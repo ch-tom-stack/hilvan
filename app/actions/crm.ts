@@ -312,6 +312,53 @@ export async function toggleChecklist(
   return { ok: true, checklist: nuevo }
 }
 
+// Borra un contacto/interacción de la bitácora (reversible: la gente se equivoca).
+export async function eliminarInteraccion(
+  id: string,
+  prospectoId: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const { error } = await acceso.supabase.from('crm_interacciones').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+// Guarda las notas del prospecto (sin pasar por el formulario completo).
+export async function actualizarNotas(
+  id: string,
+  notas: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const { error } = await acceso.supabase.from('prospectos').update({ notas: limpiar(notas) }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath(`/crm/${id}`)
+  return { ok: true }
+}
+
+// Cambia el responsable asignado (cambio rápido desde la ficha).
+export async function asignarResponsable(
+  id: string,
+  responsableId: string | null,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const { error } = await acceso.supabase
+    .from('prospectos')
+    .update({ responsable_id: responsableId || null })
+    .eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${id}`)
+  return { ok: true }
+}
+
 export interface LecturaInput {
   url?: string
   dossier_ref?: string

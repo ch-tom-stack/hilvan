@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CrmInteraccion } from '@/types'
 import { TIPOS_INTERACCION } from '@/types'
-import { registrarInteraccion, type InteraccionInput } from '@/app/actions/crm'
+import { registrarInteraccion, eliminarInteraccion, type InteraccionInput } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import { formatFecha, parseFechaLocal } from '@/lib/fechas'
 
@@ -37,7 +37,23 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
     fecha_proximo: '',
   })
 
+  const [borrar, setBorrar] = useState<string | null>(null)
+
   const set = (patch: Partial<InteraccionInput>) => setForm(p => ({ ...p, ...patch }))
+
+  const eliminar = (id: string) => {
+    startTransition(async () => {
+      try {
+        const res = await eliminarInteraccion(id, prospectoId)
+        if (res.error) { toastError(res.error); return }
+        toastOk('Contacto eliminado')
+        setBorrar(null)
+        router.refresh()
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al eliminar')
+      }
+    })
+  }
 
   const submit = () => {
     if (!form.resumen?.trim()) {
@@ -126,17 +142,36 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
               <li key={i.id} className="border-l border-ch-border pl-4 pb-5 relative">
                 <span className="absolute left-0 top-1.5 -translate-x-1/2 w-1.5 h-1.5 bg-ch-muted" />
                 <div className="flex items-center gap-3 mb-1">
-                  {i.tipo && (
-                    <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle border border-ch-border px-2 py-0.5 capitalize">
-                      {i.tipo}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {i.tipo && (
+                      <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle border border-ch-border px-2 py-0.5 capitalize">
+                        {i.tipo}
+                      </span>
+                    )}
+                    {i.respondido && (
+                      <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-green border border-ch-green px-2 py-0.5">
+                        Respondido
+                      </span>
+                    )}
+                    <span className="font-body text-[11px] text-ch-muted">{formatFecha(i.fecha)}</span>
+                  </div>
+                  {borrar === i.id ? (
+                    <span className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => eliminar(i.id)} disabled={isPending}
+                        className="font-body text-[9px] tracking-[0.2em] uppercase text-red-400 hover:text-red-300 disabled:opacity-50">
+                        Eliminar
+                      </button>
+                      <button onClick={() => setBorrar(null)}
+                        className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle hover:text-ch-cream">
+                        Cancelar
+                      </button>
                     </span>
+                  ) : (
+                    <button onClick={() => setBorrar(i.id)} title="Eliminar contacto"
+                      className="shrink-0 font-body text-xs text-ch-subtle hover:text-red-400 transition-colors leading-none">
+                      ✕
+                    </button>
                   )}
-                  {i.respondido && (
-                    <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-green border border-ch-green px-2 py-0.5">
-                      Respondido
-                    </span>
-                  )}
-                  <span className="font-body text-[11px] text-ch-muted">{formatFecha(i.fecha)}</span>
                 </div>
                 {i.resumen && <p className="font-body text-sm text-ch-cream mb-1">{i.resumen}</p>}
                 {i.cuerpo && (
