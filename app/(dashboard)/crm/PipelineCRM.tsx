@@ -9,7 +9,6 @@ import type { Prospecto, EtapaProspecto } from '@/types'
 import {
   ETAPA_PROSPECTO_LABELS,
   ETAPAS_PIPELINE_ACTIVAS,
-  ETAPAS_CON_CONTADOR,
   ETAPAS_CAJON,
   ORIGENES_PROSPECTO,
   SCORES_PROSPECTO,
@@ -195,6 +194,15 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           ))}
         </div>
 
+        {vista === 'kanban' && (
+          <button
+            onClick={() => setCajonAbierto(!cajonAbierto)}
+            className={`border font-body text-[10px] tracking-[0.3em] uppercase px-4 py-2 transition-colors ${cajonAbierto ? 'border-ch-muted text-ch-cream' : 'border-ch-border text-ch-muted hover:text-ch-cream'}`}
+          >
+            {cajonAbierto ? 'Ocultar cajón' : 'Nurture / Descartados'}
+          </button>
+        )}
+
         <div className="flex flex-wrap gap-2 ml-auto">
           <select value={fResponsable} onChange={e => setFResponsable(e.target.value)} className="input-ch text-xs py-2">
             <option value="">Responsable · todos</option>
@@ -248,7 +256,6 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           onDragStartCard={setDraggedId}
           onDrop={onDrop}
           cajonAbierto={cajonAbierto}
-          setCajonAbierto={setCajonAbierto}
           pendientesSet={pendientesSet}
           onAddContacto={setContactoPara}
         />
@@ -279,7 +286,7 @@ function MetricaCard({ label, valor, sub, acento }: { label: string; valor: stri
 }
 
 function KanbanView({
-  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, setCajonAbierto, pendientesSet, onAddContacto,
+  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, pendientesSet, onAddContacto,
 }: {
   porEtapa: Map<EtapaProspecto, Prospecto[]>
   dragOver: EtapaProspecto | null
@@ -287,93 +294,54 @@ function KanbanView({
   onDragStartCard: (id: string) => void
   onDrop: (e: EtapaProspecto) => void
   cajonAbierto: boolean
-  setCajonAbierto: (v: boolean) => void
   pendientesSet: Set<string>
   onAddContacto: (p: Prospecto) => void
 }) {
+  const columnas: EtapaProspecto[] = cajonAbierto
+    ? [...ETAPAS_PIPELINE_ACTIVAS, ...ETAPAS_CAJON]
+    : ETAPAS_PIPELINE_ACTIVAS
+
   return (
-    <div className="flex gap-4">
-      {/* Tablero principal */}
-      <div className="flex-1 min-w-0">
-        <div className="flex gap-3 pb-4">
-          {ETAPAS_PIPELINE_ACTIVAS.map(etapa => {
-            const cards = porEtapa.get(etapa) ?? []
-            const conContador = ETAPAS_CON_CONTADOR.includes(etapa)
-            const ancho = etapa === 'confirmado' ? 'flex-[0.6] min-w-[150px]' : 'flex-1 min-w-[200px]'
-            return (
-              <div
-                key={etapa}
-                onDragOver={e => { e.preventDefault(); setDragOver(etapa) }}
-                onDragLeave={() => setDragOver(null)}
-                onDrop={() => onDrop(etapa)}
-                className={`${ancho} border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
-              >
-                <div className="px-3 py-3 border-b border-ch-border flex items-center justify-between">
-                  <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted">
-                    {ETAPA_PROSPECTO_LABELS[etapa]}
-                  </span>
-                  <span className="font-body text-[10px] text-ch-subtle">{cards.length}</span>
-                </div>
-                <div className="p-2 space-y-2 min-h-[120px]">
-                  {cards.map(p => (
-                    <TarjetaProspecto
-                      key={p.id}
-                      prospecto={p}
-                      draggable
-                      onDragStart={() => onDragStartCard(p.id)}
-                      pendiente={pendientesSet.has(p.id)}
-                      contador={conContador}
-                      onAddContacto={onAddContacto}
-                    />
-                  ))}
-                </div>
+    // Una sola fila: llena el ancho cuando cabe (flex-1 + min-w-full), scrollea
+    // horizontal cuando no caben (overflow-x-auto). Responsivo.
+    <div className="overflow-x-auto pb-4">
+      <div className="flex gap-3 min-w-full">
+        {columnas.map(etapa => {
+          const cards = porEtapa.get(etapa) ?? []
+          const esCajon = ETAPAS_CAJON.includes(etapa)
+          const ancho = esCajon
+            ? 'w-64 shrink-0'
+            : etapa === 'confirmado' ? 'flex-[0.6] min-w-[150px]' : 'flex-1 min-w-[220px]'
+          return (
+            <div
+              key={etapa}
+              onDragOver={e => { e.preventDefault(); setDragOver(etapa) }}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={() => onDrop(etapa)}
+              className={`${ancho} border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
+            >
+              <div className="px-3 py-3 border-b border-ch-border flex items-center justify-between">
+                <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted">
+                  {ETAPA_PROSPECTO_LABELS[etapa]}
+                </span>
+                <span className="font-body text-[10px] text-ch-subtle">{cards.length}</span>
               </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Cajón lateral: nurture + descartado */}
-      <div className="shrink-0">
-        <button
-          onClick={() => setCajonAbierto(!cajonAbierto)}
-          className="h-full w-10 border border-ch-border bg-ch-black/20 text-ch-muted hover:text-ch-cream transition-colors flex items-center justify-center"
-          title="Nurture y descartados"
-        >
-          <span className="font-body text-[9px] tracking-[0.3em] uppercase [writing-mode:vertical-rl] rotate-180">
-            {cajonAbierto ? 'Cerrar' : 'Nurture / Descartados'}
-          </span>
-        </button>
-      </div>
-
-      {cajonAbierto && (
-        <div className="shrink-0 flex gap-3">
-          {ETAPAS_CAJON.map(etapa => {
-            const cards = porEtapa.get(etapa) ?? []
-            return (
-              <div
-                key={etapa}
-                onDragOver={e => { e.preventDefault(); setDragOver(etapa) }}
-                onDragLeave={() => setDragOver(null)}
-                onDrop={() => onDrop(etapa)}
-                className={`w-56 shrink-0 border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
-              >
-                <div className="px-3 py-3 border-b border-ch-border flex items-center justify-between">
-                  <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted">
-                    {ETAPA_PROSPECTO_LABELS[etapa]}
-                  </span>
-                  <span className="font-body text-[10px] text-ch-subtle">{cards.length}</span>
-                </div>
-                <div className="p-2 space-y-2 min-h-[120px]">
-                  {cards.map(p => (
-                    <TarjetaProspecto key={p.id} prospecto={p} draggable onDragStart={() => onDragStartCard(p.id)} pendiente={pendientesSet.has(p.id)} />
-                  ))}
-                </div>
+              <div className="p-2 space-y-2 min-h-[120px]">
+                {cards.map(p => (
+                  <TarjetaProspecto
+                    key={p.id}
+                    prospecto={p}
+                    draggable
+                    onDragStart={() => onDragStartCard(p.id)}
+                    pendiente={pendientesSet.has(p.id)}
+                    onAddContacto={esCajon ? undefined : onAddContacto}
+                  />
+                ))}
               </div>
-            )
-          })}
-        </div>
-      )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
