@@ -3,21 +3,23 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Prospecto, CrmInteraccion, CrmLectura, EtapaProspecto, ChecklistItem } from '@/types'
-import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS } from '@/types'
-import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable } from '@/app/actions/crm'
+import type { Prospecto, CrmInteraccion, CrmContacto, CrmLectura, EtapaProspecto, ChecklistItem } from '@/types'
+import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO } from '@/types'
+import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable, asignarPrioridad } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
+import ContactosProspecto from '@/components/crm/ContactosProspecto'
 import { Tag } from '@/components/crm/TarjetaProspecto'
 
 interface Props {
   prospecto: Prospecto
   interacciones: CrmInteraccion[]
+  contactos: CrmContacto[]
   lecturas: CrmLectura[]
   responsables: { id: string; nombre: string }[]
 }
 
-export default function FichaProspecto({ prospecto, interacciones, lecturas, responsables }: Props) {
+export default function FichaProspecto({ prospecto, interacciones, contactos, lecturas, responsables }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
@@ -38,6 +40,15 @@ export default function FichaProspecto({ prospecto, interacciones, lecturas, res
       const res = await asignarResponsable(p.id, responsableId || null)
       if (res.error) { toastError(res.error); return }
       toastOk('Responsable actualizado')
+      router.refresh()
+    })
+  }
+
+  const cambiarPrioridad = (valor: string) => {
+    startTransition(async () => {
+      const res = await asignarPrioridad(p.id, valor)
+      if (res.error) { toastError(res.error); return }
+      toastOk('Prioridad actualizada')
       router.refresh()
     })
   }
@@ -118,12 +129,20 @@ export default function FichaProspecto({ prospecto, interacciones, lecturas, res
             {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
           </select>
         </div>
-        <Dato label="Score" valor={p.score} capitalize />
+        <div>
+          <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Prioridad</p>
+          <select
+            value={p.score ?? ''}
+            onChange={e => cambiarPrioridad(e.target.value)}
+            disabled={isPending}
+            className="input-ch w-full text-sm py-1 capitalize"
+          >
+            <option value="">Sin definir</option>
+            {SCORES_PROSPECTO.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+          </select>
+        </div>
         <Dato label="Producto objetivo" valor={p.producto_objetivo} capitalize />
         <Dato label="Arquetipo" valor={p.arquetipo?.replace('_', ' ')} capitalize />
-        <Dato label="Contacto" valor={p.nombre_contacto} />
-        <Dato label="Email" valor={p.email} />
-        <Dato label="Teléfono" valor={p.telefono} />
         <Dato label="Origen" valor={p.origen} capitalize />
       </div>
 
@@ -153,6 +172,9 @@ export default function FichaProspecto({ prospecto, interacciones, lecturas, res
               )}
             </div>
           </div>
+
+          {/* Árbol de contactos */}
+          <ContactosProspecto prospectoId={p.id} contactos={contactos} />
 
           {/* Notas */}
           <div>

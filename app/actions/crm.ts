@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import type {
   Prospecto,
   CrmInteraccion,
+  CrmContacto,
   CrmLectura,
   CrmAprobacion,
   EtapaProspecto,
@@ -70,6 +71,7 @@ export async function getPipeline(): Promise<Prospecto[]> {
 export async function getProspecto(id: string): Promise<{
   prospecto: Prospecto | null
   interacciones: CrmInteraccion[]
+  contactos: CrmContacto[]
   lecturas: CrmLectura[]
 }> {
   const supabase = await createClient()
@@ -87,6 +89,13 @@ export async function getProspecto(id: string): Promise<{
     .order('fecha', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
 
+  const { data: contactos } = await supabase
+    .from('crm_contactos')
+    .select('*')
+    .eq('prospecto_id', id)
+    .order('es_decisor', { ascending: false })
+    .order('created_at', { ascending: true })
+
   const { data: lecturas } = await supabase
     .from('crm_lecturas')
     .select('*')
@@ -96,6 +105,7 @@ export async function getProspecto(id: string): Promise<{
   return {
     prospecto: (prospecto as unknown as Prospecto) ?? null,
     interacciones: (interacciones ?? []) as CrmInteraccion[],
+    contactos: (contactos ?? []) as CrmContacto[],
     lecturas: (lecturas ?? []) as CrmLectura[],
   }
 }
@@ -124,8 +134,8 @@ export interface MetricasCrm {
 export async function getMetricasCrm(): Promise<MetricasCrm> {
   const prospectos = await getPipeline()
 
-  // Pipeline = todo lo que no está descartado
-  const pipeline = prospectos.filter(p => p.etapa !== 'descartado')
+  // Pipeline = activos (excluye descartado y en frío)
+  const pipeline = prospectos.filter(p => p.etapa !== 'descartado' && p.etapa !== 'en_frio')
   const ganados = prospectos.filter(p => p.etapa === 'confirmado')
 
   const porEtapa: Record<string, number> = {}
@@ -356,6 +366,91 @@ export async function asignarResponsable(
   if (error) return { error: error.message }
   revalidatePath('/crm')
   revalidatePath(`/crm/${id}`)
+  return { ok: true }
+}
+
+// Cambia la "Prioridad" (columna DB: score) — manual: alta | media | baja | ''.
+export async function asignarPrioridad(
+  id: string,
+  valor: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+  if (valor && !['alta', 'media', 'baja'].includes(valor)) return { error: 'Prioridad inválida' }
+
+  const { error } = await acceso.supabase.from('prospectos').update({ score: valor || null }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${id}`)
+  return { ok: true }
+}
+
+// ── Árbol de contactos (varias personas por marca) ───────────────────────────
+
+export interface ContactoInput {
+  nombre?: string
+  cargo?: string
+  email?: string
+  telefono?: string
+  es_decisor?: boolean
+  notas?: string
+  links?: string[]
+}
+
+function normalizarContacto(input: ContactoInput) {
+  return {
+    nombre: limpiar(input.nombre),
+    cargo: limpiar(input.cargo),
+    email: limpiar(input.email),
+    telefono: limpiar(input.telefono),
+    es_decisor: input.es_decisor ?? false,
+    notas: limpiar(input.notas),
+    links: (input.links ?? []).map(s => s.trim()).filter(Boolean),
+  }
+}
+
+export async function crearContacto(
+  prospectoId: string,
+  input: ContactoInput,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+  const norm = normalizarContacto(input)
+  if (!norm.nombre && !norm.email) return { error: 'El contacto necesita al menos nombre o correo' }
+
+  const { error } = await acceso.supabase
+    .from('crm_contactos')
+    .insert({ prospecto_id: prospectoId, ...norm })
+  if (error) return { error: error.message }
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+export async function actualizarContacto(
+  id: string,
+  prospectoId: string,
+  input: ContactoInput,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+  const norm = normalizarContacto(input)
+  if (!norm.nombre && !norm.email) return { error: 'El contacto necesita al menos nombre o correo' }
+
+  const { error } = await acceso.supabase.from('crm_contactos').update(norm).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+export async function eliminarContacto(
+  id: string,
+  prospectoId: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+  const { error } = await acceso.supabase.from('crm_contactos').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath(`/crm/${prospectoId}`)
   return { ok: true }
 }
 
@@ -624,7 +719,7 @@ export async function procesarSeguimientosCrm(
   const diasEstancado = opts.diasEstancado ?? DIAS_ESTANCADO_DEFAULT
   const admin = createAdminClient()
   const hoy = hoyChileISO()
-  const INACTIVAS = ['confirmado', 'descartado', 'nurture']
+  const INACTIVAS = ['confirmado', 'descartado', 'nurture', 'en_frio']
 
   // Prospectos activos con responsable e interacciones (para vencidos y estancados).
   const { data: prospectos } = await admin

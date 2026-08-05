@@ -999,6 +999,7 @@ export type EtapaProspecto =
   | 'contacto'
   | 'conversacion'
   | 'confirmado'
+  | 'en_frio'
   | 'nurture'
   | 'descartado'
 
@@ -1007,6 +1008,7 @@ export const ETAPA_PROSPECTO_LABELS: Record<EtapaProspecto, string> = {
   contacto:     'Contacto',
   conversacion: 'Conversación',
   confirmado:   'Confirmado',
+  en_frio:      'En frío',
   nurture:      'Nurture',
   descartado:   'Descartado',
 }
@@ -1019,6 +1021,7 @@ export const ETAPAS_PIPELINE_ACTIVAS: EtapaProspecto[] = [
   'contacto',
   'conversacion',
   'confirmado',
+  'en_frio',
 ]
 
 // Etapas donde se registran contactos → contador + correo enviado en la tarjeta.
@@ -1098,6 +1101,20 @@ export interface CrmInteraccion {
   proximo_paso?: string | null
   fecha_proximo?: string | null
   gmail_thread?: string | null
+  created_at: string
+}
+
+// Árbol de contactos de una marca: varias personas por prospecto.
+export interface CrmContacto {
+  id: string
+  prospecto_id: string
+  nombre?: string | null
+  cargo?: string | null
+  email?: string | null
+  telefono?: string | null
+  es_decisor?: boolean | null
+  notas?: string | null
+  links?: string[] | null
   created_at: string
 }
 

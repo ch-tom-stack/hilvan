@@ -89,6 +89,26 @@ CREATE POLICY "admin full access" ON public.crm_lecturas FOR ALL USING (true) WI
 
 CREATE INDEX IF NOT EXISTS idx_crm_lecturas_prospecto ON public.crm_lecturas (prospecto_id);
 
+-- ─── crm_contactos (árbol de contactos: varias personas por marca) ───────────
+CREATE TABLE IF NOT EXISTS public.crm_contactos (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  prospecto_id uuid NOT NULL REFERENCES public.prospectos(id) ON DELETE CASCADE,
+  nombre       text,
+  cargo        text,
+  email        text,
+  telefono     text,
+  es_decisor   boolean NOT NULL DEFAULT false,
+  notas        text,
+  links        text[] NOT NULL DEFAULT '{}',
+  created_at   timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.crm_contactos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin full access" ON public.crm_contactos;
+CREATE POLICY "admin full access" ON public.crm_contactos FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_crm_contactos_prospecto ON public.crm_contactos (prospecto_id);
+
 -- ─── crm_aprobaciones (Bandeja agente→humano; UI en F2) ──────────────────────
 CREATE TABLE IF NOT EXISTS public.crm_aprobaciones (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -113,9 +133,11 @@ CREATE INDEX IF NOT EXISTS idx_crm_aprobaciones_estado ON public.crm_aprobacione
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.prospectos        TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_interacciones TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_lecturas      TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_contactos     TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_aprobaciones  TO authenticated;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.prospectos        TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_interacciones TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_lecturas      TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_contactos     TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_aprobaciones  TO service_role;

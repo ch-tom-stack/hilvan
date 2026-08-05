@@ -184,7 +184,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
             {ORIGENES_PROSPECTO.map(o => <option key={o} value={o} className="capitalize">{o}</option>)}
           </select>
           <select value={fScore} onChange={e => setFScore(e.target.value)} className="input-ch text-xs py-2">
-            <option value="">Score · todos</option>
+            <option value="">Prioridad · todas</option>
             {SCORES_PROSPECTO.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
           </select>
           {hayFiltros && (
@@ -370,7 +370,7 @@ function TablaView({ prospectos }: { prospectos: Prospecto[] }) {
       <table className="w-full text-left">
         <thead>
           <tr className="border-b border-ch-border">
-            {['Empresa', 'Contacto', 'Etapa', 'Producto', 'Score', 'Responsable'].map(h => (
+            {['Empresa', 'Contacto', 'Etapa', 'Producto', 'Prioridad', 'Responsable'].map(h => (
               <th key={h} className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle px-4 py-3">{h}</th>
             ))}
           </tr>
