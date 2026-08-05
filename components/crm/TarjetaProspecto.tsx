@@ -10,6 +10,14 @@ const SCORE_STYLES: Record<string, string> = {
   baja:  'border-ch-border text-ch-subtle',
 }
 
+// Escala de calor del contador: 0 contactos = frío (azul) → muy trabajado = caliente (rojo).
+// Hue 210 (azul) a 0 (rojo); satura a 8+ contactos.
+function heatColor(n: number): string {
+  const t = Math.min(Math.max(n, 0) / 8, 1)
+  const hue = Math.round(210 * (1 - t))
+  return `hsl(${hue}, 78%, 62%)`
+}
+
 export function Tag({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <span
@@ -26,16 +34,18 @@ interface Props {
   onDragStart?: (e: React.DragEvent) => void
   /** marca un punto ch-gold (pendiente en la Bandeja) */
   pendiente?: boolean
-  /** muestra el contador de contactos y el botón "+ contacto" (Contacto/Conversación) */
+  /** muestra el botón "+ contacto" (registro rápido en el pipeline) */
   contador?: boolean
   /** abre el registro rápido de contacto en el pipeline */
   onAddContacto?: (p: Prospecto) => void
 }
 
-export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente, contador, onAddContacto }: Props) {
+export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente, onAddContacto }: Props) {
   const router = useRouter()
   const p = prospecto
   const checklist = (p.checklist ?? []).filter((x): x is ChecklistItem => x in CHECKLIST_LABELS)
+  const n = p.n_interacciones ?? 0
+  const heat = heatColor(n)
 
   return (
     <div
@@ -44,14 +54,33 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       onClick={() => router.push(`/crm/${p.id}`)}
       className="block bg-ch-surface/30 border border-ch-border p-4 hover:border-ch-muted transition-colors group cursor-pointer"
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-display italic text-lg text-ch-cream leading-tight group-hover:text-white transition-colors">
-          {p.empresa}
-        </h3>
-        {pendiente && (
-          <span className="w-2 h-2 bg-ch-gold shrink-0 mt-1.5" title="Pendiente en la Bandeja" />
-        )}
+      {/* Epígrafe: contador de contactos con código de calor */}
+      <div className="flex items-center justify-between mb-3 pb-3 border-b border-ch-border">
+        <div className="flex items-baseline gap-1.5" style={{ color: heat }}>
+          <span className="font-body font-bold text-3xl leading-none tabular-nums">{n}</span>
+          <span className="font-body font-bold text-[9px] tracking-[0.25em] uppercase">
+            contacto{n === 1 ? '' : 's'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {pendiente && (
+            <span className="w-2 h-2 bg-ch-gold" title="Pendiente en la Bandeja" />
+          )}
+          {onAddContacto && (
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onAddContacto(p) }}
+              className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-green hover:text-ch-green-light transition-colors"
+            >
+              + contacto
+            </button>
+          )}
+        </div>
       </div>
+
+      <h3 className="font-display italic text-lg text-ch-cream leading-tight group-hover:text-white transition-colors mb-2">
+        {p.empresa}
+      </h3>
 
       {p.nombre_contacto && (
         <p className="font-body text-xs text-ch-muted mb-3 truncate">{p.nombre_contacto}</p>
@@ -76,22 +105,6 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
               <span aria-hidden>✓</span>{CHECKLIST_LABELS[item]}
             </span>
           ))}
-        </div>
-      )}
-
-      {/* Contador de contactos + registro rápido */}
-      {contador && (
-        <div className="flex items-center justify-between mb-3 border-t border-ch-border pt-2">
-          <span className="font-body text-[10px] text-ch-muted">
-            {p.n_interacciones ?? 0} contacto{(p.n_interacciones ?? 0) === 1 ? '' : 's'}
-          </span>
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); onAddContacto?.(p) }}
-            className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-green hover:text-ch-green-light transition-colors"
-          >
-            + contacto
-          </button>
         </div>
       )}
 
