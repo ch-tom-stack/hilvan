@@ -77,6 +77,16 @@ export default function ItemModal({
   const [descItem, setDescItem] = useState(item?.descuento_item ?? 0)
   const [descItemTipo, setDescItemTipo] = useState<'porcentaje' | 'monto'>(item?.descuento_item_tipo ?? 'porcentaje')
 
+  // Buscador de la biblioteca de tarifas/equipos (listas largas, sin esto era puro scroll).
+  const [buscarTarifa, setBuscarTarifa] = useState('')
+  const [buscarEquipo, setBuscarEquipo] = useState('')
+  const tarifasFiltradas = buscarTarifa.trim()
+    ? tarifas.filter(t => t.nombre.toLowerCase().includes(buscarTarifa.trim().toLowerCase()))
+    : tarifas
+  const equiposFiltrados = buscarEquipo.trim()
+    ? equipos.filter(e => e.nombre.toLowerCase().includes(buscarEquipo.trim().toLowerCase()))
+    : equipos
+
   // Tarifa preseleccionada
   function aplicarTarifa(t: TarifaBase) {
     setNombre(t.nombre)
@@ -185,18 +195,28 @@ export default function ItemModal({
                 <span className="group-open:rotate-90 inline-block transition-transform">▶</span>
                 Cargar desde biblioteca
               </summary>
-              <div className="mt-2 max-h-48 overflow-y-auto border border-ch-border rounded divide-y divide-ch-border/30">
-                {tarifas.map(t => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => aplicarTarifa(t)}
-                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-ch-border/10 transition-colors text-left"
-                  >
-                    <span className="font-body text-xs text-ch-cream truncate">{t.nombre}</span>
-                    <span className="font-body text-xs text-ch-muted shrink-0 ml-2">{formatCLP(t.precio_referencial)}</span>
-                  </button>
-                ))}
+              <div className="mt-2 space-y-1.5">
+                <input
+                  type="text"
+                  value={buscarTarifa}
+                  onChange={e => setBuscarTarifa(e.target.value)}                  placeholder="Buscar tarifa…"
+                  className="w-full bg-ch-dark border border-ch-border rounded px-3 py-1.5 font-body text-xs text-ch-cream placeholder:text-ch-muted focus:outline-none focus:border-ch-cream/40"
+                />
+                <div className="max-h-48 overflow-y-auto border border-ch-border rounded divide-y divide-ch-border/30">
+                  {tarifasFiltradas.length === 0 ? (
+                    <p className="px-3 py-2 font-body text-xs text-ch-muted">Sin resultados.</p>
+                  ) : tarifasFiltradas.map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => aplicarTarifa(t)}
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-ch-border/10 transition-colors text-left"
+                    >
+                      <span className="font-body text-xs text-ch-cream truncate">{t.nombre}</span>
+                      <span className="font-body text-xs text-ch-muted shrink-0 ml-2">{formatCLP(t.precio_referencial)}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </details>
           )}
@@ -206,18 +226,28 @@ export default function ItemModal({
               <summary className="font-body text-xs text-ch-muted cursor-pointer hover:text-ch-cream list-none">
                 ▶ Cargar equipo CH
               </summary>
-              <div className="mt-2 max-h-40 overflow-y-auto border border-ch-border rounded divide-y divide-ch-border/30">
-                {equipos.map(e => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => aplicarEquipo(e)}
-                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-ch-border/10 transition-colors text-left"
-                  >
-                    <span className="font-body text-xs text-ch-cream truncate">{e.nombre}</span>
-                    <span className="font-body text-xs text-ch-muted shrink-0 ml-2">{e.precio_jornada ? formatCLP(e.precio_jornada) : '—'}</span>
-                  </button>
-                ))}
+              <div className="mt-2 space-y-1.5">
+                <input
+                  type="text"
+                  value={buscarEquipo}
+                  onChange={e => setBuscarEquipo(e.target.value)}                  placeholder="Buscar equipo…"
+                  className="w-full bg-ch-dark border border-ch-border rounded px-3 py-1.5 font-body text-xs text-ch-cream placeholder:text-ch-muted focus:outline-none focus:border-ch-cream/40"
+                />
+                <div className="max-h-40 overflow-y-auto border border-ch-border rounded divide-y divide-ch-border/30">
+                  {equiposFiltrados.length === 0 ? (
+                    <p className="px-3 py-2 font-body text-xs text-ch-muted">Sin resultados.</p>
+                  ) : equiposFiltrados.map(e => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => aplicarEquipo(e)}
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-ch-border/10 transition-colors text-left"
+                    >
+                      <span className="font-body text-xs text-ch-cream truncate">{e.nombre}</span>
+                      <span className="font-body text-xs text-ch-muted shrink-0 ml-2">{e.precio_jornada ? formatCLP(e.precio_jornada) : '—'}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </details>
           )}

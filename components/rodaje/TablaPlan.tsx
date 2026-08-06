@@ -84,6 +84,16 @@ export default function TablaPlan({
   onCrearDesdePlantilla: (label: string) => void
   onEliminar: (id: string) => Promise<void>
 }) {
+  const [buscarBloque, setBuscarBloque] = useState('')
+  const bloqueCoincide = (b: RodajeBloque) => {
+    if (!buscarBloque.trim()) return true
+    const needle = buscarBloque.trim().toLowerCase()
+    return Boolean(
+      b.titulo?.toLowerCase().includes(needle) ||
+      b.scenes_label?.toLowerCase().includes(needle) ||
+      b.descripcion?.toLowerCase().includes(needle)
+    )
+  }
   const [visibilidadAbierta, setVisibilidadAbierta] = useState<string | null>(null)
   const [colorPickerAbierto, setColorPickerAbierto] = useState<string | null>(null)
   const [expandidoMobil, setExpandidoMobil] = useState<string | null>(null)
@@ -186,6 +196,13 @@ export default function TablaPlan({
               ▬ Timeline
             </button>
           </div>
+          <input
+            type="text"
+            value={buscarBloque}
+            onChange={e => setBuscarBloque(e.target.value)}
+            placeholder="Buscar bloque…"
+            className="w-40 bg-transparent border border-ch-border rounded-[2px] px-2 py-1 text-xs text-ch-cream placeholder:text-ch-border focus:outline-none focus:border-ch-cream/40"
+          />
         </div>
         <div className="flex gap-2 relative" ref={plantillasRef}>
           <button
@@ -276,10 +293,19 @@ export default function TablaPlan({
             Agregar primer bloque →
           </button>
         </div>
+      ) : buscarBloque.trim() && !bloquesRaiz.some(bloqueCoincide) ? (
+        <div className="text-center py-12 text-ch-subtle text-sm">
+          <p>Sin bloques que coincidan con "{buscarBloque}".</p>
+        </div>
       ) : (
         <div className="lg:overflow-x-auto" onClick={() => { setVisibilidadAbierta(null); setColorPickerAbierto(null) }}>
         <div className="lg:min-w-[900px]">
           {bloquesRaiz.map((bloque, idx) => {
+            // Filtro de búsqueda: NO se saca del array (desincronizaría los
+            // índices que cascada[idx] usa para calcular horarios) — solo se
+            // oculta la fila.
+            if (!bloqueCoincide(bloque)) return null
+
             // Bloque libre: lienzo expresivo a todo lo ancho (fuera de la grilla).
             if (bloque.tipo === 'libre') {
               return (
