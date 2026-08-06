@@ -54,6 +54,22 @@ export async function aplicarEfectoAprobacion(
       .select('id')
       .single()
     if (error) throw new AplicarError(error.message)
+
+    // Archiva la lectura junto al prospecto recién creado. Antes el dossier
+    // solo vivía en el Supabase del sitio y en Hilván quedaba el resumen en
+    // texto plano; acá es el insumo del brief cuando el prospecto avanza.
+    // No bloquea la aprobación: el prospecto ya existe y es lo que importa.
+    if (payload.dossier || payload.url) {
+      const { error: errLectura } = await client.from('crm_lecturas').insert({
+        prospecto_id: data.id,
+        url: payload.url ?? null,
+        dossier: payload.dossier ?? null,
+        producto_derivado: payload.producto_objetivo ?? null,
+        fecha: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' }),
+      })
+      if (errLectura) console.error('[crm] no se pudo archivar la lectura:', errLectura.message)
+    }
+
     return { prospecto_id: data.id }
   }
 

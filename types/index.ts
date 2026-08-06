@@ -1147,7 +1147,10 @@ export interface CrmLectura {
   id: string
   prospecto_id: string
   url?: string | null
+  /** Referencia externa (histórico). El contenido real va en `dossier`. */
   dossier_ref?: string | null
+  /** Dossier completo de La Lectura, archivado al aprobar la propuesta. */
+  dossier?: Record<string, unknown> | null
   producto_derivado?: string | null
   fecha?: string | null
   created_at: string

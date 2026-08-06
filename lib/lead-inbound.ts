@@ -23,6 +23,8 @@ export interface LeadEntrante {
   lectura?: unknown
   url?: unknown
   angulo?: unknown
+  /** Dossier completo de La Lectura, tal como lo produjo el sitio. */
+  dossier?: unknown
 }
 
 export type ResultadoLead =
@@ -47,6 +49,12 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
   const lectura = strA(body?.lectura)
   const url = strA(body?.url)
   const angulo = strA(body?.angulo)
+  // El dossier viaja como objeto y se archiva al aprobar (ver crm-aprobaciones).
+  // Tope de tamaño: la propuesta no puede convertirse en un vertedero.
+  const dossier =
+    body?.dossier && typeof body.dossier === 'object' && !Array.isArray(body.dossier)
+      ? (JSON.stringify(body.dossier).length <= 400_000 ? body.dossier : null)
+      : null
 
   const admin = createAdminClient()
 
@@ -76,6 +84,8 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
   if (producto) payload.producto_objetivo = producto
   if (arquetipo) payload.arquetipo = arquetipo
   if (angulo) payload.angulo = angulo
+  if (url) payload.url = url
+  if (dossier) payload.dossier = dossier
 
   const { data, error } = await admin
     .from('crm_aprobaciones')
