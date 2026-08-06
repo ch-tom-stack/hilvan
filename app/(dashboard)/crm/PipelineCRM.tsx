@@ -18,6 +18,7 @@ import { moverEtapa } from '@/app/actions/crm'
 import TarjetaProspecto, { Tag } from '@/components/crm/TarjetaProspecto'
 import QuickContacto from '@/components/crm/QuickContacto'
 import RepartirProspectos from '@/components/crm/RepartirProspectos'
+import ProspectosDeHoy from '@/components/crm/ProspectosDeHoy'
 import type { MetricasCrm } from '@/app/actions/crm'
 
 interface Props {
@@ -25,11 +26,12 @@ interface Props {
   metricas: MetricasCrm
   pendientesIds: string[]
   totalBandeja: number
+  usuarioId: string
 }
 
 type Vista = 'kanban' | 'tabla'
 
-export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja }: Props) {
+export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja, usuarioId }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [vista, setVista] = useState<Vista>('kanban')
@@ -161,6 +163,8 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           </Link>
         </div>
       </div>
+
+      <ProspectosDeHoy prospectos={prospectos} usuarioId={usuarioId} />
 
       <RepartirProspectos huerfanos={huerfanos} responsables={responsables} />
 

@@ -1095,6 +1095,7 @@ export interface Prospecto {
   notas?: string | null
   checklist?: string[] | null       // hitos marcados (ver CHECKLIST_PROSPECTO)
   n_interacciones?: number           // contador de contactos (solo en el pipeline)
+  ultima_interaccion?: string | null // YYYY-MM-DD del último toque (solo en el pipeline)
   created_at: string
   updated_at?: string
 }

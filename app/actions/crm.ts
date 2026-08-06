@@ -53,8 +53,9 @@ function limpiar(v: string | null | undefined): string | null {
 const PROSPECTO_SELECT =
   '*, responsable:profiles!prospectos_responsable_id_fkey(id, nombre), cliente:clientes(id, nombre)'
 
-// El pipeline agrega el contador de contactos (crm_interacciones) por tarjeta.
-const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count)`
+// El pipeline agrega el contador de contactos y sus fechas: el contador pinta
+// el mapa de calor y la fecha más reciente da los días sin tocar (C4).
+const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count), fechas:crm_interacciones(fecha)`
 
 export async function getPipeline(): Promise<Prospecto[]> {
   const supabase = await createClient()
@@ -64,10 +65,18 @@ export async function getPipeline(): Promise<Prospecto[]> {
     .order('updated_at', { ascending: false })
 
   if (error) return []
-  return (data ?? []).map((r: any) => ({
-    ...r,
-    n_interacciones: Array.isArray(r.crm_interacciones) ? (r.crm_interacciones[0]?.count ?? 0) : 0,
-  })) as unknown as Prospecto[]
+  return (data ?? []).map((r: any) => {
+    const fechas: string[] = Array.isArray(r.fechas)
+      ? r.fechas.map((f: { fecha?: string | null }) => f?.fecha).filter(Boolean)
+      : []
+    // Fecha plana YYYY-MM-DD: comparar como string es correcto y evita UTC.
+    const ultima = fechas.length ? fechas.sort().at(-1) ?? null : null
+    return {
+      ...r,
+      n_interacciones: Array.isArray(r.crm_interacciones) ? (r.crm_interacciones[0]?.count ?? 0) : 0,
+      ultima_interaccion: ultima,
+    }
+  }) as unknown as Prospecto[]
 }
 
 export async function getProspecto(id: string): Promise<{
