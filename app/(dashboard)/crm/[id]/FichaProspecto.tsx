@@ -10,6 +10,7 @@ import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
 import ContactosProspecto from '@/components/crm/ContactosProspecto'
 import BorradorRespuesta from '@/components/crm/BorradorRespuesta'
+import LecturaDossier from '@/components/crm/LecturaDossier'
 import { Tag } from '@/components/crm/TarjetaProspecto'
 import { momento } from '@/lib/momentos'
 
@@ -164,17 +165,7 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
               <Dato label="Ángulo de acercamiento" valor={p.angulo} />
               <Dato label="Decisor" valor={p.decisor} />
               {lectura ? (
-                <div>
-                  <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">La Lectura</p>
-                  {lectura.url ? (
-                    <a href={lectura.url} target="_blank" rel="noopener noreferrer"
-                      className="font-body text-sm text-ch-green hover:text-ch-green-light transition-colors break-all">
-                      {lectura.dossier_ref || lectura.url}
-                    </a>
-                  ) : (
-                    <p className="font-body text-sm text-ch-cream">{lectura.dossier_ref || '—'}</p>
-                  )}
-                </div>
+                <LecturaDossier lectura={lectura} />
               ) : (
                 <p className="font-body text-xs text-ch-subtle">Sin Lectura vinculada todavía.</p>
               )}
