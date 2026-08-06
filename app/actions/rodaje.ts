@@ -22,14 +22,36 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 // ─── RODAJES ─────────────────────────────────────────────────────────────────
 
-export async function getRodajes() {
+export async function getRodajes(q?: string, estado?: string, etiquetaId?: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('rodajes')
-    .select(`*`)
+    // proyecto:proyectos(...) faltaba — la UI ya renderizaba r.proyecto.nombre
+    // pero como nunca se unía, r.proyecto siempre era undefined y ese texto
+    // jamás se mostraba.
+    .select(`*, proyecto:proyectos(id, nombre), etiquetas:rodaje_etiqueta_asignaciones(etiqueta:rodaje_etiquetas(*))`)
     .order('fecha', { ascending: true, nullsFirst: false })
   if (error) throw error
-  return data
+
+  let rodajes = (data ?? []).map((r: any) => ({
+    ...r,
+    etiquetas: (r.etiquetas ?? []).map((e: any) => e.etiqueta).filter(Boolean),
+  }))
+  if (q && q.trim()) {
+    const needle = q.trim().toLowerCase()
+    rodajes = rodajes.filter((r: any) =>
+      r.nombre?.toLowerCase().includes(needle) ||
+      r.locacion_nombre?.toLowerCase().includes(needle) ||
+      r.proyecto?.nombre?.toLowerCase().includes(needle)
+    )
+  }
+  if (estado) {
+    rodajes = rodajes.filter((r: any) => r.estado === estado)
+  }
+  if (etiquetaId) {
+    rodajes = rodajes.filter((r: any) => r.etiquetas.some((e: any) => e.id === etiquetaId))
+  }
+  return rodajes
 }
 
 export async function getRodaje(id: string) {

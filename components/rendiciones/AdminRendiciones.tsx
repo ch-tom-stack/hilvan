@@ -62,6 +62,8 @@ export default function AdminRendiciones({
   const [conflictoExistente, setConflictoExistente] = useState(false)
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({})
   const [confirmarEliminarRendicion, setConfirmarEliminarRendicion] = useState<string | null>(null)
+  const [filtroQ, setFiltroQ] = useState('')
+  const [filtroEstado, setFiltroEstado] = useState<string | null>(null)
 
   const toggleExpand = (key: string) => setExpandidos(p => ({ ...p, [key]: !p[key] }))
 
@@ -184,6 +186,24 @@ export default function AdminRendiciones({
   const cotizacionesDisponibles = cotizacionesForm.filter(c => !cotizacionIdsConRendicion.has(c.id))
   const todosGastos = rendiciones.flatMap(r => r.gastos || [])
 
+  // Búsqueda/filtro: todo en memoria (los datos ya están cargados completos).
+  // El estado vive por GASTO, no por rendición — filtrar por estado muestra la
+  // rendición completa si ALGÚN gasto calza (no oculta el resto de sus gastos).
+  const rendicionesFiltradas = rendiciones.filter(r => {
+    const cotizacion = cotizacionesForm.find(c => c.id === r.cotizacion_id)
+    const numBase = r.cotizacion?.grupo?.numero_base || cotizacion?.grupo?.numero_base || ''
+    const nombreCot = r.cotizacion?.nombre || cotizacion?.nombre || ''
+    if (filtroQ.trim()) {
+      const needle = filtroQ.trim().toLowerCase()
+      if (!numBase.toLowerCase().includes(needle) && !nombreCot.toLowerCase().includes(needle)) return false
+    }
+    if (filtroEstado) {
+      if (!(r.gastos || []).some(g => g.estado === filtroEstado)) return false
+    }
+    return true
+  })
+  const hayFiltro = Boolean(filtroQ.trim() || filtroEstado)
+
   const handleEliminarLink = async (id: string) => {
     try {
       await eliminarLinkTemporal(id)
@@ -282,13 +302,57 @@ export default function AdminRendiciones({
         </button>
       </div>
 
+      {/* Búsqueda + filtro por estado de gasto */}
+      {rendiciones.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={filtroQ}
+              onChange={e => setFiltroQ(e.target.value)}
+              placeholder="Buscar por número o nombre de cotización…"
+              className="flex-1 bg-ch-surface border border-ch-border px-3 py-2 font-body text-sm text-ch-cream placeholder:text-ch-muted focus:outline-none focus:border-ch-cream/40"
+            />
+            {hayFiltro && (
+              <button
+                onClick={() => { setFiltroQ(''); setFiltroEstado(null) }}
+                className="px-3 py-2 font-body text-xs text-ch-muted hover:text-ch-cream transition-colors whitespace-nowrap"
+              >
+                ✕ limpiar
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { key: 'enviada', label: 'Enviados' },
+              { key: 'aprobada', label: 'Por pagar' },
+              { key: 'pago_aprobado', label: 'Pago aprobado' },
+              { key: 'rechazada', label: 'Rechazados' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFiltroEstado(filtroEstado === key ? null : key)}
+                className={`px-2.5 py-1 font-body text-[11px] tracking-wide uppercase border transition-colors ${
+                  filtroEstado === key ? 'border-ch-green text-ch-green' : 'border-ch-border text-ch-muted hover:text-ch-cream'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Lista vacía */}
       {rendiciones.length === 0 && (
         <EstadoVacio mensaje="No hay rendiciones." submensaje="Crea una con el botón de arriba." />
       )}
+      {rendiciones.length > 0 && rendicionesFiltradas.length === 0 && (
+        <EstadoVacio mensaje="Sin resultados." submensaje="Prueba con otro término o quita el filtro." />
+      )}
 
       {/* Lista de rendiciones */}
-      {rendiciones.map(rendicion => {
+      {rendicionesFiltradas.map(rendicion => {
         const cotizacion = cotizacionesForm.find(c => c.id === rendicion.cotizacion_id)
         const gastos = rendicion.gastos || []
         const numBase = rendicion.cotizacion?.grupo?.numero_base || cotizacion?.grupo?.numero_base

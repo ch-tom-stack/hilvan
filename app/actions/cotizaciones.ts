@@ -102,7 +102,7 @@ async function copiarItem(
 // LEER
 // ============================================================
 
-export async function getCotizacionesGrupos() {
+export async function getCotizacionesGrupos(q?: string, estado?: string, etiquetaId?: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('cotizacion_grupos')
@@ -112,12 +112,39 @@ export async function getCotizacionesGrupos() {
       proyecto:proyectos(*),
       cotizaciones(
         id, version, variante, nombre, estado, updated_at, created_by
-      )
+      ),
+      etiquetas:cotizacion_grupo_etiquetas(etiqueta:cotizacion_etiquetas(*))
     `)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
-  return data
+  // La join de etiquetas viene anidada como [{etiqueta: {...}}] — aplanar.
+  let grupos = (data ?? []).map((g: any) => ({
+    ...g,
+    etiquetas: (g.etiquetas ?? []).map((e: any) => e.etiqueta).filter(Boolean),
+  }))
+
+  // Filtrado en JS (no en SQL): el grupo agrupa varias versiones con su propio
+  // estado/nombre cada una, así que un match parcial (cualquier versión) es lo
+  // que tiene sentido — no hay una sola columna "estado" a nivel de grupo.
+  if (q && q.trim()) {
+    const needle = q.trim().toLowerCase()
+    grupos = grupos.filter((g: any) =>
+      g.numero_base?.toLowerCase().includes(needle) ||
+      g.cliente?.nombre?.toLowerCase().includes(needle) ||
+      g.cliente?.empresa?.toLowerCase().includes(needle) ||
+      g.proyecto?.nombre?.toLowerCase().includes(needle) ||
+      (g.cotizaciones ?? []).some((c: any) => c.nombre?.toLowerCase().includes(needle))
+    )
+  }
+  if (estado) {
+    grupos = grupos.filter((g: any) => (g.cotizaciones ?? []).some((c: any) => c.estado === estado))
+  }
+  if (etiquetaId) {
+    grupos = grupos.filter((g: any) => g.etiquetas.some((e: any) => e.id === etiquetaId))
+  }
+
+  return grupos
 }
 
 export async function getCotizacion(id: string) {

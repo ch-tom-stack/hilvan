@@ -218,6 +218,13 @@ export type FormatoPDF = 'simple' | 'detallado'
 export type TipoDescuento = 'porcentaje' | 'monto'
 
 // --- Grupo (familia de versiones y variantes) ---
+export interface Etiqueta {
+  id: string
+  texto: string
+  color: string
+  created_at: string
+}
+
 export interface CotizacionGrupo {
   id: string
   numero_base: string
@@ -228,6 +235,7 @@ export interface CotizacionGrupo {
   created_at: string
   created_by?: string
   cotizaciones?: Cotizacion[]
+  etiquetas?: Etiqueta[]
 }
 
 // --- Cotización (una versión/variante específica) ---
@@ -394,6 +402,7 @@ export interface Rodaje {
   departamentos?: RodajeDepartamento[]
   equipo_tecnico?: RodajeEquipoTecnico[]
   escenas?: RodajeEscena[]
+  etiquetas?: Etiqueta[]
 }
 
 export interface RodajeDepartamento {
