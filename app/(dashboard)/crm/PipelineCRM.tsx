@@ -17,6 +17,7 @@ import { moverEtapa } from '@/app/actions/crm'
 
 import TarjetaProspecto, { Tag } from '@/components/crm/TarjetaProspecto'
 import QuickContacto from '@/components/crm/QuickContacto'
+import RepartirProspectos from '@/components/crm/RepartirProspectos'
 import type { MetricasCrm } from '@/app/actions/crm'
 
 interface Props {
@@ -112,6 +113,10 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
     ejecutarMovimiento(id, etapa)
   }
 
+  // Prospectos sin dueño: se calculan sobre TODOS, no sobre los filtrados —
+  // el reparto es un pendiente global, no depende de la vista actual.
+  const huerfanos = useMemo(() => prospectos.filter(p => !p.responsable), [prospectos])
+
   const limpiarFiltros = () => { setFResponsable(''); setFOrigen(''); setFScore('') }
   const hayFiltros = fResponsable || fOrigen || fScore
 
@@ -156,6 +161,8 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           </Link>
         </div>
       </div>
+
+      <RepartirProspectos huerfanos={huerfanos} responsables={responsables} />
 
       {/* Banda de métricas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">

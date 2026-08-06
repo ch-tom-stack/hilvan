@@ -14,7 +14,7 @@ import type {
   EtapaProspecto,
   Profile,
 } from '@/types'
-import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO } from '@/types'
+import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION } from '@/types'
 import { aplicarEfectoAprobacion, AplicarError, type AprobacionRow } from '@/lib/crm-aprobaciones'
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 
@@ -295,6 +295,26 @@ export interface InteraccionInput {
   gmail_thread?: string
 }
 
+/**
+ * Toque de un click: registra que se contactó al prospecto hoy, por tal canal,
+ * y nada más.
+ *
+ * Registrar y detallar son dos momentos distintos. Exigir un resumen para
+ * anotar "le escribí" es la razón por la que había 1 contacto en 30 prospectos;
+ * el detalle se agrega después desde la ficha, si vale la pena.
+ */
+export async function registrarToque(
+  prospectoId: string,
+  tipo: string,
+): Promise<{ ok?: true; error?: string }> {
+  if (!(TIPOS_INTERACCION as readonly string[]).includes(tipo)) {
+    return { error: 'Tipo de contacto no válido' }
+  }
+  // Fecha de hoy en Chile, plana YYYY-MM-DD (nunca new Date() sobre el string).
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
+  return registrarInteraccion(prospectoId, { fecha: hoy, tipo })
+}
+
 export async function registrarInteraccion(
   prospectoId: string,
   input: InteraccionInput,
@@ -391,6 +411,35 @@ export async function asignarResponsable(
   revalidatePath('/crm')
   revalidatePath(`/crm/${id}`)
   return { ok: true }
+}
+
+/**
+ * Reparte varios prospectos de una vez.
+ *
+ * Existe porque 18 de 30 prospectos estaban sin responsable: sin dueño no hay
+ * lista, sin lista no hay acción, y la capa de recompensa no tiene qué premiar.
+ * Asignar de a uno desde cada ficha hacía el reparto lo bastante caro como para
+ * no hacerlo nunca.
+ */
+export async function asignarResponsableMasivo(
+  ids: string[],
+  responsableId: string | null,
+): Promise<{ ok?: true; n?: number; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const limpios = [...new Set(ids.filter(Boolean))]
+  if (limpios.length === 0) return { error: 'No hay prospectos seleccionados' }
+
+  const { error } = await acceso.supabase
+    .from('prospectos')
+    .update({ responsable_id: responsableId || null })
+    .in('id', limpios)
+  if (error) return { error: error.message }
+
+  revalidatePath('/crm')
+  for (const id of limpios) revalidatePath(`/crm/${id}`)
+  return { ok: true, n: limpios.length }
 }
 
 // Cambia la "Prioridad" (columna DB: score) — manual: alta | media | baja | ''.

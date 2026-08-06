@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CrmInteraccion } from '@/types'
 import { TIPOS_INTERACCION } from '@/types'
-import { registrarInteraccion, eliminarInteraccion, type InteraccionInput } from '@/app/actions/crm'
+import { registrarInteraccion, registrarToque, eliminarInteraccion, type InteraccionInput } from '@/app/actions/crm'
 import { toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
 import { formatFecha, parseFechaLocal } from '@/lib/fechas'
@@ -19,6 +19,15 @@ function estaVencida(fecha?: string | null): boolean {
   return parseFechaLocal(fecha).getTime() < parseFechaLocal(hoyISO()).getTime()
 }
 
+// Mismos cuatro canales que la tarjeta del Kanban: el toque se registra igual
+// desde el tablero que desde la ficha.
+const CANALES_RAPIDOS: { tipo: string; label: string }[] = [
+  { tipo: 'correo',  label: 'Correo'  },
+  { tipo: 'llamada', label: 'Llamada' },
+  { tipo: 'mensaje', label: 'Mensaje' },
+  { tipo: 'reunion', label: 'Reunión' },
+]
+
 interface Props {
   prospectoId: string
   interacciones: CrmInteraccion[]
@@ -28,6 +37,15 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [abierto, setAbierto] = useState(false)
+
+  const tocarRapido = (tipo: string) => {
+    momento('crm.contacto', { mensaje: '' })
+    startTransition(async () => {
+      const res = await registrarToque(prospectoId, tipo)
+      if (res.error) { momento('error', { mensaje: res.error }); return }
+      router.refresh()
+    })
+  }
   const [form, setForm] = useState<InteraccionInput>({
     fecha: hoyISO(),
     tipo: 'correo',
@@ -134,7 +152,32 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
       )}
 
       {interacciones.length === 0 ? (
-        <p className="font-body text-sm text-ch-subtle">Sin interacciones registradas todavía.</p>
+        // El estado vacío más visto de toda la app: con 1 contacto en la base
+        // aparece en 29 de 30 fichas. Debe enseñar y ofrecer la acción, no
+        // limitarse a informar la nada.
+        <div className="border border-dashed border-ch-border p-5 ch-fade-up">
+          <p className="font-display italic text-xl text-ch-cream mb-1.5">
+            Sin contactos registrados
+          </p>
+          <p className="font-body text-xs text-ch-muted leading-relaxed mb-4 max-w-md">
+            Cada toque que anotas alimenta la Biblioteca: es lo que después dice
+            a qué contacto suelen cerrar los prospectos y cuáles se están
+            enfriando. Registra el primero con un click.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CANALES_RAPIDOS.map(c => (
+              <button
+                key={c.tipo}
+                type="button"
+                disabled={isPending}
+                onClick={() => tocarRapido(c.tipo)}
+                className="border border-ch-border text-ch-muted hover:text-ch-green hover:border-ch-green/50 font-body text-[10px] tracking-[0.2em] uppercase px-3.5 py-2 transition-colors disabled:opacity-40 ch-press"
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : (
         <ol className="space-y-0">
           {interacciones.map(i => {

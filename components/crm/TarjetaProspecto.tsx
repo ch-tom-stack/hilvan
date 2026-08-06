@@ -1,8 +1,20 @@
 'use client'
 
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Prospecto } from '@/types'
 import { CHECKLIST_LABELS, type ChecklistItem } from '@/types'
+import { registrarToque } from '@/app/actions/crm'
+import { momento } from '@/lib/momentos'
+
+// El toque de un click. Cuatro canales: registrar y detallar son dos momentos
+// distintos, y el detalle se agrega después desde la ficha si vale la pena.
+const CANALES: { tipo: string; label: string }[] = [
+  { tipo: 'correo',  label: 'Correo'  },
+  { tipo: 'llamada', label: 'Llamada' },
+  { tipo: 'mensaje', label: 'Mensaje' },
+  { tipo: 'reunion', label: 'Reunión' },
+]
 
 const SCORE_STYLES: Record<string, string> = {
   alta:  'border-ch-green text-ch-green',
@@ -60,10 +72,29 @@ interface Props {
 
 export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente, onAddContacto, recienMovido }: Props) {
   const router = useRouter()
+  const [, startTransition] = useTransition()
+  // Suma optimista: el contador late y sube de color en el acto, sin esperar
+  // al servidor. Si falla, se revierte.
+  const [extra, setExtra] = useState(0)
   const p = prospecto
   const checklist = (p.checklist ?? []).filter((x): x is ChecklistItem => x in CHECKLIST_LABELS)
-  const n = p.n_interacciones ?? 0
+  const n = (p.n_interacciones ?? 0) + extra
   const heat = heatColor(n)
+
+  const tocar = (tipo: string) => {
+    setExtra(e => e + 1)
+    // Va dentro del gesto, no después del await: es micro-feedback local.
+    momento('crm.contacto', { mensaje: '' })
+    startTransition(async () => {
+      const res = await registrarToque(p.id, tipo)
+      if (res.error) {
+        setExtra(e => Math.max(0, e - 1))
+        momento('error', { mensaje: res.error })
+        return
+      }
+      router.refresh()
+    })
+  }
 
   return (
     <div
@@ -130,6 +161,27 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       <p className="font-body text-[10px] tracking-[0.15em] uppercase text-ch-subtle">
         {p.responsable?.nombre ?? 'Sin asignar'}
       </p>
+
+      {/* Toque de un click. Visible siempre, no en hover: es LA acción que el
+          módulo quiere fomentar; esconderla sería trabajar en contra. */}
+      {onAddContacto && (
+        // Sangrada a los bordes de la tarjeta: en la columna más angosta del
+        // Kanban (220 px) el texto no cabe dentro del padding. Gana 32 px y
+        // además se lee como un pie de tarjeta.
+        <div className="-mx-4 -mb-4 mt-3 border-t border-ch-border grid grid-cols-4">
+          {CANALES.map(c => (
+            <button
+              key={c.tipo}
+              type="button"
+              title={`Registrar ${c.label.toLowerCase()} de hoy`}
+              onClick={e => { e.stopPropagation(); tocar(c.tipo) }}
+              className="font-body text-[8px] tracking-[0.04em] uppercase text-ch-subtle hover:text-ch-green hover:bg-ch-green/10 transition-colors py-2 ch-press truncate"
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
