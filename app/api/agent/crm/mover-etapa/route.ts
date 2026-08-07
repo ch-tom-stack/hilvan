@@ -6,8 +6,14 @@ import { esEtapaValida } from '@/lib/agent-crm'
 
 export const runtime = 'nodejs'
 
-// POST /api/agent/crm/mover-etapa { prospecto_id, etapa }
+// POST /api/agent/crm/mover-etapa { prospecto_id, etapa, como_propuesta?, evidencia? }
 // Cambia la etapa de un prospecto. Validar transición = etapa permitida.
+//
+// `como_propuesta: true` NO mueve: deja una propuesta `cambio_etapa` en la
+// Bandeja para que la apruebe un humano. Es la vía de los RETROCESOS: avanzar
+// se apoya en evidencia positiva (existe un correo), retroceder se apoya en
+// una ausencia, y una ausencia siempre puede ser un fallo de búsqueda.
+// Ver docs/crm/operador-contexto.md.
 export async function POST(req: Request) {
   const unauthorized = requireAgentToken(req)
   if (unauthorized) return unauthorized
@@ -28,6 +34,50 @@ export async function POST(req: Request) {
   if (!existe) return NextResponse.json({ error: 'prospecto_id no encontrado' }, { status: 404 })
 
   const etapaAnterior = existe.etapa
+
+  // ── Vía propuesta: no toca el prospecto ──────────────────────────────────
+  if (body?.como_propuesta === true) {
+    const evidencia = typeof body?.evidencia === 'string' ? body.evidencia.trim().slice(0, 2000) : ''
+    if (!evidencia) {
+      return NextResponse.json(
+        { error: 'Una propuesta de cambio de etapa exige "evidencia" (por qué se propone)' },
+        { status: 400 },
+      )
+    }
+
+    const { data: prop, error: errProp } = await admin
+      .from('crm_aprobaciones')
+      .insert({
+        tipo: 'cambio_etapa',
+        prospecto_id: prospectoId,
+        estado: 'pendiente',
+        origen: 'agente',
+        nota_agente: `${existe.empresa}: ${etapaAnterior} → ${body.etapa}. ${evidencia}`,
+        payload: { prospecto_id: prospectoId, etapa: body.etapa, etapa_anterior: etapaAnterior, evidencia },
+      })
+      .select('id')
+      .single<{ id: string }>()
+
+    if (errProp || !prop) {
+      await registrarAccion({ herramienta: 'crm-mover-etapa', payload: body, ok: false, error: errProp?.message })
+      return NextResponse.json({ error: errProp?.message ?? 'No se pudo crear la propuesta' }, { status: 500 })
+    }
+
+    await registrarAccion({
+      herramienta: 'crm-mover-etapa',
+      payload: { ...body, modo: 'propuesta' },
+      resultado_tabla: 'crm_aprobaciones',
+      resultado_id: prop.id,
+      ok: true,
+    })
+    return NextResponse.json({
+      propuesta_id: prop.id,
+      estado: 'pendiente',
+      empresa: existe.empresa,
+      de: etapaAnterior,
+      a: body.etapa,
+    })
+  }
 
   const { error } = await admin.from('prospectos').update({ etapa: body.etapa }).eq('id', prospectoId)
   if (error) {

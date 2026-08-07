@@ -160,6 +160,15 @@ directo reversible.
 
 ## 6. Sugerencias para mejorar el trabajo del operador
 
+> **Estado 6-ago (tarde): las cinco están CONSTRUIDAS.** Ver
+> `sql/crm_interacciones_operador.sql` (pendiente de correr en el editor SQL de
+> Supabase — habilita 4 y 5) y las herramientas nuevas
+> `hilvan_interacciones` y `hilvan_registrar_interacciones_bulk`.
+> `hilvan_mover_etapa` acepta `como_propuesta` + `evidencia`.
+> Probadas contra datos reales: lectura de la bitácora de Reebok, validación
+> atómica del bulk, idempotencia por `gmail_thread` y propuesta de retroceso
+> sin mover el prospecto.
+
 **Del lado del MCP (para el builder):**
 1. **`hilvan_interacciones(prospecto_id)`** — hoy puedo escribir toques pero **no leer los existentes** de un prospecto; para "cuántos contactos lleva X" dependo de la evidencia externa. Es la carencia nº 1 para la reconciliación incremental.
 2. **Propuesta de retroceso como tipo de Bandeja** — hoy la Bandeja acepta prospectos nuevos; un tipo `mover_etapa_propuesto` con evidencia adjunta formalizaría la asimetría (retrocesos en tanda aprobables por el humano).

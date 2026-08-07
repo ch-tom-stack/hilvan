@@ -44,9 +44,13 @@ export async function POST(req: Request) {
       fecha,
       tipo: strA(body?.tipo),
       resumen,
+      respondido: body?.respondido === true,
       proximo_paso: proximoPaso,
       fecha_proximo: fechaProximo,
       gmail_thread: strA(body?.gmail_thread),
+      // Quién hizo el contacto (Simón / Natalia). Trazabilidad, no ranking.
+      // Se omite si no viene: no exige la columna antes de su migración.
+      ...(strA(body?.enviado_por) ? { enviado_por: strA(body?.enviado_por) } : {}),
     })
     .select('id')
     .single()

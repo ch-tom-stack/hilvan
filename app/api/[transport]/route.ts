@@ -1361,8 +1361,18 @@ const baseHandler = createMcpHandler(
       'hilvan_mover_etapa',
       {
         title: 'Mover etapa de prospecto',
-        description: 'Cambia la etapa de un prospecto. Valida que la etapa exista. CONFIRMA con el usuario antes de llamar.',
-        inputSchema: { prospecto_id: z.string(), etapa: z.string() },
+        description:
+          'Cambia la etapa de un prospecto. Valida que la etapa exista. CONFIRMA con el usuario antes de llamar. ' +
+          'AVANZAR (prospecto→contacto→conversacion) va directo si hay evidencia positiva. ' +
+          'RETROCEDER usa `como_propuesta: true` + `evidencia`: no mueve nada, deja la propuesta en la Bandeja ' +
+          'para que la apruebe un humano — retroceder se apoya en una ausencia, y una ausencia puede ser un ' +
+          'fallo de búsqueda. NUNCA muevas a `confirmado` por inferencia: dispara el handoff a cotización.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          etapa: z.string(),
+          como_propuesta: z.boolean().optional().describe('true = propone en la Bandeja en vez de mover'),
+          evidencia: z.string().optional().describe('obligatoria si como_propuesta: por qué se propone'),
+        },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/mover-etapa', args)),
     )
@@ -1380,10 +1390,52 @@ const baseHandler = createMcpHandler(
           resumen: z.string().optional(),
           proximo_paso: z.string().optional(),
           fecha_proximo: z.string().optional().describe('YYYY-MM-DD'),
-          gmail_thread: z.string().optional(),
+          gmail_thread: z.string().optional().describe('id del hilo de Gmail — evita registrar dos veces el mismo correo'),
+          respondido: z.boolean().optional().describe('el prospecto respondió'),
+          enviado_por: z.string().optional().describe('quién hizo el contacto: "Simón", "Natalia"'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/interaccion', args)),
+    )
+
+    server.registerTool(
+      'hilvan_interacciones',
+      {
+        title: 'Bitácora de un prospecto (CRM)',
+        description:
+          'SOLO LECTURA: los toques ya registrados de un prospecto, del más reciente al más antiguo. ' +
+          'Devuelve total, cuántos tuvieron respuesta, la fecha del último y `hilos_registrados` ' +
+          '(los gmail_thread ya anotados). Úsalo ANTES de registrar para no duplicar.',
+        inputSchema: { prospecto_id: z.string() },
+      },
+      async ({ prospecto_id }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/interacciones?prospecto_id=${encodeURIComponent(prospecto_id)}`)),
+    )
+
+    server.registerTool(
+      'hilvan_registrar_interacciones_bulk',
+      {
+        title: 'Registrar muchas interacciones (CRM)',
+        description:
+          'Registra hasta 200 toques de una vez — para la reconciliación de correos, donde la primera ' +
+          'corrida son decenas. Valida TODO antes de escribir: si una entrada está mal, no se escribe nada. ' +
+          'Los `gmail_thread` ya registrados se OMITEN y se reportan, así la rutina puede correr dos veces ' +
+          'sin duplicar. CONFIRMA antes de llamar.',
+        inputSchema: {
+          interacciones: z.array(z.object({
+            prospecto_id: z.string(),
+            fecha: z.string().optional().describe('YYYY-MM-DD'),
+            tipo: z.string().optional().describe('correo|reunion|lectura|llamada|mensaje'),
+            resumen: z.string().optional(),
+            respondido: z.boolean().optional(),
+            proximo_paso: z.string().optional(),
+            fecha_proximo: z.string().optional().describe('YYYY-MM-DD'),
+            gmail_thread: z.string().optional(),
+            enviado_por: z.string().optional(),
+          })).describe('cada una necesita al menos resumen o proximo_paso'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/interacciones-bulk', args)),
     )
 
     server.registerTool(
