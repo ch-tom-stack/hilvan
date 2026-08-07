@@ -1399,6 +1399,39 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_insight_escribir',
+      {
+        title: 'Guardar insight de abordaje (CRM)',
+        description:
+          'Deja en la ficha del prospecto el PORQUÉ del abordaje, visible para Nati y Simón. ' +
+          'tipo: investigacion (lo que encontraste de la marca — Brave, su sitio, su IG) | ' +
+          'lectura (extraído de su dossier de La Lectura) | ' +
+          'literatura (qué corresponde según la secuencia de ventas: toque 1-2 valor, 3-4 pedir un ' +
+          'avance, 5+ reactivar). Guarda lo que fundamenta el borrador, no el borrador — ese va en ' +
+          'hilvan_borrador_escribir.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          tipo: z.string().optional().describe('investigacion | lectura | literatura'),
+          titulo: z.string().describe('una línea, concreta'),
+          detalle: z.string().optional(),
+          fuente: z.string().optional().describe('URL, o el nombre de la obra si es literatura'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/insight', args)),
+    )
+
+    server.registerTool(
+      'hilvan_insights_leer',
+      {
+        title: 'Insights de abordaje de un prospecto (CRM)',
+        description: 'SOLO LECTURA: lo ya averiguado sobre este prospecto. Míralo antes de investigar de nuevo.',
+        inputSchema: { prospecto_id: z.string() },
+      },
+      async ({ prospecto_id }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/insight?prospecto_id=${encodeURIComponent(prospecto_id)}`)),
+    )
+
+    server.registerTool(
       'hilvan_interacciones',
       {
         title: 'Bitácora de un prospecto (CRM)',

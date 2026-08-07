@@ -134,3 +134,5 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.prospectos        TO service_role
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_interacciones TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_lecturas      TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_aprobaciones  TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_insights      TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_insights      TO service_role;

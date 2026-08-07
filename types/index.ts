@@ -1156,6 +1156,26 @@ export interface CrmLectura {
   created_at: string
 }
 
+export type TipoInsight = 'investigacion' | 'lectura' | 'literatura'
+
+/** Por qué se aborda así a este prospecto. No es la bitácora ni el borrador. */
+export interface CrmInsight {
+  id: string
+  prospecto_id: string
+  tipo: TipoInsight
+  titulo: string
+  detalle?: string | null
+  /** URL si vino de la web, o el nombre de la obra si vino de la literatura. */
+  fuente?: string | null
+  created_at: string
+}
+
+export const TIPO_INSIGHT_LABEL: Record<TipoInsight, string> = {
+  investigacion: 'De la marca',
+  lectura:       'De La Lectura',
+  literatura:    'De la literatura',
+}
+
 export interface CrmAprobacion {
   id: string
   tipo: string

@@ -10,6 +10,7 @@ import type {
   CrmContacto,
   CrmBorrador,
   CrmLectura,
+  CrmInsight,
   CrmAprobacion,
   EtapaProspecto,
   Profile,
@@ -85,6 +86,7 @@ export async function getProspecto(id: string): Promise<{
   contactos: CrmContacto[]
   borradores: CrmBorrador[]
   lecturas: CrmLectura[]
+  insights: CrmInsight[]
 }> {
   const supabase = await createClient()
 
@@ -120,12 +122,20 @@ export async function getProspecto(id: string): Promise<{
     .eq('prospecto_id', id)
     .order('fecha', { ascending: false, nullsFirst: false })
 
+  // El porqué del abordaje: lo que el operador averiguó investigando.
+  const { data: insights } = await supabase
+    .from('crm_insights')
+    .select('*')
+    .eq('prospecto_id', id)
+    .order('created_at', { ascending: false })
+
   return {
     prospecto: (prospecto as unknown as Prospecto) ?? null,
     interacciones: (interacciones ?? []) as CrmInteraccion[],
     contactos: (contactos ?? []) as CrmContacto[],
     borradores: (borradores ?? []) as CrmBorrador[],
     lecturas: (lecturas ?? []) as CrmLectura[],
+    insights: (insights ?? []) as CrmInsight[],
   }
 }
 

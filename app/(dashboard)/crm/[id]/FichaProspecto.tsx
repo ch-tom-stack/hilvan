@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Prospecto, CrmInteraccion, CrmContacto, CrmBorrador, CrmLectura, EtapaProspecto, ChecklistItem } from '@/types'
+import type { Prospecto, CrmInteraccion, CrmContacto, CrmBorrador, CrmLectura, CrmInsight, EtapaProspecto, ChecklistItem } from '@/types'
 import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO } from '@/types'
 import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable, asignarPrioridad } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
@@ -11,6 +11,7 @@ import Bitacora from '@/components/crm/Bitacora'
 import ContactosProspecto from '@/components/crm/ContactosProspecto'
 import BorradorRespuesta from '@/components/crm/BorradorRespuesta'
 import LecturaDossier from '@/components/crm/LecturaDossier'
+import ComoAbordarlo from '@/components/crm/ComoAbordarlo'
 import { Tag } from '@/components/crm/TarjetaProspecto'
 import { momento } from '@/lib/momentos'
 
@@ -20,10 +21,11 @@ interface Props {
   contactos: CrmContacto[]
   borradores: CrmBorrador[]
   lecturas: CrmLectura[]
+  insights: CrmInsight[]
   responsables: { id: string; nombre: string }[]
 }
 
-export default function FichaProspecto({ prospecto, interacciones, contactos, borradores, lecturas, responsables }: Props) {
+export default function FichaProspecto({ prospecto, interacciones, contactos, borradores, lecturas, insights, responsables }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
@@ -171,6 +173,9 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
               )}
             </div>
           </div>
+
+          {/* Cómo abordarlo: el porqué del próximo correo */}
+          <ComoAbordarlo insights={insights} interacciones={interacciones} />
 
           {/* Árbol de contactos */}
           <ContactosProspecto prospectoId={p.id} contactos={contactos} />
