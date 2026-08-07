@@ -130,15 +130,16 @@ ventana corta, solo lo nuevo.
 prospecto. Está mal: pierde a las marcas que el equipo contactó y que **nunca
 se dieron de alta**, que resultaron ser varias. Va al revés.
 
-1. **Partir del correo saliente, no del CRM.** Pero OJO: **hay dos fuentes,
-   no una.**
-   - `from:estudiocasahiedra@gmail.com` en Gmail → la actividad de **Simón**
-     (16 hilos, 14 envíos a prospectos).
-   - `~/Documents/correos` (66 archivos .eml) → la actividad de **Natalia**,
-     que escribe desde `natalia@casahiedra.com` y **no reenvía a Tomás**.
-     Cabeceras limpias, parseables con el módulo `email` de Python.
+1. **Partir del correo saliente, no del CRM.** Son **dos búsquedas en Gmail**,
+   porque desde el 7-ago **los dos reenvían** a `tomasmontealegrem@gmail.com`:
+   - `from:estudiocasahiedra@gmail.com` → **Simón**
+   - `from:natalia@casahiedra.com` → **Natalia** (protocolo nuevo)
 
-   Usar solo la primera deja fuera ~27 marcas. Ver §2 de
+   **Más el histórico de Nati, por una sola vez**: `~/Documents/correos`,
+   40 .eml anteriores al protocolo. Cabeceras limpias, parseables con el módulo
+   `email` de Python — no hay que parsear cuerpo ahí.
+
+   Usar solo la primera fuente deja fuera ~27 marcas. Ver §2 de
    [`operador-verificado.md`](operador-verificado.md).
 2. De cada hilo, parsear el bloque `Forwarded message`: destinatario, fecha y
    asunto **originales**.
@@ -229,6 +230,38 @@ este criterio con Tomás antes de la primera corrida masiva.
 mirando solo desde la última corrida.
 
 ### B · Redactar próximos contactos
+
+> **Reglas de tono acordadas el 6-ago con Tomás.** El detalle completo, con su
+> fundamento en la literatura, está en la memoria del proyecto
+> (*Correos de outreach*). Resumen operativo:
+
+**Largo: tope 120 palabras.** Los correos actuales promedian 203. Orden:
+presentación en una línea → lo que les pasa a ELLOS → qué hacemos. Lo
+específico va segundo, no cuarto.
+
+**El párrafo de traducción decide si el correo se manda.** Debe contener algo
+que solo se sabe mirando a esa marca. Prohibido "etc.". Nunca el mismo párrafo
+para dos marcas de la misma categoría — ya pasó con Electrolux y Kitchen Center.
+
+**Credenciales: dos, una de cada escala.** Una grande que reconozcan (Falabella,
+Aldo, Wrangler, Lee) y una chica del porte del prospecto (Asia Skincare, OZ
+Cranberry Lab).
+
+**Valor** = precisar y explicar: observación precisa de su comunicación → qué
+mejoraría y por qué → cómo entramos, dicho una vez y sin gesto de venta. NO es
+enseñar un truco para que lo hagan solos: suena insincero y no suena a Nati ni a
+Simón. Filtro: *si no responden, ¿entendieron mejor su propio problema?*
+
+**Secuencia:** toques 1–2 valor · 3–4 **pedir un avance**, no cerrar · 5+
+reactivar con una etiqueta y una pregunta que se pueda responder con un "no".
+Si la respuesta pide precio, plazo o disponibilidad, se cierra de inmediato sin
+importar el número de toque.
+
+El panel **"Cómo abordarlo"** de la ficha ya muestra en qué toque va cada
+prospecto y qué corresponde. Los insights que fundamentan el borrador se
+guardan con `hilvan_insight_escribir` para que Nati y Simón los vean.
+
+
 
 Para prospectos que llevan días sin toque, dejar un borrador listo en la ficha.
 

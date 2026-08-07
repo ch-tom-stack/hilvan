@@ -39,11 +39,19 @@ esta nota como contexto permanente del operador.
 | **Natalia** | **`natalia@casahiedra.com`** (dirección propia — el traspaso asumía que todo salía de estudiocasahiedra: **falso**) | **NO se reenvía**: existe como export .eml en `~/Documents/correos` | ~27 marcas (jul–ago), mayoría "Banco de videos para X" |
 | Resto | mixed batch (dice Tomás) | — | por atribuir caso a caso |
 
-**Implicancia para la rutina A:** `from:estudiocasahiedra@gmail.com` **no
-captura la actividad de Natalia**. Fuentes completas hoy: (1) reenvíos en Gmail
-para Simón, (2) carpeta `~/Documents/correos` para Nati (montada y accesible), y
-(3) si Nati manda algo nuevo, no aparecerá en Gmail de Tomás salvo reenvío o
-export → punto ciego a resolver (ver §6).
+**PROTOCOLO NUEVO (7-ago-2026):** Natalia **también reenvía** a
+`tomasmontealegrem@gmail.com`, igual que la cuenta de Simón. El punto ciego se
+cierra por proceso, no por herramienta.
+
+Consecuencia para la rutina A — **dos búsquedas, no una**:
+
+| Periodo | Fuente |
+|---|---|
+| **De ahora en adelante** | `from:estudiocasahiedra@gmail.com` (Simón) **+** `from:natalia@casahiedra.com` (Nati). Ambos llegan como reenvío con bloque *Forwarded*. |
+| **Histórico de Nati (jul–ago)** | carpeta `~/Documents/correos` — 40 .eml, anteriores al protocolo. Se procesa **una sola vez**. |
+
+Si aparece un tercer remitente, agregarlo a la lista en vez de asumir que el
+barrido está completo.
 
 ### Universo detectado en la reconciliación (aún sin escribir, salvo el piloto)
 - **Existentes contactados sin toque registrado:** Treino, Ellesse, Froens, Street Machine, Monster, Total Tools, UC (Simón) · Kuy-Kuy, Leal & Morris, La Araucana, Kitchen Center, Desigual (Nati). [Reebok ya hecho]
@@ -177,7 +185,7 @@ directo reversible.
 5. **Dedupe por `gmail_thread`** — si registro dos veces el mismo hilo, nada lo impide; un unique por (prospecto, gmail_thread) evitaría dobles toques.
 
 **Del lado del proceso (para Tomás y el equipo):**
-6. **Cerrar el punto ciego de Nati:** su correo (`natalia@casahiedra.com`) no llega al Gmail de Tomás. Opciones: (a) regla de auto-reenvío como la de estudiocasahiedra, (b) export .eml periódico a la carpeta, o (c) conectar su cuenta por MCP. Sin esto, la rutina A solo ve a Simón.
+6. ~~**Cerrar el punto ciego de Nati**~~ → **RESUELTO 7-ago**: Nati reenvía, mismo protocolo que la cuenta de Simón. Detalle original: su correo (`natalia@casahiedra.com`) no llega al Gmail de Tomás. Opciones: (a) regla de auto-reenvío como la de estudiocasahiedra, (b) export .eml periódico a la carpeta, o (c) conectar su cuenta por MCP. Sin esto, la rutina A solo ve a Simón.
 7. **Estandarizar el remitente o registrar al enviar:** si todo el equipo enviara desde cuentas reenviadas (o registrara el toque con el click del Kanban al enviar), la reconciliación semanal sería casi vacía — que es el objetivo.
 8. **Sesión de tono pendiente:** definir la voz de los correos de valor (los actuales son 100% venta con plantilla común). Los dos borradores del piloto sirven de material de discusión. Lo que salga se agrega aquí como regla del operador.
 9. **El prospecto "Home"** sigue sin responsable; y "WOkGBTUybPNwckUkj" parece basura de formulario — candidatos a limpieza humana.
