@@ -136,3 +136,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_lecturas      TO service_role
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_aprobaciones  TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_insights      TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_insights      TO service_role;
+-- Repertorio: el cuerpo de obra (schema en sql/repertorio.sql)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.repertorio        TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.repertorio        TO service_role;

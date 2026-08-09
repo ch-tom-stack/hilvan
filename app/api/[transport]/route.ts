@@ -1432,6 +1432,79 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_repertorio_leer',
+      {
+        title: 'Repertorio: lo que Casa Hiedra ya hizo (CRM)',
+        description:
+          'SOLO LECTURA. El cuerpo de obra, con links. Úsalo ANTES de escribir un correo: la regla ' +
+          'de credenciales pide siempre DOS referencias, una marca grande que reconozcan y una ' +
+          'chica del porte del prospecto — nunca cuatro, que se leen como currículum. ' +
+          'Pasa `credenciales_para` con el rubro del prospecto (moda, belleza, retail…) y devuelve ' +
+          'el par ya elegido en `credenciales`, descartando los links rotos. ' +
+          'Si `delRubro` viene false, no había del rubro y son de otro: dilo en el borrador o no las uses.',
+        inputSchema: {
+          credenciales_para: z.string().optional().describe('rubro del prospecto — devuelve el par grande+chica listo'),
+          rubro: z.string().optional(),
+          escala: z.string().optional().describe('grande | chica'),
+          formato: z.string().optional().describe('banco | lookbook | spot | otro'),
+          q: z.string().optional().describe('buscar por marca'),
+          incluir_no_mostrables: z.boolean().optional().describe('incluye lo que decidimos no mostrar'),
+        },
+      },
+      async (args, extra) => {
+        const qs = new URLSearchParams()
+        for (const [k, v] of Object.entries(args)) {
+          if (v !== undefined && v !== null && v !== '') qs.set(k, String(v))
+        }
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/crm/repertorio?${qs.toString()}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_repertorio_escribir',
+      {
+        title: 'Guardar un trabajo en el Repertorio (CRM)',
+        description:
+          'Agrega o actualiza un trabajo del cuerpo de obra. Sin `id` busca por marca+formato+año ' +
+          'y actualiza si ya existe, así que la rutina puede correr dos veces sin duplicar. ' +
+          '`escala` es lo que hace funcionar la regla de credenciales: marca `grande` la que ' +
+          'cualquiera reconoce y `chica` la del porte de un prospecto pequeño — sin ella el trabajo ' +
+          'no sirve para armar el par. `mostrable: false` para lo que se conserva como contexto ' +
+          'pero decidimos no exhibir (el material viejo del canal de YouTube). ' +
+          'Un link nuevo entra `sin_revisar` y NO puedes declararlo vivo: eso lo decide ' +
+          'hilvan_repertorio_revisar. Al editar un trabajo, reenvía cada link con su `revisado_en` ' +
+          'para no perder el resultado de la última revisión.',
+        inputSchema: {
+          id: z.string().optional().describe('sólo para editar uno existente'),
+          marca: z.string(),
+          rubro: z.string().optional().describe('minúsculas y singular: moda, belleza, retail, educacion…'),
+          escala: z.string().optional().describe('grande | chica'),
+          anio: z.number().optional(),
+          formato: z.string().optional().describe('banco | lookbook | spot | otro'),
+          descripcion: z.string().optional().describe('qué se hizo, concreto — sirve de material para el correo'),
+          links: z.array(z.any()).optional().describe('URLs (string) u objetos {url, titulo, plataforma}'),
+          mostrable: z.boolean().optional(),
+          notas: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/repertorio', args)),
+    )
+
+    server.registerTool(
+      'hilvan_repertorio_revisar',
+      {
+        title: 'Revisar que los links del Repertorio sigan vivos (CRM)',
+        description:
+          'Comprueba los links y marca los rotos. Sin `id` revisa todo el catálogo. ' +
+          'Córrelo cada tanto: un link roto en un correo de captación es peor que ningún link. ' +
+          'Un 403 o un timeout NO se marca muerto (Instagram bloquea bots) — sale en ' +
+          '`no_concluyentes` para mirarlo a mano. Si viene `aviso`, se cortó por tope y falta revisar.',
+        inputSchema: { id: z.string().optional().describe('un trabajo puntual; omitir para revisar todo') },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/repertorio/revisar', args)),
+    )
+
+    server.registerTool(
       'hilvan_interacciones',
       {
         title: 'Bitácora de un prospecto (CRM)',

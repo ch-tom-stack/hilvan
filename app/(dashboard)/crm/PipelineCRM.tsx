@@ -153,6 +153,12 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
             {sfxOn ? 'Sonido' : 'Silencio'}
           </button>
           <Link
+            href="/crm/repertorio"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
+          >
+            Repertorio
+          </Link>
+          <Link
             href="/crm/biblioteca"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors"
           >
