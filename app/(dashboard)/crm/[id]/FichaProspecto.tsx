@@ -175,7 +175,7 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
           </div>
 
           {/* Cómo abordarlo: el porqué del próximo correo */}
-          <ComoAbordarlo insights={insights} interacciones={interacciones} />
+          <ComoAbordarlo insights={insights} interacciones={interacciones} origen={p.origen} />
 
           {/* Árbol de contactos */}
           <ContactosProspecto prospectoId={p.id} contactos={contactos} />

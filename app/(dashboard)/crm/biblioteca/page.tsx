@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getBibliotecaContactos } from '@/app/actions/crm'
+import { TEMPERATURA_LABELS, TEMPERATURA_TEXTO, type Temperatura } from '@/lib/crm-temperatura'
 
 function n1(x: number): string {
   return x.toLocaleString('es-CL', { maximumFractionDigits: 1 })
@@ -61,6 +62,43 @@ export default async function BibliotecaPage() {
           </p>
         </div>
       )}
+
+      {/* Por temperatura de origen */}
+      <div className="mb-10">
+        <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted mb-2">Frío vs entrante</h2>
+        <p className="font-body text-[11px] text-ch-subtle mb-4 max-w-2xl">
+          Un entrante llega con el interés ya declarado y cierra en muchos menos toques que
+          uno frío. Promediarlos juntos da un número que no describe a ninguno de los dos —
+          la hipótesis de los 16 toques sólo tiene sentido medida contra la fila de frío.
+        </p>
+        <div className="border border-ch-border overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-ch-border">
+                {['Origen', 'Prospectos', 'Contactos prom.', 'Mediana', 'Tasa respuesta', 'Cierre prom.'].map(h => (
+                  <th key={h} className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle px-4 py-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {b.porTemperatura.map(t => (
+                <tr key={t.temperatura} className="border-b border-ch-border/50">
+                  <td className={`px-4 py-3 font-body text-sm ${TEMPERATURA_TEXTO[t.temperatura as Temperatura] ?? 'text-ch-cream'}`}>
+                    {TEMPERATURA_LABELS[t.temperatura as Temperatura] ?? t.temperatura}
+                  </td>
+                  <td className="px-4 py-3 font-body text-sm text-ch-muted tabular-nums">{t.prospectos}</td>
+                  <td className="px-4 py-3 font-body text-sm text-ch-muted tabular-nums">{n1(t.promedioContactos)}</td>
+                  <td className="px-4 py-3 font-body text-sm text-ch-muted tabular-nums">{n1(t.medianaContactos)}</td>
+                  <td className="px-4 py-3 font-body text-sm text-ch-muted tabular-nums">{pct(t.tasaRespuesta)}</td>
+                  <td className="px-4 py-3 font-body text-sm text-ch-muted tabular-nums">
+                    {t.cierre.n ? `${n1(t.cierre.promedio)} · ${t.cierre.n} conf.` : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Tabla por etapa */}
       <div className="border border-ch-border overflow-x-auto">

@@ -1057,15 +1057,29 @@ export const PRODUCTO_LABELS: Record<Producto, string> = {
   spot:     'Spot',
 }
 
+// `lectura` faltaba y es el origen entrante más grande del CRM (15 de 58): el
+// filtro del pipeline no lo ofrecía, así que ese grupo era infiltrable.
 export const ORIGENES_PROSPECTO = [
+  'lectura',
+  'web',
+  'feria',
+  'referido',
+  'correo',
   'linkedin',
   'instagram',
-  'referido',
-  'feria',
-  'web',
-  'correo',
   'otro',
 ] as const
+
+// Temperatura de origen (frío vs entrante) — se deriva de `origen`.
+export {
+  temperaturaDe,
+  TEMPERATURA_LABELS,
+  TEMPERATURA_GLOSA,
+  TEMPERATURA_BORDE,
+  TEMPERATURA_TEXTO,
+  TEMPERATURAS,
+  type Temperatura,
+} from '@/lib/crm-temperatura'
 
 export const SCORES_PROSPECTO = ['alta', 'media', 'baja'] as const
 

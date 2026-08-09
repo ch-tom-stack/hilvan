@@ -13,6 +13,7 @@ import {
   ORIGENES_PROSPECTO,
   SCORES_PROSPECTO,
 } from '@/types'
+import { temperaturaDe, TEMPERATURA_LABELS, TEMPERATURAS, type Temperatura } from '@/lib/crm-temperatura'
 import { moverEtapa } from '@/app/actions/crm'
 
 import TarjetaProspecto, { Tag } from '@/components/crm/TarjetaProspecto'
@@ -42,6 +43,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   const [fResponsable, setFResponsable] = useState('')
   const [fOrigen, setFOrigen] = useState('')
   const [fScore, setFScore] = useState('')
+  const [fTemp, setFTemp] = useState<Temperatura | ''>('')
 
   // drag & drop
   const [draggedId, setDraggedId] = useState<string | null>(null)
@@ -70,9 +72,21 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
       if (fResponsable && p.responsable?.id !== fResponsable) return false
       if (fOrigen && p.origen !== fOrigen) return false
       if (fScore && p.score !== fScore) return false
+      if (fTemp && temperaturaDe(p.origen) !== fTemp) return false
       return true
     })
-  }, [prospectos, fResponsable, fOrigen, fScore])
+  }, [prospectos, fResponsable, fOrigen, fScore, fTemp])
+
+  // Cuántos hay de cada temperatura — sobre TODOS, no sobre los filtrados: el
+  // conteo del botón tiene que ser estable, si no cambia al hacerle click.
+  const conteoTemp = useMemo(() => {
+    const c: Record<string, number> = {}
+    for (const p of prospectos) {
+      const t = temperaturaDe(p.origen)
+      c[t] = (c[t] ?? 0) + 1
+    }
+    return c
+  }, [prospectos])
 
   const porEtapa = useMemo(() => {
     const map = new Map<EtapaProspecto, Prospecto[]>()
@@ -119,8 +133,8 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   // el reparto es un pendiente global, no depende de la vista actual.
   const huerfanos = useMemo(() => prospectos.filter(p => !p.responsable), [prospectos])
 
-  const limpiarFiltros = () => { setFResponsable(''); setFOrigen(''); setFScore('') }
-  const hayFiltros = fResponsable || fOrigen || fScore
+  const limpiarFiltros = () => { setFResponsable(''); setFOrigen(''); setFScore(''); setFTemp('') }
+  const hayFiltros = fResponsable || fOrigen || fScore || fTemp
 
   return (
     <>
@@ -218,6 +232,33 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
             {cajonAbierto ? 'Ocultar cajón' : 'Nurture / Descartados'}
           </button>
         )}
+
+        {/* Frío vs entrante. Eje aparte de la etapa: el origen no cambia nunca,
+            la etapa cambia siempre. Por eso no es una columna del Kanban. */}
+        <div className="flex border border-ch-border">
+          <button
+            onClick={() => setFTemp('')}
+            className={`font-body text-[10px] tracking-[0.3em] uppercase px-4 py-2 transition-colors ${
+              fTemp === '' ? 'bg-ch-surface text-ch-cream' : 'text-ch-muted hover:text-ch-cream'
+            }`}
+          >
+            Todos
+          </button>
+          {TEMPERATURAS.filter(t => t !== 'sin_clasificar' || (conteoTemp[t] ?? 0) > 0).map(t => (
+            <button
+              key={t}
+              onClick={() => setFTemp(fTemp === t ? '' : t)}
+              className={`font-body text-[10px] tracking-[0.3em] uppercase px-4 py-2 transition-colors border-l border-ch-border ${
+                fTemp === t
+                  ? 'bg-ch-surface text-ch-cream'
+                  : t === 'sin_clasificar' ? 'text-ch-gold hover:text-ch-gold-light' : 'text-ch-muted hover:text-ch-cream'
+              }`}
+            >
+              {TEMPERATURA_LABELS[t]}
+              <span className="ml-2 text-ch-subtle tabular-nums">{conteoTemp[t] ?? 0}</span>
+            </button>
+          ))}
+        </div>
 
         <div className="flex flex-wrap gap-2 ml-auto">
           <select value={fResponsable} onChange={e => setFResponsable(e.target.value)} className="input-ch text-xs py-2">

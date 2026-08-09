@@ -15,12 +15,12 @@ export async function GET(req: Request) {
 
   const admin = createAdminClient()
   const [{ data: prospectos }, { data: interacciones }] = await Promise.all([
-    admin.from('prospectos').select('id, etapa'),
+    admin.from('prospectos').select('id, etapa, origen'),
     admin.from('crm_interacciones').select('prospecto_id, respondido'),
   ])
 
   const biblioteca = agregarBiblioteca(
-    (prospectos ?? []) as { id: string; etapa: string }[],
+    (prospectos ?? []) as { id: string; etapa: string; origen: string | null }[],
     (interacciones ?? []) as { prospecto_id: string; respondido: boolean | null }[],
   )
 

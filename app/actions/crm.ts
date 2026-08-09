@@ -195,11 +195,11 @@ export async function getMetricasCrm(): Promise<MetricasCrm> {
 export async function getBibliotecaContactos(): Promise<BibliotecaContactos> {
   const supabase = await createClient()
   const [{ data: prospectos }, { data: interacciones }] = await Promise.all([
-    supabase.from('prospectos').select('id, etapa'),
+    supabase.from('prospectos').select('id, etapa, origen'),
     supabase.from('crm_interacciones').select('prospecto_id, respondido'),
   ])
   return agregarBiblioteca(
-    (prospectos ?? []) as { id: string; etapa: string }[],
+    (prospectos ?? []) as { id: string; etapa: string; origen: string | null }[],
     (interacciones ?? []) as { prospecto_id: string; respondido: boolean | null }[],
   )
 }

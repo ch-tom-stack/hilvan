@@ -4,6 +4,13 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Prospecto } from '@/types'
 import { CHECKLIST_LABELS, type ChecklistItem } from '@/types'
+import {
+  temperaturaDe,
+  TEMPERATURA_LABELS,
+  TEMPERATURA_GLOSA,
+  TEMPERATURA_BORDE,
+  TEMPERATURA_TEXTO,
+} from '@/lib/crm-temperatura'
 import { registrarToque } from '@/app/actions/crm'
 import { momento } from '@/lib/momentos'
 
@@ -80,6 +87,7 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
   const checklist = (p.checklist ?? []).filter((x): x is ChecklistItem => x in CHECKLIST_LABELS)
   const n = (p.n_interacciones ?? 0) + extra
   const heat = heatColor(n)
+  const temp = temperaturaDe(p.origen)
 
   const tocar = (tipo: string) => {
     setExtra(e => e + 1)
@@ -101,7 +109,8 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       draggable={draggable}
       onDragStart={onDragStart}
       onClick={() => router.push(`/crm/${p.id}`)}
-      className={`block bg-ch-surface/30 border border-ch-border p-4 hover:border-ch-muted transition-colors group cursor-pointer ${recienMovido ? 'ch-settle' : ''}`}
+      title={TEMPERATURA_GLOSA[temp]}
+      className={`block bg-ch-surface/30 border border-ch-border border-l-2 ${TEMPERATURA_BORDE[temp]} p-4 hover:border-ch-muted transition-colors group cursor-pointer ${recienMovido ? 'ch-settle' : ''}`}
     >
       {/* Epígrafe: contador de toques con código de calor */}
       <div className="flex items-center justify-between mb-3 pb-3 border-b border-ch-border">
@@ -137,6 +146,12 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       )}
 
       <div className="flex flex-wrap gap-1.5 mb-3">
+        {/* Frío o entrante. Va primero porque decide cómo se le escribe: a un
+            entrante no se le manda el toque 1 de valor, ya levantó la mano. */}
+        <Tag className={`border-current ${TEMPERATURA_TEXTO[temp]}`}>
+          {TEMPERATURA_LABELS[temp]}
+          {p.origen && temp !== 'sin_clasificar' ? ` · ${p.origen}` : ''}
+        </Tag>
         {p.producto_objetivo && p.producto_objetivo !== 'sin_definir' && (
           <Tag className="border-ch-border text-ch-muted capitalize">{p.producto_objetivo}</Tag>
         )}
