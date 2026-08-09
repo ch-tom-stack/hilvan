@@ -46,6 +46,8 @@ por canal anterior a esa fecha es inválida.
 | `hilvan_proximos_seguimientos` | próximos pasos vencidos |
 | `hilvan_derivar_brief_cotizacion` | handoff a cotización |
 | `hilvan_registrar_lectura` | vincular una lectura |
+| `hilvan_insight_escribir` · `hilvan_insights_leer` | el porqué del abordaje, visible en la ficha |
+| `hilvan_repertorio_leer` · `hilvan_repertorio_escribir` · `hilvan_repertorio_revisar` | **el cuerpo de obra y sus links** |
 | `hilvan_deshacer` | **revertir lo último** |
 
 **Ojo:** `hilvan_correo_pendientes` NO es de correos del CRM — clasifica
@@ -245,7 +247,28 @@ para dos marcas de la misma categoría — ya pasó con Electrolux y Kitchen Cen
 
 **Credenciales: dos, una de cada escala.** Una grande que reconozcan (Falabella,
 Aldo, Wrangler, Lee) y una chica del porte del prospecto (Asia Skincare, OZ
-Cranberry Lab).
+Cranberry Lab). **No las cites de memoria: sácalas del Repertorio** con
+`hilvan_repertorio_leer` y `credenciales_para=<rubro>` (rutina D), que además
+descarta las que tienen el link roto.
+
+**Frío o entrante: no se escriben igual.** El CRM lo deriva del `origen` y lo
+muestra en la tarjeta y en "Cómo abordarlo". No es un matiz de tono, es otra
+secuencia:
+
+| | Frío (correo, linkedin, instagram, otro) | Entrante (lectura, web, feria, referido) |
+|---|---|---|
+| Toque 1 | Valor, sin pedir nada | **Responder lo que preguntaron.** Corto y rápido: acá la velocidad rinde más que la elaboración |
+| Toque 2 | Valor otra vez (cabe el video de Tomás) | **Pedir un avance** — el interés ya está declarado |
+| 3–4 | Pedir un avance | Avance concreto: una fecha, un alcance acotado, un número |
+| 5+ | Reactivar (etiqueta + pregunta de "no") | Reactivar, nombrando que había interés y quedó en nada |
+
+Mandarle a un entrante el correo de valor del toque 1 es no haberlo escuchado:
+ya levantó la mano. En Rackham, el descubrimiento ya ocurrió — por eso el
+avance se pide antes.
+
+Si el prospecto sale **Sin clasificar**, no tiene origen registrado. Se usa la
+secuencia fría, que es la conservadora, y se avisa para que alguien complete
+la ficha.
 
 **Valor** = precisar y explicar: observación precisa de su comunicación → qué
 mejoraría y por qué → cómo entramos, dicho una vez y sin gesto de venta. NO es
@@ -294,6 +317,41 @@ sostenida.** Ese es el disparador, no el calendario.
 
 ---
 
+### D · Mantener el Repertorio · **trimestral, más la primera carga**
+
+El Repertorio (`/crm/repertorio`) es lo que Casa Hiedra ya hizo, con links.
+No es un portafolio: es la munición de la regla de credenciales. Cada correo
+lleva **dos** referencias, una marca grande que reconozcan y una chica del
+porte del prospecto — y hasta ahora esas seis marcas estaban de memoria.
+
+Antes de escribir cualquier correo: `hilvan_repertorio_leer` con
+`credenciales_para=<rubro del prospecto>`. Devuelve el par ya elegido y sin
+links rotos. **Si `delRubro` viene `false`**, no había nada de ese rubro y las
+credenciales son de otro: dilo en el borrador o no las uses — una referencia
+de rubro ajeno presentada como si fuera del rubro es exactamente el tipo de
+imprecisión que hace que el correo se lea a la defensiva.
+
+Para poblarlo y mantenerlo:
+
+- **Fuentes**: el sitio de Casa Hiedra, Instagram, y el canal de YouTube
+  (`youtube.com/@CasaHiedra`) para lo más antiguo.
+- **`escala` es obligatoria en la práctica.** Un trabajo sin escala no sirve
+  para armar el par, aunque esté completo en todo lo demás.
+- **`mostrable: false`** para el material viejo que se decidió no exhibir. Se
+  conserva como contexto —sirve para saber qué se ha hecho— pero nunca se
+  ofrece como credencial.
+- **`rubro`** en minúsculas y singular: moda, belleza, retail,
+  electrodomesticos, educacion, alimentos, deporte, inmobiliaria, banca.
+- **`hilvan_repertorio_revisar` cada trimestre.** Los links se mueren, y uno
+  roto en un correo de captación es peor que ningún link. Lo que salga en
+  `no_concluyentes` (403 de Instagram, timeouts) se mira a mano: no se marca
+  muerto por las dudas. Si viene `aviso`, se cortó por tope y falta revisar.
+
+No inventes trabajos ni infieras que existió una campaña porque la marca es
+cliente. Si no hay pieza publicada que puedas linkear, no es repertorio.
+
+---
+
 ## 5. Sobre hacerlo recurrente
 
 El cron de seguimientos del CRM **existe y está apagado a propósito**.
@@ -307,6 +365,8 @@ sigue siendo:
    semanal. Es la que sostiene la verdad del tablero.
 2. Cuando haya contactos fluyendo, **B semanal**.
 3. **C recién después**, y solo si el rendimiento lo justifica.
+4. **D** es aparte de esa secuencia: la primera carga conviene hacerla ya,
+   porque B la necesita para elegir credenciales. Después, trimestral.
 
 Un aviso que llega sin nada que celebrar entrena a ignorar los avisos.
 
