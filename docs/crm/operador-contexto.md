@@ -234,8 +234,8 @@ mirando solo desde la última corrida.
 ### B · Redactar próximos contactos
 
 > **Reglas de tono acordadas el 6-ago con Tomás.** El detalle completo, con su
-> fundamento en la literatura, está en la memoria del proyecto
-> (*Correos de outreach*). Resumen operativo:
+> fundamento en la literatura, está en **`docs/crm/reglas-correos.md`** — ahí
+> vive la fuente de verdad. Abajo, el resumen operativo:
 
 **Largo: tope 120 palabras.** Los correos actuales promedian 203. Orden:
 presentación en una línea → lo que les pasa a ELLOS → qué hacemos. Lo
