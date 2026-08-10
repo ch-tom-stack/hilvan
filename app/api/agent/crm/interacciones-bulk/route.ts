@@ -139,6 +139,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Los toques nuevos consumen el snooze de sus prospectos: un aplazamiento
+  // viejo no puede seguir escondiéndolos de la agenda del día.
+  const tocados = [...new Set((data ?? []).map(d => d.prospecto_id))]
+  if (tocados.length > 0) {
+    await admin.from('prospectos').update({ snooze_hasta: null }).in('id', tocados)
+  }
+
   await registrarAccion({
     herramienta: 'crm-interacciones-bulk',
     payload: { n: filas.length, omitidas: omitidos.length },

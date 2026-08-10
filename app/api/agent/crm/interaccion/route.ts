@@ -44,6 +44,7 @@ export async function POST(req: Request) {
       fecha,
       tipo: strA(body?.tipo),
       resumen,
+      cuerpo: strA(body?.cuerpo),
       respondido: body?.respondido === true,
       proximo_paso: proximoPaso,
       fecha_proximo: fechaProximo,
@@ -59,6 +60,10 @@ export async function POST(req: Request) {
     await registrarAccion({ herramienta: 'crm-interaccion', payload: body, ok: false, error: error?.message })
     return NextResponse.json({ error: error?.message ?? 'No se pudo registrar' }, { status: 500 })
   }
+
+  // Un toque nuevo consume el snooze, igual que desde la app: si no, un
+  // aplazamiento viejo seguiría escondiendo al prospecto de la agenda del día.
+  await admin.from('prospectos').update({ snooze_hasta: null }).eq('id', prospectoId)
 
   await registrarAccion({ herramienta: 'crm-interaccion', payload: body, resultado_tabla: 'crm_interacciones', resultado_id: data.id, ok: true })
   return NextResponse.json({ id: data.id, prospecto_id: prospectoId })

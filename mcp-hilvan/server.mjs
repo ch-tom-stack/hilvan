@@ -1112,7 +1112,7 @@ const TOOLS = [
   },
   {
     name: 'hilvan_registrar_interaccion',
-    description: 'Agrega un toque a la bitácora de un prospecto. Indica al menos resumen o proximo_paso. Fechas en YYYY-MM-DD. tipo: correo|reunion|lectura|llamada|mensaje. CONFIRMA antes de llamar.',
+    description: 'Agrega un toque a la bitácora de un prospecto. Indica al menos resumen o proximo_paso. Fechas en YYYY-MM-DD. tipo: correo|reunion|lectura|llamada|mensaje. respondido=true si el prospecto contestó (alimenta la cadencia: una respuesta reinicia la escalera y pasa a lo más urgente). cuerpo = el correo enviado. CONFIRMA antes de llamar.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1120,6 +1120,8 @@ const TOOLS = [
         fecha: { type: 'string', description: 'YYYY-MM-DD' },
         tipo: { type: 'string' },
         resumen: { type: 'string' },
+        cuerpo: { type: 'string', description: 'el correo enviado' },
+        respondido: { type: 'boolean', description: 'el prospecto respondió' },
         proximo_paso: { type: 'string' },
         fecha_proximo: { type: 'string', description: 'YYYY-MM-DD' },
         gmail_thread: { type: 'string' },
