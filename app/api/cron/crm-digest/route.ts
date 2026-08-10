@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { procesarDigestMatinal, proponerEnFrioAgotados } from '@/app/actions/crm'
+import { procesarDigestMatinal, proponerEnFrioAgotados, digestYaEnviado } from '@/app/actions/crm'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
   const soloEmail = url.searchParams.get('solo') ?? undefined
 
   try {
+    // Este cron es el RESPALDO: el agente del CRM dispara el digest al terminar
+    // su rutina, para que nunca salga antes del reparto. Si ya lo mandó, acá no
+    // se hace nada — recibirlo dos veces enseña a ignorarlo.
+    if (!dryRun && !soloEmail && (await digestYaEnviado())) {
+      return NextResponse.json({ ok: true, omitido: 'el agente ya envió el digest' })
+    }
+
     // Primero se proponen los agotados: así salen del cálculo de la agenda y
     // nadie recibe en su lista a alguien que ya no hay que perseguir.
     const enFrio = await proponerEnFrioAgotados({ dryRun })

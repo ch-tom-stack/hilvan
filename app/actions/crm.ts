@@ -446,6 +446,33 @@ export async function procesarDigestMatinal(
   return { hoy, filas, enviados }
 }
 
+/** Marca que se usa para no mandar el digest dos veces (agente + cron). */
+export const HERRAMIENTA_DIGEST = 'crm-digest-matinal'
+
+/**
+ * ¿Ya salió el digest esta mañana?
+ *
+ * El agente del CRM lo dispara al terminar su rutina (así nunca sale antes del
+ * reparto) y el cron queda de respaldo por si el agente no corrió. Sin esta
+ * marca, los días buenos el equipo recibiría el correo dos veces.
+ *
+ * Ventana de 12 horas en vez de "día calendario": evita hacer aritmética de
+ * zona horaria con DST y cubre de sobra el hueco entre el agente (~09:00) y el
+ * cron (10:30).
+ */
+export async function digestYaEnviado(): Promise<boolean> {
+  const admin = createAdminClient()
+  const desde = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+  const { data } = await admin
+    .from('agente_acciones')
+    .select('id')
+    .eq('herramienta', HERRAMIENTA_DIGEST)
+    .eq('ok', true)
+    .gte('created_at', desde)
+    .limit(1)
+  return (data ?? []).length > 0
+}
+
 /**
  * Prospectos agotados (16 sin respuesta) → propuesta de pasarlos a En frío.
  *

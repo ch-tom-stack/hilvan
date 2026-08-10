@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
-import { procesarDigestMatinal } from '@/app/actions/crm'
+import { registrarAccion } from '@/lib/agent-audit'
+import { procesarDigestMatinal, proponerEnFrioAgotados, HERRAMIENTA_DIGEST } from '@/app/actions/crm'
 
 export const runtime = 'nodejs'
 
@@ -15,6 +16,19 @@ export async function GET(req: Request) {
   const dryRun = url.searchParams.get('dry') === 'true'
   const soloEmail = url.searchParams.get('solo') ?? undefined
 
+  // Los agotados se proponen antes, para que no aparezcan en la agenda de nadie.
+  const enFrio = await proponerEnFrioAgotados({ dryRun })
   const resultado = await procesarDigestMatinal({ dryRun, soloEmail })
-  return NextResponse.json({ dryRun, ...resultado })
+
+  // Solo un envío COMPLETO deja la marca que apaga el cron de respaldo: una
+  // prueba a un solo destinatario no puede dejar al equipo sin su correo.
+  if (!dryRun && !soloEmail && resultado.enviados > 0) {
+    await registrarAccion({
+      herramienta: HERRAMIENTA_DIGEST,
+      payload: { enviados: resultado.enviados, hoy: resultado.hoy },
+      ok: true,
+    })
+  }
+
+  return NextResponse.json({ dryRun, enFrio, ...resultado })
 }
