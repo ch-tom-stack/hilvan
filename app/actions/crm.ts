@@ -258,6 +258,104 @@ export async function clasificarProspecto(
   return { ok: true }
 }
 
+// ── Digest matinal por operador (CH-10) ──────────────────────────────────────
+// "Al inicio de la jornada, a cada uno cuántos prospectos y borradores listos
+// tiene". Se invoca desde el cron /api/cron/crm-digest (CRON_SECRET) o el
+// endpoint de agente (para probar). Usa createAdminClient + emailDigest (aplica
+// EMAIL_DIGEST_OVERRIDE → tomas@/natalia@casahiedra.com). dryRun no envía;
+// soloEmail limita el envío a un destinatario (prueba).
+
+export interface FilaDigestMatinal {
+  nombre: string
+  email: string | null
+  prospectos: number
+  porContactar: number
+  borradoresListos: number
+  enviado: boolean
+}
+
+export interface ResultadoDigestMatinal {
+  hoy: string
+  filas: FilaDigestMatinal[]
+  enviados: number
+}
+
+function htmlDigestMatinal(nombre: string, total: number, porContactar: number, borradores: number, hoy: string): string {
+  return `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+      <h2 style="font-size:18px;">Buenos días, ${nombre}</h2>
+      <p style="color:#444;">Tu jornada de hoy (${hoy}):</p>
+      <ul style="padding-left:18px;margin:0;">
+        <li style="margin-bottom:6px;"><strong>${total}</strong> prospecto${total === 1 ? '' : 's'} activo${total === 1 ? '' : 's'}${porContactar ? ` — <strong>${porContactar}</strong> por contactar` : ''}</li>
+        <li><strong>${borradores}</strong> borrador${borradores === 1 ? '' : 'es'} listo${borradores === 1 ? '' : 's'} para enviar</li>
+      </ul>
+      <p style="margin-top:20px;"><a href="https://app.casahiedra.com/crm" style="color:#7a9e7e;">Abrir el CRM →</a></p>
+    </div>`
+}
+
+export async function procesarDigestMatinal(
+  opts: { dryRun?: boolean; soloEmail?: string } = {},
+): Promise<ResultadoDigestMatinal> {
+  const dryRun = opts.dryRun ?? false
+  const solo = opts.soloEmail?.trim().toLowerCase()
+  const admin = createAdminClient()
+  const hoy = hoyChileISO()
+
+  const { data: perfiles } = await admin
+    .from('profiles').select('id, nombre, email, rol').in('rol', ROLES_CRM)
+  const operadores = (perfiles ?? []).filter(
+    (p: any) => p.email && OPERADORES_CRM_EMAILS.has(p.email.trim().toLowerCase()),
+  ) as { id: string; nombre: string; email: string | null }[]
+
+  const [{ data: prospectos }, { data: borradores }] = await Promise.all([
+    admin.from('prospectos').select('id, etapa, responsable_id'),
+    admin.from('crm_borradores').select('prospecto_id').eq('estado', 'listo'),
+  ])
+
+  const INACTIVAS = ['confirmado', 'descartado', 'nurture', 'en_frio']
+  const respDe = new Map<string, string | null>()
+  const activos = new Map<string, { total: number; porContactar: number }>()
+  for (const p of (prospectos ?? []) as { id: string; etapa: string; responsable_id: string | null }[]) {
+    respDe.set(p.id, p.responsable_id)
+    if (!p.responsable_id || INACTIVAS.includes(p.etapa)) continue
+    const a = activos.get(p.responsable_id) ?? { total: 0, porContactar: 0 }
+    a.total++
+    if (p.etapa === 'prospecto') a.porContactar++
+    activos.set(p.responsable_id, a)
+  }
+  const borradoresPorResp = new Map<string, number>()
+  for (const b of (borradores ?? []) as { prospecto_id: string }[]) {
+    const rid = respDe.get(b.prospecto_id)
+    if (rid) borradoresPorResp.set(rid, (borradoresPorResp.get(rid) ?? 0) + 1)
+  }
+
+  const filas: FilaDigestMatinal[] = []
+  let enviados = 0
+  for (const op of operadores) {
+    const destino = emailDigest(op.email)
+    if (solo && op.email?.trim().toLowerCase() !== solo && destino?.toLowerCase() !== solo) continue
+    const a = activos.get(op.id) ?? { total: 0, porContactar: 0 }
+    const borr = borradoresPorResp.get(op.id) ?? 0
+    let enviado = false
+    if (!dryRun && destino) {
+      try {
+        await sendEmail({
+          to: destino,
+          subject: `CRM · tu jornada · ${a.total} prospecto${a.total === 1 ? '' : 's'}${borr ? ` · ${borr} borrador${borr === 1 ? '' : 'es'} listo${borr === 1 ? '' : 's'}` : ''}`,
+          html: htmlDigestMatinal(op.nombre, a.total, a.porContactar, borr, hoy),
+          contexto: 'crm:digest-matinal',
+        })
+        enviado = true
+        enviados++
+      } catch (e) {
+        console.error('[crm-digest] envío falló para', destino, e)
+      }
+    }
+    filas.push({ nombre: op.nombre, email: destino, prospectos: a.total, porContactar: a.porContactar, borradoresListos: borr, enviado })
+  }
+  return { hoy, filas, enviados }
+}
+
 export interface MetricasCrm {
   totalPipeline: number
   totalGanados: number

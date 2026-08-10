@@ -1646,6 +1646,17 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_digest_matinal',
+      {
+        title: 'Digest matinal (CRM)',
+        description: 'Dispara el digest matinal del CRM (a cada operador: cuántos prospectos activos y borradores listos tiene). dry=true simula sin enviar y devuelve el cálculo; solo=<email> envía a un único destinatario (para probar). Sin parámetros envía a todos — úsalo con cuidado.',
+        inputSchema: { dry: z.boolean().optional(), solo: z.string().optional() },
+      },
+      async ({ dry, solo }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/digest-matinal?dry=${dry ? 'true' : 'false'}${solo ? `&solo=${encodeURIComponent(solo)}` : ''}`)),
+    )
+
+    server.registerTool(
       'hilvan_listar_aprobaciones',
       {
         title: 'Bandeja de aprobación (CRM)',

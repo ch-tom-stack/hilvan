@@ -1191,6 +1191,12 @@ const TOOLS = [
     run: (a) => api('POST', '/crm/clasificar', a),
   },
   {
+    name: 'hilvan_digest_matinal',
+    description: 'Dispara el digest matinal del CRM (a cada operador: cuántos prospectos activos y borradores listos tiene). dry=true simula sin enviar y devuelve el cálculo; solo=<email> envía a un único destinatario (para probar). Sin parámetros envía a todos — úsalo con cuidado.',
+    inputSchema: { type: 'object', properties: { dry: { type: 'boolean' }, solo: { type: 'string' } } },
+    run: (a) => api('GET', `/crm/digest-matinal?dry=${a.dry ? 'true' : 'false'}${a.solo ? `&solo=${encodeURIComponent(a.solo)}` : ''}`),
+  },
+  {
     name: 'hilvan_listar_aprobaciones',
     description: 'Lista la Bandeja de Aprobación del CRM (crm_aprobaciones). estado: pendiente (default) | aprobado | descartado | todos.',
     inputSchema: { type: 'object', properties: { estado: { type: 'string' } } },

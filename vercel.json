@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/crm-seguimientos",
       "schedule": "30 12 * * 1"
+    },
+    {
+      "path": "/api/cron/crm-digest",
+      "schedule": "30 11 * * 1-5"
     }
   ]
 }
