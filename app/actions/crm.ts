@@ -280,7 +280,28 @@ export interface ResultadoDigestMatinal {
   enviados: number
 }
 
-function htmlDigestMatinal(nombre: string, total: number, porContactar: number, borradores: number, hoy: string): string {
+interface ResumenEquipo { nombre: string; prospectos: number; borradores: number }
+
+function htmlDigestMatinal(
+  nombre: string, total: number, porContactar: number, borradores: number, hoy: string,
+  equipo?: ResumenEquipo[],
+): string {
+  const equipoHtml = equipo && equipo.length
+    ? `
+      <h3 style="font-size:14px;margin:22px 0 6px;">Tu equipo hoy</h3>
+      <table style="border-collapse:collapse;font-size:13px;color:#111;">
+        <tr style="color:#888;text-align:left;">
+          <th style="padding:3px 16px 3px 0;">Persona</th>
+          <th style="padding:3px 16px;">Prospectos</th>
+          <th style="padding:3px 16px;">Borradores listos</th>
+        </tr>
+        ${equipo.map(e => `<tr>
+          <td style="padding:3px 16px 3px 0;">${e.nombre}</td>
+          <td style="padding:3px 16px;"><strong>${e.prospectos}</strong></td>
+          <td style="padding:3px 16px;"><strong>${e.borradores}</strong></td>
+        </tr>`).join('')}
+      </table>`
+    : ''
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
       <h2 style="font-size:18px;">Buenos días, ${nombre}</h2>
@@ -289,6 +310,7 @@ function htmlDigestMatinal(nombre: string, total: number, porContactar: number, 
         <li style="margin-bottom:6px;"><strong>${total}</strong> prospecto${total === 1 ? '' : 's'} activo${total === 1 ? '' : 's'}${porContactar ? ` — <strong>${porContactar}</strong> por contactar` : ''}</li>
         <li><strong>${borradores}</strong> borrador${borradores === 1 ? '' : 'es'} listo${borradores === 1 ? '' : 's'} para enviar</li>
       </ul>
+      ${equipoHtml}
       <p style="margin-top:20px;"><a href="https://app.casahiedra.com/crm" style="color:#7a9e7e;">Abrir el CRM →</a></p>
     </div>`
 }
@@ -329,20 +351,29 @@ export async function procesarDigestMatinal(
     if (rid) borradoresPorResp.set(rid, (borradoresPorResp.get(rid) ?? 0) + 1)
   }
 
+  // Números de cada operador (sirven para su propio correo y para el resumen que
+  // recibe Tomás, que gestiona al equipo).
+  const numeros = operadores.map(op => {
+    const a = activos.get(op.id) ?? { total: 0, porContactar: 0 }
+    return { op, total: a.total, porContactar: a.porContactar, borr: borradoresPorResp.get(op.id) ?? 0 }
+  })
+  const equipo: ResumenEquipo[] = numeros.map(n => ({ nombre: n.op.nombre, prospectos: n.total, borradores: n.borr }))
+
   const filas: FilaDigestMatinal[] = []
   let enviados = 0
-  for (const op of operadores) {
+  for (const n of numeros) {
+    const op = n.op
     const destino = emailDigest(op.email)
     if (solo && op.email?.trim().toLowerCase() !== solo && destino?.toLowerCase() !== solo) continue
-    const a = activos.get(op.id) ?? { total: 0, porContactar: 0 }
-    const borr = borradoresPorResp.get(op.id) ?? 0
+    // Tomás gestiona al equipo → su correo lleva además el resumen de todos.
+    const esManager = op.email?.trim().toLowerCase() === OPERADOR_EMAIL.tomas
     let enviado = false
     if (!dryRun && destino) {
       try {
         await sendEmail({
           to: destino,
-          subject: `CRM · tu jornada · ${a.total} prospecto${a.total === 1 ? '' : 's'}${borr ? ` · ${borr} borrador${borr === 1 ? '' : 'es'} listo${borr === 1 ? '' : 's'}` : ''}`,
-          html: htmlDigestMatinal(op.nombre, a.total, a.porContactar, borr, hoy),
+          subject: `CRM · tu jornada · ${n.total} prospecto${n.total === 1 ? '' : 's'}${n.borr ? ` · ${n.borr} borrador${n.borr === 1 ? '' : 'es'} listo${n.borr === 1 ? '' : 's'}` : ''}`,
+          html: htmlDigestMatinal(op.nombre, n.total, n.porContactar, n.borr, hoy, esManager ? equipo : undefined),
           contexto: 'crm:digest-matinal',
         })
         enviado = true
@@ -351,7 +382,7 @@ export async function procesarDigestMatinal(
         console.error('[crm-digest] envío falló para', destino, e)
       }
     }
-    filas.push({ nombre: op.nombre, email: destino, prospectos: a.total, porContactar: a.porContactar, borradoresListos: borr, enviado })
+    filas.push({ nombre: op.nombre, email: destino, prospectos: n.total, porContactar: n.porContactar, borradoresListos: n.borr, enviado })
   }
   return { hoy, filas, enviados }
 }
