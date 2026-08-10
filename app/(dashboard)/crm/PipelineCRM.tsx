@@ -28,11 +28,13 @@ interface Props {
   pendientesIds: string[]
   totalBandeja: number
   usuarioId: string
+  /** Pool curado de operadores del CRM (Tomás/Natalia/Simón/Josué), para asignar. */
+  operadores: { id: string; nombre: string }[]
 }
 
 type Vista = 'kanban' | 'tabla'
 
-export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja, usuarioId }: Props) {
+export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja, usuarioId, operadores }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [vista, setVista] = useState<Vista>('kanban')
@@ -186,7 +188,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
 
       <ProspectosDeHoy prospectos={prospectos} usuarioId={usuarioId} />
 
-      <RepartirProspectos huerfanos={huerfanos} responsables={responsables} />
+      <RepartirProspectos huerfanos={huerfanos} responsables={operadores.map(o => [o.id, o.nombre] as [string, string])} />
 
       {/* Banda de métricas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">

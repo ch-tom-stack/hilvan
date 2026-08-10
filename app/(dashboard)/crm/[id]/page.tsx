@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getProspecto, getResponsablesCrm } from '@/app/actions/crm'
+import { getProspecto, getOperadoresCrm } from '@/app/actions/crm'
 import FichaProspecto from './FichaProspecto'
 
 export default async function ProspectoPage({
@@ -10,7 +10,7 @@ export default async function ProspectoPage({
   const { id } = await params
   const [{ prospecto, interacciones, contactos, borradores, lecturas, insights }, responsables] = await Promise.all([
     getProspecto(id),
-    getResponsablesCrm(),
+    getOperadoresCrm(),
   ])
   if (!prospecto) notFound()
 

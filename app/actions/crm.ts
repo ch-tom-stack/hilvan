@@ -150,6 +150,30 @@ export async function getResponsablesCrm(): Promise<Pick<Profile, 'id' | 'nombre
   return (data ?? []).map(p => ({ id: p.id, nombre: p.nombre }))
 }
 
+// Operadores ACTIVOS del CRM (equipo de captación). No todos los productores
+// captan: Diego/Ignacio/FOCH son productores por otras razones. Curado por email
+// real (ver /usuarios), confirmado por Tomás — NO inferido. Es el pool que ve el
+// reparto y la ficha, y el objetivo de las reglas de asignación.
+const OPERADORES_CRM_EMAILS = new Set([
+  'tomasmontealegrem@gmail.com',    // Tomás
+  'nataliaalejandra.r@gmail.com',   // Natalia
+  'simonpedrofernandezsilva@gmail.com', // Simón
+  'josuedelafuenteruiz@gmail.com',  // Josué (rental)
+])
+
+export async function getOperadoresCrm(): Promise<Pick<Profile, 'id' | 'nombre'>[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, nombre, email, rol')
+    .in('rol', ROLES_CRM)
+    .order('nombre')
+  if (error) return []
+  return (data ?? [])
+    .filter(p => p.email && OPERADORES_CRM_EMAILS.has(p.email.trim().toLowerCase()))
+    .map(p => ({ id: p.id, nombre: p.nombre }))
+}
+
 export interface MetricasCrm {
   totalPipeline: number
   totalGanados: number
