@@ -19,6 +19,7 @@ import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION } from '
 import { aplicarEfectoAprobacion, AplicarError, type AprobacionRow } from '@/lib/crm-aprobaciones'
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
+import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, type Cadencia } from '@/lib/crm-cadencia'
 
 // ── Acceso ───────────────────────────────────────────────────────────────────
 // El CRM es admin + productor (oculto para contabilidad). Toda mutación verifica
@@ -57,7 +58,9 @@ const PROSPECTO_SELECT =
 
 // El pipeline agrega el contador de contactos y sus fechas: el contador pinta
 // el mapa de calor y la fecha más reciente da los días sin tocar (C4).
-const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count), fechas:crm_interacciones(fecha)`
+// `toques` trae fecha + respondido de cada interacción: con eso el motor de
+// cadencia (lib/crm-cadencia.ts) resuelve cuándo toca el próximo contacto.
+const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count), toques:crm_interacciones(fecha, respondido)`
 
 export async function getPipeline(): Promise<Prospecto[]> {
   const supabase = await createClient()
@@ -67,16 +70,17 @@ export async function getPipeline(): Promise<Prospecto[]> {
     .order('updated_at', { ascending: false })
 
   if (error) return []
+  const hoy = hoyChileISO()
   return (data ?? []).map((r: any) => {
-    const fechas: string[] = Array.isArray(r.fechas)
-      ? r.fechas.map((f: { fecha?: string | null }) => f?.fecha).filter(Boolean)
-      : []
+    const toques: { fecha: string | null; respondido?: boolean | null }[] = Array.isArray(r.toques) ? r.toques : []
+    const fechas: string[] = toques.map(t => t?.fecha).filter(Boolean) as string[]
     // Fecha plana YYYY-MM-DD: comparar como string es correcto y evita UTC.
     const ultima = fechas.length ? fechas.sort().at(-1) ?? null : null
     return {
       ...r,
       n_interacciones: Array.isArray(r.crm_interacciones) ? (r.crm_interacciones[0]?.count ?? 0) : 0,
       ultima_interaccion: ultima,
+      cadencia: calcularCadencia(toques, hoy, r.snooze_hasta),
     }
   }) as unknown as Prospecto[]
 }
@@ -265,12 +269,21 @@ export async function clasificarProspecto(
 // EMAIL_DIGEST_OVERRIDE → tomas@/natalia@casahiedra.com). dryRun no envía;
 // soloEmail limita el envío a un destinatario (prueba).
 
+/** Una línea de la lista del día: a quién contactar y desde cuándo está esperando. */
+export interface ItemAgenda {
+  empresa: string
+  estado: string          // respondio | nunca | atrasado | hoy
+  ultimoToque: string | null
+  diasAtraso: number
+}
+
 export interface FilaDigestMatinal {
   nombre: string
   email: string | null
   prospectos: number
   porContactar: number
   borradoresListos: number
+  agenda: ItemAgenda[]
   enviado: boolean
 }
 
@@ -280,27 +293,39 @@ export interface ResultadoDigestMatinal {
   enviados: number
 }
 
-interface ResumenEquipo { nombre: string; prospectos: number; borradores: number }
+function listaAgendaHtml(agenda: ItemAgenda[]): string {
+  if (agenda.length === 0) {
+    return '<p style="color:#777;font-size:13px;margin:6px 0 0;">Nada que contactar hoy.</p>'
+  }
+  return `<ul style="padding-left:18px;margin:6px 0 0;font-size:13px;">
+    ${agenda.map(a => {
+      const marca =
+        a.estado === 'respondio' ? '<span style="color:#c9a84c;font-weight:600;">te respondió</span> · '
+        : a.diasAtraso > 0 ? `<span style="color:#c9a84c;">${a.diasAtraso} día${a.diasAtraso === 1 ? '' : 's'} atrasado</span> · `
+        : ''
+      const ultimo = a.ultimoToque ? `último contacto ${a.ultimoToque}` : 'sin contactar aún'
+      return `<li style="margin-bottom:4px;"><strong>${a.empresa}</strong> — ${marca}${ultimo}</li>`
+    }).join('')}
+  </ul>`
+}
 
 function htmlDigestMatinal(
   nombre: string, total: number, porContactar: number, borradores: number, hoy: string,
-  equipo?: ResumenEquipo[],
+  agenda: ItemAgenda[],
+  equipo?: FilaDigestMatinal[],
 ): string {
+  // Quien gestiona ve la lista completa de cada uno, no solo el conteo: el
+  // número dice que hay trabajo, la lista dice cuál.
   const equipoHtml = equipo && equipo.length
     ? `
-      <h3 style="font-size:14px;margin:22px 0 6px;">Tu equipo hoy</h3>
-      <table style="border-collapse:collapse;font-size:13px;color:#111;">
-        <tr style="color:#888;text-align:left;">
-          <th style="padding:3px 16px 3px 0;">Persona</th>
-          <th style="padding:3px 16px;">Prospectos</th>
-          <th style="padding:3px 16px;">Borradores listos</th>
-        </tr>
-        ${equipo.map(e => `<tr>
-          <td style="padding:3px 16px 3px 0;">${e.nombre}</td>
-          <td style="padding:3px 16px;"><strong>${e.prospectos}</strong></td>
-          <td style="padding:3px 16px;"><strong>${e.borradores}</strong></td>
-        </tr>`).join('')}
-      </table>`
+      <h3 style="font-size:14px;margin:26px 0 8px;border-top:1px solid #ddd;padding-top:14px;">El equipo hoy</h3>
+      ${equipo.map(e => `
+        <p style="margin:12px 0 0;font-size:13px;">
+          <strong>${e.nombre}</strong>
+          <span style="color:#777;"> · ${e.agenda.length} por contactar · ${e.prospectos} en cartera${e.borradoresListos ? ` · ${e.borradoresListos} borrador(es) listo(s)` : ''}</span>
+        </p>
+        ${listaAgendaHtml(e.agenda)}
+      `).join('')}`
     : ''
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
@@ -310,8 +335,11 @@ function htmlDigestMatinal(
         <li style="margin-bottom:6px;"><strong>${total}</strong> prospecto${total === 1 ? '' : 's'} activo${total === 1 ? '' : 's'}${porContactar ? ` — <strong>${porContactar}</strong> por contactar` : ''}</li>
         <li><strong>${borradores}</strong> borrador${borradores === 1 ? '' : 'es'} listo${borradores === 1 ? '' : 's'} para enviar</li>
       </ul>
+
+      <h3 style="font-size:14px;margin:22px 0 0;">Contactar hoy (${agenda.length})</h3>
+      ${listaAgendaHtml(agenda)}
       ${equipoHtml}
-      <p style="margin-top:20px;"><a href="https://app.casahiedra.com/crm" style="color:#7a9e7e;">Abrir el CRM →</a></p>
+      <p style="margin-top:22px;"><a href="https://app.casahiedra.com/crm" style="color:#7a9e7e;">Abrir el CRM →</a></p>
     </div>`
 }
 
@@ -330,34 +358,59 @@ export async function procesarDigestMatinal(
   ) as { id: string; nombre: string; email: string | null }[]
 
   const [{ data: prospectos }, { data: borradores }] = await Promise.all([
-    admin.from('prospectos').select('id, etapa, responsable_id'),
+    admin.from('prospectos').select('id, empresa, etapa, responsable_id, snooze_hasta, crm_interacciones(fecha, respondido)'),
     admin.from('crm_borradores').select('prospecto_id').eq('estado', 'listo'),
   ])
 
   const INACTIVAS = ['confirmado', 'descartado', 'nurture', 'en_frio']
   const respDe = new Map<string, string | null>()
   const activos = new Map<string, { total: number; porContactar: number }>()
-  for (const p of (prospectos ?? []) as { id: string; etapa: string; responsable_id: string | null }[]) {
+  const agendaDe = new Map<string, (ItemAgenda & { _prio: number })[]>()
+
+  for (const p of (prospectos ?? []) as any[]) {
     respDe.set(p.id, p.responsable_id)
     if (!p.responsable_id || INACTIVAS.includes(p.etapa)) continue
+
     const a = activos.get(p.responsable_id) ?? { total: 0, porContactar: 0 }
     a.total++
     if (p.etapa === 'prospecto') a.porContactar++
     activos.set(p.responsable_id, a)
+
+    // La lista del día sale del mismo motor que la agenda de la app: una sola
+    // fuente de verdad, para que el correo y la pantalla nunca se contradigan.
+    const cad = calcularCadencia(p.crm_interacciones ?? [], hoy, p.snooze_hasta)
+    if (!cad.pendiente) continue
+    const arr = agendaDe.get(p.responsable_id) ?? []
+    arr.push({
+      empresa: p.empresa,
+      estado: cad.estado,
+      ultimoToque: cad.ultimoToque,
+      diasAtraso: cad.diasAtraso,
+      _prio: prioridadCadencia(cad),
+    })
+    agendaDe.set(p.responsable_id, arr)
   }
+
   const borradoresPorResp = new Map<string, number>()
   for (const b of (borradores ?? []) as { prospecto_id: string }[]) {
     const rid = respDe.get(b.prospecto_id)
     if (rid) borradoresPorResp.set(rid, (borradoresPorResp.get(rid) ?? 0) + 1)
   }
 
-  // Números de cada operador (sirven para su propio correo y para el resumen que
-  // recibe Tomás, que gestiona al equipo).
+  // Números y agenda de cada operador: sirven para su propio correo y para el
+  // detalle que recibe Tomás, que gestiona al equipo.
   const numeros = operadores.map(op => {
     const a = activos.get(op.id) ?? { total: 0, porContactar: 0 }
-    return { op, total: a.total, porContactar: a.porContactar, borr: borradoresPorResp.get(op.id) ?? 0 }
+    const agenda = (agendaDe.get(op.id) ?? [])
+      .sort((x, y) => y._prio - x._prio)
+      .map(({ _prio, ...item }) => item)
+    return { op, total: a.total, porContactar: a.porContactar, borr: borradoresPorResp.get(op.id) ?? 0, agenda }
   })
-  const equipo: ResumenEquipo[] = numeros.map(n => ({ nombre: n.op.nombre, prospectos: n.total, borradores: n.borr }))
+
+  const equipo: FilaDigestMatinal[] = numeros.map(n => ({
+    nombre: n.op.nombre, email: emailDigest(n.op.email), prospectos: n.total,
+    porContactar: n.porContactar, borradoresListos: n.borr, agenda: n.agenda, enviado: false,
+  }))
 
   const filas: FilaDigestMatinal[] = []
   let enviados = 0
@@ -365,15 +418,18 @@ export async function procesarDigestMatinal(
     const op = n.op
     const destino = emailDigest(op.email)
     if (solo && op.email?.trim().toLowerCase() !== solo && destino?.toLowerCase() !== solo) continue
-    // Tomás gestiona al equipo → su correo lleva además el resumen de todos.
+    // Tomás gestiona al equipo → su correo lleva además la agenda de todos.
     const esManager = op.email?.trim().toLowerCase() === OPERADOR_EMAIL.tomas
     let enviado = false
     if (!dryRun && destino) {
       try {
         await sendEmail({
           to: destino,
-          subject: `CRM · tu jornada · ${n.total} prospecto${n.total === 1 ? '' : 's'}${n.borr ? ` · ${n.borr} borrador${n.borr === 1 ? '' : 'es'} listo${n.borr === 1 ? '' : 's'}` : ''}`,
-          html: htmlDigestMatinal(op.nombre, n.total, n.porContactar, n.borr, hoy, esManager ? equipo : undefined),
+          subject: `CRM · ${n.agenda.length} por contactar hoy${n.borr ? ` · ${n.borr} borrador${n.borr === 1 ? '' : 'es'} listo${n.borr === 1 ? '' : 's'}` : ''}`,
+          html: htmlDigestMatinal(
+            op.nombre, n.total, n.porContactar, n.borr, hoy, n.agenda,
+            esManager ? equipo.filter(e => e.nombre !== op.nombre) : undefined,
+          ),
           contexto: 'crm:digest-matinal',
         })
         enviado = true
@@ -382,9 +438,57 @@ export async function procesarDigestMatinal(
         console.error('[crm-digest] envío falló para', destino, e)
       }
     }
-    filas.push({ nombre: op.nombre, email: destino, prospectos: n.total, porContactar: n.porContactar, borradoresListos: n.borr, enviado })
+    filas.push({
+      nombre: op.nombre, email: destino, prospectos: n.total, porContactar: n.porContactar,
+      borradoresListos: n.borr, agenda: n.agenda, enviado,
+    })
   }
   return { hoy, filas, enviados }
+}
+
+/**
+ * Prospectos agotados (16 sin respuesta) → propuesta de pasarlos a En frío.
+ *
+ * No los mueve: deja la propuesta en la Bandeja para que un humano decida. Un
+ * prospecto que no contesta 16 veces probablemente esté muerto, pero "probable"
+ * no alcanza para sacarlo del tablero sin que nadie lo mire.
+ */
+export async function proponerEnFrioAgotados(
+  opts: { dryRun?: boolean } = {},
+): Promise<{ propuestos: number; empresas: string[] }> {
+  const admin = createAdminClient()
+  const hoy = hoyChileISO()
+
+  const { data: prospectos } = await admin
+    .from('prospectos')
+    .select('id, empresa, etapa, snooze_hasta, crm_interacciones(fecha, respondido)')
+    .not('etapa', 'in', '("en_frio","descartado","confirmado","nurture")')
+
+  // Los que ya tienen una propuesta pendiente no se vuelven a proponer.
+  const { data: yaPropuestos } = await admin
+    .from('crm_aprobaciones')
+    .select('prospecto_id')
+    .eq('tipo', 'cambio_etapa')
+    .eq('estado', 'pendiente')
+  const pendientes = new Set((yaPropuestos ?? []).map((r: any) => r.prospecto_id).filter(Boolean))
+
+  const empresas: string[] = []
+  for (const p of (prospectos ?? []) as any[]) {
+    if (pendientes.has(p.id)) continue
+    const cad = calcularCadencia(p.crm_interacciones ?? [], hoy, p.snooze_hasta)
+    if (cad.estado !== 'agotado') continue
+    empresas.push(p.empresa)
+    if (opts.dryRun) continue
+    await admin.from('crm_aprobaciones').insert({
+      tipo: 'cambio_etapa',
+      prospecto_id: p.id,
+      payload: { etapa: 'en_frio' },
+      estado: 'pendiente',
+      origen: 'cron_correos',
+      nota_agente: `${cad.sinRespuesta} contactos sin respuesta — la cadencia se agotó. ¿Pasar a En frío?`,
+    })
+  }
+  return { propuestos: empresas.length, empresas }
 }
 
 export interface MetricasCrm {
@@ -591,6 +695,11 @@ export async function registrarInteraccion(
   })
 
   if (error) return { error: error.message }
+
+  // Un toque nuevo consume el snooze: si no, un aplazamiento viejo seguiría
+  // escondiendo al prospecto aunque el reloj ya haya vuelto a partir.
+  await acceso.supabase.from('prospectos').update({ snooze_hasta: null }).eq('id', prospectoId)
+
   revalidatePath('/crm')
   revalidatePath(`/crm/${prospectoId}`)
   return { ok: true }
@@ -781,6 +890,40 @@ export async function eliminarContacto(
   if (error) return { error: error.message }
   revalidatePath(`/crm/${prospectoId}`)
   return { ok: true }
+}
+
+// Posponer el próximo contacto. El tope (un tercio del tramo, mínimo un día) se
+// valida ACÁ: el cliente propone, el servidor decide — si no, el snooze se
+// vuelve una forma silenciosa de nunca contactar a nadie.
+export async function snoozeProspecto(
+  id: string,
+  dias: number,
+): Promise<{ ok?: true; hasta?: string; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+  if (!Number.isFinite(dias) || dias < 1) return { error: 'Días de snooze inválidos' }
+
+  const { data: p } = await acceso.supabase
+    .from('prospectos')
+    .select('snooze_hasta, crm_interacciones(fecha, respondido)')
+    .eq('id', id)
+    .maybeSingle<{ snooze_hasta: string | null; crm_interacciones: { fecha: string | null; respondido: boolean | null }[] }>()
+  if (!p) return { error: 'Prospecto no encontrado' }
+
+  const hoy = hoyChileISO()
+  const cad = calcularCadencia(p.crm_interacciones ?? [], hoy, p.snooze_hasta)
+  const tope = snoozeMaximo(cad.intervalo)
+  if (dias > tope) return { error: `El máximo para este tramo son ${tope} día${tope === 1 ? '' : 's'}` }
+
+  // Se cuenta desde el vencimiento (o desde hoy si ya está atrasado).
+  const base = cad.vence && cad.vence > hoy ? cad.vence : hoy
+  const hasta = sumarDias(base, Math.floor(dias))
+
+  const { error } = await acceso.supabase.from('prospectos').update({ snooze_hasta: hasta }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${id}`)
+  return { ok: true, hasta }
 }
 
 // ── Casilla de borradores de respuesta ───────────────────────────────────────

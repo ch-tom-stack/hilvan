@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS public.prospectos (
   cliente_id        uuid REFERENCES public.clientes(id) ON DELETE SET NULL,
   notas             text,
   checklist         text[] NOT NULL DEFAULT '{}',  -- hitos no ordinales: lectura | producto_propuesto | cotizacion_enviada | reunion
+  snooze_hasta      date,                 -- cadencia: posponer el próximo contacto (ver lib/crm-cadencia.ts)
   created_at        timestamptz DEFAULT now(),
   updated_at        timestamptz DEFAULT now()
 );

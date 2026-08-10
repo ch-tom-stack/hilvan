@@ -19,7 +19,8 @@ import { moverEtapa } from '@/app/actions/crm'
 import TarjetaProspecto, { Tag } from '@/components/crm/TarjetaProspecto'
 import QuickContacto from '@/components/crm/QuickContacto'
 import RepartirProspectos from '@/components/crm/RepartirProspectos'
-import ProspectosDeHoy from '@/components/crm/ProspectosDeHoy'
+import AgendaDeHoy from '@/components/crm/AgendaDeHoy'
+import ProgresoEquipo from '@/components/crm/ProgresoEquipo'
 import type { MetricasCrm } from '@/app/actions/crm'
 
 interface Props {
@@ -30,11 +31,13 @@ interface Props {
   usuarioId: string
   /** Pool curado de operadores del CRM (Tomás/Natalia/Simón/Josué), para asignar. */
   operadores: { id: string; nombre: string }[]
+  /** Quien gestiona al equipo ve además el progreso de todos. */
+  esManager?: boolean
 }
 
 type Vista = 'kanban' | 'tabla'
 
-export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja, usuarioId, operadores }: Props) {
+export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja, usuarioId, operadores, esManager }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [vista, setVista] = useState<Vista>('kanban')
@@ -186,7 +189,10 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
         </div>
       </div>
 
-      <ProspectosDeHoy prospectos={prospectos} usuarioId={usuarioId} />
+      <AgendaDeHoy prospectos={prospectos} usuarioId={usuarioId} />
+
+      {/* El progreso del equipo solo lo ve quien gestiona (Tomás). */}
+      {esManager && <ProgresoEquipo prospectos={prospectos} operadores={operadores} />}
 
       <RepartirProspectos huerfanos={huerfanos} responsables={operadores.map(o => [o.id, o.nombre] as [string, string])} />
 

@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/crm-digest",
-      "schedule": "30 11 * * 1-5"
+      "schedule": "30 14 * * 1-5"
     }
   ]
 }

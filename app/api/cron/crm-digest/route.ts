@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { procesarDigestMatinal } from '@/app/actions/crm'
+import { procesarDigestMatinal, proponerEnFrioAgotados } from '@/app/actions/crm'
 
 export const runtime = 'nodejs'
 
@@ -17,8 +17,11 @@ export async function GET(request: NextRequest) {
   const soloEmail = url.searchParams.get('solo') ?? undefined
 
   try {
+    // Primero se proponen los agotados: así salen del cálculo de la agenda y
+    // nadie recibe en su lista a alguien que ya no hay que perseguir.
+    const enFrio = await proponerEnFrioAgotados({ dryRun })
     const resultado = await procesarDigestMatinal({ dryRun, soloEmail })
-    return NextResponse.json({ ok: true, dryRun, ...resultado })
+    return NextResponse.json({ ok: true, dryRun, enFrio, ...resultado })
   } catch (error) {
     console.error('Error en cron crm-digest:', error)
     return NextResponse.json({ error: 'Error interno' }, { status: 500 })

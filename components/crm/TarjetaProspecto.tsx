@@ -141,6 +141,19 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
         {p.empresa}
       </h3>
 
+      {/* Estado de la cadencia: lo que hay que hacer con esta tarjeta hoy. */}
+      {p.cadencia && (p.cadencia.estado === 'respondio' || p.cadencia.diasAtraso > 0 || p.cadencia.estado === 'agotado') && (
+        <p className={`font-body text-[9px] tracking-[0.2em] uppercase mb-2 ${
+          p.cadencia.estado === 'agotado' ? 'text-ch-subtle' : 'text-ch-gold'
+        }`}>
+          {p.cadencia.estado === 'respondio'
+            ? 'te respondió'
+            : p.cadencia.estado === 'agotado'
+              ? `${p.cadencia.sinRespuesta} sin respuesta`
+              : `${p.cadencia.diasAtraso} día${p.cadencia.diasAtraso === 1 ? '' : 's'} atrasado`}
+        </p>
+      )}
+
       {p.nombre_contacto && (
         <p className="font-body text-xs text-ch-muted mb-3 truncate">{p.nombre_contacto}</p>
       )}

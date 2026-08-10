@@ -10,6 +10,10 @@
 //   - lib/rendiciones-calc   → calcularRetencion
 //   - lib/rodaje-helpers     → horaAMinutos, calcularCascada, generarMensajeCitacion, ...
 
+// La cadencia se USA en la interfaz Prospecto (no solo se reexporta), así que
+// además se importa acá.
+import type { Cadencia } from '@/lib/crm-cadencia'
+
 // ============================================================
 // AUTH / USUARIOS
 // ============================================================
@@ -1071,6 +1075,19 @@ export const ORIGENES_PROSPECTO = [
   'otro',
 ] as const
 
+// Cadencia de contacto (cuándo toca el próximo correo) — ver lib/crm-cadencia.ts
+export {
+  calcularCadencia,
+  intervaloPara,
+  snoozeMaximo,
+  prioridadCadencia,
+  aDiaHabil,
+  sumarDias,
+  LIMITE_SIN_RESPUESTA,
+  type Cadencia,
+  type EstadoCadencia,
+} from '@/lib/crm-cadencia'
+
 // Temperatura de origen (frío vs entrante) — se deriva de `origen`.
 export {
   temperaturaDe,
@@ -1130,8 +1147,10 @@ export interface Prospecto {
   cliente?: Pick<Cliente, 'id' | 'nombre'> | null
   notas?: string | null
   checklist?: string[] | null       // hitos marcados (ver CHECKLIST_PROSPECTO)
+  snooze_hasta?: string | null       // cadencia: próximo contacto pospuesto a mano
   n_interacciones?: number           // contador de contactos (solo en el pipeline)
   ultima_interaccion?: string | null // YYYY-MM-DD del último toque (solo en el pipeline)
+  cadencia?: Cadencia                // cuándo toca el próximo contacto (solo en el pipeline)
   created_at: string
   updated_at?: string
 }

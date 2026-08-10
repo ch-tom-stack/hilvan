@@ -1,5 +1,6 @@
 import { getPipeline, getMetricasCrm, getProspectoIdsConPendiente, getAprobacionesPendientes, getOperadoresCrm } from '@/app/actions/crm'
 import { createClient } from '@/lib/supabase/server'
+import { OPERADOR_EMAIL } from '@/lib/crm-asignacion'
 import PipelineCRM from './PipelineCRM'
 
 export default async function CrmPage() {
@@ -22,6 +23,7 @@ export default async function CrmPage() {
         totalBandeja={pendientes.length}
         usuarioId={user?.id ?? ''}
         operadores={operadores}
+        esManager={user?.email?.trim().toLowerCase() === OPERADOR_EMAIL.tomas}
       />
     </div>
   )
