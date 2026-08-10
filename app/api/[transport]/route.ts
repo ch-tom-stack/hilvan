@@ -1632,6 +1632,20 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_clasificar_prospecto',
+      {
+        title: 'Clasificar prospecto (CRM)',
+        description: 'Clasifica un prospecto por tamano (chica|mediana|grande) y segmento (general|estudiante|ropa_intima_fem|masculino_estereotipo|rental) — los ejes con que se asigna el responsable. Si el prospecto NO tiene responsable, lo asigna EN EL ACTO según las reglas (rental→Josué; estudiante/masculino/videoclip→Simón; ropa_intima/banco/lookbook-chica→Natalia; lookbook o empresa grande→Tomás; fallback→Simón). NO reasigna si ya tiene dueño. Fíjalo al investigar/enriquecer el lead. prospecto_id REQUERIDO.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          tamano: z.string().optional(),
+          segmento: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/clasificar', args)),
+    )
+
+    server.registerTool(
       'hilvan_listar_aprobaciones',
       {
         title: 'Bandeja de aprobación (CRM)',

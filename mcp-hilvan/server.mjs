@@ -1185,6 +1185,12 @@ const TOOLS = [
     run: (a) => api('POST', '/crm/borrador', a),
   },
   {
+    name: 'hilvan_clasificar_prospecto',
+    description: 'Clasifica un prospecto por tamano (chica|mediana|grande) y segmento (general|estudiante|ropa_intima_fem|masculino_estereotipo|rental) — los ejes con que se asigna el responsable. Si el prospecto NO tiene responsable, lo asigna EN EL ACTO según las reglas (rental→Josué; estudiante/masculino/videoclip→Simón; ropa_intima/banco/lookbook-chica→Natalia; lookbook o empresa grande→Tomás; fallback→Simón). NO reasigna si ya tiene dueño. Fíjalo al investigar/enriquecer el lead. prospecto_id REQUERIDO.',
+    inputSchema: { type: 'object', properties: { prospecto_id: { type: 'string' }, tamano: { type: 'string' }, segmento: { type: 'string' } }, required: ['prospecto_id'] },
+    run: (a) => api('POST', '/crm/clasificar', a),
+  },
+  {
     name: 'hilvan_listar_aprobaciones',
     description: 'Lista la Bandeja de Aprobación del CRM (crm_aprobaciones). estado: pendiente (default) | aprobado | descartado | todos.',
     inputSchema: { type: 'object', properties: { estado: { type: 'string' } } },
