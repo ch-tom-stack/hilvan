@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Prospecto } from '@/types'
-import { asignarResponsableMasivo } from '@/app/actions/crm'
+import { asignarResponsableMasivo, repartirPorReglas } from '@/app/actions/crm'
 import { momento } from '@/lib/momentos'
 
 interface Props {
@@ -40,6 +40,18 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
   const alternarTodos = () =>
     setSel(todos ? new Set() : new Set(huerfanos.map(h => h.id)))
 
+  const porReglas = () => {
+    startTransition(async () => {
+      const res = await repartirPorReglas()
+      if (res.error) { momento('error', { mensaje: res.error }); return }
+      const r = res.resultado!
+      momento('guardado', {
+        mensaje: `${r.asignados} asignado${r.asignados === 1 ? '' : 's'} por reglas${r.porClasificar ? ` · ${r.porClasificar} por clasificar` : ''}`,
+      })
+      router.refresh()
+    })
+  }
+
   const asignar = () => {
     if (!responsable || sel.size === 0) return
     const ids = [...sel]
@@ -57,19 +69,29 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
 
   return (
     <div className="border border-ch-gold/40 bg-ch-gold/5 mb-6">
-      <button
-        type="button"
-        onClick={() => setAbierto(a => !a)}
-        className="w-full flex items-center justify-between gap-4 px-4 py-3 text-left ch-press"
-      >
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
         <span className="font-body text-xs text-ch-gold">
           {huerfanos.length} prospecto{huerfanos.length === 1 ? '' : 's'} sin responsable
           <span className="text-ch-muted"> · nadie sabe a quién le toca contactarlos</span>
         </span>
-        <span className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-gold shrink-0">
-          {abierto ? 'Cerrar' : 'Repartir'}
-        </span>
-      </button>
+        <div className="flex items-center gap-4 shrink-0">
+          <button
+            type="button"
+            onClick={porReglas}
+            disabled={isPending}
+            className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-gold hover:text-ch-gold-light transition-colors ch-press disabled:opacity-40"
+          >
+            {isPending ? 'Repartiendo…' : 'Repartir por reglas'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setAbierto(a => !a)}
+            className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-muted hover:text-ch-cream transition-colors ch-press"
+          >
+            {abierto ? 'Cerrar' : 'Manual'}
+          </button>
+        </div>
+      </div>
 
       {abierto && (
         <div className="px-4 pb-4 border-t border-ch-gold/20 pt-3 ch-fade-up">

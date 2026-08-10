@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS public.prospectos (
   score             text,                 -- alta | media | baja
   decisor           text,
   angulo            text,                 -- gancho de acercamiento
-  producto_objetivo text,                 -- banco | lookbook | spot | sin_definir
+  producto_objetivo text,                 -- banco | lookbook | spot | videoclip | sin_definir
+  tamano            text,                 -- chica | mediana | grande (eje de asignación)
+  segmento          text,                 -- general | estudiante | ropa_intima_fem | masculino_estereotipo | rental
   cliente_id        uuid REFERENCES public.clientes(id) ON DELETE SET NULL,
   notas             text,
   checklist         text[] NOT NULL DEFAULT '{}',  -- hitos no ordinales: lectura | producto_propuesto | cotizacion_enviada | reunion

@@ -18,6 +18,7 @@ import type {
 import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION } from '@/types'
 import { aplicarEfectoAprobacion, AplicarError, type AprobacionRow } from '@/lib/crm-aprobaciones'
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
+import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
 
 // ── Acceso ───────────────────────────────────────────────────────────────────
 // El CRM es admin + productor (oculto para contabilidad). Toda mutación verifica
@@ -172,6 +173,89 @@ export async function getOperadoresCrm(): Promise<Pick<Profile, 'id' | 'nombre'>
   return (data ?? [])
     .filter(p => p.email && OPERADORES_CRM_EMAILS.has(p.email.trim().toLowerCase()))
     .map(p => ({ id: p.id, nombre: p.nombre }))
+}
+
+// Mapa email→profile_id de los operadores, para resolver las reglas a un id real.
+async function mapaOperadorId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<Map<string, string>> {
+  const { data } = await supabase.from('profiles').select('id, email').in('rol', ROLES_CRM)
+  const m = new Map<string, string>()
+  for (const p of (data ?? []) as { id: string; email: string | null }[]) {
+    if (p.email) m.set(p.email.trim().toLowerCase(), p.id)
+  }
+  return m
+}
+
+export interface ResultadoReparto {
+  asignados: number
+  porClasificar: number
+  detalle: { persona: string; n: number }[]
+}
+
+// Reparte los prospectos SIN responsable según las reglas deterministas. Los que
+// aún no tienen segmento quedan "por clasificar" (no se asignan a ciegas).
+export async function repartirPorReglas(): Promise<{ ok?: true; resultado?: ResultadoReparto; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const emailId = await mapaOperadorId(acceso.supabase)
+  const { data: huerfanos } = await acceso.supabase
+    .from('prospectos')
+    .select('id, producto_objetivo, tamano, segmento')
+    .is('responsable_id', null)
+
+  let asignados = 0
+  let porClasificar = 0
+  const conteo = new Map<string, number>()
+  for (const h of (huerfanos ?? []) as { id: string; producto_objetivo: string | null; tamano: string | null; segmento: string | null }[]) {
+    const persona = personaSegunReglas({ producto: h.producto_objetivo, tamano: h.tamano, segmento: h.segmento })
+    if (!persona) { porClasificar++; continue }
+    const rid = emailId.get(OPERADOR_EMAIL[persona])
+    if (!rid) { porClasificar++; continue }
+    const { error } = await acceso.supabase.from('prospectos').update({ responsable_id: rid }).eq('id', h.id)
+    if (error) continue
+    asignados++
+    conteo.set(persona, (conteo.get(persona) ?? 0) + 1)
+  }
+  revalidatePath('/crm')
+  return { ok: true, resultado: { asignados, porClasificar, detalle: [...conteo].map(([persona, n]) => ({ persona, n })) } }
+}
+
+// Fija tamaño/segmento (clasificación). Si el prospecto no tiene responsable, lo
+// asigna EN EL ACTO según las reglas — ese es el "automático".
+export async function clasificarProspecto(
+  id: string,
+  input: { tamano?: string | null; segmento?: string | null },
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const tamano = input.tamano && ['chica', 'mediana', 'grande'].includes(input.tamano) ? input.tamano : null
+  const segmento = input.segmento && ['general', 'estudiante', 'ropa_intima_fem', 'masculino_estereotipo', 'rental'].includes(input.segmento) ? input.segmento : null
+
+  const patch: Record<string, unknown> = { tamano, segmento }
+
+  const { data: p } = await acceso.supabase
+    .from('prospectos')
+    .select('responsable_id, producto_objetivo')
+    .eq('id', id)
+    .maybeSingle<{ responsable_id: string | null; producto_objetivo: string | null }>()
+
+  if (p && !p.responsable_id) {
+    const persona = personaSegunReglas({ producto: p.producto_objetivo, tamano, segmento })
+    if (persona) {
+      const emailId = await mapaOperadorId(acceso.supabase)
+      const rid = emailId.get(OPERADOR_EMAIL[persona])
+      if (rid) patch.responsable_id = rid
+    }
+  }
+
+  const { error } = await acceso.supabase.from('prospectos').update(patch).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${id}`)
+  return { ok: true }
 }
 
 export interface MetricasCrm {

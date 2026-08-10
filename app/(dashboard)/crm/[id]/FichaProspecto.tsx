@@ -4,8 +4,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Prospecto, CrmInteraccion, CrmContacto, CrmBorrador, CrmLectura, CrmInsight, EtapaProspecto, ChecklistItem } from '@/types'
-import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO } from '@/types'
-import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable, asignarPrioridad } from '@/app/actions/crm'
+import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO, TAMANOS_EMPRESA, TAMANO_LABELS, SEGMENTOS_PROSPECTO, SEGMENTO_LABELS } from '@/types'
+import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable, asignarPrioridad, clasificarProspecto } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
 import ContactosProspecto from '@/components/crm/ContactosProspecto'
@@ -46,6 +46,15 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
       const res = await asignarResponsable(p.id, responsableId || null)
       if (res.error) { toastError(res.error); return }
       toastOk('Responsable actualizado')
+      router.refresh()
+    })
+  }
+
+  const clasificar = (tamano: string, segmento: string) => {
+    startTransition(async () => {
+      const res = await clasificarProspecto(p.id, { tamano: tamano || null, segmento: segmento || null })
+      if (res.error) { toastError(res.error); return }
+      toastOk('Clasificación guardada')
       router.refresh()
     })
   }
@@ -150,6 +159,30 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
           >
             <option value="">Sin definir</option>
             {SCORES_PROSPECTO.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Tamaño</p>
+          <select
+            value={p.tamano ?? ''}
+            onChange={e => clasificar(e.target.value, p.segmento ?? '')}
+            disabled={isPending}
+            className="input-ch w-full text-sm py-1"
+          >
+            <option value="">Sin definir</option>
+            {TAMANOS_EMPRESA.map(t => <option key={t} value={t}>{TAMANO_LABELS[t]}</option>)}
+          </select>
+        </div>
+        <div>
+          <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Segmento</p>
+          <select
+            value={p.segmento ?? ''}
+            onChange={e => clasificar(p.tamano ?? '', e.target.value)}
+            disabled={isPending}
+            className="input-ch w-full text-sm py-1"
+          >
+            <option value="">Sin clasificar</option>
+            {SEGMENTOS_PROSPECTO.map(s => <option key={s} value={s}>{SEGMENTO_LABELS[s]}</option>)}
           </select>
         </div>
         <Dato label="Producto objetivo" valor={p.producto_objetivo} capitalize />

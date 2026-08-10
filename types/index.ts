@@ -1049,12 +1049,13 @@ export const CHECKLIST_LABELS: Record<ChecklistItem, string> = {
   reunion:            'Reunión hecha',
 }
 
-export type Producto = 'banco' | 'lookbook' | 'spot'
+export type Producto = 'banco' | 'lookbook' | 'spot' | 'videoclip'
 
 export const PRODUCTO_LABELS: Record<Producto, string> = {
-  banco:    'Banco',
-  lookbook: 'Lookbook',
-  spot:     'Spot',
+  banco:     'Banco',
+  lookbook:  'Lookbook',
+  spot:      'Spot',
+  videoclip: 'Videoclip',
 }
 
 // `lectura` faltaba y es el origen entrante más grande del CRM (15 de 58): el
@@ -1085,7 +1086,26 @@ export const SCORES_PROSPECTO = ['alta', 'media', 'baja'] as const
 
 export const ARQUETIPOS = ['feed', 'temporadas', 'sin_definir'] as const
 
-export const PRODUCTOS_OBJETIVO = ['banco', 'lookbook', 'spot', 'sin_definir'] as const
+export const PRODUCTOS_OBJETIVO = ['banco', 'lookbook', 'spot', 'videoclip', 'sin_definir'] as const
+
+// ── Ejes de asignación de responsable (los clasifica el operador/agente) ─────
+export const TAMANOS_EMPRESA = ['chica', 'mediana', 'grande'] as const
+export type TamanoEmpresa = (typeof TAMANOS_EMPRESA)[number]
+export const TAMANO_LABELS: Record<TamanoEmpresa, string> = {
+  chica:   'Chica',
+  mediana: 'Mediana',
+  grande:  'Grande',
+}
+
+export const SEGMENTOS_PROSPECTO = ['general', 'estudiante', 'ropa_intima_fem', 'masculino_estereotipo', 'rental'] as const
+export type SegmentoProspecto = (typeof SEGMENTOS_PROSPECTO)[number]
+export const SEGMENTO_LABELS: Record<SegmentoProspecto, string> = {
+  general:               'General',
+  estudiante:            'Estudiante',
+  ropa_intima_fem:       'Ropa íntima fem.',
+  masculino_estereotipo: 'Masculino (deportes/herramientas)',
+  rental:                'Rental',
+}
 
 export const TIPOS_INTERACCION = ['correo', 'reunion', 'lectura', 'llamada', 'mensaje'] as const
 
@@ -1104,6 +1124,8 @@ export interface Prospecto {
   decisor?: string | null
   angulo?: string | null
   producto_objetivo?: string | null
+  tamano?: string | null            // chica | mediana | grande (eje de asignación)
+  segmento?: string | null          // ver SEGMENTOS_PROSPECTO (eje de asignación)
   cliente_id?: string | null
   cliente?: Pick<Cliente, 'id' | 'nombre'> | null
   notas?: string | null
