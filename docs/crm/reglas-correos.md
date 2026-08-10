@@ -12,8 +12,9 @@ Natalia. Complementa `reglas-cadencia.md` (cuándo se manda) y
 
 ## 1. Largo y estructura
 
-- **Tope 120 palabras.** Los correos actuales promediaban 203. A esa extensión
-  se escanean, y lo que se escanea es el primer párrafo.
+- **80–130 palabras** (los buenos rondan ahí; 130 es el tope). Los correos
+  previos promediaban 203: a esa extensión se escanean, y lo que se escanea es
+  el primer párrafo.
 - **Orden:** presentación en una línea → **lo que les pasa a ELLOS** → qué
   hacemos nosotros. Lo específico va segundo, no cuarto.
 - El párrafo específico de la marca **no puede ser menos de un tercio** del
@@ -46,7 +47,15 @@ currículum; dos como contexto. Solo gigantes, para una marca chica, se lee como
 "son muy grandes para mí".
 
 **No se citan de memoria: se sacan del Repertorio** (`hilvan_repertorio_leer`
-con `credenciales_para=<rubro>`), que además descarta las de link roto.
+con `credenciales_para=<rubro>`), que además descarta las de link roto. Citar
+clientes de memoria ya provocó el peor error registrado: credenciales que no
+correspondían al rubro.
+
+- Si el Repertorio devuelve **`delRubro: false`** (no hay nada de ese rubro), o
+  se **dice en el correo**, o no se usan esas credenciales. No se hacen pasar
+  por del rubro.
+- Sí se pueden **proponer marcas o benchmarks no verificados** —Nati y Simón
+  revisan antes de enviar— pero se anota la **baja confianza** al dejarlos.
 
 ## 4. Valor y venta — sin zona gris
 
@@ -56,17 +65,38 @@ con `credenciales_para=<rubro>`), que además descarta las de link roto.
 que se les da de partida"*.
 - Es **precisar y explicar**: observación precisa de su comunicación actual
   (verificable, sin adjetivos) → qué mejoraría y por qué, en términos de su
-  negocio → cómo entramos, dicho una vez y **sin ningún gesto de venta**.
+  negocio → cómo entramos, dicho una vez y **sin gesto de venta**.
 - **No es enseñar un truco para que lo hagan solos**: suena insincero —si el
   truco funcionara no estaríamos escribiendo— y no suena a Nati ni a Simón.
-- Abre con lo que les pasa a ellos y **cierra sin pedir nada** ("cualquier cosa,
-  quedo atenta"). Ni precio, ni llamado a reunión, ni "conversemos".
+- Abre con lo que les pasa a ellos.
 - Filtro: **si no responden, ¿entendieron mejor su propio problema?**
 
 **Venta** = directo, **con el precio a la vista**. Abre con la oferta y cierra
 pidiendo algo concreto.
 
-**Nunca:** "espero que estés muy bien", "quería contarte", entusiasmo fabricado.
+### El cierre: siempre hay un pedido, la intensidad cambia
+Corrección de ago-2026 sobre la regla original ("el valor cierra sin pedir
+nada"): los cierres sin pedido terminaban siendo fórmulas de plantilla que se
+leen como mensaje prehecho. **Ningún correo termina sin un pedido concreto** —
+lo que cambia es el peso:
+
+- **En valor**, el pedido es blando: una pregunta que se pueda contestar, pedir
+  un dato, ofrecer mandar algo puntual. **Nunca** precio ni "agendemos una
+  reunión".
+- **En venta**, el pedido es duro y explícito (agendar, confirmar, comprar).
+
+**Frases prohibidas** — se leen como plantilla sin insight real:
+"lo dejo por si sirve" · "por si les suma" · "no para retomar la cotización" ·
+"cualquier cosa, quedo atenta" · "espero que estés muy bien" · "quería
+contarte" · entusiasmo fabricado.
+
+### Registro
+- Nunca **pedante ni sermoneador**. Nunca agresivo ni impaciente ("de una vez").
+- Tiene que **sonar a Nati o a Simón, no a una IA**.
+- **Nunca cifras o "hallazgos" inventados presentados como hecho.** Si es una
+  lectura propia sin fuente dura, se dice: *"es una lectura nuestra, no una
+  cifra medida con rigor"*. Si falta la fuente, se salta el hallazgo y se
+  pregunta — no se rellena.
 
 ## 5. La escalada — frío y entrante no se escriben igual
 
@@ -85,6 +115,15 @@ ya levantó la mano.
 
 **Sin clasificar** (sin origen registrado) → se usa la secuencia fría, que es la
 conservadora, y se avisa para que alguien complete la ficha.
+
+> **Cuidado con `origen = lectura`: puede ser frío disfrazado de entrante.** La
+> Lectura también sale como correo saliente de Casa Hiedra. Si el primer mensaje
+> del hilo es de `noreply@casahiedra.com`, nosotros escribimos primero → es
+> **frío**, aunque el origen diga lectura. Revisar el correo original antes de
+> asumir que levantaron la mano.
+
+A un **frío** hay que llevarlo a explorar un servicio concreto (por ejemplo,
+banco de videos): no dejarlo en una nota vaga.
 
 **Excepción que manda sobre todo:** si la respuesta pide **precio, plazo o
 disponibilidad**, se cierra de inmediato, sin importar el número de toque.
@@ -111,7 +150,18 @@ disponibilidad**, se cierra de inmediato, sin importar el número de toque.
 artificial—. Sirve una vez con un desconocido y destruye una relación que tiene
 que durar años.
 
-## 7. Advertencia sobre "los 16 toques"
+## 7. Checklist antes de guardar un borrador
+
+- [ ] 80–130 palabras.
+- [ ] El párrafo específico es al menos un tercio y dice algo que solo se sabe
+      mirando a esa marca. Sin "etc.".
+- [ ] Máximo dos credenciales **reales del Repertorio** (una grande, una chica)
+      — o ninguna si el rubro no tiene nada.
+- [ ] Suena a Nati o a Simón, no a IA. Sin pedantería ni entusiasmo fabricado.
+- [ ] Tiene un pedido concreto, del peso que corresponda al tipo de correo.
+- [ ] Nada inventado: ninguna cifra sin fuente presentada como hecho.
+
+## 8. Advertencia sobre "los 16 toques"
 
 El mapa de calor de la tarjeta llega a 16 porque **una consultoría se lo dijo a
 Casa Hiedra**: no sale de datos propios ni de la literatura, que habla de 4–5
