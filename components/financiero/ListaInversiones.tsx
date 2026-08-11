@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import { eliminarInversion } from '@/app/actions/inversiones'
+import { momento } from '@/lib/momentos'
 import { formatCLP, CATEGORIAS_INVERSION } from '@/types'
 import type { Inversion, CategoriaInversion } from '@/types'
 import FormularioInversion from './FormularioInversion'
@@ -101,6 +102,7 @@ export default function ListaInversiones({ inversiones: inicial }: Props) {
   function ejecutarEliminar(id: string) {
     startTransition(async () => {
       const res = await eliminarInversion(id)
+      momento('item.eliminado')
       if (!res.error) {
         setLista(prev => prev.filter(i => i.id !== id))
         setConfirmandoEliminar(null)

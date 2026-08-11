@@ -19,7 +19,7 @@ export default function ToggleRentable({ id, rentable: initialRentable }: Props)
     setActivo(nuevo) // optimistic
     // Dentro del gesto: es micro-feedback local, esperar al servidor lo
     // desacopla del click y se siente roto.
-    momento(nuevo ? 'equipo.rentable' : 'equipo.rentable_off')
+    momento(nuevo ? 'toggle.on' : 'toggle.off')
     startTransition(async () => {
       const res = await toggleRentable(id, nuevo)
       if (res?.error) {

@@ -7,6 +7,7 @@ import { setPPMTasa, setPreviredMensual, setIUSCMensual, setNomina } from '@/app
 import type { PersonaNomina } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import { parseFechaLocal } from '@/lib/fechas'
 import { formatCLP } from '@/types'
 
@@ -168,6 +169,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
   function handleGuardarNomina() {
     startNominaTransition(async () => {
       const result = await setNomina(nominaEdit)
+      if (!result?.error) momento('guardado')
       if (result.error) {
         toastError(result.error)
       } else {
@@ -186,6 +188,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
     }
     startPreviredTransition(async () => {
       const result = await setPreviredMensual(nuevo)
+      if (!result?.error) momento('guardado')
       if (result.error) {
         toastError(result.error)
       } else {
@@ -204,6 +207,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
     }
     startIUSCTransition(async () => {
       const result = await setIUSCMensual(nuevo)
+      if (!result?.error) momento('guardado')
       if (result.error) {
         toastError(result.error)
       } else {
@@ -223,6 +227,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
     const tasaDecimal = nueva / 100
     startPPMTransition(async () => {
       const result = await setPPMTasa(tasaDecimal)
+      if (!result?.error) momento('guardado')
       if (result.error) {
         toastError(result.error)
       } else {
@@ -240,6 +245,9 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
     setErrorExport(null)
     try {
       await generarZIPContador(mesNum, añoNum)
+      // pdf.generado es el momento de 'documento producido'; acá es un ZIP,
+      // pero el gesto y el obturador son los mismos.
+      momento('pdf.generado')
     } catch {
       setErrorExport('Error al generar el paquete. Intenta nuevamente.')
     } finally {

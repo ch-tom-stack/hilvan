@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import { actualizarImagenBloque, desanclarBloque } from '@/app/actions/rodaje-plan'
 import { subirImagenBloque, eliminarImagenBloque } from '@/lib/supabase/storage-rodaje'
 import {
@@ -114,6 +115,7 @@ export default function TablaPlan({
       const url = await subirImagenBloque(file, rodajeId, bloqueId)
       if (url) {
         await actualizarImagenBloque(bloqueId, rodajeId, url)
+        momento('subido', { mensaje: '' })
         onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: url } : b))
       }
     } catch (e) {
@@ -135,6 +137,7 @@ export default function TablaPlan({
     try {
       await eliminarImagenBloque(url)
       await actualizarImagenBloque(bloqueId, rodajeId, null)
+      momento('item.eliminado')
       onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: undefined } : b))
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al eliminar imagen')

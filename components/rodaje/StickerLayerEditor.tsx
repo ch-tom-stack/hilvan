@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { RodajeSticker, familiaFuentePlan } from '@/types'
 import { estiloCss } from './BloqueLibre'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import {
   crearSticker, actualizarSticker, eliminarSticker, subirImagenSticker,
 } from '@/app/actions/rodaje-stickers'
@@ -48,8 +49,8 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
       let dataUrl = quitarAuto ? await procesar(file, 'quitar-fondo') : await fileToDataUrl(file)
       const url = await subirImagenSticker(rodajeId, `s${Date.now()}`, dataUrl)
       const nuevo = await crearSticker(rodajeId, { tipo: 'imagen', imagen_url: url, x: 0.34, y: 0.3, w: 0.24, z: maxZ + 1 })
-      setStickers(p => [...p, nuevo]); setSel(nuevo.id)
-    } catch (e) { toastError(e instanceof Error ? e.message : 'Error al agregar imagen') }
+      setStickers(p => [...p, nuevo]); setSel(nuevo.id); momento('subido', { mensaje: '' })
+    } catch (e) { toastError(e instanceof Error ? e.message : 'Error al agregar imagen'); momento('error', { mensaje: 'Error al agregar imagen' }) }
     finally { setOcupado(false) }
   }
 
@@ -58,8 +59,8 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
     if (!txt?.trim()) return
     try {
       const nuevo = await crearSticker(rodajeId, { tipo: 'texto', contenido: txt.trim(), estilo: { fuente: 'marcador', color: '#C11700', tamano: 'md' }, x: 0.3, y: 0.35, w: 0.3, z: maxZ + 1 })
-      setStickers(p => [...p, nuevo]); setSel(nuevo.id)
-    } catch (e) { toastError(e instanceof Error ? e.message : 'Error al agregar nota') }
+      setStickers(p => [...p, nuevo]); setSel(nuevo.id); momento('item.agregado')
+    } catch (e) { toastError(e instanceof Error ? e.message : 'Error al agregar nota'); momento('error', { mensaje: 'Error al agregar nota' }) }
   }
 
   // ── Aplicar una operación de imagen al sticker seleccionado ─────────────────
@@ -77,7 +78,7 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
 
   async function borrar(s: RodajeSticker) {
     setStickers(p => p.filter(x => x.id !== s.id)); setSel(null)
-    try { await eliminarSticker(s.id, rodajeId) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar') }
+    try { await eliminarSticker(s.id, rodajeId); momento('item.eliminado') } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar'); momento('error', { mensaje: 'Error al eliminar' }) }
   }
 
   // ── Drag / resize / rotate ──────────────────────────────────────────────────

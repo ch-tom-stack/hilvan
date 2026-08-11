@@ -6,6 +6,7 @@ import {
   marcarCuotaPagada, desmarcarCuotaPagada,
 } from '@/app/actions/financiero'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { GastoFijo, GastoFijoCuota, TipoGastoFijo } from '@/types'
 import { formatCLP } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
@@ -90,7 +91,7 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
     setConfirmarEliminar(null)
     setGastos(prev => prev.filter(g => g.id !== id))
     startTransition(async () => {
-      try { await eliminarGastoFijo(id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar') }
+      try { await eliminarGastoFijo(id); momento('item.eliminado') } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar'); momento('error', { mensaje: 'Error al eliminar' }) }
     })
   }
 
@@ -98,7 +99,7 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
   const handleToggleActivo = (id: string, activo: boolean) => {
     setGastos(prev => prev.map(g => g.id === id ? { ...g, activo } : g))
     startTransition(async () => {
-      try { await toggleGastoFijoActivo(id, activo) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al actualizar') }
+      try { await toggleGastoFijoActivo(id, activo); momento(activo ? 'toggle.on' : 'toggle.off') } catch (e) { toastError(e instanceof Error ? e.message : 'Error al actualizar'); momento('error', { mensaje: 'Error al actualizar' }) }
     })
   }
 
@@ -110,6 +111,7 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
     startTransition(async () => {
       try {
         const updated = await marcarCuotaPagada(cuotaId, fecha)
+        momento('gasto.pagado')
         setGastos(prev => prev.map(g => g.id !== gastoId ? g : {
           ...g,
           cuotas: (g.cuotas ?? []).map(c => c.id === cuotaId ? updated : c),
@@ -124,6 +126,7 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
     startTransition(async () => {
       try {
         const updated = await desmarcarCuotaPagada(cuotaId)
+        momento('toggle.off')
         setGastos(prev => prev.map(g => g.id !== gastoId ? g : {
           ...g,
           cuotas: (g.cuotas ?? []).map(c => c.id === cuotaId ? updated : c),

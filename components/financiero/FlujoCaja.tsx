@@ -6,6 +6,7 @@ import {
   agregarMovimientoFlujo, editarMovimientoFlujo, eliminarMovimientoFlujo,
 } from '@/app/actions/financiero'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { DatosFlujo, MovimientoFlujo, CierreMesAnterior } from '@/app/actions/financiero'
 import { formatCLP } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
@@ -90,13 +91,14 @@ export default function FlujoCaja({ datos }: Props) {
       setMovimientos(prev => prev.map(m => m.id === id ? { ...m, ...payload } : m))
       cerrarForm()
       startTransition(async () => {
-        try { await editarMovimientoFlujo(id, payload) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al editar movimiento') }
+        try { await editarMovimientoFlujo(id, payload); momento('guardado') } catch (e) { toastError(e instanceof Error ? e.message : 'Error al editar movimiento'); momento('error', { mensaje: 'Error al editar movimiento' }) }
       })
     } else {
       cerrarForm()
       startTransition(async () => {
         try {
           const nuevo = await agregarMovimientoFlujo(payload)
+          momento('item.agregado')
           setMovimientos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
         } catch (e) {
           toastError(e instanceof Error ? e.message : 'Error al agregar movimiento')
@@ -109,7 +111,7 @@ export default function FlujoCaja({ datos }: Props) {
     setConfirmarEliminar(null)
     setMovimientos(prev => prev.filter(m => m.id !== id))
     startTransition(async () => {
-      try { await eliminarMovimientoFlujo(id) } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar movimiento') }
+      try { await eliminarMovimientoFlujo(id); momento('item.eliminado') } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar movimiento'); momento('error', { mensaje: 'Error al eliminar movimiento' }) }
     })
   }
 
@@ -135,6 +137,8 @@ export default function FlujoCaja({ datos }: Props) {
     setGuardandoCierre(true)
     try {
       await cerrarPeriodoCaja(cierre.periodo, val, cierreNotas)
+      // Cerrar un periodo de caja sí es un hito: pasa una vez al mes.
+      momento('hito.alcanzado', { mensaje: `Periodo ${cierre.periodo} cerrado` })
       setCierre(prev => ({ ...prev, cerrado: true, saldo_cierre_real: val, notas_cierre: cierreNotas }))
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al guardar cierre')

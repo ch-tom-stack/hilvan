@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { crearInversion, editarInversion } from '@/app/actions/inversiones'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import { formatCLP, CATEGORIAS_INVERSION } from '@/types'
 import type { Inversion, CategoriaInversion, TratamientoContable, TipoDocInversion } from '@/types'
 
@@ -128,10 +129,12 @@ export default function FormularioInversion({ inversion, onGuardado, onCancelar 
     startTransition(async () => {
       if (esEdicion && inversion) {
         const result = await editarInversion(inversion.id, payload)
+        if (!result?.error) momento('guardado')
         if (result.error) { setError(result.error); return }
         onGuardado({ ...inversion, ...payload })
       } else {
         const result = await crearInversion(payload)
+        if (!result?.error) momento('creado', { mensaje: 'Inversión creada' })
         if (result.error) { setError(result.error); return }
         if (result.data) onGuardado(result.data)
       }

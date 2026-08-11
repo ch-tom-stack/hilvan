@@ -45,7 +45,7 @@ export type NombreMomento =
   // CH-1 Equipos y maletas. Ninguno estrena sonido: el set ya cubría estas
   // acciones, lo que faltaba era la semántica y la llamada.
   | 'equipo.creado' | 'equipo.guardado' | 'equipo.eliminado'
-  | 'equipo.rentable' | 'equipo.rentable_off'
+  | 'toggle.on' | 'toggle.off'
   | 'maleta.creada' | 'maleta.convertida' | 'nota.agregada'
   // Genéricos: agregar y quitar filas de una lista. Los usa Rental y sirven
   // para cotizaciones y rodaje — mejor que un par por módulo.
@@ -106,10 +106,11 @@ const CATALOGO: Record<NombreMomento, Definicion> = {
   'equipo.guardado':      { sonido: 'ok-guardar',                            toast: 'normal', mensaje: 'Cambios guardados' },
   // Eliminar no lleva chispa: confirmar que se borró no es un logro.
   'equipo.eliminado':     { sonido: 'ok-eliminar',                           toast: 'normal', mensaje: 'Equipo eliminado' },
-  // Par, como el checklist: activar y desactivar no pueden sonar igual o el
-  // toggle deja de decirte en qué estado quedó.
-  'equipo.rentable':      { sonido: 'ui-toggle-on',                          toast: 'ninguno' },
-  'equipo.rentable_off':  { sonido: 'ui-toggle-off',                         toast: 'ninguno' },
+  // Par genérico. Activar y desactivar no pueden sonar igual o el toggle deja
+  // de decirte en qué estado quedó. Lo usan el rentable de Equipos y el activo
+  // de los gastos fijos.
+  'toggle.on':            { sonido: 'ui-toggle-on',                          toast: 'ninguno' },
+  'toggle.off':           { sonido: 'ui-toggle-off',                         toast: 'ninguno' },
   'maleta.creada':        { sonido: 'ok-crear',      celebracion: 'micro',  toast: 'normal', mensaje: 'Maleta creada' },
   'maleta.convertida':    { sonido: 'ch-cinta',      celebracion: 'micro',  toast: 'normal', mensaje: 'Convertida a bundle' },
   'nota.agregada':        { sonido: 'ok-registrar',  celebracion: 'micro',  toast: 'ninguno' },

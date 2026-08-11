@@ -9,6 +9,7 @@ import {
   geocodificarDireccion,
 } from '@/app/actions/rodaje-plan'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import { RodajeLocacion } from '@/types'
 
 interface Props {
@@ -203,6 +204,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
                   startTransition(async () => {
                     try {
                       await actualizarLocacion(loc.id, rodajeId, data)
+                      momento('guardado')
                       setEditando(null)
                       onActualizar()
                     } catch (e) {
@@ -250,6 +252,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
                       startTransition(async () => {
                         try {
                           await eliminarLocacion(loc.id, rodajeId)
+                          momento('item.eliminado')
                           onActualizar()
                         } catch (e) {
                           toastError(e instanceof Error ? e.message : 'Error al eliminar locación')
@@ -278,6 +281,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
             startTransition(async () => {
               try {
                 await crearLocacion(rodajeId, data)
+                momento('item.agregado')
                 setAgregando(false)
                 onActualizar()
               } catch (e) {
