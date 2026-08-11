@@ -33,6 +33,9 @@ export type TokenSfx =
   // Grupo C — carácter y marca
   | 'ch-inicio' | 'ch-claqueta' | 'ch-obturador' | 'ch-scan-qr' | 'ch-cinta'
   | 'win-rodaje-cerrado' | 'win-meta-dia' | 'ch-salida'
+  // Grupo D — despedidas del CRM. Con variantes y con humor: son las únicas
+  // acciones lo bastante infrecuentes como para aguantar una broma.
+  | 'crm-enfriado'
 
 type Familia = 'micro' | 'confirmacion' | 'celebracion' | 'alerta'
 
@@ -61,6 +64,10 @@ const FAMILIA: Record<TokenSfx, Familia> = {
   'ch-salida': 'celebracion',
 
   'alert-error': 'alerta', 'alert-atencion': 'alerta', 'alert-lead': 'alerta',
+
+  // Voz, no efecto: a ganancia de celebración se grita. Confirmación se oye
+  // como alguien comentando al pasar, que es el tono que se busca.
+  'crm-enfriado': 'confirmacion',
 }
 
 // ── Contexto de audio ────────────────────────────────────────────────────────
@@ -82,13 +89,34 @@ function getCtx(): AudioContext | null {
 
 // ── Carga de archivos ────────────────────────────────────────────────────────
 
-const buffers = new Map<TokenSfx, AudioBuffer>()
+/**
+ * Tokens con más de un archivo, para que la misma acción no suene siempre
+ * igual. Archivos: `<token>.mp3`, `<token>-2.mp3`, `<token>-3.mp3`…
+ *
+ * Sólo vale la pena en acciones POCO frecuentes. Un micro-sonido que se oye
+ * cincuenta veces al día tiene que ser neutro y predecible: variarlo lo
+ * convierte en ruido. La gracia se gasta con la repetición, así que va donde
+ * la repetición es rara.
+ */
+const VARIANTES: Partial<Record<TokenSfx, number>> = {
+  'crm-enfriado': 4,
+}
+
+const buffers = new Map<TokenSfx, AudioBuffer[]>()
 const sinArchivo = new Set<TokenSfx>()
 const cargando = new Set<TokenSfx>()
 
+/** Nombre de archivo de la variante i (0 = el base, sin sufijo). */
+function archivoDe(token: TokenSfx, i: number): string {
+  return i === 0 ? `/sounds/${token}.mp3` : `/sounds/${token}-${i + 1}.mp3`
+}
+
 /**
- * Carga un token en segundo plano. Nunca lanza: si el archivo no existe, marca
+ * Carga un token en segundo plano. Nunca lanza: si no hay ningún archivo, marca
  * el token como sintético y no lo vuelve a intentar.
+ *
+ * Con variantes se cargan todas, pero basta que UNA responda: si falta la
+ * tercera, se rota entre las que sí están en vez de caer al sintético.
  */
 function cargar(token: TokenSfx): void {
   if (buffers.has(token) || sinArchivo.has(token) || cargando.has(token)) return
@@ -96,14 +124,24 @@ function cargar(token: TokenSfx): void {
   if (!c) return
 
   cargando.add(token)
-  fetch(`/sounds/${token}.mp3`)
-    .then((r) => {
-      if (!r.ok) throw new Error(String(r.status))
-      return r.arrayBuffer()
+  const n = VARIANTES[token] ?? 1
+
+  Promise.all(
+    Array.from({ length: n }, (_, i) =>
+      fetch(archivoDe(token, i))
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status))
+          return r.arrayBuffer()
+        })
+        .then((ab) => c.decodeAudioData(ab))
+        .catch(() => null),
+    ),
+  )
+    .then((bufs) => {
+      const vivos = bufs.filter((b): b is AudioBuffer => b !== null)
+      if (vivos.length > 0) buffers.set(token, vivos)
+      else sinArchivo.add(token)
     })
-    .then((ab) => c.decodeAudioData(ab))
-    .then((buf) => { buffers.set(token, buf) })
-    .catch(() => { sinArchivo.add(token) })
     .finally(() => { cargando.delete(token) })
 }
 
@@ -145,7 +183,10 @@ function sintetico(token: TokenSfx, vol: number): void {
       tono(MI, 0, 0.07, 'triangle', g * 0.7); break
     case 'ui-panel-open':
       tono(MI, 0, 0.11, 'sine', g * 0.6); tono(SOL, 0.05, 0.12, 'sine', g * 0.5); break
+    // 'crm-enfriado' cae acá cuando la voz todavía no cargó: un descenso, que
+    // es lo correcto aunque se pierda el chiste.
     case 'ui-panel-close': case 'ok-eliminar': case 'prog-retroceso': case 'ch-salida':
+    case 'crm-enfriado':
       tono(SOL, 0, 0.11, 'sine', g * 0.6); tono(MI, 0.06, 0.13, 'sine', g * 0.5); break
     case 'ok-registrar':
       tono(MI * 1.5, 0, 0.09, 'triangle', g * 0.8); break
@@ -186,6 +227,22 @@ function sintetico(token: TokenSfx, vol: number): void {
 const ultimaVez = new Map<TokenSfx, number>()
 const GAP_MINIMO_MS = 45 // evita el "ametrallamiento" en cargas masivas
 
+const ultimaVariante = new Map<TokenSfx, number>()
+
+/**
+ * Elige una variante al azar pero NUNCA la misma dos veces seguidas. Con azar
+ * puro y tres archivos, uno de cada tres suena repetido — y un repetido no se
+ * lee como azar, se lee como que el sistema falló.
+ */
+function elegirVariante(token: TokenSfx, bufs: AudioBuffer[]): AudioBuffer {
+  if (bufs.length === 1) return bufs[0]
+  const previa = ultimaVariante.get(token)
+  let i = Math.floor(Math.random() * bufs.length)
+  if (i === previa) i = (i + 1 + Math.floor(Math.random() * (bufs.length - 1))) % bufs.length
+  ultimaVariante.set(token, i)
+  return bufs[i]
+}
+
 /**
  * Reproduce un token. Silencioso si el usuario apagó el sonido.
  * @param intensidad multiplicador 0–1.5 sobre la ganancia (para escalar la
@@ -204,12 +261,12 @@ export function reproducir(token: TokenSfx, intensidad = 1): void {
   const c = getCtx()
   if (!c) return
 
-  const buf = buffers.get(token)
-  if (buf) {
+  const bufs = buffers.get(token)
+  if (bufs && bufs.length > 0) {
     const src = c.createBufferSource()
     const g = c.createGain()
     g.gain.value = Math.min(1, GANANCIA[FAMILIA[token]] * vol)
-    src.buffer = buf
+    src.buffer = elegirVariante(token, bufs)
     src.connect(g)
     g.connect(c.destination)
     src.start()

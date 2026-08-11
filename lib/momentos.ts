@@ -37,7 +37,7 @@ export type NombreMomento =
   | 'pago.recibido' | 'factura.emitida' | 'cotizacion.aprobada' | 'cotizacion.enviada'
   | 'movimiento.conciliado' | 'gasto.creado' | 'gasto.pagado' | 'factura.reconocida'
   // CRM
-  | 'crm.contacto' | 'crm.avance' | 'crm.retroceso' | 'crm.cierre' | 'lead.entrante'
+  | 'crm.contacto' | 'crm.avance' | 'crm.retroceso' | 'crm.enfriado' | 'crm.cierre' | 'lead.entrante'
   // Rodaje
   | 'rodaje.publicado' | 'rodaje.finalizado' | 'citaciones.enviadas'
   // Equipos
@@ -76,6 +76,11 @@ const CATALOGO: Record<NombreMomento, Definicion> = {
   'crm.contacto':         { sonido: 'ok-registrar',  celebracion: 'micro',  toast: 'normal', mensaje: 'Contacto registrado' },
   'crm.avance':           { sonido: 'prog-avance',   celebracion: 'micro',  toast: 'normal' },
   'crm.retroceso':        { sonido: 'prog-retroceso',                        toast: 'normal' },
+  // Enfriar a alguien sonaba a AVANCE: el Kanban mandaba todo lo que no fuera
+  // cierre o descarte al mismo momento. Ahora tiene el suyo, con voz y con
+  // variantes — es de las poquísimas acciones que se hacen lo bastante poco
+  // como para que una broma no se gaste.
+  'crm.enfriado':         { sonido: 'crm-enfriado',                          toast: 'normal' },
   'crm.cierre':           { sonido: 'win-cierre',     celebracion: 'hito',   toast: 'hito',   mensaje: 'Cliente confirmado' },
   'lead.entrante':        { sonido: 'alert-lead',     celebracion: 'chico',  toast: 'hito',   mensaje: 'Nuevo lead' },
 

@@ -111,6 +111,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
         const mensaje = `Movido a ${ETAPA_PROSPECTO_LABELS[etapa]}`
         if (etapa === 'confirmado') momento('crm.cierre', { mensaje })
         else if (etapa === 'descartado') momento('crm.retroceso', { mensaje })
+        else if (etapa === 'en_frio') momento('crm.enfriado', { mensaje })
         else momento('crm.avance', { mensaje })
         setRecienMovido(id)
         window.setTimeout(() => setRecienMovido(null), 700)
