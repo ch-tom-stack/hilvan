@@ -5,6 +5,7 @@ import { crearGasto } from '@/app/actions/rendiciones'
 import type { RendicionGasto, TipoRendicion, TipoDocRendicion } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { tasaRetencionBoleta } from '@/lib/rendiciones-calc'
+import { momento } from '@/lib/momentos'
 
 interface DatosFactura {
   rut_emisor: string | null
@@ -110,6 +111,9 @@ export default function FormularioGasto({
       // Solo mostrar si encontramos algo útil
       if (datos.rut_emisor || datos.razon_social || datos.monto) {
         setDatosDetectados(datos)
+        // El parser acertó: se avisa. Es de los pocos momentos donde la app
+        // hizo trabajo que a nadie le tocó pedir.
+        momento('factura.reconocida')
       }
     } catch {
       // Silencioso — el parse es best-effort

@@ -492,6 +492,9 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             href={`/api/cotizaciones/${cot.id}/pdf`}
             target="_blank"
             rel="noopener noreferrer"
+            // Dentro del gesto, no después: el PDF se genera en el servidor y
+            // la respuesta puede tardar. El obturador confirma el click.
+            onClick={() => momento('pdf.generado')}
             className="px-3 py-1.5 border border-ch-border text-ch-muted font-body text-xs rounded hover:text-ch-cream hover:border-ch-cream/40 transition-colors"
           >
             ↓ PDF
