@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { reproducir, sfxEnabled, setSfxEnabled } from '@/lib/sfx'
@@ -14,6 +14,7 @@ import {
   SCORES_PROSPECTO,
 } from '@/types'
 import { temperaturaDe, TEMPERATURA_LABELS, TEMPERATURAS, type Temperatura } from '@/lib/crm-temperatura'
+import { contar } from '@/lib/animar'
 import { moverEtapa } from '@/app/actions/crm'
 
 import TarjetaProspecto, { Tag } from '@/components/crm/TarjetaProspecto'
@@ -201,23 +202,23 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         <MetricaCard
           label="En pipeline"
-          valor={`${metricas.totalPipeline}`}
+          valor={metricas.totalPipeline}
           sub="prospectos activos"
         />
         <MetricaCard
           label="Por contactar"
-          valor={`${metricas.porContactar}`}
+          valor={metricas.porContactar}
           sub="en etapa prospecto"
           acento={metricas.porContactar > 0 ? 'gold' : undefined}
         />
         <MetricaCard
           label="En conversación"
-          valor={`${metricas.enConversacion}`}
+          valor={metricas.enConversacion}
           sub="con diálogo abierto"
         />
         <MetricaCard
           label="Confirmados"
-          valor={`${metricas.totalGanados}`}
+          valor={metricas.totalGanados}
           sub="ganados"
           acento={metricas.totalGanados > 0 ? 'green' : undefined}
         />
@@ -348,12 +349,20 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   )
 }
 
-function MetricaCard({ label, valor, sub, acento }: { label: string; valor: string; sub: string; acento?: 'green' | 'gold' }) {
+function MetricaCard({ label, valor, sub, acento }: { label: string; valor: number; sub: string; acento?: 'green' | 'gold' }) {
   const color = acento === 'green' ? 'text-ch-green' : acento === 'gold' ? 'text-ch-gold' : 'text-ch-cream'
+  const ref = useRef<HTMLParagraphElement>(null)
+
+  // El número sube desde 0 en vez de aparecer puesto. `contar` respeta la
+  // preferencia de movimiento reducido por dentro: ahí escribe el valor final
+  // de una y no hay que envolverlo acá.
+  useEffect(() => contar(ref.current, valor, n => String(Math.round(n))), [valor])
+
   return (
     <div className="border border-ch-border bg-ch-surface/30 p-4">
       <p className="font-body text-[9px] tracking-[0.25em] uppercase text-ch-subtle mb-2">{label}</p>
-      <p className={`font-display italic text-3xl leading-none ${color}`}>{valor}</p>
+      {/* El valor inicial va en el HTML para que exista sin JS y no parpadee. */}
+      <p ref={ref} className={`font-display italic text-3xl leading-none tabular-nums ${color}`}>{valor}</p>
       <p className="font-body text-[11px] text-ch-muted mt-2">{sub}</p>
     </div>
   )
@@ -405,6 +414,17 @@ function KanbanView({
                 <span className="font-body text-[10px] text-ch-subtle">{cards.length}</span>
               </div>
               <div className="p-2 space-y-2 min-h-[120px]">
+                {/* Una columna vacía no decía nada, ni siquiera que se le puede
+                    soltar algo. La pista aparece SÓLO mientras arrastras: fuera
+                    del arrastre sería una instrucción permanente para algo que
+                    ya se entiende. */}
+                {cards.length === 0 && draggedId && (
+                  <div className="border border-dashed border-ch-green/40 p-4 text-center ch-fade-up">
+                    <p className="font-body text-[9px] tracking-[0.25em] uppercase text-ch-green/70">
+                      Soltar aquí
+                    </p>
+                  </div>
+                )}
                 {cards.map((p, i) => (
                   <TarjetaProspecto
                     key={p.id}
