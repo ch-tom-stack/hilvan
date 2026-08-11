@@ -114,7 +114,7 @@ export default function AgendaDeHoy({ prospectos, usuarioId }: Props) {
       </div>
 
       {listos === total ? (
-        <p className="px-4 pb-3.5 font-body text-xs text-ch-green">
+        <p className="px-4 pb-3.5 font-body text-xs text-ch-green ch-fade-up">
           Listo por hoy. {total} contacto{total === 1 ? '' : 's'} registrado{total === 1 ? '' : 's'}.
         </p>
       ) : (

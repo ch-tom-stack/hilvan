@@ -168,6 +168,23 @@ input:-webkit-autofill:focus {
 }
 .ch-enfriar { animation: ch-enfriar 0.6s var(--ch-ease); }
 
+/* La tarjeta que estás arrastrando: se despega del tablero. No es keyframe
+   sino estado — dura lo que dure el arrastre, no un tiempo fijo. El giro es
+   mínimo a propósito: lo justo para que se lea "levantada", sin caricatura. */
+.ch-arrastrando {
+  opacity: 0.45;
+  transform: scale(0.98) rotate(-0.4deg);
+}
+.ch-arrastrable { transition: opacity 0.15s var(--ch-ease), transform 0.15s var(--ch-ease); }
+
+/* Columna que va a recibir la tarjeta. El borde verde solo no basta: en una
+   pantalla con cinco columnas hay que poder ver el destino sin buscarlo. */
+@keyframes ch-recibe {
+  from { background-color: rgba(122, 158, 126, 0.00); }
+  to   { background-color: rgba(122, 158, 126, 0.07); }
+}
+.ch-recibe { animation: ch-recibe 0.18s var(--ch-ease) both; }
+
 /* Aparece un pendiente */
 @keyframes ch-badge-pop {
   0%   { transform: scale(0); opacity: 0; }
@@ -216,9 +233,14 @@ input:-webkit-autofill:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .ch-fade-up, .ch-pulse, .ch-shake, .ch-flash-row, .ch-settle, .ch-enfriar,
-  .ch-badge-pop, .ch-glow-hito, .ch-live-dot, .ch-shimmer, .ch-bar-fill {
+  .ch-badge-pop, .ch-glow-hito, .ch-live-dot, .ch-shimmer, .ch-bar-fill,
+  .ch-recibe {
     animation: none !important;
   }
+  /* El arrastre conserva la opacidad —es información, no adorno— pero pierde
+     el movimiento. */
+  .ch-arrastrando { transform: none; }
+  .ch-arrastrable { transition: none; }
   .ch-fade-up { opacity: 1; transform: none; }
   .ch-bar-fill { width: var(--w, 100%); }
   .ch-press:active { transform: none; }

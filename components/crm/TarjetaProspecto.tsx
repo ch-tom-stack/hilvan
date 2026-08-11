@@ -75,9 +75,13 @@ interface Props {
   onAddContacto?: (p: Prospecto) => void
   /** la tarjeta acaba de cambiar de etapa: aterriza con ch-settle */
   recienMovido?: boolean
+  /** la estás arrastrando ahora mismo: se despega del tablero */
+  arrastrando?: boolean
+  /** posición en la columna, para escalonar la entrada del tablero */
+  indice?: number
 }
 
-export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente, onAddContacto, recienMovido }: Props) {
+export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pendiente, onAddContacto, recienMovido, arrastrando, indice = 0 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   // Suma optimista: el contador late y sube de color en el acto, sin esperar
@@ -100,9 +104,10 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
     : p.etapa === 'en_frio'    ? 'ch-enfriar'
     : 'ch-settle'
 
-  // Las dos clases ponen `animation`, así que no pueden convivir: gana la de
-  // entrada, que describe un cambio mayor que registrar un toque.
-  const anim = gestoEntrada || (destello ? 'ch-flash-row' : '')
+  // Las clases ponen todas `animation`, así que no pueden convivir. Orden de
+  // prioridad: el cambio de etapa manda sobre el destello, y el escalonado de
+  // entrada solo corre cuando no pasó nada más — es la animación de montaje.
+  const anim = gestoEntrada || (destello ? 'ch-flash-row' : 'ch-fade-up ch-stagger')
 
   const tocar = (tipo: string) => {
     setExtra(e => e + 1)
@@ -127,7 +132,8 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       onDragStart={onDragStart}
       onClick={() => router.push(`/crm/${p.id}`)}
       title={TEMPERATURA_GLOSA[temp]}
-      className={`block bg-ch-surface/30 border border-ch-border border-l-2 ${TEMPERATURA_BORDE[temp]} p-4 hover:border-ch-muted transition-colors group cursor-pointer ${anim}`}
+      style={{ ['--i' as string]: indice }}
+      className={`block bg-ch-surface/30 border border-ch-border border-l-2 ${TEMPERATURA_BORDE[temp]} p-4 hover:border-ch-muted transition-colors group cursor-pointer ch-arrastrable ${arrastrando ? 'ch-arrastrando' : ''} ${anim}`}
     >
       {/* Epígrafe: contador de toques con código de calor */}
       <div className="flex items-center justify-between mb-3 pb-3 border-b border-ch-border">

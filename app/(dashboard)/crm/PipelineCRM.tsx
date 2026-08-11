@@ -326,6 +326,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           dragOver={dragOver}
           setDragOver={setDragOver}
           onDragStartCard={setDraggedId}
+          draggedId={draggedId}
           onDrop={onDrop}
           recienMovido={recienMovido}
           cajonAbierto={cajonAbierto}
@@ -359,12 +360,13 @@ function MetricaCard({ label, valor, sub, acento }: { label: string; valor: stri
 }
 
 function KanbanView({
-  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, pendientesSet, onAddContacto, recienMovido,
+  porEtapa, dragOver, setDragOver, onDragStartCard, onDrop, cajonAbierto, pendientesSet, onAddContacto, recienMovido, draggedId,
 }: {
   porEtapa: Map<EtapaProspecto, Prospecto[]>
   dragOver: EtapaProspecto | null
   setDragOver: (e: EtapaProspecto | null) => void
   onDragStartCard: (id: string) => void
+  draggedId: string | null
   onDrop: (e: EtapaProspecto) => void
   cajonAbierto: boolean
   pendientesSet: Set<string>
@@ -392,7 +394,9 @@ function KanbanView({
               onDragOver={e => { e.preventDefault(); setDragOver(etapa) }}
               onDragLeave={() => setDragOver(null)}
               onDrop={() => onDrop(etapa)}
-              className={`${ancho} border bg-ch-black/20 ${dragOver === etapa ? 'border-ch-green' : 'border-ch-border'} transition-colors`}
+              className={`${ancho} border bg-ch-black/20 transition-colors ${
+                dragOver === etapa ? 'border-ch-green ch-recibe' : 'border-ch-border'
+              }`}
             >
               <div className="px-3 py-3 border-b border-ch-border flex items-center justify-between">
                 <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted">
@@ -401,12 +405,14 @@ function KanbanView({
                 <span className="font-body text-[10px] text-ch-subtle">{cards.length}</span>
               </div>
               <div className="p-2 space-y-2 min-h-[120px]">
-                {cards.map(p => (
+                {cards.map((p, i) => (
                   <TarjetaProspecto
                     key={p.id}
                     prospecto={p}
+                    indice={i}
                     draggable
                     onDragStart={() => onDragStartCard(p.id)}
+                    arrastrando={draggedId === p.id}
                     pendiente={pendientesSet.has(p.id)}
                     onAddContacto={esCajon ? undefined : onAddContacto}
                     recienMovido={recienMovido === p.id}
