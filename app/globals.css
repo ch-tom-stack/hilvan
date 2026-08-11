@@ -157,6 +157,17 @@ input:-webkit-autofill:focus {
 }
 .ch-settle { animation: ch-settle 0.22s var(--ch-ease); }
 
+/* Enfriado: la tarjeta se desinfla y pierde el color, en vez de aterrizar.
+   Se desatura con filter en lugar de pintar un azul — así el gesto lee como
+   "se le fue la vida" sin meter un color que no está en la paleta. Dura más
+   que ch-settle (0.6s) porque acompaña a la voz, que entra a los 130ms. */
+@keyframes ch-enfriar {
+  0%   { transform: translateY(-3px) scale(1.015); filter: saturate(1); }
+  30%  { transform: translateY(1px) scale(0.985); filter: saturate(0.15); }
+  100% { transform: none; filter: saturate(1); }
+}
+.ch-enfriar { animation: ch-enfriar 0.6s var(--ch-ease); }
+
 /* Aparece un pendiente */
 @keyframes ch-badge-pop {
   0%   { transform: scale(0); opacity: 0; }
@@ -204,7 +215,7 @@ input:-webkit-autofill:focus {
 .ch-nudge-host:hover .ch-nudge { transform: translateX(3px); }
 
 @media (prefers-reduced-motion: reduce) {
-  .ch-fade-up, .ch-pulse, .ch-shake, .ch-flash-row, .ch-settle,
+  .ch-fade-up, .ch-pulse, .ch-shake, .ch-flash-row, .ch-settle, .ch-enfriar,
   .ch-badge-pop, .ch-glow-hito, .ch-live-dot, .ch-shimmer, .ch-bar-fill {
     animation: none !important;
   }

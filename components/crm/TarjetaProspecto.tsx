@@ -88,6 +88,9 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
   const n = (p.n_interacciones ?? 0) + extra
   const heat = heatColor(n)
   const temp = temperaturaDe(p.origen)
+  // Al caer en "En frío" la tarjeta se desinfla en vez de aterrizar. No hace
+  // falta un prop nuevo: la etapa ya viene en el prospecto refrescado.
+  const gestoEntrada = !recienMovido ? '' : p.etapa === 'en_frio' ? 'ch-enfriar' : 'ch-settle'
 
   const tocar = (tipo: string) => {
     setExtra(e => e + 1)
@@ -110,7 +113,7 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       onDragStart={onDragStart}
       onClick={() => router.push(`/crm/${p.id}`)}
       title={TEMPERATURA_GLOSA[temp]}
-      className={`block bg-ch-surface/30 border border-ch-border border-l-2 ${TEMPERATURA_BORDE[temp]} p-4 hover:border-ch-muted transition-colors group cursor-pointer ${recienMovido ? 'ch-settle' : ''}`}
+      className={`block bg-ch-surface/30 border border-ch-border border-l-2 ${TEMPERATURA_BORDE[temp]} p-4 hover:border-ch-muted transition-colors group cursor-pointer ${gestoEntrada}`}
     >
       {/* Epígrafe: contador de toques con código de calor */}
       <div className="flex items-center justify-between mb-3 pb-3 border-b border-ch-border">
