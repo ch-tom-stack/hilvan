@@ -1193,6 +1193,12 @@ const TOOLS = [
     run: (a) => api('GET', `/crm/reglas${a.doc ? `?doc=${encodeURIComponent(a.doc)}` : ''}`),
   },
   {
+    name: 'hilvan_editar_prospecto',
+    description: 'Corrige los datos de un prospecto. prospecto_id REQUERIDO; sólo se escriben los campos que mandes (los que omitas quedan intactos): empresa, nombre_contacto, email, telefono, origen (lectura|web|feria|referido|correo|linkedin|instagram|otro), arquetipo, score, decisor, angulo, producto_objetivo, notas. Manda "" para vaciar un campo. Úsalo sobre todo para arreglar `origen`: ese campo decide si el prospecto es frío o entrante y con eso la secuencia de correos. NO cambia etapa (usa hilvan_mover_etapa) ni responsable (no se reasigna a quien ya tiene dueño); para tamaño/segmento usa hilvan_clasificar_prospecto. Guarda el valor anterior en la auditoría para poder revertir.',
+    inputSchema: { type: 'object', properties: { prospecto_id: { type: 'string' }, empresa: { type: 'string' }, nombre_contacto: { type: 'string' }, email: { type: 'string' }, telefono: { type: 'string' }, origen: { type: 'string' }, arquetipo: { type: 'string' }, score: { type: 'string' }, decisor: { type: 'string' }, angulo: { type: 'string' }, producto_objetivo: { type: 'string' }, notas: { type: 'string' } }, required: ['prospecto_id'] },
+    run: (a) => api('POST', '/crm/editar', a),
+  },
+  {
     name: 'hilvan_clasificar_prospecto',
     description: 'Clasifica un prospecto por tamano (chica|mediana|grande) y segmento (general|estudiante|ropa_intima_fem|masculino_estereotipo|rental) — los ejes con que se asigna el responsable. Si el prospecto NO tiene responsable, lo asigna EN EL ACTO según las reglas (rental→Josué; estudiante/masculino/videoclip→Simón; ropa_intima/banco/lookbook-chica→Natalia; lookbook o empresa grande→Tomás; fallback→Simón). NO reasigna si ya tiene dueño. Fíjalo al investigar/enriquecer el lead. prospecto_id REQUERIDO.',
     inputSchema: { type: 'object', properties: { prospecto_id: { type: 'string' }, tamano: { type: 'string' }, segmento: { type: 'string' } }, required: ['prospecto_id'] },

@@ -101,10 +101,13 @@ export default function AgendaDeHoy({ prospectos, usuarioId }: Props) {
           <span className="font-body text-[10px] tracking-[0.15em] uppercase text-ch-subtle tabular-nums">
             {listos} de {total}
           </span>
-          <div className="w-24 h-px bg-ch-border relative">
+          {/* ch-bar-fill llena desde 0 al montar. `transition-all` sola sólo
+              anima los CAMBIOS: al cargar la página la barra ya aparecía llena,
+              que es la diferencia entre ver un número y ver cuánto avanzaste. */}
+          <div className="w-24 h-px bg-ch-border relative overflow-hidden">
             <div
-              className="absolute inset-y-0 left-0 bg-ch-green transition-all duration-500"
-              style={{ width: `${pct}%` }}
+              className="absolute inset-y-0 left-0 bg-ch-green transition-all duration-500 ch-bar-fill"
+              style={{ width: `${pct}%`, ['--w' as string]: `${pct}%` }}
             />
           </div>
         </div>

@@ -1643,6 +1643,29 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_editar_prospecto',
+      {
+        title: 'Editar prospecto (CRM)',
+        description: 'Corrige los datos de un prospecto. prospecto_id REQUERIDO; sólo se escriben los campos que mandes (los que omitas quedan intactos). Manda "" para vaciar uno. Úsalo sobre todo para arreglar `origen`: decide si el prospecto es frío o entrante y con eso la secuencia de correos. NO cambia etapa (usa hilvan_mover_etapa) ni responsable; para tamaño/segmento usa hilvan_clasificar_prospecto. Guarda el valor anterior en la auditoría para poder revertir.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          empresa: z.string().optional(),
+          nombre_contacto: z.string().optional(),
+          email: z.string().optional(),
+          telefono: z.string().optional(),
+          origen: z.string().optional().describe('lectura|web|feria|referido|correo|linkedin|instagram|otro'),
+          arquetipo: z.string().optional(),
+          score: z.string().optional(),
+          decisor: z.string().optional(),
+          angulo: z.string().optional(),
+          producto_objetivo: z.string().optional(),
+          notas: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/editar', args)),
+    )
+
+    server.registerTool(
       'hilvan_clasificar_prospecto',
       {
         title: 'Clasificar prospecto (CRM)',

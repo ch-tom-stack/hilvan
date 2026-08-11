@@ -83,17 +83,31 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
   // Suma optimista: el contador late y sube de color en el acto, sin esperar
   // al servidor. Si falla, se revierte.
   const [extra, setExtra] = useState(0)
+  // Destello verde al registrar: confirma CUÁL tarjeta se llevó el click, que
+  // es lo que se pierde cuando bajas una columna apretando rápido.
+  const [destello, setDestello] = useState(false)
   const p = prospecto
   const checklist = (p.checklist ?? []).filter((x): x is ChecklistItem => x in CHECKLIST_LABELS)
   const n = (p.n_interacciones ?? 0) + extra
   const heat = heatColor(n)
   const temp = temperaturaDe(p.origen)
-  // Al caer en "En frío" la tarjeta se desinfla en vez de aterrizar. No hace
-  // falta un prop nuevo: la etapa ya viene en el prospecto refrescado.
-  const gestoEntrada = !recienMovido ? '' : p.etapa === 'en_frio' ? 'ch-enfriar' : 'ch-settle'
+  // Cómo entra la tarjeta cuando acaba de moverse. Confirmar un cliente pasa
+  // una vez cada varios meses y hasta ahora no cambiaba nada en la tarjeta: el
+  // borde recorriendo verde → dorado es el equivalente visual del confeti.
+  const gestoEntrada = !recienMovido
+    ? ''
+    : p.etapa === 'confirmado' ? 'ch-glow-hito'
+    : p.etapa === 'en_frio'    ? 'ch-enfriar'
+    : 'ch-settle'
+
+  // Las dos clases ponen `animation`, así que no pueden convivir: gana la de
+  // entrada, que describe un cambio mayor que registrar un toque.
+  const anim = gestoEntrada || (destello ? 'ch-flash-row' : '')
 
   const tocar = (tipo: string) => {
     setExtra(e => e + 1)
+    setDestello(true)
+    window.setTimeout(() => setDestello(false), 620)   // dura lo que ch-flash-row
     // Va dentro del gesto, no después del await: es micro-feedback local.
     momento('crm.contacto', { mensaje: '' })
     startTransition(async () => {
@@ -113,7 +127,7 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       onDragStart={onDragStart}
       onClick={() => router.push(`/crm/${p.id}`)}
       title={TEMPERATURA_GLOSA[temp]}
-      className={`block bg-ch-surface/30 border border-ch-border border-l-2 ${TEMPERATURA_BORDE[temp]} p-4 hover:border-ch-muted transition-colors group cursor-pointer ${gestoEntrada}`}
+      className={`block bg-ch-surface/30 border border-ch-border border-l-2 ${TEMPERATURA_BORDE[temp]} p-4 hover:border-ch-muted transition-colors group cursor-pointer ${anim}`}
     >
       {/* Epígrafe: contador de toques con código de calor */}
       <div className="flex items-center justify-between mb-3 pb-3 border-b border-ch-border">
