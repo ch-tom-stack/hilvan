@@ -765,6 +765,9 @@ export async function registrarInteraccion(
     proximo_paso: limpiar(input.proximo_paso),
     fecha_proximo: input.fecha_proximo || null,
     gmail_thread: limpiar(input.gmail_thread),
+    // Quién lo registró. Sin esto no hay tracking por persona: lo único
+    // atribuible era el responsable del prospecto, que es el REPARTO.
+    registrado_por: acceso.user.id,
   })
 
   if (error) return { error: error.message }

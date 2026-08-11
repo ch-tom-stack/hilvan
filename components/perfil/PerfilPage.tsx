@@ -7,6 +7,7 @@ import { logout } from '@/app/actions/auth'
 import PreferenciasFeedback from './PreferenciasFeedback'
 import type { Profile, Rol } from '@/types'
 import { momento } from '@/lib/momentos'
+import Medallas from '@/components/perfil/Medallas'
 
 const ROL_LABELS: Record<Rol, string> = {
   admin:         'Administrador',
@@ -281,6 +282,13 @@ export default function PerfilPage({ profile, email }: Props) {
         </div>
 
       </div>
+
+      {/* Las medallas son del CRM: sólo tienen sentido para quien capta. */}
+      {(profile.rol === 'admin' || profile.rol === 'productor') && (
+        <div className="mt-8">
+          <Medallas />
+        </div>
+      )}
 
       <div className="pt-12 pb-4 flex justify-center">
         <img src="/logos/logo-horizontal-negro.png" alt="" className="h-5 w-auto opacity-20" />
