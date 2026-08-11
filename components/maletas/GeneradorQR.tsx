@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { momento } from '@/lib/momentos'
 import QRCode from 'qrcode'
 
 interface Props {
@@ -29,6 +30,10 @@ export default function GeneradorQR({ codigo, nombre }: Props) {
     link.download = `QR-${codigo}.png`
     link.href = canvasRef.current.toDataURL('image/png')
     link.click()
+    // ch-scan-qr al DESCARGAR, no al escanear: el escaneo aterriza en la ficha
+    // pública, donde el navegador bloquea el audio hasta que el usuario toque
+    // algo. Ese sonido no sonaría nunca.
+    momento('qr.escaneado')
   }
 
   function imprimir() {

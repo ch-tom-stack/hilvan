@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { subirFotoEquipo } from '@/lib/supabase/storage'
 import { crearEquipo, actualizarEquipo, getSiguienteCodigo } from '@/app/actions/equipos'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { Equipo, CategoriaEquipo, EstadoEquipo } from '@/types'
 
 interface Props {
@@ -119,9 +120,12 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
     if (result.error) {
       setError(result.error)
       setGuardando(false)
+      momento('error', { mensaje: result.error })
       return
     }
 
+    // Después del await: lo confirmó el servidor, no el gesto.
+    momento(esEdicion ? 'equipo.guardado' : 'equipo.creado')
     router.push('/equipos')
     router.refresh()
   }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { agregarNota } from '@/app/actions/maletas'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { MaletaNota } from '@/types'
 
 interface Props {
@@ -30,6 +31,7 @@ export default function NotasMaleta({ maletaId, notas, usuarioLogueado, nombreUs
     setGuardando(true)
     try {
       await agregarNota(maletaId, texto.trim(), nombreUsuario)
+      momento('nota.agregada')
       setTexto('')
       router.refresh()
     } catch (e) {

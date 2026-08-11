@@ -42,6 +42,11 @@ export type NombreMomento =
   | 'rodaje.publicado' | 'rodaje.finalizado' | 'citaciones.enviadas'
   // Equipos
   | 'qr.escaneado'
+  // CH-1 Equipos y maletas. Ninguno estrena sonido: el set ya cubría estas
+  // acciones, lo que faltaba era la semántica y la llamada.
+  | 'equipo.creado' | 'equipo.guardado' | 'equipo.eliminado'
+  | 'equipo.rentable' | 'equipo.rentable_off'
+  | 'maleta.creada' | 'maleta.convertida' | 'nota.agregada'
   // Progreso personal
   | 'checklist.marcado' | 'checklist.desmarcado'
   | 'meta.cumplida' | 'hito.alcanzado'
@@ -89,6 +94,20 @@ const CATALOGO: Record<NombreMomento, Definicion> = {
   'citaciones.enviadas':  { sonido: 'ok-enviar',     celebracion: 'micro',  toast: 'normal', mensaje: 'Citaciones enviadas' },
 
   'qr.escaneado':         { sonido: 'ch-scan-qr',    celebracion: 'micro',  toast: 'ninguno' },
+
+  // CH-1 Equipos. Crear y guardar son confirmaciones, no celebraciones: se
+  // hacen a diario y celebrarlas gastaría el gesto de celebrar.
+  'equipo.creado':        { sonido: 'ok-crear',      celebracion: 'micro',  toast: 'normal', mensaje: 'Equipo creado' },
+  'equipo.guardado':      { sonido: 'ok-guardar',                            toast: 'normal', mensaje: 'Cambios guardados' },
+  // Eliminar no lleva chispa: confirmar que se borró no es un logro.
+  'equipo.eliminado':     { sonido: 'ok-eliminar',                           toast: 'normal', mensaje: 'Equipo eliminado' },
+  // Par, como el checklist: activar y desactivar no pueden sonar igual o el
+  // toggle deja de decirte en qué estado quedó.
+  'equipo.rentable':      { sonido: 'ui-toggle-on',                          toast: 'ninguno' },
+  'equipo.rentable_off':  { sonido: 'ui-toggle-off',                         toast: 'ninguno' },
+  'maleta.creada':        { sonido: 'ok-crear',      celebracion: 'micro',  toast: 'normal', mensaje: 'Maleta creada' },
+  'maleta.convertida':    { sonido: 'ch-cinta',      celebracion: 'micro',  toast: 'normal', mensaje: 'Convertida a bundle' },
+  'nota.agregada':        { sonido: 'ok-registrar',  celebracion: 'micro',  toast: 'ninguno' },
 
   // Marcar suma; desmarcar es neutro, nunca un castigo.
   'checklist.marcado':    { sonido: 'prog-check',    celebracion: 'micro',  toast: 'ninguno' },

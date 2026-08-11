@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { eliminarEquipo } from '@/app/actions/equipos'
+import { momento } from '@/lib/momentos'
 
 interface Props {
   equipoId: string
@@ -22,7 +23,9 @@ export default function EquipoAcciones({ equipoId, equipoNombre }: Props) {
       if (res.error) {
         setError(res.error)
         setConfirmando(false)
+        momento('error', { mensaje: res.error })
       } else {
+        momento('equipo.eliminado')
         router.push('/equipos')
         router.refresh()
       }

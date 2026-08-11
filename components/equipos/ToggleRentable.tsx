@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { toggleRentable } from '@/app/actions/equipos'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 
 interface Props {
   id: string
@@ -16,11 +17,15 @@ export default function ToggleRentable({ id, rentable: initialRentable }: Props)
   function handleToggle() {
     const nuevo = !activo
     setActivo(nuevo) // optimistic
+    // Dentro del gesto: es micro-feedback local, esperar al servidor lo
+    // desacopla del click y se siente roto.
+    momento(nuevo ? 'equipo.rentable' : 'equipo.rentable_off')
     startTransition(async () => {
       const res = await toggleRentable(id, nuevo)
       if (res?.error) {
         setActivo(!nuevo) // revert
         toastError('No se pudo actualizar')
+        momento('error', { mensaje: 'No se pudo actualizar' })
       }
     })
   }

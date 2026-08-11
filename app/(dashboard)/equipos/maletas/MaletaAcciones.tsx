@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { eliminarMaleta, convertirMaletaABundle } from '@/app/actions/maletas'
+import { momento } from '@/lib/momentos'
 
 interface Props {
   maletaId: string
@@ -23,8 +24,8 @@ export default function MaletaAcciones({ maletaId, maletaNombre }: Props) {
     setError(null)
     startTransition(async () => {
       const res = await eliminarMaleta(maletaId)
-      if (res.error) { setError(res.error); setConfirmando(null) }
-      else router.refresh()
+      if (res.error) { setError(res.error); setConfirmando(null); momento('error', { mensaje: res.error }) }
+      else { momento('equipo.eliminado', { mensaje: 'Maleta eliminada' }); router.refresh() }
     })
   }
 
@@ -32,8 +33,11 @@ export default function MaletaAcciones({ maletaId, maletaNombre }: Props) {
     setError(null)
     startTransition(async () => {
       const res = await convertirMaletaABundle(maletaId)
-      if (res.error) { setError(res.error); setConfirmando(null) }
-      else if (res.bundleId) setBundleCreado({ id: res.bundleId, codigo: res.bundleCodigo! })
+      if (res.error) { setError(res.error); setConfirmando(null); momento('error', { mensaje: res.error }) }
+      else if (res.bundleId) {
+        momento('maleta.convertida')
+        setBundleCreado({ id: res.bundleId, codigo: res.bundleCodigo! })
+      }
     })
   }
 

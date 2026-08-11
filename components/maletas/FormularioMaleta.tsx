@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { subirFotoMaleta } from '@/lib/supabase/storage-maletas'
 import { crearMaleta, actualizarMaleta } from '@/app/actions/maletas'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { Maleta, Equipo } from '@/types'
 
 interface ItemForm {
@@ -86,8 +87,11 @@ export default function FormularioMaleta({ equipos, maleta }: Props) {
     if (result.error) {
       setError(result.error)
       setGuardando(false)
+      momento('error', { mensaje: result.error })
       return
     }
+
+    momento(esEdicion ? 'equipo.guardado' : 'maleta.creada')
 
     router.push('/equipos/maletas')
     router.refresh()
