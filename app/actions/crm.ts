@@ -516,6 +516,54 @@ export async function proponerEnFrioAgotados(
   return { propuestos: empresas.length, empresas }
 }
 
+export interface ResumenSemana {
+  /** Lunes de la semana en curso, YYYY-MM-DD. */
+  desde: string
+  contactos: number
+  /** Marcas distintas tocadas: 12 contactos a una sola marca no es lo mismo. */
+  marcas: number
+  respondieron: number
+}
+
+/**
+ * Lo que lleva el equipo esta semana. Se cuenta de LUNES a hoy, no los últimos
+ * 7 días: una semana que se reinicia el lunes se puede cerrar, y los últimos 7
+ * días son una ventana que nunca termina.
+ *
+ * A propósito NO es una racha. Una racha castiga la ausencia y con un equipo de
+ * cuatro y fines de semana se rompe sola — se convierte en fuente de culpa, que
+ * es justo por lo que el cron de seguimientos sigue apagado.
+ */
+export async function getResumenSemana(): Promise<ResumenSemana> {
+  const supabase = await createClient()
+  const hoy = hoyChileISO()
+
+  // Lunes de esta semana, en fechas planas para no cruzarse con UTC.
+  const d = new Date(hoy + 'T12:00:00')
+  const diaSemana = (d.getDay() + 6) % 7          // 0 = lunes
+  d.setDate(d.getDate() - diaSemana)
+  const desde = d.toLocaleDateString('en-CA')
+
+  const { data, error } = await supabase
+    .from('crm_interacciones')
+    .select('prospecto_id, respondido, fecha')
+    .gte('fecha', desde)
+    .lte('fecha', hoy)
+
+  if (error) {
+    console.error('[crm] resumen semanal:', error.message)
+    return { desde, contactos: 0, marcas: 0, respondieron: 0 }
+  }
+
+  const filas = data ?? []
+  return {
+    desde,
+    contactos: filas.length,
+    marcas: new Set(filas.map(r => r.prospecto_id)).size,
+    respondieron: filas.filter(r => r.respondido).length,
+  }
+}
+
 export interface MetricasCrm {
   totalPipeline: number
   totalGanados: number

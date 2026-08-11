@@ -1,17 +1,18 @@
-import { getPipeline, getMetricasCrm, getProspectoIdsConPendiente, getAprobacionesPendientes, getOperadoresCrm } from '@/app/actions/crm'
+import { getPipeline, getMetricasCrm, getProspectoIdsConPendiente, getAprobacionesPendientes, getOperadoresCrm, getResumenSemana } from '@/app/actions/crm'
 import { createClient } from '@/lib/supabase/server'
 import { OPERADOR_EMAIL } from '@/lib/crm-asignacion'
 import PipelineCRM from './PipelineCRM'
 
 export default async function CrmPage() {
   const supabase = await createClient()
-  const [{ data: { user } }, prospectos, metricas, pendientesIds, pendientes, operadores] = await Promise.all([
+  const [{ data: { user } }, prospectos, metricas, pendientesIds, pendientes, operadores, semana] = await Promise.all([
     supabase.auth.getUser(),
     getPipeline(),
     getMetricasCrm(),
     getProspectoIdsConPendiente(),
     getAprobacionesPendientes(),
     getOperadoresCrm(),
+    getResumenSemana(),
   ])
 
   return (
@@ -23,6 +24,7 @@ export default async function CrmPage() {
         totalBandeja={pendientes.length}
         usuarioId={user?.id ?? ''}
         operadores={operadores}
+        semana={semana}
         esManager={user?.email?.trim().toLowerCase() === OPERADOR_EMAIL.tomas}
       />
     </div>

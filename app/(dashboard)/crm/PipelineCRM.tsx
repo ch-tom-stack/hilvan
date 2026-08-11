@@ -22,7 +22,8 @@ import QuickContacto from '@/components/crm/QuickContacto'
 import RepartirProspectos from '@/components/crm/RepartirProspectos'
 import AgendaDeHoy from '@/components/crm/AgendaDeHoy'
 import ProgresoEquipo from '@/components/crm/ProgresoEquipo'
-import type { MetricasCrm } from '@/app/actions/crm'
+import ResumenSemana from '@/components/crm/ResumenSemana'
+import type { MetricasCrm, ResumenSemana as DatosSemana } from '@/app/actions/crm'
 
 interface Props {
   prospectos: Prospecto[]
@@ -34,11 +35,13 @@ interface Props {
   operadores: { id: string; nombre: string }[]
   /** Quien gestiona al equipo ve además el progreso de todos. */
   esManager?: boolean
+  /** Lo que lleva el equipo de lunes a hoy. */
+  semana: DatosSemana
 }
 
 type Vista = 'kanban' | 'tabla'
 
-export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja, usuarioId, operadores, esManager }: Props) {
+export default function PipelineCRM({ prospectos, metricas, pendientesIds, totalBandeja, usuarioId, operadores, esManager, semana }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [vista, setVista] = useState<Vista>('kanban')
@@ -192,6 +195,10 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
       </div>
 
       <AgendaDeHoy prospectos={prospectos} usuarioId={usuarioId} />
+
+      {/* Va DESPUÉS de la agenda: primero lo que falta hoy, después lo que ya
+          se acumuló. Al revés, el recuento se lee como una excusa. */}
+      <ResumenSemana datos={semana} />
 
       {/* El progreso del equipo solo lo ve quien gestiona (Tomás). */}
       {esManager && <ProgresoEquipo prospectos={prospectos} operadores={operadores} />}

@@ -37,7 +37,7 @@ export type NombreMomento =
   | 'pago.recibido' | 'factura.emitida' | 'cotizacion.aprobada' | 'cotizacion.enviada'
   | 'movimiento.conciliado' | 'gasto.creado' | 'gasto.pagado' | 'factura.reconocida'
   // CRM
-  | 'crm.contacto' | 'crm.avance' | 'crm.retroceso' | 'crm.enfriado' | 'crm.descartado'
+  | 'crm.contacto' | 'crm.calienta' | 'crm.avance' | 'crm.retroceso' | 'crm.enfriado' | 'crm.descartado'
   | 'crm.cierre' | 'lead.entrante'
   // Rodaje
   | 'rodaje.publicado' | 'rodaje.finalizado' | 'citaciones.enviadas'
@@ -85,6 +85,10 @@ const CATALOGO: Record<NombreMomento, Definicion> = {
   'factura.reconocida':   { sonido: 'parse-reconocido', celebracion: 'micro', toast: 'ninguno' },
 
   'crm.contacto':         { sonido: 'ok-registrar',  celebracion: 'micro',  toast: 'normal', mensaje: 'Contacto registrado' },
+  // El contador cruza al tramo cálido (toque 3). En el mapa de calor de la
+  // tarjeta ese salto significa "esto se puso serio", y hasta ahora el color
+  // cambiaba solo, sin que nada marcara el cruce.
+  'crm.calienta':         { sonido: 'prog-check',    celebracion: 'chico',  toast: 'normal', mensaje: 'Se puso interesante' },
   'crm.avance':           { sonido: 'prog-avance',   celebracion: 'micro',  toast: 'normal' },
   'crm.retroceso':        { sonido: 'prog-retroceso',                        toast: 'normal' },
   // Enfriar a alguien sonaba a AVANCE: el Kanban mandaba todo lo que no fuera

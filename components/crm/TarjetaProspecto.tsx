@@ -33,6 +33,11 @@ const SCORE_STYLES: Record<string, string> = {
 // 0 = azul, 1 = celeste, 2 = celeste desaturado, 3 = amarillo; de 3 a 16 la
 // rampa cálida (amarillo→dorado→naranja→rojo) comprimida. Satura en 16
 // (≈ el 80% de los calificados acepta cerca del toque 16).
+/** Donde el mapa de calor deja el frío y entra a la rampa cálida. */
+const UMBRAL_CALIDO = 3
+/** Donde satura. Es la hipótesis de los 16 toques, no un dato propio. */
+const TOPE_CALOR = 16
+
 function heatColor(n: number): string {
   if (n <= 0) return '#2F6FD1'   // azul — sin tocar
   if (n === 1) return '#74CDE4'  // celeste
@@ -110,11 +115,23 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
   const anim = gestoEntrada || (destello ? 'ch-flash-row' : 'ch-fade-up ch-stagger')
 
   const tocar = (tipo: string) => {
+    const ahora = n + 1
     setExtra(e => e + 1)
     setDestello(true)
     window.setTimeout(() => setDestello(false), 620)   // dura lo que ch-flash-row
+
+    // Los hitos del contador viven SOLO acá y no en la Agenda: son un hecho
+    // sobre el mapa de calor, y en la Agenda ese contador no está a la vista.
+    // Celebrar algo que no se ve deja al usuario buscando qué pasó.
+    //
     // Va dentro del gesto, no después del await: es micro-feedback local.
-    momento('crm.contacto', { mensaje: '' })
+    if (ahora === TOPE_CALOR) {
+      momento('hito.alcanzado', { mensaje: `${p.empresa}: ${TOPE_CALOR} contactos` })
+    } else if (n < UMBRAL_CALIDO && ahora >= UMBRAL_CALIDO) {
+      momento('crm.calienta', { mensaje: '' })
+    } else {
+      momento('crm.contacto', { mensaje: '' })
+    }
     startTransition(async () => {
       const res = await registrarToque(p.id, tipo)
       if (res.error) {
