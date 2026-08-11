@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { registrarAccion } from '@/lib/agent-audit'
-import { procesarDigestMatinal, proponerEnFrioAgotados, HERRAMIENTA_DIGEST } from '@/app/actions/crm'
+import { procesarDigestMatinal, proponerEnFrioAgotados } from '@/app/actions/crm'
+import { HERRAMIENTA_DIGEST } from '@/lib/agent-crm'
 
 export const runtime = 'nodejs'
 

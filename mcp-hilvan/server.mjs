@@ -1187,6 +1187,12 @@ const TOOLS = [
     run: (a) => api('POST', '/crm/borrador', a),
   },
   {
+    name: 'hilvan_reglas_crm',
+    description: 'Las reglas vigentes del CRM de Casa Hiedra, tal como están en el repo: correos (qué y cómo se escribe), cadencia (cuándo toca el próximo contacto) y reparto (de quién es cada prospecto). LÉELAS AL EMPEZAR cada rutina — son la fuente de verdad y cambian. Sin parámetros trae las tres; doc=correos|cadencia|reparto trae una.',
+    inputSchema: { type: 'object', properties: { doc: { type: 'string' } } },
+    run: (a) => api('GET', `/crm/reglas${a.doc ? `?doc=${encodeURIComponent(a.doc)}` : ''}`),
+  },
+  {
     name: 'hilvan_clasificar_prospecto',
     description: 'Clasifica un prospecto por tamano (chica|mediana|grande) y segmento (general|estudiante|ropa_intima_fem|masculino_estereotipo|rental) — los ejes con que se asigna el responsable. Si el prospecto NO tiene responsable, lo asigna EN EL ACTO según las reglas (rental→Josué; estudiante/masculino/videoclip→Simón; ropa_intima/banco/lookbook-chica→Natalia; lookbook o empresa grande→Tomás; fallback→Simón). NO reasigna si ya tiene dueño. Fíjalo al investigar/enriquecer el lead. prospecto_id REQUERIDO.',
     inputSchema: { type: 'object', properties: { prospecto_id: { type: 'string' }, tamano: { type: 'string' }, segmento: { type: 'string' } }, required: ['prospecto_id'] },

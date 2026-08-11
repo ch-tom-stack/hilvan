@@ -20,6 +20,7 @@ import { aplicarEfectoAprobacion, AplicarError, type AprobacionRow } from '@/lib
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
 import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, type Cadencia } from '@/lib/crm-cadencia'
+import { HERRAMIENTA_DIGEST } from '@/lib/agent-crm'
 
 // ── Acceso ───────────────────────────────────────────────────────────────────
 // El CRM es admin + productor (oculto para contabilidad). Toda mutación verifica
@@ -445,9 +446,6 @@ export async function procesarDigestMatinal(
   }
   return { hoy, filas, enviados }
 }
-
-/** Marca que se usa para no mandar el digest dos veces (agente + cron). */
-export const HERRAMIENTA_DIGEST = 'crm-digest-matinal'
 
 /**
  * ¿Ya salió el digest esta mañana?

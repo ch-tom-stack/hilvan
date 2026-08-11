@@ -40,3 +40,9 @@ export function normalizarProspectoBody(body: any) {
     notas: strA(body?.notas),
   }
 }
+
+// Marca de auditoría del digest matinal. Vive acá y no en app/actions/crm.ts
+// porque ese archivo es 'use server': ahí TODO export debe ser una función
+// async, y una constante invalida el módulo entero (el build de Next falla con
+// "the module has no exports at all", aunque tsc pase).
+export const HERRAMIENTA_DIGEST = 'crm-digest-matinal'

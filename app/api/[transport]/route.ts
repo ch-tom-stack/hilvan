@@ -1632,6 +1632,17 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_reglas_crm',
+      {
+        title: 'Reglas del CRM',
+        description: 'Las reglas vigentes del CRM de Casa Hiedra, tal como están en el repo: correos (qué y cómo se escribe), cadencia (cuándo toca el próximo contacto) y reparto (de quién es cada prospecto). LÉELAS AL EMPEZAR cada rutina — son la fuente de verdad y cambian. Sin parámetros trae las tres; doc=correos|cadencia|reparto trae una.',
+        inputSchema: { doc: z.string().optional() },
+      },
+      async ({ doc }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/reglas${doc ? `?doc=${encodeURIComponent(doc)}` : ''}`)),
+    )
+
+    server.registerTool(
       'hilvan_clasificar_prospecto',
       {
         title: 'Clasificar prospecto (CRM)',
