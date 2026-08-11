@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { crearRentalReserva, verificarDisponibilidad } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { Equipo, Maleta, Cliente } from '@/types'
 import { formatCLP } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
@@ -89,15 +90,18 @@ export default function FormularioReserva({
         })
         if (r.ok) {
           toastOk('Solicitud enviada correctamente')
+          momento('rental.solicitada', { mensaje: '' })
           router.push('/rental/reservas')
         } else {
           setError(r.error ?? 'Error al enviar la solicitud')
           toastError(r.error ?? 'Error al enviar')
+          momento('error', { mensaje: r.error ?? 'Error al enviar' })
         }
       } catch (e: any) {
         const msg = e?.message ?? 'Error inesperado'
         setError(msg)
         toastError(msg)
+        momento('error', { mensaje: msg })
       }
     })
   }

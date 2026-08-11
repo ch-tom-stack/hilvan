@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { actualizarEstadoReserva, eliminarReserva } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { RentalReserva, EstadoRental } from '@/types'
 import EstadoVacio from '@/components/ui/EstadoVacio'
 import { parseFechaLocal } from '@/lib/fechas'
@@ -67,8 +68,17 @@ function FilaReserva({
   function cambiarEstado(estado: EstadoRental) {
     startTransition(async () => {
       const r = await actualizarEstadoReserva(reserva.id, estado)
-      if (r.ok) toastOk(`Reserva marcada como ${ESTADO_LABELS[estado].toLowerCase()}`)
-      else toastError(r.error ?? 'Error al actualizar')
+      if (r.ok) {
+        toastOk(`Reserva marcada como ${ESTADO_LABELS[estado].toLowerCase()}`)
+        // Aprobar y denegar no pueden sonar igual; el resto de los estados son
+        // seguimiento y comparten el sonido de avance.
+        if (estado === 'aprobada') momento('rental.aprobada', { mensaje: '' })
+        else if (estado === 'denegada') momento('rental.denegada', { mensaje: '' })
+        else momento('crm.avance', { mensaje: '' })
+      } else {
+        toastError(r.error ?? 'Error al actualizar')
+        momento('error', { mensaje: r.error ?? 'Error al actualizar' })
+      }
     })
   }
 
@@ -76,8 +86,8 @@ function FilaReserva({
     if (!await confirm('¿Eliminar esta reserva?')) return
     startTransition(async () => {
       const r = await eliminarReserva(reserva.id)
-      if (r.ok) toastOk('Reserva eliminada')
-      else toastError(r.error ?? 'Error al eliminar')
+      if (r.ok) { toastOk('Reserva eliminada'); momento('item.eliminado') }
+      else { toastError(r.error ?? 'Error al eliminar'); momento('error', { mensaje: r.error ?? 'Error al eliminar' }) }
     })
   }
 

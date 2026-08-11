@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { crearRentalCotizacion } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { Cliente } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
 
@@ -59,11 +60,13 @@ export default function NuevaCotizacionForm({ clientes, reservaId, reservaData }
 
       if (r.ok && r.id) {
         toastOk('Cotización creada')
+        momento('rental.cotizacion', { mensaje: '' })
         router.push(`/rental/cotizaciones/${r.id}`)
       } else {
         const msg = r.error ?? 'Error al crear la cotización'
         setError(msg)
         toastError(msg)
+        momento('error', { mensaje: msg })
       }
     })
   }

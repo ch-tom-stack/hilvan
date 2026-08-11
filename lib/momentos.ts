@@ -47,6 +47,11 @@ export type NombreMomento =
   | 'equipo.creado' | 'equipo.guardado' | 'equipo.eliminado'
   | 'equipo.rentable' | 'equipo.rentable_off'
   | 'maleta.creada' | 'maleta.convertida' | 'nota.agregada'
+  // Genéricos: agregar y quitar filas de una lista. Los usa Rental y sirven
+  // para cotizaciones y rodaje — mejor que un par por módulo.
+  | 'item.agregado' | 'item.eliminado'
+  // CH-9 Rental. Tampoco estrena sonido.
+  | 'rental.solicitada' | 'rental.aprobada' | 'rental.denegada' | 'rental.cotizacion'
   // Progreso personal
   | 'checklist.marcado' | 'checklist.desmarcado'
   | 'meta.cumplida' | 'hito.alcanzado'
@@ -108,6 +113,18 @@ const CATALOGO: Record<NombreMomento, Definicion> = {
   'maleta.creada':        { sonido: 'ok-crear',      celebracion: 'micro',  toast: 'normal', mensaje: 'Maleta creada' },
   'maleta.convertida':    { sonido: 'ch-cinta',      celebracion: 'micro',  toast: 'normal', mensaje: 'Convertida a bundle' },
   'nota.agregada':        { sonido: 'ok-registrar',  celebracion: 'micro',  toast: 'ninguno' },
+
+  // Genéricos de lista. Sin toast: el ítem apareciendo o desapareciendo ya es
+  // la confirmación visual, y un toast por cada línea de una cotización satura.
+  'item.agregado':        { sonido: 'ok-registrar',  celebracion: 'micro',  toast: 'ninguno' },
+  'item.eliminado':       { sonido: 'ok-eliminar',                          toast: 'ninguno' },
+
+  // CH-9 Rental. Aprobar es un avance real —la reserva solo la aprueban Tomás
+  // o Natalia— pero no un cierre: no lleva confeti.
+  'rental.solicitada':    { sonido: 'ok-enviar',     celebracion: 'micro',  toast: 'normal', mensaje: 'Solicitud enviada' },
+  'rental.aprobada':      { sonido: 'prog-avance',   celebracion: 'chico',  toast: 'normal', mensaje: 'Reserva aprobada' },
+  'rental.denegada':      { sonido: 'prog-retroceso',                       toast: 'normal', mensaje: 'Reserva denegada' },
+  'rental.cotizacion':    { sonido: 'ok-crear',      celebracion: 'micro',  toast: 'normal', mensaje: 'Cotización creada' },
 
   // Marcar suma; desmarcar es neutro, nunca un castigo.
   'checklist.marcado':    { sonido: 'prog-check',    celebracion: 'micro',  toast: 'ninguno' },

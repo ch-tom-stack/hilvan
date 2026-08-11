@@ -8,6 +8,7 @@ import {
   agregarSeccionRentalCotizacion,
 } from '@/app/actions/rental'
 import { toastOk, toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import {
   formatCLP,
   subtotalRentalItem,
@@ -94,8 +95,8 @@ function FormAgregarItem({
         descuento_tipo: 'porcentaje',
         incluido,
       })
-      if (r.ok) { toastOk('Ítem agregado'); onDone() }
-      else toastError(r.error ?? 'Error')
+      if (r.ok) { toastOk('Ítem agregado'); momento('item.agregado'); onDone() }
+      else { toastError(r.error ?? 'Error'); momento('error', { mensaje: r.error ?? 'Error' }) }
     })
   }
 
@@ -209,16 +210,20 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
   function cambiarEstado(estado: EstadoRentalCotizacion) {
     startTransition(async () => {
       const r = await actualizarRentalCotizacion(cotizacion.id, { estado })
-      if (r.ok) toastOk('Estado actualizado')
-      else toastError(r.error ?? 'Error')
+      if (r.ok) {
+        toastOk('Estado actualizado')
+        // Reusa los momentos del CRM: mover una cotización de estado es el
+        // mismo gesto que mover una tarjeta de etapa.
+        momento(estado === 'rechazada' ? 'crm.retroceso' : 'crm.avance', { mensaje: '' })
+      } else { toastError(r.error ?? 'Error'); momento('error', { mensaje: r.error ?? 'Error' }) }
     })
   }
 
   function eliminarItem(itemId: string) {
     startTransition(async () => {
       const r = await eliminarItemRentalCotizacion(itemId, cotizacion.id)
-      if (r.ok) toastOk('Ítem eliminado')
-      else toastError(r.error ?? 'Error')
+      if (r.ok) { toastOk('Ítem eliminado'); momento('item.eliminado') }
+      else { toastError(r.error ?? 'Error'); momento('error', { mensaje: r.error ?? 'Error' }) }
     })
   }
 
@@ -226,8 +231,8 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
     if (!nuevaSeccion.trim()) return
     startTransition(async () => {
       const r = await agregarSeccionRentalCotizacion(cotizacion.id, nuevaSeccion.trim())
-      if (r.ok) { toastOk('Sección agregada'); setAddingSeccion(false); setNuevaSeccion('') }
-      else toastError(r.error ?? 'Error')
+      if (r.ok) { toastOk('Sección agregada'); momento('item.agregado'); setAddingSeccion(false); setNuevaSeccion('') }
+      else { toastError(r.error ?? 'Error'); momento('error', { mensaje: r.error ?? 'Error' }) }
     })
   }
 
