@@ -57,6 +57,26 @@ correspondían al rubro.
 - Sí se pueden **proponer marcas o benchmarks no verificados** —Nati y Simón
   revisan antes de enviar— pero se anota la **baja confianza** al dejarlos.
 
+### Nunca se dice que hicimos un banco
+**Casa Hiedra todavía no ha vendido un banco de video como tal** (confirmado por
+Tomás, ago-2026). Es el producto que más se ofrece en los correos, así que la
+tentación de respaldarlo con un caso propio es permanente — y no hay ninguno.
+
+**Prohibido escribir "hicimos el banco de X" o "el banco que hicimos para X".**
+Eso no sería una credencial inexacta: sería afirmarle algo falso a un cliente.
+
+Lo que sí se puede, y es verdad: **ULA y Asia son la inspiración del producto**.
+A ULA se le montaron doce piezas terminadas y a Asia nueve, para una misma marca
+y sostenidas en el tiempo. Se cita como analogía, nunca como banco:
+
+> ✅ *"Hicimos algo con esa lógica para Asia: contenido pensado para rendir en
+> varios lanzamientos, no en uno solo."*
+> ✅ *"Para ULA montamos doce piezas para la misma marca."*
+> ❌ *"Hicimos el banco de contenido de ULA."*
+
+Cuando exista el primero, se carga al Repertorio con formato `banco` y esta
+regla se reemplaza.
+
 ## 4. Valor y venta — sin zona gris
 
 **Uno de cada cuatro correos vende. Los otros tres son valor.**
