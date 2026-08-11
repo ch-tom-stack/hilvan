@@ -37,7 +37,8 @@ export type NombreMomento =
   | 'pago.recibido' | 'factura.emitida' | 'cotizacion.aprobada' | 'cotizacion.enviada'
   | 'movimiento.conciliado' | 'gasto.creado' | 'gasto.pagado' | 'factura.reconocida'
   // CRM
-  | 'crm.contacto' | 'crm.avance' | 'crm.retroceso' | 'crm.enfriado' | 'crm.cierre' | 'lead.entrante'
+  | 'crm.contacto' | 'crm.avance' | 'crm.retroceso' | 'crm.enfriado' | 'crm.descartado'
+  | 'crm.cierre' | 'lead.entrante'
   // Rodaje
   | 'rodaje.publicado' | 'rodaje.finalizado' | 'citaciones.enviadas'
   // Equipos
@@ -91,6 +92,10 @@ const CATALOGO: Record<NombreMomento, Definicion> = {
   // variantes — es de las poquísimas acciones que se hacen lo bastante poco
   // como para que una broma no se gaste.
   'crm.enfriado':         { sonido: 'crm-enfriado',                          toast: 'normal' },
+  // Descartar es más seco y más final que enfriar: vidrio, no trombón. Dos
+  // variantes que rotan. `crm.retroceso` sigue existiendo para los retrocesos
+  // que NO son un descarte (cotización rechazada, mover una etapa hacia atrás).
+  'crm.descartado':       { sonido: 'crm-descartado',                        toast: 'normal' },
   'crm.cierre':           { sonido: 'win-cierre',     celebracion: 'hito',   toast: 'hito',   mensaje: 'Cliente confirmado' },
   'lead.entrante':        { sonido: 'alert-lead',     celebracion: 'chico',  toast: 'hito',   mensaje: 'Nuevo lead' },
 

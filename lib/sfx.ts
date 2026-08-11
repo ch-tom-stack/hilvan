@@ -35,7 +35,7 @@ export type TokenSfx =
   | 'win-rodaje-cerrado' | 'win-meta-dia' | 'ch-salida'
   // Grupo D — despedidas del CRM. Con variantes y con humor: son las únicas
   // acciones lo bastante infrecuentes como para aguantar una broma.
-  | 'crm-enfriado'
+  | 'crm-enfriado' | 'crm-descartado'
 
 type Familia = 'micro' | 'confirmacion' | 'celebracion' | 'alerta'
 
@@ -67,7 +67,7 @@ const FAMILIA: Record<TokenSfx, Familia> = {
 
   // Voz, no efecto: a ganancia de celebración se grita. Confirmación se oye
   // como alguien comentando al pasar, que es el tono que se busca.
-  'crm-enfriado': 'confirmacion',
+  'crm-enfriado': 'confirmacion', 'crm-descartado': 'confirmacion',
 }
 
 // ── Contexto de audio ────────────────────────────────────────────────────────
@@ -100,6 +100,7 @@ function getCtx(): AudioContext | null {
  */
 const VARIANTES: Partial<Record<TokenSfx, number>> = {
   'crm-enfriado': 4,
+  'crm-descartado': 2,
 }
 
 const buffers = new Map<TokenSfx, AudioBuffer[]>()
@@ -186,7 +187,7 @@ function sintetico(token: TokenSfx, vol: number): void {
     // 'crm-enfriado' cae acá cuando la voz todavía no cargó: un descenso, que
     // es lo correcto aunque se pierda el chiste.
     case 'ui-panel-close': case 'ok-eliminar': case 'prog-retroceso': case 'ch-salida':
-    case 'crm-enfriado':
+    case 'crm-enfriado': case 'crm-descartado':
       tono(SOL, 0, 0.11, 'sine', g * 0.6); tono(MI, 0.06, 0.13, 'sine', g * 0.5); break
     case 'ok-registrar':
       tono(MI * 1.5, 0, 0.09, 'triangle', g * 0.8); break
