@@ -35,6 +35,9 @@ export default function ProgresoEquipo({ prospectos, operadores }: Props) {
   ), [prospectos, operadores])
 
   const totalPend = filas.reduce((s, f) => s + f.pendientes, 0)
+  // Las barras se miden contra el más cargado, no contra un tope inventado:
+  // lo accionable es quién quedó con la lista más larga, no cuánto es "mucho".
+  const tope = Math.max(1, ...filas.map(f => f.pendientes))
   if (filas.length === 0) return null
 
   return (
@@ -52,6 +55,19 @@ export default function ProgresoEquipo({ prospectos, operadores }: Props) {
         {filas.map(f => (
           <div key={f.id} className="flex items-center gap-4 px-4 py-2">
             <span className="font-body text-xs text-ch-cream w-24 shrink-0 truncate">{f.nombre}</span>
+
+            {/* La barra va pegada al nombre para que todas arranquen en la
+                misma x: si no, comparar obliga a leer los números. */}
+            <div className="w-20 h-px bg-ch-border relative shrink-0 overflow-hidden">
+              <div
+                className={`absolute inset-y-0 left-0 ch-bar-fill ${f.atrasados > 0 ? 'bg-ch-gold' : 'bg-ch-green'}`}
+                style={{
+                  width: `${Math.round((f.pendientes / tope) * 100)}%`,
+                  ['--w' as string]: `${Math.round((f.pendientes / tope) * 100)}%`,
+                  animationDelay: `${filas.indexOf(f) * 60}ms`,
+                }}
+              />
+            </div>
 
             <span className={`font-body text-[11px] tabular-nums shrink-0 ${f.pendientes ? 'text-ch-cream' : 'text-ch-subtle'}`}>
               {f.pendientes === 0 ? 'al día' : `${f.pendientes} por contactar`}

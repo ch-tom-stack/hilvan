@@ -24,10 +24,12 @@ const GRUPOS: { tipo: string; titulo: string; descripcion: string; verbo: string
 export default function BandejaAprobaciones({ aprobaciones }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [resolviendo, setResolviendo] = useState<string | null>(null)
+  // Guarda también la acción: la fila sale hacia adelante si se aprobó y se
+  // hunde si se descartó. La dirección es la que lleva el significado.
+  const [resolviendo, setResolviendo] = useState<{ id: string; accion: 'aprobado' | 'descartado' } | null>(null)
 
   const resolver = (id: string, accion: 'aprobado' | 'descartado') => {
-    setResolviendo(id)
+    setResolviendo({ id, accion })
     startTransition(async () => {
       try {
         const res = await resolverAprobacion(id, accion)
@@ -37,7 +39,9 @@ export default function BandejaAprobaciones({ aprobaciones }: Props) {
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al resolver')
       } finally {
-        setResolviendo(null)
+        // Se suelta después de la salida (0.32s) para que la fila alcance a
+        // irse; si el refresh llegó antes, la fila ya no existe y da igual.
+        window.setTimeout(() => setResolviendo(null), 340)
       }
     })
   }
@@ -80,7 +84,8 @@ export default function BandejaAprobaciones({ aprobaciones }: Props) {
                       key={ap.id}
                       ap={ap}
                       verbo={grupo.verbo}
-                      ocupado={isPending && resolviendo === ap.id}
+                      ocupado={isPending && resolviendo?.id === ap.id}
+                      saliendo={resolviendo?.id === ap.id ? resolviendo.accion : null}
                       onAprobar={() => resolver(ap.id, 'aprobado')}
                       onDescartar={() => resolver(ap.id, 'descartado')}
                     />
@@ -96,11 +101,13 @@ export default function BandejaAprobaciones({ aprobaciones }: Props) {
 }
 
 function ItemAprobacion({
-  ap, verbo, ocupado, onAprobar, onDescartar,
+  ap, verbo, ocupado, saliendo, onAprobar, onDescartar,
 }: {
   ap: AprobacionConProspecto
   verbo: string
   ocupado: boolean
+  /** Si se resolvió, hacia dónde se va. null mientras sigue en la bandeja. */
+  saliendo: 'aprobado' | 'descartado' | null
   onAprobar: () => void
   onDescartar: () => void
 }) {
@@ -108,7 +115,9 @@ function ItemAprobacion({
   const titulo = ap.prospecto?.empresa ?? p.empresa ?? '—'
 
   return (
-    <div className="border border-ch-border bg-ch-surface/30 p-5">
+    <div className={`border border-ch-border bg-ch-surface/30 p-5 ${
+      saliendo === 'aprobado' ? 'ch-salir-ok' : saliendo === 'descartado' ? 'ch-salir-no' : 'ch-fade-up'
+    }`}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="font-display italic text-xl text-ch-cream leading-tight">{titulo}</h3>
         <span className="font-body text-[10px] text-ch-subtle shrink-0">{formatFecha(ap.created_at)}</span>

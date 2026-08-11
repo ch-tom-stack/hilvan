@@ -51,11 +51,11 @@ export default function QuickContacto({ prospecto, onClose, onSaved }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-ch-black/70 flex items-start justify-center overflow-y-auto p-4"
+      className="fixed inset-0 z-50 bg-ch-black/70 flex items-start justify-center overflow-y-auto p-4 ch-modal-fondo"
       onClick={onClose}
     >
       <div
-        className="bg-ch-dark border border-ch-border w-full max-w-lg mt-16 p-6"
+        className="bg-ch-dark border border-ch-border w-full max-w-lg mt-16 p-6 ch-modal-panel"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-5 gap-4">

@@ -185,6 +185,35 @@ input:-webkit-autofill:focus {
 }
 .ch-recibe { animation: ch-recibe 0.18s var(--ch-ease) both; }
 
+/* Una fila que se va. La dirección lleva el significado: lo aceptado sale
+   hacia adelante, lo descartado se hunde. Sin esto la fila simplemente deja de
+   existir, y una decisión que no deja rastro no se siente tomada. */
+@keyframes ch-salir-ok {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateX(14px); }
+}
+.ch-salir-ok { animation: ch-salir-ok 0.32s var(--ch-ease) both; pointer-events: none; }
+
+@keyframes ch-salir-no {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(6px) scale(0.99); }
+}
+.ch-salir-no { animation: ch-salir-no 0.32s var(--ch-ease) both; pointer-events: none; }
+
+/* Panel modal: sin transición, un overlay a pantalla completa se lee como un
+   error de render y no como una decisión. */
+@keyframes ch-modal-fondo {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.ch-modal-fondo { animation: ch-modal-fondo 0.16s ease-out both; }
+
+@keyframes ch-modal-panel {
+  from { opacity: 0; transform: translateY(-8px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+.ch-modal-panel { animation: ch-modal-panel 0.2s var(--ch-ease) both; }
+
 /* Aparece un pendiente */
 @keyframes ch-badge-pop {
   0%   { transform: scale(0); opacity: 0; }
@@ -234,8 +263,15 @@ input:-webkit-autofill:focus {
 @media (prefers-reduced-motion: reduce) {
   .ch-fade-up, .ch-pulse, .ch-shake, .ch-flash-row, .ch-settle, .ch-enfriar,
   .ch-badge-pop, .ch-glow-hito, .ch-live-dot, .ch-shimmer, .ch-bar-fill,
-  .ch-recibe {
+  .ch-recibe, .ch-modal-fondo, .ch-modal-panel {
     animation: none !important;
+  }
+  /* Las salidas conservan el desvanecido —dice que la fila se fue— pero
+     pierden el desplazamiento. */
+  .ch-salir-ok, .ch-salir-no {
+    animation: none !important;
+    opacity: 0;
+    transform: none;
   }
   /* El arrastre conserva la opacidad —es información, no adorno— pero pierde
      el movimiento. */

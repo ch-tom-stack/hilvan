@@ -21,6 +21,13 @@ interface Props {
 export default function FormProspecto({ prospecto, responsables }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  // El servidor rechazó: el formulario se sacude. Sin esto el toast aparece en
+  // una esquina y, si estabas mirando el botón, no te enteras de que falló.
+  const [rechazado, setRechazado] = useState(false)
+  const rechazar = () => {
+    setRechazado(true)
+    window.setTimeout(() => setRechazado(false), 420)   // dura lo que ch-shake
+  }
   const esEdicion = !!prospecto
 
   const [form, setForm] = useState({
@@ -63,18 +70,19 @@ export default function FormProspecto({ prospecto, responsables }: Props) {
       try {
         if (esEdicion) {
           const res = await actualizarProspecto(prospecto!.id, payload)
-          if (res.error) { toastError(res.error); return }
+          if (res.error) { toastError(res.error); rechazar(); return }
           toastOk('Prospecto actualizado')
           router.push(`/crm/${prospecto!.id}`)
         } else {
           const res = await crearProspecto(payload)
-          if (res.error) { toastError(res.error); return }
+          if (res.error) { toastError(res.error); rechazar(); return }
           toastOk('Prospecto creado')
           router.push(`/crm/${res.id}`)
         }
         router.refresh()
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al guardar')
+        rechazar()
       }
     })
   }
@@ -98,7 +106,7 @@ export default function FormProspecto({ prospecto, responsables }: Props) {
         </Link>
       </div>
 
-      <div className="space-y-5">
+      <div className={`space-y-5 ${rechazado ? 'ch-shake' : ''}`}>
         <Campo label="Empresa / Marca" requerido>
           <input value={form.empresa} onChange={e => set('empresa', e.target.value)} autoFocus
             className="input-ch w-full" placeholder="Ej: Sodimac, Ripley…" />

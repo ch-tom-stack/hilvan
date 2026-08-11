@@ -34,6 +34,9 @@ export default function ContactosProspecto({ prospectoId, contactos }: Props) {
   // 'nuevo' para alta, el id para edición, null cerrado
   const [editando, setEditando] = useState<string | null>(null)
   const [borrar, setBorrar] = useState<string | null>(null)
+  // Id que se está yendo: la fila se desvanece antes de que el refresh la
+  // saque del DOM, para que el borrado se vea y no sólo ocurra.
+  const [saliendo, setSaliendo] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(VACIO)
 
   const set = (patch: Partial<FormState>) => setForm(p => ({ ...p, ...patch }))
@@ -72,6 +75,7 @@ export default function ContactosProspecto({ prospectoId, contactos }: Props) {
   }
 
   const eliminar = (id: string) => {
+    setSaliendo(id)
     startTransition(async () => {
       try {
         const res = await eliminarContacto(id, prospectoId)
@@ -81,6 +85,8 @@ export default function ContactosProspecto({ prospectoId, contactos }: Props) {
         router.refresh()
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al eliminar')
+      } finally {
+        window.setTimeout(() => setSaliendo(null), 340)
       }
     })
   }
@@ -138,8 +144,14 @@ export default function ContactosProspecto({ prospectoId, contactos }: Props) {
         <p className="font-body text-sm text-ch-subtle">Sin contactos todavía.</p>
       ) : (
         <div className="space-y-3">
-          {contactos.map(c => (
-            <div key={c.id} className="border-l border-ch-border pl-4">
+          {contactos.map((c, i) => (
+            <div
+              key={c.id}
+              style={{ ['--i' as string]: i }}
+              className={`border-l border-ch-border pl-4 ${
+                saliendo === c.id ? 'ch-salir-no' : 'ch-fade-up ch-stagger'
+              }`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-body text-sm text-ch-cream">
