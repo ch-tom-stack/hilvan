@@ -31,6 +31,24 @@ Eres el asistente de desarrollo de **Hilván**, la plataforma de gestión intern
 - `types/index.ts` es el archivo canónico — leerlo completo antes de editar, nunca sobreescribir parcialmente
 - `calcularRetencion()` en types fue corregida — referencia muerta a `'bet'` eliminada
 
+### `'use server'` — todo export debe ser una función async
+En un archivo con `'use server'` (ej. `app/actions/*.ts`) **no se puede exportar
+una constante**: invalida el módulo entero y el build falla con *"the module has
+no exports at all"*, señalando archivos que no tienen nada que ver. Las
+constantes van a un `lib/*.ts` normal. Los `export interface`/`type` sí se
+permiten (se borran al compilar).
+
+**`npx tsc --noEmit` NO detecta esto — solo `npm run build`.** Antes de decir
+que algo está listo, correr el build: pasó de largo un `export const` y los
+deploys de Vercel fallaron durante varios commits.
+
+### Archivos del repo que se leen en runtime
+Si un route handler lee un archivo del repo (ej. `docs/crm/*.md` en
+`/api/agent/crm/reglas`), hay que declararlo en `outputFileTracingIncludes` de
+`next.config.ts`. Sin eso el archivo no viaja al bundle serverless: **funciona
+en local y falla en Vercel**. Se verifica en
+`.next/server/<ruta>/route.js.nft.json` tras el build.
+
 ### Supabase — reglas de acceso
 - Rutas públicas (sin login): usar `createAdminClient()` (service role, bypassa RLS)
 - Rutas protegidas (con sesión): usar `await createClient()` del server
