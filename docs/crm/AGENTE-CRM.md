@@ -119,9 +119,59 @@ de una semana completa. Lo esencial de la mecánica:
   significa que haya trabajo: pueden ser registros viejos con fechas ya pasadas.
   Verifica que la acción todavía tenga sentido hoy.
 
+- **Sin números congelados en el enunciado.** "Tus 11 sin primer contacto" es
+  falso en tres días. El número va en la fuente de verificación con su fecha,
+  nunca dentro de la misión.
+
 **Dónde van:** por ahora, **en tu reporte** — no existe todavía tabla de
 misiones en Hilván, así que no hay herramienta que llamar. Cuando exista, esta
 sección cambia.
+
+**Formato de entrega.** Todos los días, no solo los lunes, la sección trae las
+mismas cuatro piezas en este orden. Que sea siempre igual es el punto: así se
+revisa entero de una vez y se nota lo que cambió.
+
+1. **La semanal vigente de cada persona**, con su estado (propuesta / aprobada /
+   con ajuste sugerido). Los lunes propones la de la semana que parte; el resto
+   de los días re-muestras la vigente.
+2. **Las diarias de todos los días hábiles que quedan de la semana**, no solo la
+   de hoy. Lo ya aprobado se muestra tal cual; solo señalas lo que perdió
+   validez.
+3. **Ajustes sugeridos a lo ya aprobado** — cuando el CRM cambió y una misión
+   aprobada quedó sin sentido (el prospecto respondió, el borrador se envió).
+   Siempre como sugerencia con evidencia, **nunca como reemplazo silencioso**.
+4. **Notas de criterio** — dónde te apartaste de la guía y por qué, y qué no
+   pudiste verificar.
+
+```markdown
+## Misiones — semana del <lun> al <dom> (corrida del <día fecha>)
+
+### Semanales (semana N de la progresión de cada área)
+**<Persona> — <área>**
+- ★ <opción recomendada> — Guía: <por dónde partir>. [por qué se recomienda]
+- <opción 2> — Guía: <...>
+  Fuente: <qué verificaste y cuándo> · Estado: propuesta | aprobada | ajuste sugerido
+
+### Diarias
+**<Día fecha>** (<quién trabaja / libre / online>)
+- **<Persona>**
+  - ★ <opción recomendada> [porqué]
+  - <opción 2>
+    Fuente: <verificación con fecha>
+
+### Ajustes sugeridos a lo ya aprobado
+- <misión aprobada> → <qué cambió, con evidencia> → <sugerencia>
+
+### Notas de criterio
+- <desvíos, huecos, lo no verificable>
+```
+
+★ marca la recomendada. **No muestres las vencidas** — vencer es silencioso, y
+un listado de lo que no se hizo convierte esto en un reproche diario.
+
+**Tampoco pongas los conteos de dos personas lado a lado.** Dos números
+comparables son un ranking con otro nombre, y los rankings entre Nati y Simón
+están prohibidos más abajo.
 
 ### 5 · Disparar el digest
 Al terminar todo lo anterior, llama `hilvan_digest_matinal` (sin parámetros).

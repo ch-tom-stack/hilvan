@@ -46,8 +46,8 @@ Todo lo demás en este documento es orientación.
 ## Cómo se escribe una buena misión
 
 - **Pide un resultado, no un gesto.** "Elige uno y escríbele" es un gesto.
-  "Tus 15 detenidos: hoy decides cuáles siguen y cuáles se enfrían" es un
-  resultado.
+  "Tus detenidos hace más de diez días: hoy decides cuáles siguen y cuáles se
+  enfrían" es un resultado.
 - **Que sea ambiciosa.** El techo bajo no protege a nadie; aburre.
 - **Trae guía para partir.** Sobre todo cuando la misión es de un área que la
   persona todavía está definiendo. Decir "define el área" sin decir por dónde se
@@ -56,6 +56,13 @@ Todo lo demás en este documento es orientación.
   reservas "pendientes" puede ser sedimento de hace tres meses, con fechas ya
   pasadas y sin cliente. Cuenta y además comprueba que la acción todavía tenga
   sentido hoy. El conteo verdadero produce misiones falsas.
+- **Sin números congelados en el enunciado.** "Tus 11 sin primer contacto" es
+  falso en tres días; "tus prospectos sin primer contacto" envejece bien. El
+  número va aparte, en la fuente de verificación con su fecha — no dentro de la
+  misión. Una misión que miente sobre el estado de la cartera se deja de creer,
+  y con ella todas las demás.
+- **Cada misión declara su fuente de verificación:** qué dato la justifica y
+  cuándo se comprobó. Un conteo sin fecha no vale.
 
 ## Diarias y semanales
 
@@ -144,6 +151,10 @@ De ahí la fórmula: **la app apunta, la persona declara.**
 Aprobado por Tomás. Sirve de referencia de tono, tamaño y ambición; no es una
 plantilla que haya que repetir.
 
+Fíjate en que **ningún enunciado lleva un número**. Los conteos que los
+justifican —cuántos detenidos, cuántos sin primer contacto— van en la fuente de
+verificación con su fecha, nunca dentro de la misión.
+
 ## Natalia — instituciones culturales
 
 | Semana | Misión | Guía para partir |
@@ -155,9 +166,9 @@ plantilla que haya que repetir.
 
 | Diarias |
 |---|
-| Tus 15 detenidos hace más de diez días: revísalos hoy y decide cuáles siguen y cuáles se enfrían. |
-| De tus 11 sin primer contacto, escribe y **envía** el primer correo a cinco. |
-| Tus 6 conversaciones abiertas quedan hoy las 6 con próximo paso y fecha. |
+| Tus prospectos detenidos hace más de diez días: revísalos hoy y decide cuáles siguen y cuáles se enfrían. |
+| De tus prospectos sin primer contacto, escribe y **envía** el primer correo a cinco. |
+| Tus conversaciones abiertas quedan hoy todas con próximo paso y fecha. |
 | **Formación:** una hora de Despega Creativo sobre posicionamiento. Trae una frase con la que presentarías el área a un museo. |
 
 ## Simón — asistencia a estudiantes
@@ -171,8 +182,8 @@ plantilla que haya que repetir.
 
 | Diarias |
 |---|
-| Tus 21 están todos en *contacto* y ninguno avanzó nunca. Elige los tres con más futuro y escríbeles hoy lo que haga falta para moverlos. |
-| Universidad Católica, Desigual y Enko llevan 16 días: las tres tienen respuesta enviada hoy, o se enfrían. |
+| Elige los tres prospectos tuyos con más futuro y escríbeles hoy lo que haga falta para moverlos de *contacto* a conversación. |
+| Universidad Católica, Desigual y Enko llevan más de dos semanas sin respuesta: las tres tienen respuesta enviada hoy, o se enfrían. |
 | **Formación:** media hora de Shoot First Academy sobre montaje, y aplica una cosa al corte que tienes en mano. |
 
 ---
@@ -216,4 +227,17 @@ Al iniciar sesión, como aviso, y en `/perfil` junto al resto de los logros.
    en cualquier momento implica que las misiones son **registros en base de
    datos**, no un texto que el operador redacta cada mañana: necesitan tabla
    propia. Mientras no exista, el operador las **propone en su reporte** y
-   Tomás las elige a mano.
+   Tomás las elige a mano — el formato de esa entrega está en el prompt del
+   operador (`AGENTE-CRM.md`, paso 4).
+
+   Campos que la tabla va a necesitar, según lo que ya sabemos: `persona`,
+   `tipo` (diaria|semanal), `fecha_objetivo` o `semana_iso`, `texto`, `guia`,
+   `fuente_verificacion`, `verificado_en`, `recomendada`, `estado`
+   (propuesta|elegida|editada|vencida|declarada_cumplida), `declarada_en`, y un
+   `slot_id` que agrupe las dos o tres opciones de un mismo espacio.
+
+   Dos cosas que la tabla **no** debe hacer: guardar conteos dentro de `texto`
+   —nacen muertos, el número se recalcula al mostrar— y exhibir las vencidas.
+   Las guarda; la vista no las muestra. `declarada_cumplida` la marca la
+   persona y nadie más: es el honor system, y si lo marca el sistema deja de
+   serlo.
