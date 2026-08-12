@@ -21,6 +21,7 @@ import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-bibliotec
 import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
 import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, type Cadencia } from '@/lib/crm-cadencia'
 import { HERRAMIENTA_DIGEST } from '@/lib/agent-crm'
+import { evaluarCotejo, HERRAMIENTAS_COTEJO, type EstadoCotejo } from '@/lib/crm-reconciliacion'
 
 // ── Acceso ───────────────────────────────────────────────────────────────────
 // El CRM es admin + productor (oculto para contabilidad). Toda mutación verifica
@@ -292,6 +293,8 @@ export interface ResultadoDigestMatinal {
   hoy: string
   filas: FilaDigestMatinal[]
   enviados: number
+  /** Estado del cotejo de correos: si está vencido, la agenda puede mentir. */
+  cotejo?: EstadoCotejo
 }
 
 function listaAgendaHtml(agenda: ItemAgenda[]): string {
@@ -314,7 +317,15 @@ function htmlDigestMatinal(
   nombre: string, total: number, porContactar: number, borradores: number, hoy: string,
   agenda: ItemAgenda[],
   equipo?: FilaDigestMatinal[],
+  avisoCotejo?: string | null,
 ): string {
+  // Va ARRIBA de la lista, no al pie: si las respuestas no están registradas,
+  // la lista de abajo puede estar equivocada y hay que leerla sabiéndolo.
+  const cotejoHtml = avisoCotejo
+    ? `<div style="border-left:3px solid #c9a84c;background:#faf6ec;padding:10px 12px;margin:0 0 16px;font-size:13px;color:#111;">
+         <strong>Ojo:</strong> ${avisoCotejo}
+       </div>`
+    : ''
   // Quien gestiona ve la lista completa de cada uno, no solo el conteo: el
   // número dice que hay trabajo, la lista dice cuál.
   const equipoHtml = equipo && equipo.length
@@ -331,6 +342,7 @@ function htmlDigestMatinal(
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
       <h2 style="font-size:18px;">Buenos días, ${nombre}</h2>
+      ${cotejoHtml}
       <p style="color:#444;">Tu jornada de hoy (${hoy}):</p>
       <ul style="padding-left:18px;margin:0;">
         <li style="margin-bottom:6px;"><strong>${total}</strong> prospecto${total === 1 ? '' : 's'} activo${total === 1 ? '' : 's'}${porContactar ? ` — <strong>${porContactar}</strong> por contactar` : ''}</li>
@@ -358,9 +370,10 @@ export async function procesarDigestMatinal(
     (p: any) => p.email && OPERADORES_CRM_EMAILS.has(p.email.trim().toLowerCase()),
   ) as { id: string; nombre: string; email: string | null }[]
 
-  const [{ data: prospectos }, { data: borradores }] = await Promise.all([
+  const [{ data: prospectos }, { data: borradores }, cotejo] = await Promise.all([
     admin.from('prospectos').select('id, empresa, etapa, responsable_id, snooze_hasta, crm_interacciones(fecha, respondido)'),
     admin.from('crm_borradores').select('prospecto_id').eq('estado', 'listo'),
+    getEstadoCotejo(),
   ])
 
   const INACTIVAS = ['confirmado', 'descartado', 'nurture', 'en_frio']
@@ -430,6 +443,7 @@ export async function procesarDigestMatinal(
           html: htmlDigestMatinal(
             op.nombre, n.total, n.porContactar, n.borr, hoy, n.agenda,
             esManager ? equipo.filter(e => e.nombre !== op.nombre) : undefined,
+            cotejo.mensaje,
           ),
           contexto: 'crm:digest-matinal',
         })
@@ -444,7 +458,7 @@ export async function procesarDigestMatinal(
       borradoresListos: n.borr, agenda: n.agenda, enviado,
     })
   }
-  return { hoy, filas, enviados }
+  return { hoy, filas, enviados, cotejo }
 }
 
 /**
@@ -469,6 +483,35 @@ export async function digestYaEnviado(): Promise<boolean> {
     .gte('created_at', desde)
     .limit(1)
   return (data ?? []).length > 0
+}
+
+/**
+ * ¿Hace cuánto que no se cotejan los correos?
+ *
+ * El cotejo es lo único que llena `respondido`, y de ese campo cuelga toda la
+ * cadencia. Si el proceso se detiene no falla nada: el CRM sigue operando y
+ * mintiendo en silencio. Esto lo hace visible.
+ *
+ * Se mide contra la auditoría de agente porque es donde queda registro de que
+ * la rutina efectivamente corrió.
+ */
+export async function getEstadoCotejo(): Promise<EstadoCotejo> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('agente_acciones')
+    .select('created_at')
+    .in('herramienta', HERRAMIENTAS_COTEJO as unknown as string[])
+    .eq('ok', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  const iso = (data ?? [])[0]?.created_at as string | undefined
+  // created_at es timestamptz; se lleva a fecha de Chile para comparar con hoy.
+  const ultimo = iso
+    ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
+    : null
+
+  return evaluarCotejo(ultimo, hoyChileISO())
 }
 
 /**
