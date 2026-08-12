@@ -1725,6 +1725,66 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_contactos_listar',
+      {
+        title: 'Árbol de contactos (CRM)',
+        description: 'Quién es quién en la marca, con su `contacto_id`. De acá salen los ids que piden hilvan_hilo, hilvan_registrar_respuesta y hilvan_borrador_escribir. LLÁMALA ANTES de crear un contacto: es como se evita tener a la misma persona dos veces. Cada uno trae `en_hilo_abierto` (si ya está anclado a una conversación viva) y `fuente` (de dónde salió). Devuelve además `hilos_sin_contacto`: líneas abiertas sin nadie asignado, que son las que hay que emparejar.',
+        inputSchema: { prospecto_id: z.string() },
+      },
+      async ({ prospecto_id }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/contactos?prospecto_id=${encodeURIComponent(prospecto_id)}`)),
+    )
+
+    server.registerTool(
+      'hilvan_contacto_crear',
+      {
+        title: 'Agregar un contacto (CRM)',
+        description: 'Agrega una persona al árbol de la marca. Necesita al menos nombre o email. Rechaza correos repetidos dentro de la misma marca (409 con el contacto_id existente): dos fichas de la misma persona parten la conversación en dos. `fuente` es de dónde salió el dato —el correo, la reunión, el sitio— y sostiene la regla de no inventar: si no sabes de dónde salió, no lo crees. Cuando la marca tiene UNA sola línea abierta y está sin contacto, lo ancla ahí automáticamente (desactivable con anclar_a_hilo:false). Úsalo en el cotejo diario: cada correo trae el nombre y la dirección de quien firma, y hoy ese dato se pierde.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          nombre: z.string().optional(),
+          email: z.string().optional(),
+          cargo: z.string().optional(),
+          telefono: z.string().optional(),
+          fuente: z.string().optional().describe('de qué correo, reunión o página salió'),
+          notas: z.string().optional(),
+          es_decisor: z.boolean().optional(),
+          anclar_a_hilo: z.boolean().optional().describe('default true'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/contactos', args)),
+    )
+
+    server.registerTool(
+      'hilvan_contacto_editar',
+      {
+        title: 'Corregir un contacto (CRM)',
+        description: 'Corrige los datos de una persona del árbol. contacto_id REQUERIDO; sólo se escriben los campos que mandes. Es la vía para arreglar correos mal tipeados sin perder la conversación colgada de ese contacto — hay al menos uno con "gmail.con" que llegó así desde el formulario web. Guarda el valor anterior en la auditoría.',
+        inputSchema: {
+          contacto_id: z.string(),
+          nombre: z.string().optional(),
+          email: z.string().optional(),
+          cargo: z.string().optional(),
+          telefono: z.string().optional(),
+          fuente: z.string().optional(),
+          notas: z.string().optional(),
+          es_decisor: z.boolean().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'PATCH', '/crm/contactos', args)),
+    )
+
+    server.registerTool(
+      'hilvan_contacto_borrar',
+      {
+        title: 'Borrar un contacto (CRM)',
+        description: 'Borra una persona del árbol. SOLO si no tiene conversación asociada: con mensajes o líneas encima ya no es un error de tipeo sino historia, y borrarlo dejaría esa conversación sin dueño — ahí corresponde hilvan_contacto_editar. Sirve para deshacer un contacto creado por error.',
+        inputSchema: { contacto_id: z.string() },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'DELETE', '/crm/contactos', args)),
+    )
+
+    server.registerTool(
       'hilvan_notas_leer',
       {
         title: 'Notas del prospecto (CRM)',
@@ -1811,12 +1871,12 @@ const baseHandler = createMcpHandler(
       'hilvan_hilo',
       {
         title: 'Líneas de conversación (CRM)',
-        description: 'Abre, cierra o reabre una línea de la bitácora. ABRIR cierra la vigente y REINICIA LA CADENCIA: los toques sin respuesta del interlocutor anterior dejan de contar. Úsalo cuando cambie la contraparte en la marca o cuando se retome después de mucho tiempo — así el prospecto no arranca agotado con la persona nueva. motivo/motivo_cierre: cambio_contacto | cambio_responsable | reinicio | sin_respuesta | manual.',
+        description: 'Abre, cierra, reabre o ASIGNA CONTACTO a una línea de la bitácora. `asignar` {hilo_id, contacto_id} le pone cara a una conversación que ya existe — úsalo cuando identifiques a la persona a mitad de camino, en vez de abrir una línea nueva (eso reiniciaría la cadencia sólo para anotar un nombre). El contacto_id sale de hilvan_contactos_listar y tiene que ser de la misma marca. ABRIR cierra la vigente y REINICIA LA CADENCIA: los toques sin respuesta del interlocutor anterior dejan de contar. Úsalo cuando cambie la contraparte en la marca o cuando se retome después de mucho tiempo — así el prospecto no arranca agotado con la persona nueva. motivo/motivo_cierre: cambio_contacto | cambio_responsable | reinicio | sin_respuesta | manual.',
         inputSchema: {
-          accion: z.string().describe('abrir | cerrar | reabrir'),
+          accion: z.string().describe('abrir | cerrar | reabrir | asignar'),
           prospecto_id: z.string().optional().describe('requerido para abrir'),
           hilo_id: z.string().optional().describe('requerido para cerrar/reabrir'),
-          contacto_id: z.string().optional().describe('con quién es la línea nueva'),
+          contacto_id: z.string().optional().describe('con quién es la línea (requerido en asignar)'),
           titulo: z.string().optional(),
           motivo: z.string().optional().describe('al cerrar'),
           motivo_cierre: z.string().optional().describe('al abrir: por qué se cierra la anterior'),

@@ -22,11 +22,49 @@ export async function POST(req: Request) {
   try { body = await req.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
 
   const accion = strA(body?.accion)
-  if (!accion || !['abrir', 'cerrar', 'reabrir'].includes(accion)) {
-    return NextResponse.json({ error: 'accion debe ser abrir, cerrar o reabrir' }, { status: 400 })
+  if (!accion || !['abrir', 'cerrar', 'reabrir', 'asignar'].includes(accion)) {
+    return NextResponse.json({ error: 'accion debe ser abrir, cerrar, reabrir o asignar' }, { status: 400 })
   }
 
   const admin = createAdminClient()
+
+  // Poner cara a una línea que ya existe. Sin esto, identificar a la persona a
+  // mitad de una conversación obligaba a cerrar el hilo y abrir otro —lo que
+  // reinicia la cadencia— sólo para anotar un nombre.
+  if (accion === 'asignar') {
+    const hiloId = strA(body?.hilo_id)
+    const contactoId = strA(body?.contacto_id)
+    if (!hiloId) return NextResponse.json({ error: 'Falta hilo_id' }, { status: 400 })
+    if (!contactoId) return NextResponse.json({ error: 'Falta contacto_id' }, { status: 400 })
+
+    const { data: hilo } = await admin
+      .from('crm_hilos').select('id, prospecto_id').eq('id', hiloId).maybeSingle<any>()
+    if (!hilo) return NextResponse.json({ error: 'hilo_id no encontrado' }, { status: 404 })
+
+    // El contacto tiene que ser de esta marca: cruzar personas entre prospectos
+    // dejaría la conversación atribuida a alguien de otra empresa.
+    const { data: contacto } = await admin
+      .from('crm_contactos').select('id, nombre, prospecto_id').eq('id', contactoId).maybeSingle<any>()
+    if (!contacto) return NextResponse.json({ error: 'contacto_id no encontrado' }, { status: 404 })
+    if (contacto.prospecto_id !== hilo.prospecto_id) {
+      return NextResponse.json({ error: 'Ese contacto pertenece a otro prospecto' }, { status: 400 })
+    }
+
+    const patch: Record<string, unknown> = { contacto_id: contactoId }
+    const titulo = strA(body?.titulo)
+    if (titulo) patch.titulo = titulo
+
+    const { error } = await admin.from('crm_hilos').update(patch).eq('id', hiloId)
+    if (error) {
+      await registrarAccion({ herramienta: 'crm-hilo', payload: body, ok: false, error: error.message })
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    await registrarAccion({
+      herramienta: 'crm-hilo', payload: body,
+      resultado_tabla: 'crm_hilos', resultado_id: hiloId, ok: true,
+    })
+    return NextResponse.json({ accion, hilo_id: hiloId, contacto_id: contactoId, con: contacto.nombre })
+  }
 
   if (accion === 'abrir') {
     const prospectoId = strA(body?.prospecto_id)

@@ -41,6 +41,9 @@ por canal anterior a esa fecha es inválida.
 | `hilvan_registrar_interaccion` | **registrar un toque NUESTRO** |
 | `hilvan_registrar_respuesta` | **registrar lo que CONTESTARON** (no uses la de arriba para esto) |
 | `hilvan_bitacora` | leer la conversación completa: quién dijo qué, a quién |
+| `hilvan_contactos_listar` | quién es quién en la marca (de acá salen los `contacto_id`) |
+| `hilvan_contacto_crear` | agregar una persona al árbol |
+| `hilvan_contacto_editar` | corregir sus datos (correos mal tipeados) |
 | `hilvan_notas_leer` | lo que se sabe de la marca y no cabe en la bitácora |
 | `hilvan_nota_escribir` | agregar una nota (una por tema) |
 | `hilvan_nota_editar` | corregir una nota propia |
