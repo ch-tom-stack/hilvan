@@ -9,6 +9,17 @@
 // invisible para lo legendario. Un ícono que no se relaciona con lo que premia
 // es decoración, y decorar acá sería exactamente el defecto que evitamos.
 
+// NUEVE REHECHOS (11-ago). Los que fallaban no eran feos: eran indistinguibles
+// entre sí, porque la diferencia estaba en la DENSIDAD y no en el motivo. Dos
+// carretes que sólo cambian en cuántas rayas tienen adentro se leen igual a
+// 24 px — y un dibujo que no informa es peor que uno feo.
+//
+// Ahora la escala se lee por qué OBJETO es: ovillo → madeja → lanzadera para
+// el volumen, calendario → reloj de arena para las jornadas, y un sector de
+// círculo para las tasas, que a 20% y 33% se distingue de lejos.
+//
+// El segundo hallazgo fue el conteo de segmentos: `tres_cierres` tenía 24
+// trazos cortos. A tamaño real eso no es dibujo, es ruido.
 export const EMBLEMAS: Record<string, string> = {
   // ── I · Hilvanar ──────────────────────────────────────────────────────────
   // Aguja enhebrada
@@ -26,15 +37,15 @@ export const EMBLEMAS: Record<string, string> = {
   // Mano sosteniendo hilo
   diez_contactos: 'M7 21v-6a3 3 0 0 1 3-3h1V7a1.5 1.5 0 0 1 3 0v5M14 12V6a1.5 1.5 0 0 1 3 0v9a6 6 0 0 1-6 6H7',
   // Carrete a medias
-  cincuenta_contactos: 'M6 4h12M6 20h12M8 4v16M16 4v16M8 9h8M8 14h8',
+  cincuenta_contactos: 'M12 4a8 8 0 1 0 0 16 8 8 0 1 0 0-16M5 9c5 3 9 5 14 6M7 6c4 5 7 8 11 11',
   // Carrete lleno
-  cien_contactos: 'M6 4h12M6 20h12M8 4v16M16 4v16M8 7h8M8 10h8M8 13h8M8 16h8',
+  cien_contactos: 'M4 12c0-4 4-6 8-6s8 2 8 6-4 6-8 6-8-2-8-6M10 8v8M14 8v8',
   // Telar
-  quinientos_contactos: 'M3 4h18M3 20h18M6 4v16M12 4v16M18 4v16M3 9h18M3 15h18',
+  quinientos_contactos: 'M3 12c4-4 14-4 18 0-4 4-14 4-18 0M8 12h8M12 9v6',
   // Calendario con puntadas
-  veinte_dias: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2M14 17h2',
+  veinte_dias: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M9 14h6',
   // Calendario denso
-  cincuenta_dias: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M7 13h2M11 13h2M15 13h2M7 16h2M11 16h2M15 16h2',
+  cincuenta_dias: 'M7 4h10M7 20h10M8 4l8 16M16 4L8 20',
   // Nudo que no cede
   no_soltar: 'M8 8c4 0 4 8 8 8M16 8c-4 0-4 8-8 8M5 5l2 2M19 5l-2 2M5 19l2-2M19 19l-2-2',
   // Muchas telas
@@ -52,13 +63,13 @@ export const EMBLEMAS: Record<string, string> = {
   // Coro
   quince_responden: 'M3 5h6v5H5l-2 2V5zM10 8h5v4h-3l-2 2V8zM16 4h5v5h-3l-2 2V4z',
   // Uno de cinco marcado
-  tasa_veinte: 'M4 12h3M9 12h3M14 12h3M19 12h1M4 8l3 8M5.5 6a2 2 0 1 1 0 .1',
+  tasa_veinte: 'M12 4a8 8 0 1 0 0 16 8 8 0 1 0 0-16M12 12V4A8 8 0 0 1 19.6 9.5Z',
   // Uno de tres
-  tasa_treinta: 'M5 12h4M11 12h4M17 12h2M5 7a2.5 2.5 0 1 1 0 .1M4 15l3 4',
+  tasa_treinta: 'M12 4a8 8 0 1 0 0 16 8 8 0 1 0 0-16M12 12V4A8 8 0 0 1 18.9 16Z',
   // Costura rematada
   primer_cierre: 'M4 12h16M4 12l3-3M4 12l3 3M20 12l-3-3M20 12l-3 3M8 8v8M12 8v8M16 8v8',
   // Tres costuras
-  tres_cierres: 'M3 6h18M3 12h18M3 18h18M6 4v4M12 4v4M18 4v4M6 10v4M12 10v4M18 10v4M6 16v4M12 16v4M18 16v4',
+  tres_cierres: 'M4 6h16M4 12h16M4 18h16M12 4v4M12 10v4M12 16v4',
   // De la nada: hilo que aparece del vacío
   frio_a_cierre: 'M3 20c3-1 4-4 5-7s3-6 6-6 5 2 5 4-2 4-4 4-4-1-4-3M19 4l1-1M19 8l2 1',
 
@@ -77,7 +88,7 @@ export const EMBLEMAS: Record<string, string> = {
 
   // ── Sorpresas ─────────────────────────────────────────────────────────────
   madrugar: 'M12 3v3M5 12H2M22 12h-3M6 6L4 4M18 6l2-2M4 18h16M8 15a4 4 0 1 1 8 0',
-  jornada_llena: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 13h1M11 13h1M14 13h1M8 16h1M11 16h1',
+  jornada_llena: 'M2 12h3M7 12h3M12 12h3M17 12h3M22 12h1',
   a_la_primera: 'M5 12h11M16 12l-4-4M16 12l-4 4M18 5v14M21 8l-1 1M21 16l-1-1',
   una_semana_viva: 'M3 12h18M6 9v6M9 8v8M12 9v6M15 8v8M18 9v6',
 }
