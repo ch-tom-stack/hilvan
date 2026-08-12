@@ -14,6 +14,24 @@ function rotuloSemana(lunes: string): string {
   return d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })
 }
 
+
+/**
+ * Corta la lista sin que el corte parezca un error.
+ *
+ * El truco está en que el `pb-8` del contenedor queda DENTRO de la zona que se
+ * desvanece. Si el contenido cabe, lo que se difumina es ese espacio vacío y no
+ * se nota nada; si no cabe, la tarjeta siguiente se desvanece y eso mismo dice
+ * "hay más abajo". Sin esto la lista se cortaba a media tarjeta y parecía un
+ * error de render.
+ *
+ * Va inline y no en globals.css: es una regla sola de un componente, no un
+ * token del sistema.
+ */
+const DESVANECE = {
+  WebkitMaskImage: 'linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%)',
+  maskImage: 'linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%)',
+} as const
+
 /**
  * Las misiones en /perfil: la semana completa, junto al resto de los logros.
  *
@@ -50,7 +68,7 @@ export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) 
       </div>
 
       {tengoAlgo && mias && (
-        <div className="max-h-[26rem] overflow-y-auto pr-2 space-y-5">
+        <div className="max-h-[32rem] overflow-y-auto pr-2 pb-8 space-y-5" style={DESVANECE}>
           {mias.semanal && (
             <div>
               <p className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-green mb-2">
@@ -78,7 +96,7 @@ export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) 
           <p className="font-body text-[9px] tracking-[0.5em] uppercase text-ch-subtle mb-4">
             El equipo
           </p>
-          <div className="max-h-[26rem] overflow-y-auto pr-2 space-y-6">
+          <div className="max-h-[26rem] overflow-y-auto pr-2 pb-8 space-y-6" style={DESVANECE}>
             {otros.map(p => (
               <div key={p.persona_id}>
                 <p className="font-body text-xs text-ch-muted mb-2">{p.nombre}</p>
