@@ -71,7 +71,7 @@ de manos, se cambia el dueño acá y las misiones siguen al área.
 
 | Área | Dueño | Notas |
 |---|---|---|
-| CRM y respuesta a prospectos | Natalia, Simón | **Lo más importante hoy para ambos.** |
+| CRM y respuesta a prospectos | Natalia, Simón | **Lo más importante hoy para ambos.** Tomás opera un segmento chico —reglas 7 y 8 de [`reglas-reparto.md`](reglas-reparto.md), las de criterio más raro— además de revisar. |
 | Contenidos culturales | Natalia | Área en formación: ella la está generando. |
 | Producción | Natalia | En ocasiones. |
 | Asistencia a estudiantes | Simón | |
