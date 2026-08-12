@@ -34,8 +34,15 @@ export function textoBuscable(p: {
   telefono?: string | null
   producto_objetivo?: string | null
   notas?: string | null
+  /** Notas sueltas (crm_notas). Reemplazaron al campo único `notas`. */
+  notas_sueltas?: { cuerpo?: string | null }[] | null
 }): string {
+  const cuerpos = (p.notas_sueltas ?? []).map(n => n?.cuerpo ?? '')
   return normalizar([
-    p.empresa, p.nombre_contacto, p.email, p.telefono, p.producto_objetivo, p.notas,
+    p.empresa, p.nombre_contacto, p.email, p.telefono, p.producto_objetivo,
+    // `notas` queda por las filas anteriores a la migración; las nuevas vienen
+    // en `notas_sueltas`. Buscar solo en una de las dos dejaría la mitad del
+    // contenido invisible sin que nadie lo note.
+    p.notas, ...cuerpos,
   ].filter(Boolean).join(' '))
 }

@@ -70,6 +70,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error?.message ?? 'No se pudo crear el prospecto' }, { status: 500 })
   }
 
+  // `notas` ya no es una columna del prospecto: es una nota suelta. No aborta
+  // la creación si falla — el prospecto existe y es lo que importa.
+  const notas = typeof body?.notas === 'string' ? body.notas.trim() : ''
+  if (notas) {
+    const { error: errNota } = await admin
+      .from('crm_notas')
+      .insert({ prospecto_id: data.id, tipo: 'nota', cuerpo: notas })
+    if (errNota) console.error('[crm] no se pudo guardar la nota del prospecto:', errNota.message)
+  }
+
   await registrarAccion({ herramienta: 'crm-crear', payload: body, resultado_tabla: 'prospectos', resultado_id: data.id, ok: true })
   return NextResponse.json(data)
 }

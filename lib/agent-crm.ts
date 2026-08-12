@@ -37,7 +37,6 @@ export function normalizarProspectoBody(body: any) {
     decisor: strA(body?.decisor),
     angulo: strA(body?.angulo),
     producto_objetivo: strA(body?.producto_objetivo),
-    notas: strA(body?.notas),
   }
 }
 

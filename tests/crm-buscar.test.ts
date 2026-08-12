@@ -47,3 +47,18 @@ describe('textoBuscable', () => {
     expect(textoBuscable({ empresa: 'Solo Empresa' })).toBe('solo empresa')
   })
 })
+
+describe('textoBuscable con notas sueltas', () => {
+  it('busca dentro de las notas individuales', () => {
+    const t = textoBuscable({
+      empresa: 'Magnolia',
+      notas_sueltas: [{ cuerpo: 'Prefieren grabar en marzo' }, { cuerpo: 'Contacto por Instagram' }],
+    })
+    expect(t).toContain('grabar en marzo')
+    expect(t).toContain('instagram')
+  })
+
+  it('sigue mirando el campo viejo, para lo anterior a la migración', () => {
+    expect(textoBuscable({ empresa: 'X', notas: 'texto legado' })).toContain('texto legado')
+  })
+})

@@ -65,7 +65,7 @@ const PROSPECTO_SELECT =
 // el mapa de calor y la fecha más reciente da los días sin tocar (C4).
 // `toques` trae fecha + respondido de cada interacción: con eso el motor de
 // cadencia (lib/crm-cadencia.ts) resuelve cuándo toca el próximo contacto.
-const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count), toques:crm_interacciones(${CAMPOS_TOQUE})`
+const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count), toques:crm_interacciones(${CAMPOS_TOQUE}), notas_sueltas:crm_notas(cuerpo)`
 
 export async function getPipeline(): Promise<Prospecto[]> {
   const supabase = await createClient()

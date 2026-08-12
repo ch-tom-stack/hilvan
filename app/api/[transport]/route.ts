@@ -1314,7 +1314,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Crear prospecto (CRM)',
         description:
-          'Crea un prospecto en el CRM. empresa REQUERIDO; opcionales: nombre_contacto, email, telefono, origen (linkedin|instagram|referido|feria|web|correo|otro), score (alta|media|baja), decisor, angulo, producto_objetivo (banco|lookbook|spot|sin_definir), arquetipo (feed|temporadas|sin_definir), responsable_id (uuid de profiles), notas, etapa (default prospecto). como_propuesta=true NO crea: deja el lead en la Bandeja de Aprobación (úsalo para leads de correo entrante). CONFIRMA con el usuario antes de llamar.',
+          'Crea un prospecto en el CRM. empresa REQUERIDO; opcionales: nombre_contacto, email, telefono, origen (linkedin|instagram|referido|feria|web|correo|otro), score (alta|media|baja), decisor, angulo, producto_objetivo (banco|lookbook|spot|sin_definir), arquetipo (feed|temporadas|sin_definir), responsable_id (uuid de profiles), notas (se guarda como una nota suelta, no como campo del prospecto), etapa (default prospecto). como_propuesta=true NO crea: deja el lead en la Bandeja de Aprobación (úsalo para leads de correo entrante). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           empresa: z.string(),
           nombre_contacto: z.string().optional(),
@@ -1654,7 +1654,7 @@ const baseHandler = createMcpHandler(
       'hilvan_editar_prospecto',
       {
         title: 'Editar prospecto (CRM)',
-        description: 'Corrige los datos de un prospecto. prospecto_id REQUERIDO; sólo se escriben los campos que mandes (los que omitas quedan intactos). Manda "" para vaciar uno. Úsalo sobre todo para arreglar `origen`: decide si el prospecto es frío o entrante y con eso la secuencia de correos. NO cambia etapa (usa hilvan_mover_etapa) ni responsable; para tamaño/segmento usa hilvan_clasificar_prospecto. Guarda el valor anterior en la auditoría para poder revertir.',
+        description: 'Corrige los datos de un prospecto. prospecto_id REQUERIDO; sólo se escriben los campos que mandes (los que omitas quedan intactos). Manda "" para vaciar uno. Úsalo sobre todo para arreglar `origen`: decide si el prospecto es frío o entrante y con eso la secuencia de correos. NO cambia etapa (usa hilvan_mover_etapa) ni responsable (usa hilvan_solicitar_asignacion); para tamaño/segmento usa hilvan_clasificar_prospecto; para notas usa hilvan_nota_escribir. Guarda el valor anterior en la auditoría para poder revertir.',
         inputSchema: {
           prospecto_id: z.string(),
           empresa: z.string().optional(),
@@ -1667,7 +1667,6 @@ const baseHandler = createMcpHandler(
           decisor: z.string().optional(),
           angulo: z.string().optional(),
           producto_objetivo: z.string().optional(),
-          notas: z.string().optional(),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/editar', args)),
@@ -1691,6 +1690,33 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/interaccion/editar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_notas_leer',
+      {
+        title: 'Notas del prospecto (CRM)',
+        description: 'Las notas sueltas de un prospecto, de la más nueva a la más vieja. Reemplazan al campo único `prospectos.notas`, que quedó vacío en ago-2026. Cada nota trae `tipo` (nota|lectura|acuerdo) y `bloqueada`. Devuelve además `lectura`: el dossier de La Lectura, que NO es una nota —viene de otra tabla y no se edita por acá—. Léelas antes de redactar: es donde está lo que se sabe de la marca y no cabe en la bitácora.',
+        inputSchema: { prospecto_id: z.string() },
+      },
+      async ({ prospecto_id }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/notas?prospecto_id=${encodeURIComponent(prospecto_id)}`)),
+    )
+
+    server.registerTool(
+      'hilvan_nota_escribir',
+      {
+        title: 'Escribir una nota (CRM)',
+        description: 'Agrega una nota a un prospecto. Una nota por tema —para eso dejaron de ser un campo único—. `bloqueada: true` la guarda como REGISTRO: no se podrá editar después, sólo borrar. Úsalo para lo que llegó de afuera o lo que se pactó con el cliente, nunca para apuntes de trabajo que después habrá que corregir. Esto NO es la bitácora (eso es lo que pasó) ni un insight (eso es el porqué del abordaje).',
+        inputSchema: {
+          prospecto_id: z.string(),
+          cuerpo: z.string(),
+          titulo: z.string().optional(),
+          tipo: z.string().optional().describe('nota | lectura | acuerdo — default nota'),
+          bloqueada: z.boolean().optional().describe('true = registro congelado, no editable'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/notas', args)),
     )
 
     server.registerTool(
