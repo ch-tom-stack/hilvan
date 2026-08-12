@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { Profile } from '@/types'
+import AvisoMisiones from '@/components/misiones/AvisoMisiones'
 
 const MODULOS = [
   { nombre: 'Cotizaciones', desc: 'Presupuestos y aprobaciones',      href: '/cotizaciones' },
@@ -80,6 +81,9 @@ export default async function DashboardPage() {
           <p className="text-ch-cream text-sm font-body mt-0.5">{fecha}</p>
         </div>
       </div>
+
+      {/* Lo primero al entrar: tu misión de hoy. */}
+      <AvisoMisiones />
 
       {/* Cuerpo: módulos + calendario */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8 items-start">

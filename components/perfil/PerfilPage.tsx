@@ -8,6 +8,7 @@ import PreferenciasFeedback from './PreferenciasFeedback'
 import type { Profile, Rol } from '@/types'
 import { momento } from '@/lib/momentos'
 import Medallas from '@/components/perfil/Medallas'
+import MisionesPerfil from '@/components/misiones/MisionesPerfil'
 
 const ROL_LABELS: Record<Rol, string> = {
   admin:         'Administrador',
@@ -281,6 +282,12 @@ export default function PerfilPage({ profile, email }: Props) {
           </form>
         </div>
 
+      </div>
+
+      {/* Las misiones, antes de las medallas: son de esta semana, las medallas
+          son del historial completo. Lo cercano primero. */}
+      <div className="mt-8">
+        <MisionesPerfil esAdmin={profile.rol === 'admin'} />
       </div>
 
       {/* Las medallas son del CRM: sólo tienen sentido para quien capta. */}

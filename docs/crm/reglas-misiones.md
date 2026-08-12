@@ -28,10 +28,13 @@ Todo lo demás en este documento es orientación.
    reprograma. Un tablero que crece es una máquina de culpa y deja de leerse.
 3. **Vencer es silencioso.** Sin aviso, sin reproche, sin registro visible para
    nadie. La misión simplemente ya no está.
-4. **En el día libre no llega misión diaria**, y la del día hábil anterior no
-   muere por haber pasado ese día. El vencimiento se cuenta en días hábiles de
-   esa persona, no en días de calendario: la misión del lunes de Natalia sigue
-   viva el miércoles.
+4. **En el día libre no llega misión diaria**, y la del día hábil anterior
+   sobrevive ese día. El vencimiento se cuenta en días hábiles de esa persona,
+   no en días de calendario: una misión vive su día, sobrevive los días libres
+   que le siguen, y muere cuando llega el próximo día hábil de esa persona. La
+   del lunes de Natalia sigue viva su martes libre y termina el miércoles; la
+   del jueves de Simón sobrevive su viernes y el fin de semana, y termina el
+   lunes.
 5. **Diego, FOCH e Ignacio no reciben misiones.** No tienen responsabilidades.
 
 ## Cómo se proponen

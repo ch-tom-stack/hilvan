@@ -109,8 +109,9 @@ de una semana completa. Lo esencial de la mecánica:
 - **Los lunes propones la semana completa** de cada persona, además de la del
   día. El resto de los días, solo la diaria y los ajustes que veas necesarios.
 - **Respeta las jornadas.** Natalia no recibe misión el martes; Simón no recibe
-  el viernes. Y una misión suya del día hábil anterior sigue viva durante ese
-  día libre: no la des por vencida ni la repitas.
+  el viernes. La misión del día hábil anterior sobrevive ese día libre y muere
+  al llegar el próximo día hábil de esa persona: no la des por vencida antes de
+  tiempo ni la repitas.
 - **Nunca propongas algo que dependa de un tercero.** "Consigue una reunión"
   está mal —depende del prospecto y frustra—; "deja enviadas las tres
   propuestas" está bien. Es la regla que más se rompe sola: revísala antes de
