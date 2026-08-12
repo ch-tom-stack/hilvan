@@ -6,6 +6,7 @@ import { clasificarEvento } from '@/app/actions/calendario'
 import type { EventoCalendario, ClasificacionEvento } from '@/types'
 import { CLASIFICACION_LABELS } from '@/types'
 import type { EventoFC } from './CalendarioCliente'
+import { momento } from '@/lib/momentos'
 
 const OPCIONES: { value: ClasificacionEvento; label: string; color: string }[] = [
   { value: 'rodaje',   label: 'Rodaje',   color: 'text-ch-green border-ch-green/40 hover:bg-ch-green/10' },
@@ -37,8 +38,9 @@ export default function EventoDetalle({ evento, eventosGCal, onClose }: Props) {
     setMsg('')
     start(async () => {
       const res = await clasificarEvento(evento.id, clasificacion)
-      if (res.error) setMsg(res.error)
-      else setMsg('✓ Clasificado')
+      if (res.error) { setMsg(res.error); momento('error', { mensaje: res.error }); return }
+      momento(clasificacion === 'ignorar' ? 'item.eliminado' : 'checklist.marcado')
+      setMsg('✓ Clasificado')
     })
   }
 

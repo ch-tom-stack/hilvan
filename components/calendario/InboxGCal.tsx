@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { clasificarEvento, triggerSyncGCal } from '@/app/actions/calendario'
 import type { EventoCalendario, ClasificacionEvento } from '@/types'
+import { momento } from '@/lib/momentos'
 
 interface Props {
   eventos: EventoCalendario[]
@@ -22,8 +23,11 @@ function FilaEvento({ evento }: { evento: EventoCalendario }) {
     setMsg('')
     start(async () => {
       const res = await clasificarEvento(evento.id, clasificacion)
-      if (res.error) setMsg(res.error)
-      else setClasificado(true)
+      if (res.error) { setMsg(res.error); momento('error', { mensaje: res.error }); return }
+      // Ignorar no es un avance: sacar ruido de la bandeja se acusa distinto
+      // que reconocer un rodaje o una reunión.
+      momento(clasificacion === 'ignorar' ? 'item.eliminado' : 'checklist.marcado')
+      setClasificado(true)
     })
   }
 
@@ -77,11 +81,15 @@ export default function InboxGCal({ eventos, esAdmin }: Props) {
     setSyncMsg('')
     startSync(async () => {
       const res = await triggerSyncGCal()
-      if (res.error) setSyncMsg(res.error)
-      else {
-        const d = res.data as { upserted?: number } | undefined
-        setSyncMsg(`✓ Sincronizado — ${d?.upserted ?? 0} eventos`)
-      }
+      if (res.error) { setSyncMsg(res.error); momento('error', { mensaje: res.error }); return }
+      const d = res.data as { upserted?: number } | undefined
+      const n = d?.upserted ?? 0
+      // Traer cero eventos no es un fallo, pero tampoco un logro: se acusa
+      // distinto para que no parezca que funcionó a medias.
+      momento(n > 0 ? 'guardado' : 'atencion', {
+        mensaje: n > 0 ? `${n} evento${n === 1 ? '' : 's'} sincronizado${n === 1 ? '' : 's'}` : 'Sin eventos nuevos',
+      })
+      setSyncMsg(`✓ Sincronizado — ${n} eventos`)
     })
   }
 

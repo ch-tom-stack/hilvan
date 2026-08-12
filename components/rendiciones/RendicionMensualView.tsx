@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import {
   agregarGastoMensual,
   eliminarGastoMensual,
@@ -124,6 +125,7 @@ export default function RendicionMensualView({
       if (!res.ok) throw new Error('Error subiendo archivo')
       const { url } = await res.json()
       setForm(f => ({ ...f, archivo_url: url }))
+      momento('subido', { mensaje: 'Comprobante subido' })
     } catch (e: any) {
       setFormError(e.message)
     } finally {
@@ -164,9 +166,11 @@ export default function RendicionMensualView({
         setForm({ descripcion: '', monto: '', categoria: '', categoriaOtros: '', tipo_documento: '', archivo_url: '', rut_emisor: '', razon_social_emisor: '', factura_casa_hiedra: false, documento_recibido: true, fecha_documento: '' })
         setInputEsBruto(false)
         setModalAbierto(false)
+        momento('gasto.creado')
         router.refresh()
       } catch (err: any) {
         setFormError(err.message)
+        momento('error', { mensaje: err.message })
       }
     })
   }
@@ -176,6 +180,7 @@ export default function RendicionMensualView({
       try {
         await eliminarGastoMensual(id)
         setRendicion(r => r ? { ...r, gastos: (r.gastos ?? []).filter(g => g.id !== id) } : r)
+        momento('item.eliminado')
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al eliminar gasto')
       }
@@ -188,6 +193,7 @@ export default function RendicionMensualView({
       try {
         await actualizarEstadoRendicionMensual(rendicion.id, estado)
         setRendicion(r => r ? { ...r, estado } : r)
+        momento('guardado', { mensaje: `Rendición ${estado}` })
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al actualizar estado')
       }

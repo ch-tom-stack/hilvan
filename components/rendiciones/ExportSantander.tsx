@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import { calcularRetencion } from '@/types'
 import type { RendicionGasto } from '@/types'
 
@@ -117,6 +118,7 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
       if (!res.ok) {
         const { error } = await res.json().catch(() => ({ error: 'Error desconocido' }))
         toastError(error || 'Error al generar archivo')
+        momento('error', { mensaje: error || 'Error al generar archivo' })
         return
       }
 
@@ -128,8 +130,12 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
         ?? `santander_${nombre}_${new Date().toISOString().slice(0, 10)}.xlsx`
       a.click()
       URL.revokeObjectURL(url)
+      // El navegador descarga en silencio: sin esto no hay señal de que el
+      // archivo se generó, y la tentación es volver a apretar.
+      momento('subido', { mensaje: `Archivo generado · ${filas.length} filas` })
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al descargar')
+      momento('error', { mensaje: 'Error al descargar' })
     }
   }
 

@@ -11,6 +11,7 @@ import {
   toggleTarea,
 } from '@/app/actions/clientes'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type { Cliente, Proyecto, ClienteContacto, ProyectoTarea, EstadoProyecto } from '@/types'
 import { ESTADO_PROYECTO_LABELS, ESTADO_PROYECTO_ACTIVOS, formatCLP } from '@/types'
 
@@ -115,8 +116,11 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
           parent_id: formCliente.parent_id || null,
         }))
         setEditando(false)
+        // Después del await: confirmado por el servidor, no por el gesto.
+        momento('guardado', { mensaje: 'Cliente guardado' })
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al guardar cliente')
+        momento('error', { mensaje: 'Error al guardar cliente' })
       }
     })
   }
@@ -135,8 +139,10 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
         setProyectos(p => [nuevo, ...p])
         setFormProyecto({ nombre: '', estado: 'activo' })
         setMostrarFormProyecto(false)
+        momento('creado', { mensaje: 'Proyecto creado' })
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al crear proyecto')
+        momento('error', { mensaje: 'Error al crear proyecto' })
       }
     })
   }
@@ -196,6 +202,7 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
     startTransition(async () => {
       try {
         await eliminarContacto(id, cliente.id)
+        momento('item.eliminado')
         setContactos(cs => cs.filter(c => c.id !== id))
         setConfirmBorrarContacto(null)
       } catch (e) {

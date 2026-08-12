@@ -11,6 +11,7 @@ import {
   desvincularContactoProyecto,
 } from '@/app/actions/clientes'
 import { toastError } from '@/lib/toast'
+import { momento } from '@/lib/momentos'
 import type {
   Proyecto,
   ProyectoTarea,
@@ -128,8 +129,10 @@ export default function FichaProyecto({
           fecha_cierre: form.fecha_cierre || null,
         }))
         setEditando(false)
+        momento('guardado', { mensaje: 'Proyecto guardado' })
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al guardar proyecto')
+        momento('error', { mensaje: 'Error al guardar proyecto' })
       }
     })
   }
@@ -139,6 +142,7 @@ export default function FichaProyecto({
     if (!textoTarea.trim()) return
     startTransition(async () => {
       try {
+        momento('item.agregado')
         const nueva = await crearTarea(proyecto.id, textoTarea.trim())
         setTareas(ts => [...ts, nueva])
         setTextoTarea('')
@@ -151,6 +155,8 @@ export default function FichaProyecto({
   function handleToggle(tarea: ProyectoTarea) {
     startTransition(async () => {
       try {
+        // Marcar suma, desmarcar es neutro: nunca un castigo.
+        momento(!tarea.completada ? 'checklist.marcado' : 'checklist.desmarcado')
         await toggleTarea(tarea.id, !tarea.completada, proyecto.id)
         setTareas(ts => ts.map(t => t.id === tarea.id ? { ...t, completada: !t.completada } : t))
       } catch (e) {
@@ -163,6 +169,7 @@ export default function FichaProyecto({
     startTransition(async () => {
       try {
         await eliminarTarea(id, proyecto.id)
+        momento('item.eliminado')
         setTareas(ts => ts.filter(t => t.id !== id))
         setConfirmBorrarTarea(null)
       } catch (e) {
@@ -178,6 +185,7 @@ export default function FichaProyecto({
     startTransition(async () => {
       try {
         await vincularContactoProyecto(proyecto.id, contactoId)
+        momento('item.agregado')
         const contacto = contactosCliente.find(c => c.id === contactoId)
         if (contacto) {
           setContactosProyecto(cs => [...cs, {

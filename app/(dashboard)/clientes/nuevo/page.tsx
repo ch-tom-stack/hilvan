@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { crearCliente, getClientes } from '@/app/actions/clientes'
 import { useEffect } from 'react'
 import type { Cliente } from '@/types'
+import { momento } from '@/lib/momentos'
 
 export default function NuevoClientePage() {
   const router = useRouter()
@@ -46,6 +47,7 @@ export default function NuevoClientePage() {
         notas: form.notas.trim() || null,
         created_by: undefined,
       })
+      momento('creado', { mensaje: 'Cliente creado' })
       router.push(`/clientes/${nuevo.id}`)
     })
   }
