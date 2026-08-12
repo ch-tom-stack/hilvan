@@ -143,9 +143,9 @@ que no existen, textos con conteos adentro, y responde 409 si el espacio ya
 tiene misión (manda `reemplazar: true` solo si Tomás decidió cambiarla). Todo
 es reversible con `hilvan_deshacer`.
 
-El campo `cumplida` que devuelve `hilvan_misiones_listar` es **solo lectura**:
-lo marca la persona en la app. No lo interpretes como reproche ni lo uses para
-insistir — vencer es silencioso también para ti.
+**No sabes ni puedes saber quién cumplió sus misiones.** `hilvan_misiones_listar`
+te dice qué espacios están tomados, nada más. Si alguien te pregunta quién
+cumplió, la respuesta es que no lo sabes: ese registro es de cada persona.
 
 **Formato de entrega.** Todos los días, no solo los lunes, la sección trae las
 mismas cuatro piezas en este orden. Que sea siempre igual es el punto: así se

@@ -1654,7 +1654,7 @@ const baseHandler = createMcpHandler(
       'hilvan_misiones_listar',
       {
         title: 'Misiones cargadas',
-        description: 'Las misiones que Tomás YA eligió y están cargadas en Hilván, con si la persona las declaró cumplidas. Sin parámetros trae la semana en curso; desde=YYYY-MM-DD trae desde esa fecha. LLÁMALA ANTES de proponer: sin esto vuelves a proponer espacios que ya están tomados. `cumplida` es solo lectura — la marca la persona en la app, nunca tú.',
+        description: 'Las misiones que Tomás YA eligió y están cargadas en Hilván, con si la persona las declaró cumplidas. Sin parámetros trae la semana en curso; desde=YYYY-MM-DD trae desde esa fecha. LLÁMALA ANTES de proponer: sin esto vuelves a proponer espacios que ya están tomados. NO devuelve si están cumplidas: ese registro es privado de cada persona.',
         inputSchema: { desde: z.string().optional() },
       },
       async ({ desde }, extra) =>
