@@ -1,142 +1,92 @@
-# Pendientes — CRM, Repertorio y sonido
+# Pendientes de Hilván
 
-Corte **11-ago-2026**. Sale de la sesión que construyó el eje frío/entrante, el
-Repertorio y la capa de sonido de toda la app.
+Corte **11-ago-2026**. Sólo lo que se arregla tocando la app.
 
-Marcado explícitamente qué verifiqué contra la base y qué no pude comprobar
-desde acá, para que nadie trate una suposición como un hecho.
-
----
-
-## 1. Depende de Tomás
-
-### Confirmar fichas del Repertorio
-*Verificado 11-ago: 30 trabajos cargados, links revisados ese mismo día.*
-
-Las fichas traen preguntas escritas en sus notas, dirigidas a él:
-
-- **Años.** Casi todas las que salieron del Archivo del sitio están con
-  `anio: null` — el sitio no publica fecha. Afecta el orden por reciente, que es
-  como se elige la credencial cuando hay varias del mismo rubro y escala.
-- **Cuatro dudas de escala/rubro:**
-  - *Sybilla* — marca propia de Falabella. ¿Cuenta como grande o es de porte medio?
-  - *Beauty F* — es la línea de belleza de Falabella, no la marca madre. Hoy va
-    como chica.
-  - *Wolf and Hank* — boutique, pero la pieza es con Benjamín Vicuña.
-  - *Puerto de Palos* — rubro exacto sin confirmar (¿restorán? ¿marca de alimentos?).
-
-### Black & Decker no tiene ni un link
-La ficha existe porque Tomás confirmó que el trabajo es real, pero no hay pieza
-pública que enlazar: ni en la portada ni en el Archivo del sitio. Mientras siga
-así es una credencial que **no se puede mostrar** — a diferencia de Stanley, que
-sí tiene su mp4 de portada.
-
-### Escuchar el set en la app
-Emparejar los 40 sonidos por volumen percibido costó bajar el objetivo global
-**10.5 dB** (lo fija la claqueta, con 30 dB de cresta). Si el set suena débil, la
-corrección es subir `GANANCIA` en `lib/sfx.ts` — **nunca** reprocesar los
-archivos: la sala se acumula y se empantanan.
-
-### Decidir si se enciende el cron de seguimientos del CRM
-Está apagado a propósito. La condición que se puso para encenderlo —que
-registrar un contacto fuera de un click— ya se cumplió hace rato. Queda como
-decisión, no como tarea.
+**Lo operativo del CRM no vive acá.** Las fichas del Repertorio por confirmar,
+los rubros sin credencial, los correos rebotados y la cadencia de contactos son
+trabajo del operador y de quien capta — su lugar es
+[`docs/crm/operador-contexto.md`](crm/operador-contexto.md), no esta lista.
 
 ---
 
-## 2. Huecos que van a doler pronto
+## 1. Decisiones, no tareas
 
-### Rubros sin ninguna credencial
-El Repertorio cubre retail, moda, belleza, bebidas, alimentos, fintech,
-herramientas, tecnología y turismo. **No cubre educación ni electrodomésticos.**
+### Medallas: ¿módulo o sección?
+Hoy viven en `/perfil`, con una tira en el pie del sidebar. Si van a tener lugar
+propio en la navegación, conviene decidirlo antes de que el equipo se acostumbre
+a una forma: el primer lugar donde algo aparece define qué creen que es.
 
-En el pipeline hay cinco prospectos de esos rubros: DUOC UC, AIEP, Universidad
-San Sebastián, Universidad Católica y Electrolux. Al escribirles,
-`hilvan_repertorio_leer` va a devolver `delRubro: false` y el correo tendrá que
-citar una credencial de otro rubro — diciéndolo, según la regla.
+### Los umbrales mensuales son una apuesta
+*Cincuenta* significa 50 contactos **en el mes**, no acumulados. Nadie los ha
+vivido un mes completo todavía. Revisar al cierre de agosto: si nadie llegó, hay
+que bajarlos.
 
-No es un bug: es que no hay trabajo de esos rubros, o no está cargado.
+### El correo de anuncio — recomendación: no mandarlo
+La literatura de gamificación es específica: el efecto de sobrejustificación es
+fuerte con recompensas **anunciadas y esperadas**, y débil o positivo con
+feedback **inesperado** que informa competencia. Anunciar las medallas las
+convierte en lo primero. Con la tira del sidebar ya tienen por dónde
+descubrirse solas.
 
-### Cuatro correos que rebotaron
-Ko Andina · Virtex / Ilko · Coopeuch · Aramco (vía Exmax). Direcciones
-adivinadas, `mailer-daemon`. Sin dirección válida no tiene sentido escribirles.
-*No verificado hoy: puede que ya se hayan corregido.*
+### El cron de seguimientos del CRM sigue apagado
+La condición que se puso para encenderlo —que registrar fuera de un click— se
+cumplió hace rato. Queda como decisión.
+
+---
+
+## 2. Trabajo de UX que sigue abierto
+
+### `ch-press` no existe fuera del CRM
+281 botones en ocho módulos sin respuesta al tacto: rodaje 89, financiero 51,
+cotizaciones 38, equipos 34, clientes 27, rental 22, colaboradores 12,
+calendario 8. Es el micro-gesto más frecuente de la app y sólo lo tienen el CRM
+y el perfil.
+
+### La animación de entrada tampoco
+`ch-fade-up` y `ch-stagger` se usan una vez cada uno fuera del CRM. Las listas
+del resto de la app aparecen de golpe.
+
+### El dashboard está inerte
+Es lo primero que se ve al entrar y es una grilla de módulos más un calendario.
+No cuenta nada de ti: ni el rango, ni el ritmo, ni qué quedó pendiente. Es la
+pantalla con más tráfico y la que menos hace.
+
+### 55 rutas siguen sin `loading.tsx`
+Se cubrieron las 12 principales. Faltan las de detalle —`crm/[id]`,
+`rodaje/[id]`, `cotizaciones/[id]`— que son las que más tardan, porque cargan
+todo el expediente.
 
 ---
 
 ## 3. Construible
 
-### `hilvan_editar_prospecto` — no existe
-El operador **no puede corregir el campo `origen`**. Importa porque ese campo
-decide la temperatura (frío vs entrante) y con eso la secuencia de correos: a un
-entrante no se le manda el toque 1 de valor, ya levantó la mano.
-
-Un prospecto sin origen sale como *Sin clasificar* y usa la escalera fría, que
-es la conservadora. Se arregla sólo a mano en `/crm/[id]/editar`.
-
-Es una herramienta chica y es lo único que hoy bloquea al operador.
+### `equipos` y `maletas` no tienen `created_by`
+Sin atribución no puede haber medallas de ese módulo, y no se inventa
+asignándoselas a alguien. Una migración chica abriría el capítulo.
 
 ### Dos momentos de sonido sin dónde vivir
 `movimiento.conciliado` y `lead.entrante` están definidos y nunca suenan: los
 dos ocurren en rutas de agente, en el servidor, donde no hay navegador que
-reproduzca nada. Suenan sólo si esas acciones ganan una superficie en la app.
-
-Lo mismo pasaba con `qr.escaneado`: se resolvió disparándolo al **descargar** el
-QR, porque el escaneo aterriza en una página pública donde el navegador bloquea
-el audio hasta que el usuario toque algo.
+reproduzca nada. Suenan sólo si esas acciones ganan superficie en la app.
 
 ---
 
-## 4. Medallas — lo que queda abierto
+## 4. Deuda menor
 
-El sistema dejó de ser del CRM: 38 medallas en cuatro capítulos, con emblema
-propio, rangos históricos, ritmo del período y repetición mensual con nivel.
-
-- **Emblemas por rehacer.** Tomás revisó los 38 y algunos no se leen a 24 px.
-  Falta que diga cuáles. Los sospechosos por densidad: *Tejedora*, *Cincuenta
-  jornadas* y *Tres costuras*.
-- **El correo NO se mandó, a propósito.** El sistema se descubre solo: al
-  registrar un contacto aparece el aviso de la medalla. Anunciarlo el día uno
-  habría mostrado 0 de 38 y nada ocurriendo; esperar deja que la primera
-  visita encuentre varias ya ganadas.
-- **Los umbrales mensuales son una apuesta.** *Cincuenta* pasó a significar 50
-  contactos EN EL MES, no acumulados. Si al cierre del primer mes nadie llega,
-  hay que bajarlos.
-- **`equipos` y `maletas` no tienen atribución**, así que no tienen medallas.
-  Agregar un `created_by` a esas tablas abriría el capítulo.
-- **Sigue sin decidirse si es un módulo con lugar propio** en el sidebar o una
-  sección del perfil. Hoy vive en `/perfil`.
-
----
-
-## 5. Deuda menor
-
-### Las voces del enfriado siguen siendo TTS
-Las cuatro variantes de `crm-enfriado` usan voces sintéticas de macOS montadas
-sobre el trombón. Funcionan, pero grabarlas con la voz de Natalia o Simón son
-dos segundos por línea y el chiste mejora mucho. El montaje ya está hecho: sólo
-hay que reemplazar el archivo de voz y volver a correr la cadena.
+### Las voces del enfriado son TTS
+Las cuatro variantes de `crm-enfriado` usan voces sintéticas de macOS sobre el
+trombón. Grabarlas con la voz de Natalia o Simón son dos segundos por línea. El
+montaje ya está hecho: sólo hay que reemplazar el archivo de voz.
 
 **Ojo:** cualquier sonido nuevo se procesa junto al set completo desde los
 originales (que están en el historial de git), nunca de a uno — el ajuste de
-volumen es global. Ver `tools/sonido/README.md`.
+volumen es global. Ver [`tools/sonido/README.md`](../tools/sonido/README.md).
+
+### Escuchar el set en la app
+Emparejar los 40 sonidos costó bajar el objetivo global 10.5 dB. Si suena débil,
+se sube `GANANCIA` en `lib/sfx.ts` — **nunca** reprocesar los archivos: la sala
+se acumula.
 
 ### Del CLAUDE.md, llevan meses
-- **Export Santander** — falta validarlo con rendiciones aprobadas reales.
-- **OTT\* NT AT HOME** — cargo recurrente de ~$10.100/mes en tarjeta, servicio
-  sin identificar.
-
----
-
-## Lo que ya NO es pendiente
-
-Anotado porque estaba en listas anteriores y se resolvió:
-
-- El Repertorio ya no está vacío: 30 trabajos, links verificados.
-- Los 58 prospectos tienen responsable — ya no hay huérfanos.
-- Las etapas se movieron (de 18 en *prospecto* a 8): la conciliación corrió.
-- El SQL del Repertorio corrió y sus tres herramientas están en producción.
-- Enfriar y descartar tienen sonido propio y distinto entre sí.
-- Los cinco módulos tienen sonido: ninguno en cero.
-- `hilvan_editar_prospecto` existe: el operador ya puede corregir `origen`.
-- Las medallas se detectan donde ocurre el trabajo, no sólo al abrir el perfil.
+- **Export Santander** — validarlo con rendiciones aprobadas reales.
+- **OTT\* NT AT HOME** — cargo recurrente de ~$10.100/mes sin identificar.
