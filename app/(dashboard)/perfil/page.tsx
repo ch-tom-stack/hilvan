@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types'
 import PerfilPage from '@/components/perfil/PerfilPage'
+import MisionesPerfil from '@/components/misiones/MisionesPerfil'
 
 export const metadata = { title: 'Mi perfil — Hilván' }
 
@@ -14,5 +15,11 @@ export default async function MiPerfilPage() {
     .eq('id', user!.id)
     .single<Profile>()
 
-  return <PerfilPage profile={profile!} email={user!.email!} />
+  return (
+    <PerfilPage
+      profile={profile!}
+      email={user!.email!}
+      misiones={<MisionesPerfil esAdmin={profile!.rol === 'admin'} />}
+    />
+  )
 }

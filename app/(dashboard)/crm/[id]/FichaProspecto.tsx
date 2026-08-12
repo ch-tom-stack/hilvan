@@ -3,14 +3,14 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Prospecto, CrmInteraccion, CrmHilo, CrmContacto, CrmBorrador, CrmLectura, CrmInsight, EtapaProspecto, ChecklistItem } from '@/types'
+import type { Prospecto, CrmInteraccion, CrmHilo, CrmNota, CrmContacto, CrmBorrador, CrmLectura, CrmInsight, EtapaProspecto, ChecklistItem } from '@/types'
 import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO, TAMANOS_EMPRESA, TAMANO_LABELS, SEGMENTOS_PROSPECTO, SEGMENTO_LABELS } from '@/types'
-import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable, asignarPrioridad, clasificarProspecto, solicitarAsignacion } from '@/app/actions/crm'
+import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, asignarResponsable, asignarPrioridad, clasificarProspecto, solicitarAsignacion } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
+import NotasProspecto from '@/components/crm/NotasProspecto'
 import ContactosProspecto from '@/components/crm/ContactosProspecto'
 import BorradorRespuesta from '@/components/crm/BorradorRespuesta'
-import LecturaDossier from '@/components/crm/LecturaDossier'
 import ComoAbordarlo from '@/components/crm/ComoAbordarlo'
 import { Tag } from '@/components/crm/TarjetaProspecto'
 import { momento } from '@/lib/momentos'
@@ -20,6 +20,7 @@ interface Props {
   prospecto: Prospecto
   interacciones: CrmInteraccion[]
   hilos: CrmHilo[]
+  notasProspecto: CrmNota[]
   contactos: CrmContacto[]
   borradores: CrmBorrador[]
   lecturas: CrmLectura[]
@@ -27,21 +28,11 @@ interface Props {
   responsables: { id: string; nombre: string }[]
 }
 
-export default function FichaProspecto({ prospecto, interacciones, hilos, contactos, borradores, lecturas, insights, responsables }: Props) {
+export default function FichaProspecto({ prospecto, interacciones, hilos, notasProspecto, contactos, borradores, lecturas, insights, responsables }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
-  const [notas, setNotas] = useState(prospecto.notas ?? '')
   const p = prospecto
-
-  const guardarNotas = () => {
-    startTransition(async () => {
-      const res = await actualizarNotas(p.id, notas)
-      if (res.error) { toastError(res.error); return }
-      momento('guardado', { mensaje: 'Notas guardadas' })
-      router.refresh()
-    })
-  }
 
   const cambiarResponsable = (responsableId: string) => {
     startTransition(async () => {
@@ -236,12 +227,13 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, contac
           {/* Lectura estratégica */}
           <div className="border border-ch-border bg-ch-surface/30 p-5">
             <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted mb-4">Lectura estratégica</h2>
+            {/* El dossier de La Lectura NO se muestra acá: vive entre las
+                notas, que es donde se pidió. Repetirlo en dos paneles de la
+                misma ficha obliga a comparar cuál está más al día. */}
             <div className="space-y-3">
               <Dato label="Ángulo de acercamiento" valor={p.angulo} />
               <Dato label="Decisor" valor={p.decisor} />
-              {lectura ? (
-                <LecturaDossier lectura={lectura} />
-              ) : (
+              {!lectura && (
                 <p className="font-body text-xs text-ch-subtle">Sin Lectura vinculada todavía.</p>
               )}
             </div>
@@ -256,25 +248,14 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, contac
           {/* Casilla de borrador de respuesta */}
           <BorradorRespuesta prospectoId={p.id} borradores={borradores} />
 
-          {/* Notas */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted">Notas</h2>
-              {notas !== (p.notas ?? '') && (
-                <button onClick={guardarNotas} disabled={isPending}
-                  className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-green hover:text-ch-green-light transition-colors disabled:opacity-50">
-                  {isPending ? 'Guardando…' : 'Guardar'}
-                </button>
-              )}
-            </div>
-            <textarea
-              value={notas}
-              onChange={e => setNotas(e.target.value)}
-              rows={4}
-              placeholder="Escribe notas sobre este prospecto…"
-              className="input-ch w-full resize-none text-sm"
-            />
-          </div>
+          {/* Notas sueltas, con vista maximizada. La Lectura con dossier se
+              muestra acá pero se lee de crm_lecturas: no es una nota. */}
+          <NotasProspecto
+            prospectoId={p.id}
+            notas={notasProspecto}
+            lectura={lectura}
+            personas={Object.fromEntries(responsables.map(r => [r.id, r.nombre]))}
+          />
 
           {/* Bitácora */}
           <Bitacora prospectoId={p.id} interacciones={interacciones} hilos={hilos} contactos={contactos}

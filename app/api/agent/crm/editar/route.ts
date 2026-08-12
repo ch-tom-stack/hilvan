@@ -19,12 +19,15 @@ export const runtime = 'nodejs'
 // porque el normalizador de crear convierte lo ausente en null.
 //
 // NO toca `etapa` (tiene hilvan_mover_etapa, con su vía de propuesta) ni
-// `responsable_id` (las reglas de reparto prohíben reasignar a quien ya tiene
-// dueño). Para clasificar tamaño/segmento está hilvan_clasificar_prospecto.
+// `responsable_id` (para eso está hilvan_solicitar_asignacion). Para clasificar
+// tamaño/segmento está hilvan_clasificar_prospecto.
+//
+// Tampoco toca `notas`: ese campo se vació en ago-2026 y las notas viven en
+// crm_notas, una por tema. Se escriben con hilvan_nota_escribir.
 
 const CAMPOS = [
   'nombre_contacto', 'email', 'telefono', 'origen', 'arquetipo',
-  'score', 'decisor', 'angulo', 'producto_objetivo', 'notas', 'empresa',
+  'score', 'decisor', 'angulo', 'producto_objetivo', 'empresa',
 ] as const
 
 const VALIDOS: Record<string, readonly string[]> = {
@@ -71,7 +74,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient()
   const { data: antes } = await admin
     .from('prospectos')
-    .select('id, empresa, nombre_contacto, email, telefono, origen, arquetipo, score, decisor, angulo, producto_objetivo, notas')
+    .select('id, empresa, nombre_contacto, email, telefono, origen, arquetipo, score, decisor, angulo, producto_objetivo')
     .eq('id', prospectoId)
     .maybeSingle()
   if (!antes) return NextResponse.json({ error: 'prospecto_id no encontrado' }, { status: 404 })

@@ -8,6 +8,7 @@ import type {
   Prospecto,
   CrmInteraccion,
   CrmHilo,
+  CrmNota,
   CrmContacto,
   CrmBorrador,
   CrmLectura,
@@ -16,7 +17,7 @@ import type {
   EtapaProspecto,
   Profile,
 } from '@/types'
-import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION, MOTIVOS_CIERRE_HILO } from '@/types'
+import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION, MOTIVOS_CIERRE_HILO, TIPOS_NOTA } from '@/types'
 import { aplicarEfectoAprobacion, AplicarError, CAMPOS_CORREGIBLES, type AprobacionRow } from '@/lib/crm-aprobaciones'
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
@@ -93,6 +94,7 @@ export async function getProspecto(id: string): Promise<{
   prospecto: Prospecto | null
   interacciones: CrmInteraccion[]
   hilos: CrmHilo[]
+  notas: CrmNota[]
   contactos: CrmContacto[]
   borradores: CrmBorrador[]
   lecturas: CrmLectura[]
@@ -139,6 +141,12 @@ export async function getProspecto(id: string): Promise<{
     .eq('prospecto_id', id)
     .order('created_at', { ascending: false })
 
+  const { data: notas } = await supabase
+    .from('crm_notas')
+    .select('*')
+    .eq('prospecto_id', id)
+    .order('created_at', { ascending: false })
+
   // Las líneas de conversación: la bitácora se agrupa por hilo, no por fecha.
   const { data: hilos } = await supabase
     .from('crm_hilos')
@@ -150,6 +158,7 @@ export async function getProspecto(id: string): Promise<{
     prospecto: (prospecto as unknown as Prospecto) ?? null,
     interacciones: (interacciones ?? []) as CrmInteraccion[],
     hilos: (hilos ?? []) as CrmHilo[],
+    notas: (notas ?? []) as CrmNota[],
     contactos: (contactos ?? []) as CrmContacto[],
     borradores: (borradores ?? []) as CrmBorrador[],
     lecturas: (lecturas ?? []) as CrmLectura[],
@@ -1052,6 +1061,115 @@ export async function actualizarNotas(
   const { error } = await acceso.supabase.from('prospectos').update({ notas: limpiar(notas) }).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath(`/crm/${id}`)
+  return { ok: true }
+}
+
+// ── Notas individuales (ago 2026) ────────────────────────────────────────────
+// Reemplazan al campo único `prospectos.notas`. Ver sql/crm-notas.sql.
+
+export interface NotaInput {
+  tipo?: string
+  titulo?: string
+  cuerpo?: string
+  bloqueada?: boolean
+}
+
+export async function crearNota(
+  prospectoId: string,
+  input: NotaInput,
+): Promise<{ ok?: true; id?: string; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const tipo = input.tipo && (TIPOS_NOTA as readonly string[]).includes(input.tipo) ? input.tipo : 'nota'
+  const cuerpo = (input.cuerpo ?? '').trim()
+  if (!cuerpo) return { error: 'La nota está vacía' }
+
+  const { data, error } = await acceso.supabase
+    .from('crm_notas')
+    .insert({
+      prospecto_id: prospectoId,
+      tipo,
+      titulo: limpiar(input.titulo),
+      cuerpo,
+      autor_id: acceso.user.id,
+      bloqueada: input.bloqueada === true,
+    })
+    .select('id')
+    .maybeSingle<{ id: string }>()
+  if (error) return { error: error.message }
+
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true, id: data?.id }
+}
+
+export async function actualizarNota(
+  id: string,
+  prospectoId: string,
+  input: NotaInput,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  // El candado se verifica en el servidor, no solo escondiendo el botón: una
+  // nota bloqueada es un registro, y que no se pueda editar tiene que ser
+  // cierto también cuando la petición no viene de la pantalla.
+  const { data: actual } = await acceso.supabase
+    .from('crm_notas').select('bloqueada').eq('id', id).maybeSingle<{ bloqueada: boolean }>()
+  if (!actual) return { error: 'Nota no encontrada' }
+  if (actual.bloqueada) return { error: 'Esta nota está bloqueada: se guardó como registro y no se edita' }
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (input.titulo !== undefined) patch.titulo = limpiar(input.titulo)
+  if (input.cuerpo !== undefined) {
+    const cuerpo = input.cuerpo.trim()
+    if (!cuerpo) return { error: 'La nota está vacía' }
+    patch.cuerpo = cuerpo
+  }
+  if (input.tipo !== undefined && (TIPOS_NOTA as readonly string[]).includes(input.tipo)) patch.tipo = input.tipo
+
+  const { error } = await acceso.supabase.from('crm_notas').update(patch).eq('id', id)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+/**
+ * Congela una nota. Es de ida: se puede bloquear, no desbloquear.
+ *
+ * Un candado que se abre con un click no es un candado — sería sólo un aviso, y
+ * el punto de guardar algo como registro es que nadie lo cambie después sin
+ * darse cuenta. Si de verdad hay que corregirla, se borra y se escribe otra:
+ * eso deja rastro, editarla en silencio no.
+ */
+export async function bloquearNota(
+  id: string,
+  prospectoId: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const { error } = await acceso.supabase.from('crm_notas').update({ bloqueada: true }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+export async function eliminarNota(
+  id: string,
+  prospectoId: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  // Una nota bloqueada SÍ se puede borrar. Lo que el candado impide es
+  // cambiarla en silencio; borrarla es visible y deliberado, y la UI lo pide
+  // dos veces. Prohibir ambas cosas dejaría una nota bloqueada por error
+  // atrapada para siempre, sin forma de arreglarla.
+  const { error } = await acceso.supabase.from('crm_notas').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath(`/crm/${prospectoId}`)
   return { ok: true }
 }
 

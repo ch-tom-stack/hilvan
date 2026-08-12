@@ -71,16 +71,20 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
     return { ok: true, duplicado: true, mensaje: 'Ya hay un lead con ese email (propuesta o prospecto).' }
   }
 
+  // La procedencia va en una nota corta; el texto de La Lectura va aparte y
+  // se guarda como nota bloqueada al aprobar. Antes se concatenaba todo en un
+  // solo campo con un prefijo "[La Lectura]" puesto a mano, y así terminaron 19
+  // prospectos con el dossier enterrado dentro de sus notas.
   const etiqueta = origen === 'lectura' ? 'La Lectura' : origen.charAt(0).toUpperCase() + origen.slice(1)
   const notas = [
     `[${etiqueta}] Lead entrante desde el sitio.`,
     nota || '',
     producto ? `Producto sugerido: ${producto}.` : '',
     url ? `Sitio/IG: ${url}` : '',
-    lectura ? `\n\n${lectura}` : '',
   ].filter(Boolean).join(' ').trim()
 
   const payload: Record<string, unknown> = { empresa, nombre_contacto: nombre, email, origen, notas }
+  if (lectura) payload.lectura = lectura
   if (producto) payload.producto_objetivo = producto
   if (arquetipo) payload.arquetipo = arquetipo
   if (angulo) payload.angulo = angulo

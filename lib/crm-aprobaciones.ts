@@ -81,7 +81,6 @@ export async function aplicarEfectoAprobacion(
         decisor: payload.decisor ?? null,
         angulo: payload.angulo ?? null,
         producto_objetivo: payload.producto_objetivo ?? null,
-        notas: payload.notas ?? null,
         etapa: payload.etapa || 'prospecto',
       })
       .select('id')
@@ -92,6 +91,23 @@ export async function aplicarEfectoAprobacion(
     // solo vivía en el Supabase del sitio y en Hilván quedaba el resumen en
     // texto plano; acá es el insumo del brief cuando el prospecto avanza.
     // No bloquea la aprobación: el prospecto ya existe y es lo que importa.
+    // Las notas del lead, cada una por separado. La de La Lectura nace
+    // bloqueada: es un documento que llegó, no un apunte que se edita.
+    const notas: { tipo: string; titulo: string; cuerpo: string; bloqueada: boolean }[] = []
+    if (payload.notas) {
+      notas.push({ tipo: 'nota', titulo: 'Procedencia', cuerpo: String(payload.notas), bloqueada: false })
+    }
+    if (payload.lectura) {
+      notas.push({ tipo: 'lectura', titulo: 'La Lectura', cuerpo: String(payload.lectura), bloqueada: true })
+    }
+    if (notas.length) {
+      const { error: errNotas } = await client
+        .from('crm_notas')
+        .insert(notas.map(n => ({ ...n, prospecto_id: data.id })))
+      // No bloquea la aprobación: el prospecto ya existe y es lo que importa.
+      if (errNotas) console.error('[crm] no se pudieron guardar las notas:', errNotas.message)
+    }
+
     if (hayLectura) {
       const { error: errLectura } = await client.from('crm_lecturas').insert({
         prospecto_id: data.id,

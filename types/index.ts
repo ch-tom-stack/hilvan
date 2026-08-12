@@ -1202,6 +1202,34 @@ export interface CrmHilo {
   created_at: string
 }
 
+/**
+ * Una nota suelta del prospecto.
+ *
+ * Reemplaza al campo único `prospectos.notas`, que la gente ya usaba como si
+ * fueran varias: 21 de 34 tenían varios párrafos y 19 llevaban un prefijo
+ * puesto a mano para marcar de dónde venía cada trozo.
+ */
+export interface CrmNota {
+  id: string
+  prospecto_id: string
+  tipo: string            // nota | lectura | acuerdo
+  titulo?: string | null
+  cuerpo: string
+  autor_id?: string | null
+  /** Congelada: no se edita ni se borra. Lo que se guardó como registro. */
+  bloqueada: boolean
+  created_at: string
+  updated_at?: string | null
+}
+
+export const TIPOS_NOTA = ['nota', 'lectura', 'acuerdo'] as const
+
+export const TIPO_NOTA_LABELS: Record<string, string> = {
+  nota:    'Nota',
+  lectura: 'La Lectura',
+  acuerdo: 'Acuerdo',
+}
+
 export const MOTIVOS_CIERRE_HILO: Record<string, string> = {
   cambio_contacto:    'Cambió la contraparte',
   cambio_responsable: 'Cambió el responsable',
