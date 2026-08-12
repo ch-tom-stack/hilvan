@@ -1,7 +1,5 @@
 import type { Metadata } from 'next'
-import { Schibsted_Grotesk } from 'next/font/google'
-
-const schibsted = Schibsted_Grotesk({ subsets: ['latin'], weight: ['400', '500', '700', '800'] })
+import '../marca-web.css'
 
 export const metadata: Metadata = {
   title: 'Agenda una reunión · Casa Hiedra',
@@ -11,11 +9,20 @@ export const metadata: Metadata = {
 // Layout AISLADO de la marca web de Casa Hiedra (no usa el tema oscuro de Hilván):
 // fondo blanco, tinta negra, tipografía grotesca. El rojo (#C11700) se reserva
 // solo para el CTA dentro de la página.
+//
+// La fuente se sirve desde el repo (ver fuente.css). Venía de
+// `next/font/google`, que la baja en tiempo de build: el caché de Vercel se
+// quedó con URLs de gstatic que empezaron a dar 404 y tumbó TODOS los deploys,
+// no sólo esta ruta.
 export default function ReunionLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={schibsted.className}
-      style={{ background: '#FFFFFF', color: '#0A0A0A', minHeight: '100vh' }}
+      style={{
+        background: '#FFFFFF',
+        color: '#0A0A0A',
+        minHeight: '100vh',
+        fontFamily: "'Schibsted Grotesk', system-ui, -apple-system, sans-serif",
+      }}
     >
       {children}
     </div>
