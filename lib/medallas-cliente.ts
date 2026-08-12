@@ -10,8 +10,6 @@
 // mecanismo de descubrimiento. Tiene que llegar en el momento.
 
 import { revisarMedallas } from '@/app/actions/medallas'
-import { MEDALLAS } from '@/lib/crm-medallas'
-import { momento } from '@/lib/momentos'
 import { getPreferencias } from '@/lib/preferencias'
 import { EVENTO_MEDALLA } from '@/components/perfil/RevelacionMedalla'
 
@@ -33,16 +31,13 @@ async function revisar(): Promise<void> {
   ultima = Date.now()
   try {
     const { nuevas } = await revisarMedallas()
-    for (const clave of nuevas) {
-      const def = MEDALLAS.find(m => m.clave === clave)
-      if (!def) continue
-      // El sonido y la celebración escalan con la rareza.
-      momento(`medalla.${def.rareza}` as never, { mensaje: `Medalla: ${def.titulo}` })
-      // Sólo lo excepcional detiene la pantalla. Interrumpir por algo frecuente
-      // es lo que enseña a odiar las notificaciones.
-      if (def.rareza === 'rara' || def.rareza === 'legendaria') {
-        window.dispatchEvent(new CustomEvent(EVENTO_MEDALLA, { detail: { clave } }))
-      }
+    // Se manda la TANDA COMPLETA en un solo evento y la decisión vive allá:
+    // qué se celebra, en qué orden y si detiene la pantalla es una sola
+    // política, y estaba repetida en los dos sitios que detectan medallas.
+    // Acá tampoco se disparan los sonidos: sonaban todos juntos mientras la
+    // pantalla mostraba otra cosa. Ahora suena cada uno cuando aparece.
+    if (nuevas.length > 0) {
+      window.dispatchEvent(new CustomEvent(EVENTO_MEDALLA, { detail: { claves: nuevas } }))
     }
   } catch {
     // Quedarse sin el aviso no puede romper el registro del contacto, que es

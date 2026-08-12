@@ -12,6 +12,7 @@ import RitmoActual from '@/components/perfil/RitmoActual'
 import Resumen from '@/components/perfil/Resumen'
 import { momento } from '@/lib/momentos'
 import { getPreferencias, setPreferencias } from '@/lib/preferencias'
+import { EVENTO_MEDALLA } from '@/components/perfil/RevelacionMedalla'
 import { formatFecha } from '@/lib/fechas'
 
 /**
@@ -41,10 +42,10 @@ export default function Medallas() {
         if (!vivo) return
         setEstado(e)
         // Sólo lo que se acaba de registrar. La acción es idempotente, así que
-        // recargar la página no vuelve a celebrar nada.
-        for (const clave of e.nuevas) {
-          const def = MEDALLAS.find(m => m.clave === clave)
-          if (def) momento('hito.alcanzado', { mensaje: `Medalla: ${def.titulo}` })
+        // recargar la página no vuelve a celebrar nada. La tanda va entera en
+        // un evento: quien decide cómo se celebra es la revelación.
+        if (e.nuevas.length > 0) {
+          window.dispatchEvent(new CustomEvent(EVENTO_MEDALLA, { detail: { claves: e.nuevas } }))
         }
       })
       .catch(() => { /* quedarse sin vitrina es un degradado aceptable */ })

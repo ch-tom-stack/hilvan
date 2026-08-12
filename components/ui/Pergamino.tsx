@@ -29,21 +29,21 @@ import { movimientoReducido } from '@/lib/preferencias'
  * no suelta ni recoge. Girarla sería movimiento sin causa.
  */
 
-const NUCLEO = 5      // radio de la vara desnuda
-const GROSOR = 2      // "espesor" del papel: define cuántas capas caben
-const VUELO = 20      // cuánto sobresale el rollo a la izquierda del papel
+export const NUCLEO = 5      // radio de la vara desnuda
+export const GROSOR = 2      // "espesor" del papel: define cuántas capas caben
+export const VUELO = 20      // cuánto sobresale el rollo a la izquierda del papel
 const R_ARRIBA = 12   // el rollo que sobra arriba, constante
 const R_TOPE = 15     // hasta acá engorda el rollo, por largo que sea el papel
 
 // El largo que produce exactamente el radio tope. Un pergamino con más
 // contenido que esto no engorda más: se comprime el papel, no la vara.
 //   L = π(R² − r₀²) / t
-const LARGO_TOPE = (Math.PI * (R_TOPE ** 2 - NUCLEO ** 2)) / GROSOR
+export const LARGO_TOPE = (Math.PI * (R_TOPE ** 2 - NUCLEO ** 2)) / GROSOR
 const TINTA = '#8e8e86'
 const RELLENO = '#2a2a25'
-const LINEA = '#6e6e66'
+export const LINEA = '#6e6e66'
 
-const radioDe = (enrollado: number) =>
+export const radioDe = (enrollado: number) =>
   Math.sqrt(NUCLEO ** 2 + (GROSOR * Math.max(0, enrollado)) / Math.PI)
 
 /** Espiral de Arquímedes: el corte del rollo visto de canto. */
@@ -65,7 +65,7 @@ function espiral(rExt: number): string {
  * misma silueta redondeada **sin** el perfil del rollo — de ese lado se mira la
  * vara de canto, no el corte.
  */
-function Vara({ ancho, r, giro }: { ancho: number; r: number; giro: number }) {
+export function Vara({ ancho, r, giro }: { ancho: number; r: number; giro: number }) {
   if (ancho <= 0) return null
   const xTapa = Math.max(r, ancho - r - 1)
   return (
@@ -94,13 +94,13 @@ function Vara({ ancho, r, giro }: { ancho: number; r: number; giro: number }) {
  * Alturas y tamaños irregulares a propósito — parejas se leerían como un
  * patrón decorativo y no como papel viejo.
  */
-const MORDIDAS: [number, 'izq' | 'der', number, number][] = [
+export const MORDIDAS: [number, 'izq' | 'der', number, number][] = [
   [62, 'izq', 13, 9], [148, 'der', 10, 7], [231, 'izq', 8, 6], [316, 'der', 15, 10],
   [404, 'izq', 11, 8], [487, 'der', 9, 6], [560, 'izq', 14, 9], [648, 'der', 12, 8],
   [741, 'izq', 9, 7], [829, 'der', 13, 9],
 ]
 
-function Mordida({ y, lado, alto, hondo }: { y: number; lado: 'izq' | 'der'; alto: number; hondo: number }) {
+export function Mordida({ y, lado, alto, hondo }: { y: number; lado: 'izq' | 'der'; alto: number; hondo: number }) {
   const v = `M0 0 L${hondo} ${alto / 2} L0 ${alto}`
   return (
     <svg
