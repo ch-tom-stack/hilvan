@@ -8,6 +8,7 @@ import PreferenciasFeedback from './PreferenciasFeedback'
 import type { Profile, Rol } from '@/types'
 import { momento } from '@/lib/momentos'
 import Medallas from '@/components/perfil/Medallas'
+import Pergamino from '@/components/ui/Pergamino'
 
 const ROL_LABELS: Record<Rol, string> = {
   admin:         'Administrador',
@@ -188,6 +189,18 @@ export default function PerfilPage({ profile, email, misiones }: Props) {
           </div>
         </section>
 
+        {/* ── El juego, antes de lo administrativo ──
+            Van arriba y en pergamino: lo que se enrolla se distingue solo de
+            las cajas quietas de abajo, sin que haya que rotularlo. */}
+        {misiones}
+
+        {/* Las medallas son del CRM: sólo tienen sentido para quien capta. */}
+        {(profile.rol === 'admin' || profile.rol === 'productor') && (
+          <Pergamino titulo="Medallas">
+            <Medallas />
+          </Pergamino>
+        )}
+
         {/* ── Acceso y permisos ── */}
         <section className="border border-ch-border bg-ch-surface/30 p-6">
           <h2 className="text-[9px] font-body tracking-[0.4em] uppercase text-ch-muted mb-1.5">Acceso y permisos</h2>
@@ -290,17 +303,6 @@ export default function PerfilPage({ profile, email, misiones }: Props) {
         </div>
 
       </div>
-
-      {/* Las misiones, antes de las medallas: son de esta semana, las medallas
-          son del historial completo. Lo cercano primero. */}
-      {misiones && <div className="mt-8">{misiones}</div>}
-
-      {/* Las medallas son del CRM: sólo tienen sentido para quien capta. */}
-      {(profile.rol === 'admin' || profile.rol === 'productor') && (
-        <div className="mt-8">
-          <Medallas />
-        </div>
-      )}
 
       <div className="pt-12 pb-4 flex justify-center">
         <img src="/logos/logo-horizontal-negro.png" alt="" className="h-5 w-auto opacity-20" />

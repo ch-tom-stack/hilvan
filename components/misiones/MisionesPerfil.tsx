@@ -1,6 +1,7 @@
 import { getMisMisiones, getMisionesEquipo } from '@/app/actions/misiones'
 import { hoyChile, lunesDeLaSemana } from '@/lib/misiones'
 import TarjetaMision from '@/components/misiones/TarjetaMision'
+import Pergamino from '@/components/ui/Pergamino'
 
 function rotuloDia(iso: string, hoy: string): string {
   if (iso === hoy) return 'Hoy'
@@ -14,23 +15,6 @@ function rotuloSemana(lunes: string): string {
   return d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })
 }
 
-
-/**
- * Corta la lista sin que el corte parezca un error.
- *
- * El truco está en que el `pb-8` del contenedor queda DENTRO de la zona que se
- * desvanece. Si el contenido cabe, lo que se difumina es ese espacio vacío y no
- * se nota nada; si no cabe, la tarjeta siguiente se desvanece y eso mismo dice
- * "hay más abajo". Sin esto la lista se cortaba a media tarjeta y parecía un
- * error de render.
- *
- * Va inline y no en globals.css: es una regla sola de un componente, no un
- * token del sistema.
- */
-const DESVANECE = {
-  WebkitMaskImage: 'linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%)',
-  maskImage: 'linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%)',
-} as const
 
 /**
  * Las misiones en /perfil: la semana completa, junto al resto de los logros.
@@ -57,18 +41,13 @@ export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) 
   if (!tengoAlgo && otros.length === 0) return null
 
   return (
-    <section className="border border-ch-border bg-ch-surface/20 p-5">
-      <div className="flex items-baseline justify-between gap-4 mb-5">
-        <h2 className="font-body text-[9px] tracking-[0.5em] uppercase text-ch-subtle">
-          Misiones
-        </h2>
-        <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle">
-          Semana del {rotuloSemana(lunesDeLaSemana(hoy))}
-        </span>
-      </div>
+    <Pergamino
+      titulo="Tu semana"
+      meta={`Semana del ${rotuloSemana(lunesDeLaSemana(hoy))}`}
+    >
 
       {tengoAlgo && mias && (
-        <div className="max-h-[32rem] overflow-y-auto pr-2 pb-8 space-y-5" style={DESVANECE}>
+        <div className="space-y-5">
           {mias.semanal && (
             <div>
               <p className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-green mb-2">
@@ -96,7 +75,7 @@ export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) 
           <p className="font-body text-[9px] tracking-[0.5em] uppercase text-ch-subtle mb-4">
             El equipo
           </p>
-          <div className="max-h-[26rem] overflow-y-auto pr-2 pb-8 space-y-6" style={DESVANECE}>
+          <div className="space-y-6">
             {otros.map(p => (
               <div key={p.persona_id}>
                 <p className="font-body text-xs text-ch-muted mb-2">{p.nombre}</p>
@@ -114,6 +93,6 @@ export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) 
           </div>
         </div>
       )}
-    </section>
+    </Pergamino>
   )
 }

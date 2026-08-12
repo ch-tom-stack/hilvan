@@ -79,10 +79,9 @@ export default function Medallas() {
   let orden = 0   // el escalonado es continuo entre capítulos, no se reinicia
 
   return (
-    <div className="border border-ch-border bg-ch-surface/30 p-5 lg:p-7">
+    <div>
       {/* Portada */}
       <div className="flex items-baseline justify-between gap-4 mb-1 flex-wrap">
-        <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted">Medallas</h2>
         <div className="flex items-center gap-4">
           <span className="font-body text-[10px] text-ch-subtle tabular-nums">
             {ganadas.size} de {MEDALLAS.length}
