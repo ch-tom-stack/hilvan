@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ultimasMedallas, type UltimasMedallas } from '@/app/actions/medallas'
+import { ultimasMedallas, revisarMedallas, type UltimasMedallas } from '@/app/actions/medallas'
 import { MEDALLAS } from '@/lib/crm-medallas'
 import { EMBLEMAS, EMBLEMA_DEFECTO } from '@/lib/emblemas'
 import { getPreferencias } from '@/lib/preferencias'
@@ -20,6 +20,8 @@ import { getPreferencias } from '@/lib/preferencias'
  * siempre: nombre y rol. Nunca un espacio vacío rotulado "medallas" — eso es una
  * tarea pendiente en la cara, no una invitación.
  */
+const CLAVE_REVISION = 'ch_medallas_revisadas'
+
 export default function PiePerfil({
   nombre, email, rol, compacto = false, onNavegar,
 }: {
@@ -36,7 +38,31 @@ export default function PiePerfil({
   useEffect(() => {
     if (!getPreferencias().medallas) return
     let vivo = true
-    ultimasMedallas(4).then(d => { if (vivo) setDatos(d) }).catch(() => {})
+
+    // Ceba el sistema una vez por sesión.
+    //
+    // Las medallas sólo se conceden al usar el CRM o al abrir /perfil. Quien no
+    // hace ninguna de las dos cosas no gana nada aunque el trabajo esté hecho, y
+    // entonces este pie —que es por donde el sistema se descubre solo— nunca se
+    // enciende. `revisarMedallas` recorre siete tablas, así que no puede correr
+    // en cada carga: una vez por pestaña es una pasada por persona por día.
+    const yaRevisado = typeof window !== 'undefined'
+      && window.sessionStorage.getItem(CLAVE_REVISION) === '1'
+
+    const traer = () => ultimasMedallas(4).then(d => { if (vivo) setDatos(d) })
+
+    if (yaRevisado) {
+      traer().catch(() => {})
+    } else {
+      // Se marca ANTES de esperar: si el usuario navega mientras corre, el
+      // segundo montaje no debe lanzar otra revisión.
+      window.sessionStorage.setItem(CLAVE_REVISION, '1')
+      // Primero se pinta lo que ya hay —el pie no espera a las siete tablas— y
+      // después se refresca con lo que la revisión haya concedido.
+      traer().catch(() => {})
+      revisarMedallas().then(() => { if (vivo) traer().catch(() => {}) }).catch(() => {})
+    }
+
     return () => { vivo = false }
   }, [])
 
