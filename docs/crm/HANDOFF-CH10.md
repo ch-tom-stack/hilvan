@@ -10,7 +10,7 @@
 
 - **F1 — Base:** módulo `/crm` (ruta elegida, NO `/prospectos`), Kanban con drag + toggle a tabla, ficha, bitácora, CRUD manual. Sidebar +1 ítem.
 - **F2 — Bandeja:** `/crm/aprobaciones` (propuestas agente→humano agrupadas por severidad) + contador y punto `ch-gold` en el Kanban.
-- **F3 — Capa agente:** 11 endpoints `/api/agent/crm/*` + 11 tools `hilvan_*` en `mcp-hilvan/server.mjs`. Regla "todo propuesto".
+- **F3 — Capa agente:** 11 endpoints `/api/agent/crm/*` + 11 tools `hilvan_*` en `app/api/[transport]/route.ts` (MCP remoto). Regla "todo propuesto".
 - **F4 — Programado:** cron `crm-seguimientos` (digest por responsable) + `crm-correos` (stub, pendiente decisión Gmail).
 - **F5 — Handoff:** aprobar brief crea/linkea cliente (CH-7); botón "Derivar" en ficha; regla "prospectos estancados" en Auditoría.
 
@@ -35,7 +35,7 @@ Al aprobar un `brief_cotizacion`, `lib/crm-aprobaciones.ts`:
 Regla nueva `prospecto_estancado` (severidad media; alta si ≥ 2× umbral). `DatasetAuditoria.prospectos` se agregó **opcional** (no rompe llamadas previas). Config nueva `dias_estancado` (default 21). El route hace una query extra de `prospectos` con sus interacciones para calcular última actividad.
 **Auditar:** que no afecte las 6 reglas existentes ni el rendimiento del endpoint.
 
-### 2.4 Capa agente — `/api/agent/crm/*` + `mcp-hilvan/server.mjs` + `lib/agent-crm.ts`
+### 2.4 Capa agente — `/api/agent/crm/*` + `app/api/[transport]/route.ts` + `lib/agent-crm.ts`
 11 endpoints (crear, buscar, pipeline, mover-etapa, interaccion, seguimientos, lectura, brief, metricas, aprobaciones, resolver-aprobacion) siguiendo el patrón existente: `requireAgentToken`, `createAdminClient`, `registrarAccion`.
 Regla "todo propuesto": `brief` y altas-desde-correo (`crear` con `como_propuesta:true`) entran a `crm_aprobaciones`; el resto es directo con "CONFIRMA antes de llamar" en la descripción.
 `lib/crm-aprobaciones.ts` (`aplicarEfectoAprobacion`) es **compartido** entre el endpoint del agente y la server action de la UI.
@@ -95,7 +95,7 @@ Regla "todo propuesto": `brief` y altas-desde-correo (`crear` con `como_propuest
 - [ ] **Bloqueador de build:** resuelto (tsc/build verdes). ✅
 - [ ] Confirmar que `sql/crm.sql` está corrido en la **instancia de producción** (F4/F5 no agregan tablas).
 - [ ] Validar Riesgo #1 (`clientes.created_by` nullable en prod).
-- [ ] Reiniciar `mcp-hilvan` para que tome las 11 tools nuevas (lee TOOLS al arrancar; `HILVAN_API_URL` → prod).
+- [ ] Reiniciar el conector de Cowork para que tome las tools nuevas (el MCP remoto las expone tras el deploy; verificar con `npm run smoke:mcp`).
 - [ ] (Opcional) `dry=true` del cron en prod para revisar destinatarios.
 - [ ] (Opcional) Limpiar `crm_aprobaciones` resueltas de prueba.
 - [ ] Rama sugerida: `feat/crm-ch10` para la PR (en vez de commit directo a `main`).

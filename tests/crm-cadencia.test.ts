@@ -6,6 +6,7 @@ import {
   aDiaHabil,
   sumarDias,
   LIMITE_SIN_RESPUESTA,
+  fueraDeAgenda,
   type ToqueCadencia,
 } from '@/lib/crm-cadencia'
 
@@ -141,5 +142,19 @@ describe('calcularCadencia', () => {
     const c = calcularCadencia([toque('2026-08-07', true)], LUNES, '2026-08-20')
     expect(c.estado).toBe('respondio')
     expect(c.pendiente).toBe(true)
+  })
+})
+
+describe('fueraDeAgenda', () => {
+  it('deja fuera las etapas que no se persiguen', () => {
+    for (const e of ['confirmado', 'descartado', 'nurture', 'en_frio']) {
+      expect(fueraDeAgenda(e)).toBe(true)
+    }
+  })
+
+  it('deja dentro las etapas activas', () => {
+    for (const e of ['prospecto', 'contacto', 'conversacion']) {
+      expect(fueraDeAgenda(e)).toBe(false)
+    }
   })
 })

@@ -43,7 +43,7 @@ por canal anterior a esa fecha es inválida.
 | `hilvan_borrador_escribir` · `hilvan_borrador_leer` | **redactar el próximo contacto** |
 | `hilvan_listar_aprobaciones` · `hilvan_resolver_aprobacion` | la Bandeja |
 | `hilvan_buscar_leads_web` · `hilvan_descubrir_marcas` | captación nueva |
-| `hilvan_proximos_seguimientos` | próximos pasos vencidos |
+| `hilvan_proximos_seguimientos` | la agenda del día: a quién le toca, por cadencia |
 | `hilvan_derivar_brief_cotizacion` | handoff a cotización |
 | `hilvan_registrar_lectura` | vincular una lectura |
 | `hilvan_insight_escribir` · `hilvan_insights_leer` | el porqué del abordaje, visible en la ficha |

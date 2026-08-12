@@ -12,6 +12,20 @@
 //  - Todo se calcula sobre fechas planas YYYY-MM-DD; nunca `new Date(str)`
 //    directo, que se corre un día por UTC.
 
+/**
+ * Etapas a las que la cadencia no aplica: no entran en la lista del día.
+ *
+ * Vive acá, y no copiada en cada consumidor, porque el día que una etapa entre
+ * o salga, el digest y las herramientas de agente tienen que cambiar juntos. Ya
+ * pasó lo contrario: dos filtros distintos, dos respuestas distintas a la misma
+ * pregunta.
+ */
+export const ETAPAS_FUERA_DE_AGENDA = ['confirmado', 'descartado', 'nurture', 'en_frio'] as const
+
+export function fueraDeAgenda(etapa: string): boolean {
+  return (ETAPAS_FUERA_DE_AGENDA as readonly string[]).includes(etapa)
+}
+
 /** Días de espera según cuántos toques seguidos van sin respuesta. */
 export function intervaloPara(sinRespuesta: number): number {
   if (sinRespuesta <= 1) return 2

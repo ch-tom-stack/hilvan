@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { esEtapaValida } from '@/lib/agent-crm'
+import { esEtapaValida, hoyChile } from '@/lib/agent-crm'
+import { calcularCadencia, fueraDeAgenda } from '@/lib/crm-cadencia'
 
 export const runtime = 'nodejs'
 
@@ -17,9 +18,16 @@ export async function GET(req: Request) {
   const etapa = url.searchParams.get('etapa')?.trim()
   const admin = createAdminClient()
 
+  // `tamano`, `segmento` y el estado de cadencia van en la lista a propósito:
+  // sin ellos, saber quién está sin clasificar o atrasado obligaba a pedir el
+  // detalle prospecto por prospecto —58 llamadas para dos campos.
   let query = admin
     .from('prospectos')
-    .select('id, empresa, nombre_contacto, etapa, score, producto_objetivo, origen, responsable:profiles!prospectos_responsable_id_fkey(id, nombre)')
+    .select(
+      'id, empresa, nombre_contacto, etapa, score, producto_objetivo, origen, tamano, segmento, snooze_hasta, ' +
+      'responsable:profiles!prospectos_responsable_id_fkey(id, nombre), ' +
+      'crm_interacciones(fecha, respondido)',
+    )
     .order('updated_at', { ascending: false })
 
   if (responsable) query = query.eq('responsable_id', responsable)
@@ -31,8 +39,27 @@ export async function GET(req: Request) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const por_etapa: Record<string, number> = {}
-  for (const p of data ?? []) por_etapa[p.etapa] = (por_etapa[p.etapa] ?? 0) + 1
+  const hoy = hoyChile()
+  const prospectos = (data ?? []).map((p: any) => {
+    const { crm_interacciones, snooze_hasta, ...resto } = p
+    const cad = calcularCadencia(crm_interacciones ?? [], hoy, snooze_hasta)
+    return {
+      ...resto,
+      ultimo_toque: cad.ultimoToque,
+      toques: (crm_interacciones ?? []).length,
+      cadencia: fueraDeAgenda(p.etapa) ? null : cad.estado,
+      dias_atraso: fueraDeAgenda(p.etapa) ? 0 : cad.diasAtraso,
+      sin_clasificar: !p.tamano || !p.segmento,
+    }
+  })
 
-  return NextResponse.json({ total: data?.length ?? 0, por_etapa, prospectos: data ?? [] })
+  const por_etapa: Record<string, number> = {}
+  for (const p of prospectos) por_etapa[p.etapa] = (por_etapa[p.etapa] ?? 0) + 1
+
+  return NextResponse.json({
+    total: prospectos.length,
+    por_etapa,
+    sin_clasificar: prospectos.filter((p) => p.sin_clasificar && !fueraDeAgenda(p.etapa)).length,
+    prospectos,
+  })
 }

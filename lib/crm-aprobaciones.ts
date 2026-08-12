@@ -6,6 +6,30 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+/**
+ * Campos de texto del payload que se pueden corregir antes de aprobar.
+ *
+ * Lista blanca a propósito: la Bandeja edita datos propuestos por un agente, y
+ * dejar tocar el payload entero permitiría inyectar claves que el aplicador no
+ * espera. Acá sólo van campos que el usuario ve y entiende.
+ *
+ * La comparten la UI (para saber qué inputs mostrar) y la server action (para
+ * saber qué acepta): una sola lista, imposible que se desincronicen.
+ */
+export const CAMPOS_CORREGIBLES: Record<string, string[]> = {
+  prospecto_nuevo: ['empresa', 'nombre_contacto', 'email', 'telefono', 'producto_objetivo'],
+  interaccion: ['resumen', 'proximo_paso'],
+  correo_borrador: ['asunto', 'cuerpo'],
+  brief_cotizacion: ['decisor', 'angulo', 'producto_objetivo'],
+}
+
+/** Etiqueta legible de cada campo corregible. */
+export const LABEL_CAMPO: Record<string, string> = {
+  empresa: 'Empresa', nombre_contacto: 'Contacto', email: 'Email', telefono: 'Teléfono',
+  producto_objetivo: 'Producto', resumen: 'Resumen', proximo_paso: 'Próximo paso',
+  asunto: 'Asunto', cuerpo: 'Cuerpo', decisor: 'Decisor', angulo: 'Ángulo',
+}
+
 export interface AprobacionRow {
   id: string
   tipo: string

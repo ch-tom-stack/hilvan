@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint app components lib types proxy.ts",
     "test": "vitest run",
-    "brief:crm": "node scripts/brief-agente-crm.mjs"
+    "brief:crm": "node scripts/brief-agente-crm.mjs",
+    "smoke:mcp": "node scripts/smoke-mcp-remoto.mjs"
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.20",

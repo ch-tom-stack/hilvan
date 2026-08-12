@@ -3,8 +3,16 @@
 // Endpoint MCP remoto de Hilván — sirve en https://app.casahiedra.com/api/mcp
 // (conector personalizado por URL + token en Claude / Cowork).
 //
-// NO contiene lógica de negocio: cada tool reenvía a /api/agent/* (la "verdad"),
-// igual que el MCP local de mcp-hilvan/server.mjs. Replica los mismos 9 tools.
+// NO contiene lógica de negocio: cada tool reenvía a /api/agent/* (la "verdad").
+//
+// Este es el ÚNICO servidor MCP de Hilván. Hubo uno local por stdio
+// (mcp-hilvan/server.mjs) que se eliminó en ago-2026: nadie lo tenía
+// configurado, replicaba estas mismas tools a mano y llevaba siete de retraso,
+// así que editarlo se sentía como trabajar y no hacía nada. Si alguna vez se
+// necesita stdio de nuevo, que sea un proxy a este endpoint, no una copia.
+//
+// `npm run smoke:mcp` compara las tools que sirve el endpoint contra las
+// registradas acá abajo — sirve para confirmar que un deploy llegó.
 //
 // Auth: Authorization: Bearer ${HILVAN_AGENT_TOKEN}. withMcpAuth valida el token
 // antes de exponer cualquier tool (required:true → 401 si falta/no calza). Si la
@@ -1342,7 +1350,7 @@ const baseHandler = createMcpHandler(
       'hilvan_pipeline',
       {
         title: 'Pipeline CRM',
-        description: 'Lista el pipeline de prospectos con conteo por etapa. Filtros opcionales: responsable (uuid) y etapa.',
+        description: 'Lista el pipeline con conteo por etapa. Cada prospecto trae tamano, segmento, sin_clasificar, ultimo_toque, toques, cadencia y dias_atraso: alcanza para auditar el estado del CRM sin pedir el detalle uno por uno. Filtros opcionales: responsable (uuid) y etapa.',
         inputSchema: {
           responsable: z.string().optional().describe('uuid de profiles'),
           etapa: z.string().optional(),
@@ -1548,7 +1556,7 @@ const baseHandler = createMcpHandler(
       'hilvan_proximos_seguimientos',
       {
         title: 'Próximos seguimientos (CRM)',
-        description: 'Prospectos con próximo paso vencido o que vence dentro de `dias` (default 7), de prospectos aún activos. Para alertas y recordatorios.',
+        description: 'LA AGENDA DE CONTACTO: a quién le toca hoy y a quién dentro de `dias` (default 7). Corre sobre el mismo motor de cadencia que el digest matinal y la pantalla del CRM, así que sus números coinciden — úsala para planificar el día en vez de hilvan_digest_matinal {dry:true}. Ordenada por prioridad: primero quien respondió, después el más atrasado. Devuelve estado, ultimo_toque, dias_atraso y sin_respuesta. Excluye confirmado/descartado/nurture/en_frio y a los agotados (16 toques sin respuesta).',
         inputSchema: { dias: z.number().optional().describe('ventana en días (default 7)') },
       },
       async ({ dias }, extra) =>
@@ -1663,6 +1671,26 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/editar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_editar_interaccion',
+      {
+        title: 'Editar interacción (CRM)',
+        description: 'Corrige una interacción ya registrada. interaccion_id REQUERIDO; sólo se escriben los campos que mandes. Úsalo sobre todo para poner `gmail_thread` en interacciones cargadas a mano: sin ese campo el cotejo diario no las reconoce y las vuelve a insertar cada vez, dejando duplicados que inflan el conteo de toques y corren la cadencia. Los ids salen de hilvan_interacciones. Guarda el valor anterior en la auditoría.',
+        inputSchema: {
+          interaccion_id: z.string(),
+          gmail_thread: z.string().optional(),
+          fecha: z.string().optional().describe('YYYY-MM-DD'),
+          tipo: z.string().optional(),
+          resumen: z.string().optional(),
+          proximo_paso: z.string().optional(),
+          fecha_proximo: z.string().optional().describe('YYYY-MM-DD — contexto, no decide la agenda'),
+          enviado_por: z.string().optional(),
+          respondido: z.boolean().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/interaccion/editar', args)),
     )
 
     server.registerTool(

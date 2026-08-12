@@ -126,7 +126,7 @@ barrido está completo.
 | `hilvan_crear_prospecto` | `como_propuesta=true` deja en Bandeja (regla general); directo solo con evidencia exacta (criterio confirmado por Tomás). Acepta etapa inicial ≠ prospecto. |
 | `hilvan_borrador_escribir/leer` | Escribe en `crm_borradores`; **no envía nunca**. Estados borrador/listo/enviado. |
 | `hilvan_listar_aprobaciones` / `resolver_aprobacion` | Bandeja: aprobar APLICA el cambio; el humano decide. 37 entradas históricas, mayoría descartadas. |
-| `hilvan_proximos_seguimientos` | Vencidos o por vencer en `dias`. Útil para rutina B. |
+| `hilvan_proximos_seguimientos` | La agenda: pendientes hoy + los que vencen en `dias`, por orden de prioridad. Mismo motor que el digest, así que coinciden. Es la fuente para la rutina B. |
 | `hilvan_derivar_brief_cotizacion` | Deja PROPUESTA de brief en Bandeja; nunca deriva solo. |
 | `hilvan_registrar_lectura` | Vincula dossier; avanza a lectura_entregada; heurística feed→banco, temporadas→lookbook. |
 | `hilvan_deshacer` | Revierte cualquier escritura del agente por accion_id (log de auditoría). Red de seguridad de todo el flujo. |

@@ -16,10 +16,10 @@ import type {
   Profile,
 } from '@/types'
 import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION } from '@/types'
-import { aplicarEfectoAprobacion, AplicarError, type AprobacionRow } from '@/lib/crm-aprobaciones'
+import { aplicarEfectoAprobacion, AplicarError, CAMPOS_CORREGIBLES, type AprobacionRow } from '@/lib/crm-aprobaciones'
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
-import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, type Cadencia } from '@/lib/crm-cadencia'
+import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, fueraDeAgenda, type Cadencia } from '@/lib/crm-cadencia'
 import { HERRAMIENTA_DIGEST } from '@/lib/agent-crm'
 import { evaluarCotejo, HERRAMIENTAS_COTEJO, type EstadoCotejo } from '@/lib/crm-reconciliacion'
 
@@ -376,14 +376,13 @@ export async function procesarDigestMatinal(
     getEstadoCotejo(),
   ])
 
-  const INACTIVAS = ['confirmado', 'descartado', 'nurture', 'en_frio']
   const respDe = new Map<string, string | null>()
   const activos = new Map<string, { total: number; porContactar: number }>()
   const agendaDe = new Map<string, (ItemAgenda & { _prio: number })[]>()
 
   for (const p of (prospectos ?? []) as any[]) {
     respDe.set(p.id, p.responsable_id)
-    if (!p.responsable_id || INACTIVAS.includes(p.etapa)) continue
+    if (!p.responsable_id || fueraDeAgenda(p.etapa)) continue
 
     const a = activos.get(p.responsable_id) ?? { total: 0, porContactar: 0 }
     a.total++
@@ -1277,6 +1276,7 @@ export async function getProspectoIdsConPendiente(): Promise<string[]> {
 export async function resolverAprobacion(
   id: string,
   accion: 'aprobado' | 'descartado',
+  correcciones?: Record<string, string>,
 ): Promise<{ ok?: true; error?: string }> {
   const acceso = await verificarAccesoCrm()
   if (!acceso.ok) return { error: acceso.error }
@@ -1290,9 +1290,28 @@ export async function resolverAprobacion(
   if (!ap) return { error: 'Propuesta no encontrada' }
   if (ap.estado !== 'pendiente') return { error: `La propuesta ya está ${ap.estado}` }
 
+  // Correcciones antes de aplicar. Sin esto, una propuesta con un dato mal
+  // tipeado (el caso real: "gmail.con") sólo tenía dos salidas y las dos malas:
+  // aprobar y crear el prospecto con el error, o descartar y perder el lead.
+  let aplicable = ap
+  let corregido: Record<string, string> | null = null
+  if (accion === 'aprobado' && correcciones && Object.keys(correcciones).length > 0) {
+    const permitidos = CAMPOS_CORREGIBLES[ap.tipo] ?? []
+    const limpio: Record<string, string> = {}
+    for (const [k, v] of Object.entries(correcciones)) {
+      if (!permitidos.includes(k)) continue   // sólo campos de texto del payload
+      const valor = typeof v === 'string' ? v.trim() : ''
+      if (valor !== ((ap.payload ?? {})[k] ?? '')) limpio[k] = valor
+    }
+    if (Object.keys(limpio).length > 0) {
+      corregido = limpio
+      aplicable = { ...ap, payload: { ...(ap.payload ?? {}), ...limpio } }
+    }
+  }
+
   if (accion === 'aprobado') {
     try {
-      await aplicarEfectoAprobacion(acceso.supabase, ap)
+      await aplicarEfectoAprobacion(acceso.supabase, aplicable)
     } catch (e) {
       return { error: e instanceof AplicarError ? e.message : 'Error al aplicar la propuesta' }
     }
@@ -1300,7 +1319,14 @@ export async function resolverAprobacion(
 
   const { error } = await acceso.supabase
     .from('crm_aprobaciones')
-    .update({ estado: accion, resuelto_por: acceso.user.id, resuelto_at: new Date().toISOString() })
+    .update({
+      estado: accion,
+      resuelto_por: acceso.user.id,
+      resuelto_at: new Date().toISOString(),
+      // Se guarda el payload aplicado, no el propuesto: si alguien corrigió, el
+      // registro tiene que decir qué se creó de verdad.
+      ...(corregido ? { payload: aplicable.payload } : {}),
+    })
     .eq('id', id)
   if (error) return { error: error.message }
 

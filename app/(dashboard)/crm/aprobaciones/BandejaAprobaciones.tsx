@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { resolverAprobacion, type AprobacionConProspecto } from '@/app/actions/crm'
 import { ETAPA_PROSPECTO_LABELS, type EtapaProspecto } from '@/types'
+import { CAMPOS_CORREGIBLES, LABEL_CAMPO } from '@/lib/crm-aprobaciones'
 import { toastOk, toastError } from '@/lib/toast'
 import { formatFecha } from '@/lib/fechas'
 
@@ -28,11 +29,11 @@ export default function BandejaAprobaciones({ aprobaciones }: Props) {
   // hunde si se descartó. La dirección es la que lleva el significado.
   const [resolviendo, setResolviendo] = useState<{ id: string; accion: 'aprobado' | 'descartado' } | null>(null)
 
-  const resolver = (id: string, accion: 'aprobado' | 'descartado') => {
+  const resolver = (id: string, accion: 'aprobado' | 'descartado', correcciones?: Record<string, string>) => {
     setResolviendo({ id, accion })
     startTransition(async () => {
       try {
-        const res = await resolverAprobacion(id, accion)
+        const res = await resolverAprobacion(id, accion, correcciones)
         if (res.error) { toastError(res.error); return }
         toastOk(accion === 'aprobado' ? 'Propuesta aplicada' : 'Propuesta descartada')
         router.refresh()
@@ -86,7 +87,7 @@ export default function BandejaAprobaciones({ aprobaciones }: Props) {
                       verbo={grupo.verbo}
                       ocupado={isPending && resolviendo?.id === ap.id}
                       saliendo={resolviendo?.id === ap.id ? resolviendo.accion : null}
-                      onAprobar={() => resolver(ap.id, 'aprobado')}
+                      onAprobar={(correcciones) => resolver(ap.id, 'aprobado', correcciones)}
                       onDescartar={() => resolver(ap.id, 'descartado')}
                     />
                   ))}
@@ -108,11 +109,27 @@ function ItemAprobacion({
   ocupado: boolean
   /** Si se resolvió, hacia dónde se va. null mientras sigue en la bandeja. */
   saliendo: 'aprobado' | 'descartado' | null
-  onAprobar: () => void
+  onAprobar: (correcciones?: Record<string, string>) => void
   onDescartar: () => void
 }) {
   const p: any = ap.payload ?? {}
   const titulo = ap.prospecto?.empresa ?? p.empresa ?? '—'
+
+  // Corregir antes de aprobar. Nace de un caso real: un lead llegó con el correo
+  // mal tipeado ("gmail.con"). Sin esto había que elegir entre crear el
+  // prospecto con el dato malo o descartar y perder el lead.
+  const campos = CAMPOS_CORREGIBLES[ap.tipo] ?? []
+  const [editando, setEditando] = useState(false)
+  const [borrador, setBorrador] = useState<Record<string, string>>({})
+
+  const abrirEdicion = () => {
+    const inicial: Record<string, string> = {}
+    for (const c of campos) inicial[c] = p[c] ?? ''
+    setBorrador(inicial)
+    setEditando(true)
+  }
+
+  const hayCambios = Object.entries(borrador).some(([k, v]) => v.trim() !== (p[k] ?? ''))
 
   return (
     <div className={`border border-ch-border bg-ch-surface/30 p-5 ${
@@ -123,7 +140,32 @@ function ItemAprobacion({
         <span className="font-body text-[10px] text-ch-subtle shrink-0">{formatFecha(ap.created_at)}</span>
       </div>
 
-      <PreviewPayload tipo={ap.tipo} payload={p} />
+      {editando ? (
+        <div className="space-y-3">
+          {campos.map(c => (
+            <div key={c}>
+              <label className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.2em] block mb-1">
+                {LABEL_CAMPO[c] ?? c}
+              </label>
+              {c === 'cuerpo' ? (
+                <textarea
+                  value={borrador[c] ?? ''} rows={6}
+                  onChange={e => setBorrador({ ...borrador, [c]: e.target.value })}
+                  className="w-full bg-ch-black border border-ch-border text-ch-cream font-body text-sm px-3 py-2 focus:border-ch-green outline-none rounded-[2px]"
+                />
+              ) : (
+                <input
+                  type="text" value={borrador[c] ?? ''}
+                  onChange={e => setBorrador({ ...borrador, [c]: e.target.value })}
+                  className="w-full bg-ch-black border border-ch-border text-ch-cream font-body text-sm px-3 py-2 focus:border-ch-green outline-none rounded-[2px]"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <PreviewPayload tipo={ap.tipo} payload={p} />
+      )}
 
       {ap.nota_agente && (
         <p className="font-body text-xs text-ch-muted mt-3 border-l-2 border-ch-gold/50 pl-3">
@@ -132,11 +174,17 @@ function ItemAprobacion({
         </p>
       )}
 
-      <div className="flex gap-2 mt-4 pt-4 border-t border-ch-border">
-        <button onClick={onAprobar} disabled={ocupado}
+      <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-ch-border">
+        <button onClick={() => onAprobar(editando ? borrador : undefined)} disabled={ocupado}
           className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.3em] uppercase px-5 py-2.5 transition-colors disabled:opacity-50">
-          {ocupado ? 'Procesando…' : verbo}
+          {ocupado ? 'Procesando…' : editando && hayCambios ? `Corregir y ${verbo.toLowerCase()}` : verbo}
         </button>
+        {campos.length > 0 && (
+          <button onClick={() => (editando ? setEditando(false) : abrirEdicion())} disabled={ocupado}
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.3em] uppercase px-5 py-2.5 transition-colors disabled:opacity-50">
+            {editando ? 'Cancelar' : 'Corregir'}
+          </button>
+        )}
         <button onClick={onDescartar} disabled={ocupado}
           className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.3em] uppercase px-5 py-2.5 transition-colors disabled:opacity-50">
           Descartar
