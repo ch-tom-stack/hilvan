@@ -12,7 +12,7 @@ trabajo del operador y de quien capta — su lugar es
 ## 1. Decisiones, no tareas
 
 ### Medallas: ¿módulo o sección?
-Hoy viven en `/perfil`, con una tira en el pie del sidebar. Si van a tener lugar
+Hoy viven en `/perfil`, y se entra por el pie del sidebar. Si van a tener lugar
 propio en la navegación, conviene decidirlo antes de que el equipo se acostumbre
 a una forma: el primer lugar donde algo aparece define qué creen que es.
 

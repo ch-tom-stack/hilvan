@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
-import TiraMedallas from '@/components/layout/TiraMedallas'
+import PiePerfil from '@/components/layout/PiePerfil'
 
 const BASE_NAV_ITEMS = [
   { label: 'Dashboard',     href: '/dashboard',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },
@@ -93,21 +93,10 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
           })}
         </nav>
 
-        {/* Las últimas medallas, arriba de la línea: es la puerta a la vitrina. */}
-        <div className="mt-4"><TiraMedallas /></div>
-
-        {/* Usuario → link a perfil */}
-        {(nombre || email) && (
-          <Link
-            href="/perfil"
-            className={`px-2 pt-4 border-t border-ch-border block group transition-opacity ${
-              pathname.startsWith('/perfil') ? 'opacity-100' : 'opacity-70 hover:opacity-100'
-            }`}
-          >
-            <p className="text-xs text-ch-muted truncate group-hover:text-ch-cream transition-colors">{nombre || email}</p>
-            {rol && <p className="text-xs text-ch-subtle capitalize mt-0.5">{rol}</p>}
-          </Link>
-        )}
+        {/* Quién eres y cómo vas, en un solo link: la puerta a la vitrina. */}
+        <div className="mt-4">
+          <PiePerfil nombre={nombre} email={email} rol={rol} />
+        </div>
 
         {/* Footer logo */}
         <div className="px-2 mt-4">
@@ -211,18 +200,11 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
               })}
             </div>
 
-            {/* Usuario */}
-            <TiraMedallas compacta />
-            {(nombre || email) && (
-              <Link
-                href="/perfil"
-                onClick={() => setMenuOpen(false)}
-                className="px-6 py-4 border-t border-ch-border shrink-0 block group transition-opacity opacity-70 hover:opacity-100"
-              >
-                <p className="font-body text-xs text-ch-muted truncate group-hover:text-ch-cream transition-colors">{nombre || email}</p>
-                {rol && <p className="font-body text-[10px] text-ch-subtle capitalize mt-0.5">{rol}</p>}
-              </Link>
-            )}
+            {/* El mismo bloque, con más aire lateral y área de toque más alta. */}
+            <PiePerfil
+              nombre={nombre} email={email} rol={rol}
+              compacto onNavegar={() => setMenuOpen(false)}
+            />
           </nav>
         </div>
       )}

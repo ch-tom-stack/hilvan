@@ -394,6 +394,8 @@ export interface UltimasMedallas {
   claves: string[]
   total: number
   rango: string
+  /** Avance hacia el rango siguiente, 0–1. En el último rango es 1. */
+  fraccion: number
 }
 
 /**
@@ -405,7 +407,7 @@ export interface UltimasMedallas {
 export async function ultimasMedallas(cuantas = 4): Promise<UltimasMedallas> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { claves: [], total: 0, rango: '' }
+  if (!user) return { claves: [], total: 0, rango: '', fraccion: 0 }
 
   const { data } = await supabase
     .from('crm_medallas')
@@ -415,10 +417,12 @@ export async function ultimasMedallas(cuantas = 4): Promise<UltimasMedallas> {
 
   const filas = data ?? []
   const distintas = [...new Set(filas.map(f => f.medalla))]
+  const r = rangoDe(puntosDe(distintas))
   return {
     claves: distintas.slice(0, cuantas),
     total: distintas.length,
-    rango: rangoDe(puntosDe(distintas)).actual.titulo,
+    rango: r.actual.titulo,
+    fraccion: r.fraccion,
   }
 }
 
