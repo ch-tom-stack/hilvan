@@ -2,38 +2,48 @@
 //
 // LA NARRATIVA. La app se llama Hilván: la puntada provisional que sostiene la
 // tela antes de la costura definitiva. Captar es exactamente eso — puntadas que
-// puede que se suelten, y algunas se vuelven costura. La metáfora no se le
-// impuso al módulo: es lo que el módulo hace.
+// puede que se suelten, y algunas se vuelven costura.
 //
-// De ahí salen los tres capítulos, que son el arco real de un prospecto:
-//   I  · Hilvanar   — dar la primera puntada. Sólo pide aparecer.
-//   II · Sostener   — que la puntada aguante. Es la parte que cuesta.
-//   III· Que quede  — cuando el hilván se vuelve costura.
+// Los tres capítulos son el arco real de un prospecto, y los tres tienen doble
+// sentido que le sirve a una productora:
+//   I  · Hilvanar     — dar la primera puntada. También: hilvanar ideas.
+//   II · La trama     — la hebra que cruza y sostiene la tela. También: la historia.
+//   III· La costura   — cuando el hilván provisional se vuelve costura de verdad.
 //
-// DOS REGLAS, las dos de problemas reales:
+// CUATRO REGLAS, todas de problemas reales:
 //
 // 1. NINGUNA compara personas. En un equipo de cuatro que se ve entre sí,
 //    comparar mide quién recibió más prospectos — el reparto, no el trabajo.
-//    Es la regla de docs/crm/operador-contexto.md §6.
+//    (docs/crm/operador-contexto.md §6)
 //
-// 2. El criterio de cada una se ve ANTES de ganarla. Una medalla que aparece
-//    por algo que no sabías que hacías se siente arbitraria; la gracia está en
-//    verla venir.
+// 2. Los criterios visibles se ven ANTES de ganarse. La gracia está en verlas
+//    venir. Las OCULTAS son otra categoría: se anuncia que existen y cuántas
+//    son, pero no cuáles — y todas se ganan trabajando normal, nunca haciendo
+//    algo raro a propósito.
+//
+// 3. NINGUNA premia volumen en un día por encima de lo que es una jornada real.
+//    Una medalla por "20 contactos en un día" es una invitación a inventar
+//    toques, y el contador de la tarjeta es la única señal honesta del tablero.
+//
+// 4. Los porcentajes exigen piso. Un 100% de respuesta con un contacto no dice
+//    nada; sin mínimo, la medalla premia no haber trabajado.
 
-export type Capitulo = 'hilvanar' | 'sostener' | 'quede'
+export type Capitulo = 'hilvanar' | 'trama' | 'costura'
 
-/** Qué tan difícil es. Decide el peso visual: sin esto las nueve se ven igual. */
-export type Rareza = 'comun' | 'dificil' | 'rara'
+/** Peso visual. Sin esto, tener veintiséis vale lo mismo que tener las fáciles. */
+export type Rareza = 'comun' | 'dificil' | 'rara' | 'legendaria'
 
 export interface DefinicionMedalla {
   clave: string
   titulo: string
   capitulo: Capitulo
   rareza: Rareza
-  /** Qué hay que hacer. Se muestra ANTES de ganarla, no después. */
+  /** Qué hay que hacer. En las ocultas se revela recién al ganarla. */
   criterio: string
   /** Por qué vale. Sólo cuando no es evidente. */
   nota?: string
+  /** No se anuncia: aparece como incógnita hasta que se gana. */
+  oculta?: boolean
 }
 
 export const CAPITULOS: { clave: Capitulo; numero: string; titulo: string; bajada: string }[] = [
@@ -44,144 +54,178 @@ export const CAPITULOS: { clave: Capitulo; numero: string; titulo: string; bajad
     bajada: 'La primera puntada. Sólo pide aparecer.',
   },
   {
-    clave: 'sostener',
+    clave: 'trama',
     numero: 'II',
-    titulo: 'Sostener',
-    bajada: 'Que la puntada aguante. Es la parte que cuesta, y la que nadie ve.',
+    titulo: 'La trama',
+    bajada: 'La hebra que cruza y sostiene la tela. Es la parte que cuesta, y la que nadie ve.',
   },
   {
-    clave: 'quede',
+    clave: 'costura',
     numero: 'III',
-    titulo: 'Que quede',
-    bajada: 'Cuando el hilván se vuelve costura.',
+    titulo: 'La costura',
+    bajada: 'Cuando el hilván se vuelve costura de verdad.',
   },
 ]
 
 export const MEDALLAS: DefinicionMedalla[] = [
   // ── I · Hilvanar ──────────────────────────────────────────────────────────
-  {
-    clave: 'primer_contacto',
-    titulo: 'La primera puntada',
-    capitulo: 'hilvanar',
-    rareza: 'comun',
-    criterio: 'Registrar tu primer contacto.',
-  },
-  {
-    clave: 'diez_marcas',
-    titulo: 'Diez telas',
-    capitulo: 'hilvanar',
-    rareza: 'comun',
+  { clave: 'primer_contacto', titulo: 'La primera puntada', capitulo: 'hilvanar', rareza: 'comun',
+    criterio: 'Registrar tu primer contacto.' },
+  { clave: 'diez_marcas', titulo: 'Diez telas', capitulo: 'hilvanar', rareza: 'comun',
     criterio: 'Tocar 10 marcas distintas.',
-    nota: 'Cuentan las marcas, no los toques: diez contactos a una sola marca no es esto.',
-  },
+    nota: 'Cuentan las marcas, no los toques: diez contactos a una sola marca no es esto.' },
+  { clave: 'cuatro_canales', titulo: 'Todas las agujas', capitulo: 'hilvanar', rareza: 'comun',
+    criterio: 'Usar los cuatro canales: correo, llamada, mensaje y reunión.' },
+  { clave: 'primera_reunion', titulo: 'Cara a cara', capitulo: 'hilvanar', rareza: 'dificil',
+    criterio: 'Registrar tu primera reunión.' },
+  { clave: 'primer_frio', titulo: 'Sin red', capitulo: 'hilvanar', rareza: 'comun',
+    criterio: 'Tocar tu primer prospecto nacido en frío.',
+    nota: 'Nadie levantó la mano: escribes tú primero.' },
 
-  // ── II · Sostener ─────────────────────────────────────────────────────────
-  {
-    clave: 'diez_contactos',
-    titulo: 'Mano firme',
-    capitulo: 'sostener',
-    rareza: 'comun',
-    criterio: 'Registrar 10 contactos.',
-  },
-  {
-    clave: 'veinte_dias',
-    titulo: 'Veinte jornadas',
-    capitulo: 'sostener',
-    rareza: 'dificil',
-    criterio: 'Registrar algo en 20 días distintos.',
-    nota: 'No tienen que ser seguidos. Faltar no rompe nada.',
-  },
-  {
-    clave: 'perseverancia',
-    titulo: 'No soltar',
-    capitulo: 'sostener',
-    rareza: 'dificil',
-    criterio: 'Llevar una marca hasta el contacto 16.',
-    nota: 'El tope del mapa de calor de la tarjeta.',
-  },
-  {
-    clave: 'cien_contactos',
-    titulo: 'Cien puntadas',
-    capitulo: 'sostener',
-    rareza: 'rara',
+  // ── II · La trama ─────────────────────────────────────────────────────────
+  { clave: 'diez_contactos', titulo: 'Mano firme', capitulo: 'trama', rareza: 'comun',
+    criterio: 'Registrar 10 contactos.' },
+  { clave: 'cincuenta_contactos', titulo: 'Cincuenta', capitulo: 'trama', rareza: 'dificil',
+    criterio: 'Registrar 50 contactos.' },
+  { clave: 'cien_contactos', titulo: 'Cien puntadas', capitulo: 'trama', rareza: 'rara',
     criterio: 'Registrar 100 contactos.',
-    nota: 'La constancia es la parte difícil, no el arranque.',
-  },
+    nota: 'La constancia es la parte difícil, no el arranque.' },
+  { clave: 'quinientos_contactos', titulo: 'Tejedora', capitulo: 'trama', rareza: 'legendaria',
+    criterio: 'Registrar 500 contactos.' },
+  { clave: 'veinte_dias', titulo: 'Veinte jornadas', capitulo: 'trama', rareza: 'dificil',
+    criterio: 'Registrar algo en 20 días distintos.',
+    nota: 'No tienen que ser seguidos. Faltar no rompe nada.' },
+  { clave: 'cincuenta_dias', titulo: 'Cincuenta jornadas', capitulo: 'trama', rareza: 'rara',
+    criterio: 'Registrar algo en 50 días distintos.' },
+  { clave: 'no_soltar', titulo: 'No soltar', capitulo: 'trama', rareza: 'dificil',
+    criterio: 'Llevar una marca hasta el contacto 16.',
+    nota: 'El tope del mapa de calor de la tarjeta.' },
+  { clave: 'treinta_marcas', titulo: 'Treinta telas', capitulo: 'trama', rareza: 'dificil',
+    criterio: 'Tocar 30 marcas distintas.' },
+  { clave: 'cobertura', titulo: 'Nadie olvidado', capitulo: 'trama', rareza: 'rara',
+    criterio: 'Tener al menos un contacto registrado en el 80% de tu cartera.',
+    nota: 'Mide cobertura, no volumen: se gana atendiendo a todos, no insistiéndole a pocos.' },
+  { clave: 'ambas_temperaturas', titulo: 'Frío y tibio', capitulo: 'trama', rareza: 'comun',
+    criterio: 'Tocar prospectos nacidos en frío y prospectos entrantes.' },
 
-  // ── III · Que quede ───────────────────────────────────────────────────────
-  {
-    clave: 'primera_respuesta',
-    titulo: 'Del otro lado',
-    capitulo: 'quede',
-    rareza: 'comun',
-    criterio: 'Que una marca responda a un contacto tuyo.',
-  },
-  {
-    clave: 'primer_cierre',
-    titulo: 'Costura firme',
-    capitulo: 'quede',
-    rareza: 'rara',
-    criterio: 'Que un prospecto tuyo llegue a Confirmado.',
-  },
-  {
-    clave: 'frio_a_cierre',
-    titulo: 'De la nada',
-    capitulo: 'quede',
-    rareza: 'rara',
+  // ── III · La costura ──────────────────────────────────────────────────────
+  { clave: 'primera_respuesta', titulo: 'Del otro lado', capitulo: 'costura', rareza: 'comun',
+    criterio: 'Que una marca responda a un contacto tuyo.' },
+  { clave: 'cinco_responden', titulo: 'Cinco voces', capitulo: 'costura', rareza: 'dificil',
+    criterio: 'Que 5 marcas distintas te respondan.' },
+  { clave: 'quince_responden', titulo: 'Quince voces', capitulo: 'costura', rareza: 'rara',
+    criterio: 'Que 15 marcas distintas te respondan.' },
+  { clave: 'tasa_veinte', titulo: 'Uno de cinco', capitulo: 'costura', rareza: 'dificil',
+    criterio: '20% de tus contactos con respuesta, sobre al menos 20 contactos.',
+    nota: 'Porcentual: mejora escribiendo mejor, no escribiendo más.' },
+  { clave: 'tasa_treinta', titulo: 'Uno de tres', capitulo: 'costura', rareza: 'legendaria',
+    criterio: '33% de respuesta, sobre al menos 30 contactos.' },
+  { clave: 'primer_cierre', titulo: 'Costura firme', capitulo: 'costura', rareza: 'rara',
+    criterio: 'Que un prospecto tuyo llegue a Confirmado.' },
+  { clave: 'tres_cierres', titulo: 'Tres costuras', capitulo: 'costura', rareza: 'legendaria',
+    criterio: 'Cerrar 3 prospectos.' },
+  { clave: 'frio_a_cierre', titulo: 'De la nada', capitulo: 'costura', rareza: 'legendaria',
     criterio: 'Cerrar un prospecto que había nacido en frío.',
-    nota: 'Lo más difícil del módulo: nadie había levantado la mano.',
-  },
+    nota: 'Lo más difícil del módulo: nadie había levantado la mano.' },
+
+  // ── Sorpresas ─────────────────────────────────────────────────────────────
+  // Todas se ganan trabajando normal. Ninguna pide hacer algo raro a propósito,
+  // y ninguna premia inflar el contador.
+  { clave: 'madrugar', titulo: 'Antes que nadie', capitulo: 'trama', rareza: 'dificil', oculta: true,
+    criterio: 'Registrar un contacto antes de las 8 de la mañana.' },
+  { clave: 'jornada_llena', titulo: 'Buena mañana', capitulo: 'trama', rareza: 'comun', oculta: true,
+    criterio: 'Registrar 5 contactos en un mismo día.' },
+  { clave: 'a_la_primera', titulo: 'A la primera', capitulo: 'costura', rareza: 'rara', oculta: true,
+    criterio: 'Que una marca responda a tu primer contacto con ella.' },
+  { clave: 'una_semana_viva', titulo: 'Semana entera', capitulo: 'trama', rareza: 'dificil', oculta: true,
+    criterio: 'Registrar algo cinco días distintos dentro de una misma semana.' },
 ]
 
 export const RAREZA_LABEL: Record<Rareza, string> = {
-  comun:   '',            // lo común no se anuncia
-  dificil: 'Difícil',
-  rara:    'Rara',
+  comun:      '',           // lo común no se anuncia
+  dificil:    'Difícil',
+  rara:       'Rara',
+  legendaria: 'Legendaria',
 }
 
-/**
- * Los datos con los que se evalúa todo. Se arman una vez por persona en la
- * acción; acá no hay acceso a base.
- */
+/** Datos con los que se evalúa todo. Se arman una vez por persona en la acción. */
 export interface DatosMedallas {
-  /** Contactos que registró ESTA persona (crm_interacciones.registrado_por). */
   contactos: number
-  /** Días distintos en que registró algo. No es una racha: no castiga faltar. */
   diasActivos: number
-  /** Marcas distintas que tocó. 12 toques a una marca no es tocar 12 marcas. */
   marcasTocadas: number
-  /** Alguno de sus contactos tuvo respuesta. */
-  tuvoRespuesta: boolean
-  /** Prospectos a su cargo que llegaron a confirmado. */
-  cierres: number
-  /** De esos cierres, cuántos habían nacido en frío. */
-  cierresFrios: number
-  /** El contador más alto que alcanzó una marca suya. */
+  /** Canales distintos usados (correo, llamada, mensaje, reunion). */
+  canales: number
+  reuniones: number
+  /** Marcas distintas que respondieron. */
+  marcasQueRespondieron: number
+  /** Contactos con respuesta, para la tasa. */
+  contactosConRespuesta: number
+  /** Marcas cuyo PRIMER contacto tuyo tuvo respuesta. */
+  respuestaAlPrimerToque: number
   maxToquesEnUnaMarca: number
+  /** Contactos en el día más cargado. */
+  maxEnUnDia: number
+  /** Días distintos dentro de la mejor semana. */
+  maxDiasEnUnaSemana: number
+  /** Registró algo antes de las 8 AM alguna vez. */
+  madrugo: boolean
+  /** Prospectos a su cargo. Denominador de la cobertura. */
+  cartera: number
+  /** De su cartera, cuántos tienen al menos un contacto registrado por él. */
+  carteraTocada: number
+  toqueFrio: boolean
+  toqueEntrante: boolean
+  cierres: number
+  cierresFrios: number
 }
+
+const CANALES_TOTALES = 4
 
 /** Claves que la persona YA cumple, se hayan registrado o no. */
 export function medallasCumplidas(d: DatosMedallas): string[] {
-  const ganadas: string[] = []
-  const si = (cond: boolean, clave: string) => { if (cond) ganadas.push(clave) }
+  const g: string[] = []
+  const si = (cond: boolean, clave: string) => { if (cond) g.push(clave) }
+  const tasa = d.contactos > 0 ? d.contactosConRespuesta / d.contactos : 0
 
   si(d.contactos >= 1, 'primer_contacto')
   si(d.marcasTocadas >= 10, 'diez_marcas')
+  si(d.canales >= CANALES_TOTALES, 'cuatro_canales')
+  si(d.reuniones >= 1, 'primera_reunion')
+  si(d.toqueFrio, 'primer_frio')
+
   si(d.contactos >= 10, 'diez_contactos')
-  si(d.diasActivos >= 20, 'veinte_dias')
-  si(d.maxToquesEnUnaMarca >= 16, 'perseverancia')
+  si(d.contactos >= 50, 'cincuenta_contactos')
   si(d.contactos >= 100, 'cien_contactos')
-  si(d.tuvoRespuesta, 'primera_respuesta')
+  si(d.contactos >= 500, 'quinientos_contactos')
+  si(d.diasActivos >= 20, 'veinte_dias')
+  si(d.diasActivos >= 50, 'cincuenta_dias')
+  si(d.maxToquesEnUnaMarca >= 16, 'no_soltar')
+  si(d.marcasTocadas >= 30, 'treinta_marcas')
+  // Piso de cartera: con 3 prospectos, "80% cubierto" no es un logro.
+  si(d.cartera >= 10 && d.carteraTocada / d.cartera >= 0.8, 'cobertura')
+  si(d.toqueFrio && d.toqueEntrante, 'ambas_temperaturas')
+
+  si(d.marcasQueRespondieron >= 1, 'primera_respuesta')
+  si(d.marcasQueRespondieron >= 5, 'cinco_responden')
+  si(d.marcasQueRespondieron >= 15, 'quince_responden')
+  si(d.contactos >= 20 && tasa >= 0.20, 'tasa_veinte')
+  si(d.contactos >= 30 && tasa >= 1 / 3, 'tasa_treinta')
   si(d.cierres >= 1, 'primer_cierre')
+  si(d.cierres >= 3, 'tres_cierres')
   si(d.cierresFrios >= 1, 'frio_a_cierre')
 
-  return ganadas
+  si(d.madrugo, 'madrugar')
+  si(d.maxEnUnDia >= 5, 'jornada_llena')
+  si(d.respuestaAlPrimerToque >= 1, 'a_la_primera')
+  si(d.maxDiasEnUnaSemana >= 5, 'una_semana_viva')
+
+  return g
 }
 
 /**
- * Progreso hacia una medalla no ganada, entre 0 y 1, más el texto de avance.
- * Devuelve null en las que no son de conteo — un "60% de que te respondan" no
- * significa nada, y fingir precisión es peor que no mostrar.
+ * Progreso hacia una medalla no ganada. Devuelve null en las que no son de
+ * conteo — un "60% de que te respondan" no significa nada, y fingir precisión
+ * es peor que no mostrar.
  */
 export function progresoMedalla(
   clave: string,
@@ -189,20 +233,45 @@ export function progresoMedalla(
 ): { fraccion: number; texto: string } | null {
   const p = (hecho: number, meta: number, unidad: string) => ({
     fraccion: Math.max(0, Math.min(1, hecho / meta)),
-    texto: `${Math.min(hecho, meta)} de ${meta} ${unidad}`,
+    texto: `${Math.min(Math.round(hecho), meta)} de ${meta} ${unidad}`,
   })
+  const tasa = d.contactos > 0 ? d.contactosConRespuesta / d.contactos : 0
+
   switch (clave) {
-    case 'primer_contacto': return p(d.contactos, 1, 'contactos')
-    case 'diez_marcas':     return p(d.marcasTocadas, 10, 'marcas')
-    case 'diez_contactos':  return p(d.contactos, 10, 'contactos')
-    case 'veinte_dias':     return p(d.diasActivos, 20, 'días')
-    case 'perseverancia':   return p(d.maxToquesEnUnaMarca, 16, 'contactos')
-    case 'cien_contactos':  return p(d.contactos, 100, 'contactos')
-    default:                return null
+    case 'primer_contacto':      return p(d.contactos, 1, 'contactos')
+    case 'diez_marcas':          return p(d.marcasTocadas, 10, 'marcas')
+    case 'treinta_marcas':       return p(d.marcasTocadas, 30, 'marcas')
+    case 'cuatro_canales':       return p(d.canales, CANALES_TOTALES, 'canales')
+    case 'diez_contactos':       return p(d.contactos, 10, 'contactos')
+    case 'cincuenta_contactos':  return p(d.contactos, 50, 'contactos')
+    case 'cien_contactos':       return p(d.contactos, 100, 'contactos')
+    case 'quinientos_contactos': return p(d.contactos, 500, 'contactos')
+    case 'veinte_dias':          return p(d.diasActivos, 20, 'días')
+    case 'cincuenta_dias':       return p(d.diasActivos, 50, 'días')
+    case 'no_soltar':            return p(d.maxToquesEnUnaMarca, 16, 'contactos')
+    case 'cinco_responden':      return p(d.marcasQueRespondieron, 5, 'marcas')
+    case 'quince_responden':     return p(d.marcasQueRespondieron, 15, 'marcas')
+    case 'tres_cierres':         return p(d.cierres, 3, 'cierres')
+    case 'cobertura':
+      // Antes del piso se muestra el avance HACIA el piso: si no, alguien con
+      // 4 prospectos todos tocados vería 100% y la medalla no llegaría nunca.
+      if (d.cartera < 10) return p(d.cartera, 10, 'en cartera')
+      return { fraccion: Math.min(1, (d.carteraTocada / d.cartera) / 0.8), texto: `${Math.round((d.carteraTocada / d.cartera) * 100)}% de 80%` }
+    case 'tasa_veinte':
+      if (d.contactos < 20) return p(d.contactos, 20, 'contactos')
+      return { fraccion: Math.min(1, tasa / 0.20), texto: `${Math.round(tasa * 100)}% de 20%` }
+    case 'tasa_treinta':
+      if (d.contactos < 30) return p(d.contactos, 30, 'contactos')
+      return { fraccion: Math.min(1, tasa / (1 / 3)), texto: `${Math.round(tasa * 100)}% de 33%` }
+    default:                     return null
   }
 }
 
-/** Cuántas medallas tiene cada capítulo. Para el encabezado de la vitrina. */
-export function porCapitulo(capitulo: Capitulo): DefinicionMedalla[] {
-  return MEDALLAS.filter(m => m.capitulo === capitulo)
+/** Las que se anuncian. Las ocultas viven aparte hasta ganarse. */
+export function visiblesDe(capitulo: Capitulo): DefinicionMedalla[] {
+  return MEDALLAS.filter(m => m.capitulo === capitulo && !m.oculta)
+}
+
+export function ocultas(): DefinicionMedalla[] {
+  return MEDALLAS.filter(m => m.oculta)
 }

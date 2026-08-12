@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { revisarMedallas, type EstadoMedallas } from '@/app/actions/medallas'
 import {
-  CAPITULOS, MEDALLAS, RAREZA_LABEL, porCapitulo, progresoMedalla,
+  CAPITULOS, MEDALLAS, RAREZA_LABEL, visiblesDe, ocultas, progresoMedalla,
   type DefinicionMedalla, type DatosMedallas,
 } from '@/lib/crm-medallas'
 import { momento } from '@/lib/momentos'
@@ -65,7 +65,7 @@ export default function Medallas() {
       </p>
 
       {CAPITULOS.map(cap => {
-        const medallas = porCapitulo(cap.clave)
+        const medallas = visiblesDe(cap.clave)
         const listas = medallas.filter(m => ganadas.has(m.clave)).length
         return (
           <section key={cap.clave} className="mt-8 first:mt-7">
@@ -96,7 +96,57 @@ export default function Medallas() {
           </section>
         )
       })}
+
+      <Sorpresas ganadas={ganadas} datos={estado.datos} desde={orden} />
     </div>
+  )
+}
+
+/**
+ * Las ocultas. Se anuncia que existen y cuántas son, pero no cuáles: la
+ * curiosidad es el punto. Todas se ganan trabajando normal — ninguna pide
+ * hacer algo raro a propósito, y ninguna premia inflar el contador.
+ */
+function Sorpresas({
+  ganadas, datos, desde,
+}: {
+  ganadas: Map<string, string>
+  datos: DatosMedallas
+  desde: number
+}) {
+  const todas = ocultas()
+  const listas = todas.filter(m => ganadas.has(m.clave))
+  const faltan = todas.length - listas.length
+
+  return (
+    <section className="mt-8">
+      <div className="flex items-baseline gap-3 border-t border-ch-border pt-4 mb-1">
+        <span className="font-display italic text-lg text-ch-gold leading-none shrink-0">?</span>
+        <h3 className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-cream">Sorpresas</h3>
+        <span className="font-body text-[10px] text-ch-subtle tabular-nums ml-auto shrink-0">
+          {listas.length}/{todas.length}
+        </span>
+      </div>
+      <p className="font-body text-[11px] text-ch-subtle italic mb-3">
+        No se anuncian. Aparecen solas trabajando como siempre.
+      </p>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {listas.map((m, i) => (
+          <Medalla key={m.clave} def={m} fecha={ganadas.get(m.clave)!} datos={datos} indice={desde + i} />
+        ))}
+        {faltan > 0 && (
+          <div
+            style={{ ['--i' as string]: desde + listas.length }}
+            className="border border-dashed border-ch-border p-3.5 ch-fade-up ch-stagger flex items-center justify-center min-h-[72px]"
+          >
+            <p className="font-body text-[10px] tracking-[0.25em] uppercase text-ch-subtle/70">
+              {faltan} por descubrir
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -111,29 +161,35 @@ function Medalla({
   const ganada = fecha !== null
   const prog = ganada ? null : progresoMedalla(def.clave, datos)
 
-  // Las raras ganadas van en dorado: es el único acento que el sistema reserva
-  // para lo excepcional. Si todas fueran verdes, tener nueve valdría lo mismo
-  // que tener las tres fáciles.
+  // Tres pesos, no dos. El dorado es el acento que el sistema reserva para lo
+  // excepcional, y la legendaria además estrena el barrido del borde: si las
+  // veintiséis se vieran igual, tenerlas todas valdría lo mismo que tener las
+  // cinco fáciles.
+  const preciada = def.rareza === 'rara' || def.rareza === 'legendaria'
   const marco = !ganada
     ? 'border-ch-border'
-    : def.rareza === 'rara'
-      ? 'border-ch-gold/50 bg-ch-gold/5'
-      : 'border-ch-green/40 bg-ch-green/5'
+    : def.rareza === 'legendaria'
+      ? 'border-ch-gold bg-ch-gold/10 ch-glow-hito'
+      : def.rareza === 'rara'
+        ? 'border-ch-gold/50 bg-ch-gold/5'
+        : 'border-ch-green/40 bg-ch-green/5'
 
   const titulo = !ganada
     ? 'text-ch-subtle'
-    : def.rareza === 'rara' ? 'text-ch-gold' : 'text-ch-cream'
+    : preciada ? 'text-ch-gold' : 'text-ch-cream'
 
   return (
     <div
       style={{ ['--i' as string]: indice }}
-      className={`border p-3.5 ch-fade-up ch-stagger transition-colors ${marco}`}
+      className={`border p-3.5 transition-colors ${
+        ganada && def.rareza === 'legendaria' ? '' : 'ch-fade-up ch-stagger'
+      } ${marco}`}
     >
       <div className="flex items-baseline justify-between gap-2 flex-wrap">
         <p className={`font-display italic text-lg leading-tight ${titulo}`}>{def.titulo}</p>
         {ganada ? (
           <span className={`font-body text-[9px] tracking-[0.15em] uppercase shrink-0 ${
-            def.rareza === 'rara' ? 'text-ch-gold' : 'text-ch-green'
+            preciada ? 'text-ch-gold' : 'text-ch-green'
           }`}>
             {formatFecha(fecha!)}
           </span>

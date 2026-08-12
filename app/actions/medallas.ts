@@ -10,23 +10,110 @@ import { medallasCumplidas, type DatosMedallas } from '@/lib/crm-medallas'
 
 export interface EstadoMedallas {
   datos: DatosMedallas
-  /** Claves ya registradas, con la fecha en que se ganaron. */
   ganadas: { medalla: string; ganada_en: string }[]
   /** Las que se acaban de registrar en ESTA llamada: hay que celebrarlas. */
   nuevas: string[]
 }
 
 const VACIO: DatosMedallas = {
-  contactos: 0, diasActivos: 0, marcasTocadas: 0, tuvoRespuesta: false,
-  cierres: 0, cierresFrios: 0, maxToquesEnUnaMarca: 0,
+  contactos: 0, diasActivos: 0, marcasTocadas: 0, canales: 0, reuniones: 0,
+  marcasQueRespondieron: 0, contactosConRespuesta: 0, respuestaAlPrimerToque: 0,
+  maxToquesEnUnaMarca: 0, maxEnUnDia: 0, maxDiasEnUnaSemana: 0, madrugo: false,
+  cartera: 0, carteraTocada: 0, toqueFrio: false, toqueEntrante: false,
+  cierres: 0, cierresFrios: 0,
+}
+
+interface Toque {
+  prospecto_id: string
+  fecha: string | null
+  tipo: string | null
+  respondido: boolean | null
+  created_at: string
+}
+
+/** Lunes de la semana de `fecha`, como clave para agrupar. */
+function semanaDe(fecha: string): string {
+  const d = new Date(fecha + 'T12:00:00')
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return d.toLocaleDateString('en-CA')
+}
+
+/** Hora en Chile de un timestamptz. Registrar a las 7 AM es 7 AM acá, no UTC. */
+function horaChile(iso: string): number {
+  const h = new Date(iso).toLocaleString('en-GB', {
+    timeZone: 'America/Santiago', hour: '2-digit', hour12: false,
+  })
+  return parseInt(h, 10)
+}
+
+function agregar(toques: Toque[], mios: { id: string; etapa: string; origen: string | null }[]): DatosMedallas {
+  const porMarca = new Map<string, Toque[]>()
+  const porDia = new Map<string, number>()
+  const porSemana = new Map<string, Set<string>>()
+  const canales = new Set<string>()
+
+  for (const t of toques) {
+    const arr = porMarca.get(t.prospecto_id) ?? []
+    arr.push(t)
+    porMarca.set(t.prospecto_id, arr)
+    if (t.tipo) canales.add(t.tipo)
+    if (t.fecha) {
+      porDia.set(t.fecha, (porDia.get(t.fecha) ?? 0) + 1)
+      const s = semanaDe(t.fecha)
+      const dias = porSemana.get(s) ?? new Set<string>()
+      dias.add(t.fecha)
+      porSemana.set(s, dias)
+    }
+  }
+
+  // Marcas cuyo PRIMER contacto tuyo tuvo respuesta. Se ordena por fecha y, a
+  // igualdad, por created_at: dos toques el mismo día necesitan desempate.
+  let alPrimero = 0
+  for (const arr of porMarca.values()) {
+    const ordenados = [...arr].sort((a, b) =>
+      (a.fecha ?? '').localeCompare(b.fecha ?? '') || a.created_at.localeCompare(b.created_at))
+    if (ordenados[0]?.respondido) alPrimero++
+  }
+
+  const temps = new Set<string>()
+  const porId = new Map(mios.map(p => [p.id, p]))
+  for (const id of porMarca.keys()) {
+    const p = porId.get(id)
+    if (p) temps.add(temperaturaDe(p.origen))
+  }
+
+  const confirmados = mios.filter(p => p.etapa === 'confirmado')
+  const conRespuesta = toques.filter(t => t.respondido)
+
+  return {
+    contactos: toques.length,
+    diasActivos: new Set(toques.map(t => t.fecha).filter(Boolean)).size,
+    marcasTocadas: porMarca.size,
+    canales: canales.size,
+    reuniones: toques.filter(t => t.tipo === 'reunion').length,
+    marcasQueRespondieron: new Set(conRespuesta.map(t => t.prospecto_id)).size,
+    contactosConRespuesta: conRespuesta.length,
+    respuestaAlPrimerToque: alPrimero,
+    maxToquesEnUnaMarca: porMarca.size ? Math.max(...[...porMarca.values()].map(a => a.length)) : 0,
+    maxEnUnDia: porDia.size ? Math.max(...porDia.values()) : 0,
+    maxDiasEnUnaSemana: porSemana.size ? Math.max(...[...porSemana.values()].map(s => s.size)) : 0,
+    madrugo: toques.some(t => horaChile(t.created_at) < 8),
+    cartera: mios.length,
+    // Sólo cuenta la cartera propia: tocar prospectos de otro no es cobertura.
+    carteraTocada: mios.filter(p => porMarca.has(p.id)).length,
+    toqueFrio: temps.has('frio'),
+    toqueEntrante: temps.has('entrante'),
+    cierres: confirmados.length,
+    cierresFrios: confirmados.filter(p => temperaturaDe(p.origen) === 'frio').length,
+  }
 }
 
 /**
  * Estado de medallas del usuario en sesión. Registra las que acaba de cumplir
  * y devuelve cuáles son nuevas, para celebrarlas una sola vez.
  *
- * Es idempotente: el índice único (profile_id, medalla) hace que llamarla en
- * cada carga no duplique ni vuelva a celebrar.
+ * Idempotente: el índice único (profile_id, medalla) hace que llamarla en cada
+ * carga no duplique ni vuelva a celebrar.
  */
 export async function revisarMedallas(): Promise<EstadoMedallas> {
   const supabase = await createClient()
@@ -39,32 +126,16 @@ export async function revisarMedallas(): Promise<EstadoMedallas> {
     // inventar el dato.
     supabase
       .from('crm_interacciones')
-      .select('prospecto_id, fecha, respondido')
+      .select('prospecto_id, fecha, tipo, respondido, created_at')
       .eq('registrado_por', user.id),
-    // Los cierres se atribuyen por responsable: el prospecto ES suyo.
+    // Los cierres y la cobertura se atribuyen por responsable: el prospecto ES suyo.
     supabase
       .from('prospectos')
       .select('id, etapa, origen')
       .eq('responsable_id', user.id),
   ])
 
-  const filas = toques ?? []
-  const porMarca = new Map<string, number>()
-  for (const t of filas) {
-    porMarca.set(t.prospecto_id, (porMarca.get(t.prospecto_id) ?? 0) + 1)
-  }
-
-  const confirmados = (mios ?? []).filter(p => p.etapa === 'confirmado')
-
-  const datos: DatosMedallas = {
-    contactos: filas.length,
-    diasActivos: new Set(filas.map(t => t.fecha).filter(Boolean)).size,
-    marcasTocadas: porMarca.size,
-    tuvoRespuesta: filas.some(t => t.respondido),
-    cierres: confirmados.length,
-    cierresFrios: confirmados.filter(p => temperaturaDe(p.origen) === 'frio').length,
-    maxToquesEnUnaMarca: porMarca.size ? Math.max(...porMarca.values()) : 0,
-  }
+  const datos = agregar((toques ?? []) as Toque[], mios ?? [])
 
   const { data: yaTiene } = await supabase
     .from('crm_medallas')
@@ -75,9 +146,6 @@ export async function revisarMedallas(): Promise<EstadoMedallas> {
   const nuevas = medallasCumplidas(datos).filter(m => !registradas.has(m))
 
   if (nuevas.length > 0) {
-    // `ignoreDuplicates` para que dos pestañas abiertas no se peleen: si otra
-    // llamada ya la insertó, esta no falla — pero tampoco la reporta como nueva
-    // dos veces, porque cada una calculó su propio diff contra lo registrado.
     const { error } = await supabase
       .from('crm_medallas')
       .upsert(
