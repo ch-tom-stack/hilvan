@@ -2,98 +2,173 @@
 
 import { useEffect, useState } from 'react'
 import { revisarMedallas, type EstadoMedallas } from '@/app/actions/medallas'
-import { MEDALLAS, progresoMedalla } from '@/lib/crm-medallas'
+import {
+  CAPITULOS, MEDALLAS, RAREZA_LABEL, porCapitulo, progresoMedalla,
+  type DefinicionMedalla, type DatosMedallas,
+} from '@/lib/crm-medallas'
 import { momento } from '@/lib/momentos'
 import { formatFecha } from '@/lib/fechas'
 
 /**
- * Vitrina personal de medallas.
+ * Vitrina de medallas, en tres capítulos.
  *
- * Las no ganadas se muestran igual, con su criterio a la vista: una medalla
- * que aparece por algo que no sabías que estabas haciendo se siente arbitraria.
- * La gracia está en verla venir.
+ * La narrativa está en lib/crm-medallas.ts: la app se llama Hilván —la puntada
+ * provisional que sostiene la tela antes de la costura— y captar es exactamente
+ * eso. Los capítulos son el arco real de un prospecto, no una decoración.
  *
- * Ninguna compara personas — ver lib/crm-medallas.ts.
+ * Las no ganadas se muestran con su criterio a la vista: la gracia está en
+ * verlas venir. Y la rareza tiene peso visual, porque cerrar un prospecto frío
+ * no puede verse igual que registrar el primer contacto.
  */
 export default function Medallas() {
   const [estado, setEstado] = useState<EstadoMedallas | null>(null)
 
   useEffect(() => {
     let vivo = true
-    revisarMedallas().then(e => {
-      if (!vivo) return
-      setEstado(e)
-      // Celebrar sólo lo que se acaba de registrar. La acción es idempotente,
-      // así que recargar la página no vuelve a celebrar nada.
-      for (const clave of e.nuevas) {
-        const def = MEDALLAS.find(m => m.clave === clave)
-        if (def) momento('hito.alcanzado', { mensaje: `Medalla: ${def.titulo}` })
-      }
-    }).catch(() => { /* sin medallas es un degradado aceptable */ })
+    revisarMedallas()
+      .then(e => {
+        if (!vivo) return
+        setEstado(e)
+        // Sólo lo que se acaba de registrar. La acción es idempotente, así que
+        // recargar la página no vuelve a celebrar nada.
+        for (const clave of e.nuevas) {
+          const def = MEDALLAS.find(m => m.clave === clave)
+          if (def) momento('hito.alcanzado', { mensaje: `Medalla: ${def.titulo}` })
+        }
+      })
+      .catch(() => { /* quedarse sin vitrina es un degradado aceptable */ })
     return () => { vivo = false }
   }, [])
 
   if (!estado) return null
 
   const ganadas = new Map(estado.ganadas.map(g => [g.medalla, g.ganada_en]))
+  let orden = 0   // el escalonado es continuo entre capítulos, no se reinicia
 
   return (
-    <div className="border border-ch-border bg-ch-surface/30 p-5">
-      <div className="flex items-baseline justify-between gap-4 mb-1">
+    <div className="border border-ch-border bg-ch-surface/30 p-5 lg:p-7">
+      {/* Portada */}
+      <div className="flex items-baseline justify-between gap-4 mb-1 flex-wrap">
         <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted">Medallas</h2>
         <span className="font-body text-[10px] text-ch-subtle tabular-nums">
           {ganadas.size} de {MEDALLAS.length}
         </span>
       </div>
-      <p className="font-body text-[11px] text-ch-subtle mb-4 max-w-prose">
-        Son sobre tu propia historia: ninguna te compara con el resto del equipo.
-        Cuentan desde que se registró quién hace cada contacto — lo anterior no
-        tiene autor y no se le puede atribuir a nadie.
+      <p className="font-display italic text-2xl text-ch-cream leading-tight mt-2 max-w-lg">
+        Un hilván es la puntada que sostiene la tela antes de la costura.
+      </p>
+      <p className="font-body text-[11px] text-ch-subtle leading-relaxed mt-2 max-w-prose">
+        Captar es eso: puntadas que puede que se suelten, y algunas se vuelven costura.
+        Ninguna de estas medallas te compara con el resto del equipo — son sobre tu
+        propia historia. Cuentan desde que la app registra quién hace cada contacto;
+        lo anterior no tiene autor y no se le puede atribuir a nadie.
       </p>
 
-      <div className="grid gap-2 sm:grid-cols-2">
-        {MEDALLAS.map((m, i) => {
-          const fecha = ganadas.get(m.clave)
-          const p = fecha ? null : progresoMedalla(m.clave, estado.datos)
-          return (
-            <div
-              key={m.clave}
-              style={{ ['--i' as string]: i }}
-              className={`border p-3 ch-fade-up ch-stagger ${
-                fecha ? 'border-ch-green/40 bg-ch-green/5' : 'border-ch-border'
-              }`}
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <p className={`font-display italic text-lg leading-tight ${fecha ? 'text-ch-cream' : 'text-ch-subtle'}`}>
-                  {m.titulo}
-                </p>
-                {fecha && (
-                  <span className="font-body text-[9px] tracking-[0.15em] uppercase text-ch-green shrink-0">
-                    {formatFecha(fecha)}
-                  </span>
-                )}
-              </div>
-              <p className={`font-body text-[11px] leading-relaxed mt-1 ${fecha ? 'text-ch-muted' : 'text-ch-subtle'}`}>
-                {m.criterio}
-              </p>
-              {m.nota && (
-                <p className="font-body text-[10px] text-ch-subtle/80 italic mt-1">{m.nota}</p>
-              )}
-
-              {/* Sólo las de conteo muestran barra: un "60% de que te respondan"
-                  no significa nada y fingir precisión es peor que no mostrar. */}
-              {p !== null && p > 0 && (
-                <div className="w-full h-px bg-ch-border relative mt-2 overflow-hidden">
-                  <div
-                    className="absolute inset-y-0 left-0 bg-ch-muted ch-bar-fill"
-                    style={{ width: `${Math.round(p * 100)}%`, ['--w' as string]: `${Math.round(p * 100)}%` }}
-                  />
-                </div>
-              )}
+      {CAPITULOS.map(cap => {
+        const medallas = porCapitulo(cap.clave)
+        const listas = medallas.filter(m => ganadas.has(m.clave)).length
+        return (
+          <section key={cap.clave} className="mt-8 first:mt-7">
+            <div className="flex items-baseline gap-3 border-t border-ch-border pt-4 mb-1">
+              <span className="font-display italic text-lg text-ch-green leading-none shrink-0">
+                {cap.numero}
+              </span>
+              <h3 className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-cream">
+                {cap.titulo}
+              </h3>
+              <span className="font-body text-[10px] text-ch-subtle tabular-nums ml-auto shrink-0">
+                {listas}/{medallas.length}
+              </span>
             </div>
-          )
-        })}
+            <p className="font-body text-[11px] text-ch-subtle italic mb-3">{cap.bajada}</p>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {medallas.map(m => (
+                <Medalla
+                  key={m.clave}
+                  def={m}
+                  fecha={ganadas.get(m.clave) ?? null}
+                  datos={estado.datos}
+                  indice={orden++}
+                />
+              ))}
+            </div>
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+function Medalla({
+  def, fecha, datos, indice,
+}: {
+  def: DefinicionMedalla
+  fecha: string | null
+  datos: DatosMedallas
+  indice: number
+}) {
+  const ganada = fecha !== null
+  const prog = ganada ? null : progresoMedalla(def.clave, datos)
+
+  // Las raras ganadas van en dorado: es el único acento que el sistema reserva
+  // para lo excepcional. Si todas fueran verdes, tener nueve valdría lo mismo
+  // que tener las tres fáciles.
+  const marco = !ganada
+    ? 'border-ch-border'
+    : def.rareza === 'rara'
+      ? 'border-ch-gold/50 bg-ch-gold/5'
+      : 'border-ch-green/40 bg-ch-green/5'
+
+  const titulo = !ganada
+    ? 'text-ch-subtle'
+    : def.rareza === 'rara' ? 'text-ch-gold' : 'text-ch-cream'
+
+  return (
+    <div
+      style={{ ['--i' as string]: indice }}
+      className={`border p-3.5 ch-fade-up ch-stagger transition-colors ${marco}`}
+    >
+      <div className="flex items-baseline justify-between gap-2 flex-wrap">
+        <p className={`font-display italic text-lg leading-tight ${titulo}`}>{def.titulo}</p>
+        {ganada ? (
+          <span className={`font-body text-[9px] tracking-[0.15em] uppercase shrink-0 ${
+            def.rareza === 'rara' ? 'text-ch-gold' : 'text-ch-green'
+          }`}>
+            {formatFecha(fecha!)}
+          </span>
+        ) : RAREZA_LABEL[def.rareza] ? (
+          <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle/70 shrink-0">
+            {RAREZA_LABEL[def.rareza]}
+          </span>
+        ) : null}
       </div>
+
+      <p className={`font-body text-[11px] leading-relaxed mt-1 ${ganada ? 'text-ch-muted' : 'text-ch-subtle'}`}>
+        {def.criterio}
+      </p>
+      {def.nota && (
+        <p className="font-body text-[10px] text-ch-subtle/70 italic mt-1 leading-relaxed">{def.nota}</p>
+      )}
+
+      {/* Barra sólo en las de conteo, y sólo si ya arrancó: una barra en cero
+          no informa, sólo recuerda que no has empezado. */}
+      {prog && prog.fraccion > 0 && (
+        <div className="mt-2.5">
+          <div className="w-full h-px bg-ch-border relative overflow-hidden">
+            <div
+              className="absolute inset-y-0 left-0 bg-ch-muted ch-bar-fill"
+              style={{
+                width: `${Math.round(prog.fraccion * 100)}%`,
+                ['--w' as string]: `${Math.round(prog.fraccion * 100)}%`,
+              }}
+            />
+          </div>
+          <p className="font-body text-[9px] tracking-[0.15em] uppercase text-ch-subtle mt-1.5 tabular-nums">
+            {prog.texto}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
