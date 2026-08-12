@@ -237,15 +237,16 @@ export const MEDALLAS: DefinicionMedalla[] = [
 ]
 
 /**
- * Meses ganados a los que el emblema gana presencia. Doce es un año entero
- * ganando la misma medalla: eso sí merece verse distinto.
+ * Meses ganados a los que el emblema gana presencia. Veinte son casi dos años
+ * ganando la misma medalla todos los meses: el último nivel tiene que ser algo
+ * que casi nadie tenga, o deja de decir nada.
  */
-export const HITOS_NIVEL = [3, 6, 12]
+export const HITOS_NIVEL = [5, 10, 20]
 
 export function nivelDe(veces: number): 0 | 1 | 2 | 3 {
-  if (veces >= 12) return 3
-  if (veces >= 6) return 2
-  if (veces >= 3) return 1
+  if (veces >= 20) return 3
+  if (veces >= 10) return 2
+  if (veces >= 5) return 1
   return 0
 }
 

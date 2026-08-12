@@ -12,6 +12,7 @@
 import { revisarMedallas } from '@/app/actions/medallas'
 import { MEDALLAS } from '@/lib/crm-medallas'
 import { momento } from '@/lib/momentos'
+import { EVENTO_MEDALLA } from '@/components/perfil/RevelacionMedalla'
 
 /**
  * Ventana mínima entre revisiones. Bajar una columna registrando de a uno
@@ -33,7 +34,14 @@ async function revisar(): Promise<void> {
     const { nuevas } = await revisarMedallas()
     for (const clave of nuevas) {
       const def = MEDALLAS.find(m => m.clave === clave)
-      if (def) momento('hito.alcanzado', { mensaje: `Medalla: ${def.titulo}` })
+      if (!def) continue
+      // El sonido y la celebración escalan con la rareza.
+      momento(`medalla.${def.rareza}` as never, { mensaje: `Medalla: ${def.titulo}` })
+      // Sólo lo excepcional detiene la pantalla. Interrumpir por algo frecuente
+      // es lo que enseña a odiar las notificaciones.
+      if (def.rareza === 'rara' || def.rareza === 'legendaria') {
+        window.dispatchEvent(new CustomEvent(EVENTO_MEDALLA, { detail: { clave } }))
+      }
     }
   } catch {
     // Quedarse sin el aviso no puede romper el registro del contacto, que es

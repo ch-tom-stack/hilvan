@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { temperaturaDe } from '@/lib/crm-temperatura'
-import { MEDALLAS, medallasCumplidas, type DatosMedallas } from '@/lib/crm-medallas'
+import { MEDALLAS, medallasCumplidas, puntosDe, rangoDe, type DatosMedallas } from '@/lib/crm-medallas'
 import { DIAS_HABILES, haceDiasHabiles } from '@/lib/ritmo'
 
 // OJO: archivo 'use server'. Todo export tiene que ser una función async —
@@ -384,4 +384,86 @@ export async function getRitmo(): Promise<EstadoRitmo> {
     desde,
     detalle,
   }
+}
+
+
+// ── Tira del sidebar ─────────────────────────────────────────────────────────
+
+export interface UltimasMedallas {
+  claves: string[]
+  total: number
+  rango: string
+}
+
+/**
+ * Las últimas medallas y el rango, para la tira del sidebar.
+ *
+ * Consulta aparte y liviana: el sidebar está en todas las páginas y no puede
+ * pagar el costo de `revisarMedallas`, que recorre siete tablas.
+ */
+export async function ultimasMedallas(cuantas = 4): Promise<UltimasMedallas> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { claves: [], total: 0, rango: '' }
+
+  const { data } = await supabase
+    .from('crm_medallas')
+    .select('medalla, ganada_en')
+    .eq('profile_id', user.id)
+    .order('ganada_en', { ascending: false })
+
+  const filas = data ?? []
+  const distintas = [...new Set(filas.map(f => f.medalla))]
+  return {
+    claves: distintas.slice(0, cuantas),
+    total: distintas.length,
+    rango: rangoDe(puntosDe(distintas)).actual.titulo,
+  }
+}
+
+// ── Resumen: día, semana y mes ───────────────────────────────────────────────
+
+export type Ventana = 'dia' | 'semana' | 'mes'
+
+export interface Resumen {
+  ventana: Ventana
+  desde: string
+  total: number
+  detalle: { etiqueta: string; n: number }[]
+}
+
+/**
+ * Qué hiciste hoy, esta semana o este mes.
+ *
+ * El ritmo responde "¿cómo vengo?" sobre diez días hábiles; esto responde
+ * "¿qué hice?" sobre una ventana que la persona elige. Son preguntas distintas
+ * y por eso no se fusionaron: una es tendencia, la otra es inventario.
+ */
+export async function getResumen(ventana: Ventana): Promise<Resumen> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
+
+  let desde = hoy
+  if (ventana === 'semana') {
+    const d = new Date(hoy + 'T12:00:00')
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))    // lunes
+    desde = d.toLocaleDateString('en-CA')
+  } else if (ventana === 'mes') {
+    desde = hoy.slice(0, 7) + '-01'
+  }
+
+  if (!user) return { ventana, desde, total: 0, detalle: [] }
+
+  const res = await Promise.all(FUENTES.map(f =>
+    supabase.from(f.tabla).select('*', { count: 'exact', head: true })
+      .eq(f.col, user.id)
+      .gte('created_at', inicioChile(desde)),
+  ))
+
+  const detalle = FUENTES
+    .map((f, i) => ({ etiqueta: f.etiqueta, n: res[i].count ?? 0 }))
+    .filter(d => d.n > 0)
+
+  return { ventana, desde, total: res.reduce((t, r) => t + (r.count ?? 0), 0), detalle }
 }

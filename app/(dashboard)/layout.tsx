@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
+import RevelacionMedalla from '@/components/perfil/RevelacionMedalla'
 import type { Profile } from '@/types'
 
 export default async function DashboardLayout({
@@ -37,6 +38,9 @@ export default async function DashboardLayout({
       <main className="flex-1 overflow-auto pt-14 lg:pt-0">
         {children}
       </main>
+      {/* Vive en el layout y no en cada página: la medalla se puede ganar en
+          cualquier parte de la app. */}
+      <RevelacionMedalla />
     </div>
   )
 }

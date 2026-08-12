@@ -9,6 +9,7 @@ import {
 } from '@/lib/crm-medallas'
 import Emblema from '@/components/perfil/Emblema'
 import RitmoActual from '@/components/perfil/RitmoActual'
+import Resumen from '@/components/perfil/Resumen'
 import { momento } from '@/lib/momentos'
 import { formatFecha } from '@/lib/fechas'
 
@@ -101,6 +102,7 @@ export default function Medallas() {
           después cómo vienes. Al revés, el período se leería como la medida
           principal y una semana mala taparía un año bueno. */}
       <RitmoActual />
+      <Resumen />
 
       {CAPITULOS.map(cap => {
         const medallas = visiblesDe(cap.clave)

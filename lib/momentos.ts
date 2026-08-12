@@ -56,6 +56,10 @@ export type NombreMomento =
   // Progreso personal
   | 'checklist.marcado' | 'checklist.desmarcado'
   | 'meta.cumplida' | 'hito.alcanzado'
+  // Desbloqueo de medalla, escalado por rareza. Ganar "tu primer contacto" y
+  // ganar "De la nada" no pueden sonar igual: la segunda pasa una vez cada
+  // varios meses y la primera, el primer día.
+  | 'medalla.comun' | 'medalla.dificil' | 'medalla.rara' | 'medalla.legendaria'
   // Genéricos de CRUD
   | 'creado' | 'guardado' | 'eliminado' | 'enviado' | 'subido' | 'copiado'
   | 'pdf.generado' | 'sesion.inicio' | 'sesion.fin'
@@ -139,6 +143,10 @@ const CATALOGO: Record<NombreMomento, Definicion> = {
   // Marcar suma; desmarcar es neutro, nunca un castigo.
   'checklist.marcado':    { sonido: 'prog-check',    celebracion: 'micro',  toast: 'ninguno' },
   'checklist.desmarcado': { sonido: 'ui-toggle-off',                         toast: 'ninguno' },
+  'medalla.comun':        { sonido: 'prog-check',    celebracion: 'micro',  toast: 'normal' },
+  'medalla.dificil':      { sonido: 'win-factura',   celebracion: 'chico',  toast: 'normal' },
+  'medalla.rara':         { sonido: 'win-cierre',    celebracion: 'normal', toast: 'hito' },
+  'medalla.legendaria':   { sonido: 'win-hito',      celebracion: 'hito',   toast: 'hito' },
   'meta.cumplida':        { sonido: 'win-meta-dia',   celebracion: 'normal', toast: 'hito',   mensaje: 'Meta cumplida' },
   'hito.alcanzado':       { sonido: 'win-hito',       celebracion: 'hito',   toast: 'hito' },
 

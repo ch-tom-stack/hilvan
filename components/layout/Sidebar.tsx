@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
+import TiraMedallas from '@/components/layout/TiraMedallas'
 
 const BASE_NAV_ITEMS = [
   { label: 'Dashboard',     href: '/dashboard',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },
@@ -92,11 +93,14 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
           })}
         </nav>
 
+        {/* Las últimas medallas, arriba de la línea: es la puerta a la vitrina. */}
+        <div className="mt-4"><TiraMedallas /></div>
+
         {/* Usuario → link a perfil */}
         {(nombre || email) && (
           <Link
             href="/perfil"
-            className={`px-2 mt-4 pt-4 border-t border-ch-border block group transition-opacity ${
+            className={`px-2 pt-4 border-t border-ch-border block group transition-opacity ${
               pathname.startsWith('/perfil') ? 'opacity-100' : 'opacity-70 hover:opacity-100'
             }`}
           >
@@ -208,6 +212,7 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
             </div>
 
             {/* Usuario */}
+            <TiraMedallas compacta />
             {(nombre || email) && (
               <Link
                 href="/perfil"
