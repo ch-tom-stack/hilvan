@@ -87,7 +87,29 @@ el audio hasta que el usuario toque algo.
 
 ---
 
-## 4. Deuda menor
+## 4. Medallas — lo que queda abierto
+
+El sistema dejó de ser del CRM: 38 medallas en cuatro capítulos, con emblema
+propio, rangos históricos, ritmo del período y repetición mensual con nivel.
+
+- **Emblemas por rehacer.** Tomás revisó los 38 y algunos no se leen a 24 px.
+  Falta que diga cuáles. Los sospechosos por densidad: *Tejedora*, *Cincuenta
+  jornadas* y *Tres costuras*.
+- **El correo NO se mandó, a propósito.** El sistema se descubre solo: al
+  registrar un contacto aparece el aviso de la medalla. Anunciarlo el día uno
+  habría mostrado 0 de 38 y nada ocurriendo; esperar deja que la primera
+  visita encuentre varias ya ganadas.
+- **Los umbrales mensuales son una apuesta.** *Cincuenta* pasó a significar 50
+  contactos EN EL MES, no acumulados. Si al cierre del primer mes nadie llega,
+  hay que bajarlos.
+- **`equipos` y `maletas` no tienen atribución**, así que no tienen medallas.
+  Agregar un `created_by` a esas tablas abriría el capítulo.
+- **Sigue sin decidirse si es un módulo con lugar propio** en el sidebar o una
+  sección del perfil. Hoy vive en `/perfil`.
+
+---
+
+## 5. Deuda menor
 
 ### Las voces del enfriado siguen siendo TTS
 Las cuatro variantes de `crm-enfriado` usan voces sintéticas de macOS montadas
@@ -116,3 +138,5 @@ Anotado porque estaba en listas anteriores y se resolvió:
 - El SQL del Repertorio corrió y sus tres herramientas están en producción.
 - Enfriar y descartar tienen sonido propio y distinto entre sí.
 - Los cinco módulos tienen sonido: ninguno en cero.
+- `hilvan_editar_prospecto` existe: el operador ya puede corregir `origen`.
+- Las medallas se detectan donde ocurre el trabajo, no sólo al abrir el perfil.

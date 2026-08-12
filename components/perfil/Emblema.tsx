@@ -12,11 +12,13 @@ import { EMBLEMAS, EMBLEMA_DEFECTO } from '@/lib/emblemas'
  * largos queden a medio dibujar.
  */
 export default function Emblema({
-  clave, nueva = false, className = '',
+  clave, nueva = false, className = '', nivel = 0,
 }: {
   clave: string
   nueva?: boolean
   className?: string
+  /** Meses ganada: 0 · 1 (3+) · 2 (6+) · 3 (12+). Engrosa el trazo. */
+  nivel?: 0 | 1 | 2 | 3
 }) {
   const ref = useRef<SVGPathElement>(null)
 
@@ -37,7 +39,10 @@ export default function Emblema({
       className={`w-6 h-6 shrink-0 ${className}`}
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.4}
+      /* El nivel engrosa el trazo en vez de agregar adornos: la medalla es la
+         misma, sólo que hecha más veces. Un anillo o una estrella encima
+         competiría con la rareza, que ya usa el dorado. */
+      strokeWidth={1.4 + nivel * 0.35}
       strokeLinecap="square"
       strokeLinejoin="miter"
     >

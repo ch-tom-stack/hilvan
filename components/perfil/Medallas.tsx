@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { revisarMedallas, type EstadoMedallas } from '@/app/actions/medallas'
 import {
   CAPITULOS, MEDALLAS, RAREZA_LABEL, visiblesDe, ocultas, progresoMedalla,
-  puntosDe, puntosTotales, rangoDe,
+  puntosDe, puntosTotales, rangoDe, nivelDe,
   type DefinicionMedalla, type DatosMedallas,
 } from '@/lib/crm-medallas'
 import Emblema from '@/components/perfil/Emblema'
@@ -45,7 +45,8 @@ export default function Medallas() {
 
   if (!estado) return null
 
-  const ganadas = new Map(estado.ganadas.map(g => [g.medalla, g.ganada_en]))
+  const ganadas = new Map(estado.ganadas.map(g => [g.medalla, g]))
+  const esteMes = new Set(estado.esteMes)
   const nuevas = new Set(estado.nuevas)
   const puntos = puntosDe([...ganadas.keys()])
   const { actual, siguiente, fraccion } = rangoDe(puntos)
@@ -124,8 +125,9 @@ export default function Medallas() {
                 <Medalla
                   key={m.clave}
                   def={m}
-                  fecha={ganadas.get(m.clave) ?? null}
-                  datos={estado.datos}
+                  logro={ganadas.get(m.clave) ?? null}
+                  activa={m.alcance === 'mensual' ? esteMes.has(m.clave) : ganadas.has(m.clave)}
+                  datos={m.alcance === 'mensual' ? estado.datosMes : estado.datos}
                   indice={orden++}
                   nueva={nuevas.has(m.clave)}
                 />
@@ -135,7 +137,7 @@ export default function Medallas() {
         )
       })}
 
-      <Sorpresas ganadas={ganadas} datos={estado.datos} desde={orden} nuevas={nuevas} />
+      <Sorpresas ganadas={ganadas} esteMes={esteMes} estado={estado} desde={orden} nuevas={nuevas} />
     </div>
   )
 }
@@ -146,10 +148,11 @@ export default function Medallas() {
  * hacer algo raro a propósito, y ninguna premia inflar el contador.
  */
 function Sorpresas({
-  ganadas, datos, desde, nuevas,
+  ganadas, esteMes, estado, desde, nuevas,
 }: {
-  ganadas: Map<string, string>
-  datos: DatosMedallas
+  ganadas: Map<string, { veces: number; ultima: string }>
+  esteMes: Set<string>
+  estado: EstadoMedallas
   desde: number
   nuevas: Set<string>
 }) {
@@ -172,7 +175,15 @@ function Sorpresas({
 
       <div className="grid gap-2 sm:grid-cols-2">
         {listas.map((m, i) => (
-          <Medalla key={m.clave} def={m} fecha={ganadas.get(m.clave)!} datos={datos} indice={desde + i} nueva={nuevas.has(m.clave)} />
+          <Medalla
+            key={m.clave}
+            def={m}
+            logro={ganadas.get(m.clave)!}
+            activa={m.alcance === 'mensual' ? esteMes.has(m.clave) : true}
+            datos={m.alcance === 'mensual' ? estado.datosMes : estado.datos}
+            indice={desde + i}
+            nueva={nuevas.has(m.clave)}
+          />
         ))}
         {faltan > 0 && (
           <div
@@ -190,16 +201,23 @@ function Sorpresas({
 }
 
 function Medalla({
-  def, fecha, datos, indice, nueva = false,
+  def, logro, activa, datos, indice, nueva = false,
 }: {
   def: DefinicionMedalla
-  fecha: string | null
+  /** Historial de la medalla: cuántos meses y el último. null si nunca. */
+  logro: { veces: number; ultima: string } | null
+  /** Conseguida en la ventana que le toca: el mes en curso, o alguna vez. */
+  activa: boolean
   datos: DatosMedallas
   indice: number
   /** Se acaba de ganar en esta sesión: el emblema se dibuja solo. */
   nueva?: boolean
 }) {
-  const ganada = fecha !== null
+  const ganada = activa
+  const veces = logro?.veces ?? 0
+  const nivel = nivelDe(veces)
+  // Una mensual ya ganada antes pero no este mes muestra su progreso del mes:
+  // el nivel se conserva, la vuelta se juega de nuevo.
   const prog = ganada ? null : progresoMedalla(def.clave, datos)
 
   // Tres pesos, no dos. El dorado es el acento que el sistema reserva para lo
@@ -228,14 +246,19 @@ function Medalla({
     >
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <div className={`flex items-center gap-2.5 min-w-0 ${titulo}`}>
-          <Emblema clave={def.clave} nueva={nueva} className={ganada ? '' : 'opacity-40'} />
+          <Emblema
+            clave={def.clave}
+            nueva={nueva}
+            className={ganada ? '' : logro ? 'opacity-60' : 'opacity-40'}
+            nivel={nivel}
+          />
           <p className="font-display italic text-lg leading-tight">{def.titulo}</p>
         </div>
-        {ganada ? (
+        {logro ? (
           <span className={`font-body text-[9px] tracking-[0.15em] uppercase shrink-0 ${
-            preciada ? 'text-ch-gold' : 'text-ch-green'
+            preciada ? 'text-ch-gold' : ganada ? 'text-ch-green' : 'text-ch-subtle'
           }`}>
-            {formatFecha(fecha!)}
+            {veces > 1 ? `×${veces} · ` : ''}{formatFecha(logro.ultima)}
           </span>
         ) : RAREZA_LABEL[def.rareza] ? (
           <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle/70 shrink-0">

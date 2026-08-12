@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { temperaturaDe } from '@/lib/crm-temperatura'
-import { medallasCumplidas, type DatosMedallas } from '@/lib/crm-medallas'
+import { MEDALLAS, medallasCumplidas, type DatosMedallas } from '@/lib/crm-medallas'
 import { DIAS_HABILES, haceDiasHabiles } from '@/lib/ritmo'
 
 // OJO: archivo 'use server'. Todo export tiene que ser una función async —
@@ -10,10 +10,17 @@ import { DIAS_HABILES, haceDiasHabiles } from '@/lib/ritmo'
 // archivos que no tienen nada que ver. Las constantes van en lib/crm-medallas.ts.
 
 export interface EstadoMedallas {
+  /** Acumulado de siempre. Con esto se evalúan las únicas. */
   datos: DatosMedallas
-  ganadas: { medalla: string; ganada_en: string }[]
+  /** Sólo el mes en curso. Con esto se evalúan las mensuales. */
+  datosMes: DatosMedallas
+  /** Cuántos meses ganó cada medalla y cuándo fue la última vez. */
+  ganadas: { medalla: string; veces: number; ultima: string }[]
+  /** Mensuales ya conseguidas en el período actual. */
+  esteMes: string[]
   /** Las que se acaban de registrar en ESTA llamada: hay que celebrarlas. */
   nuevas: string[]
+  periodo: string
 }
 
 const VACIO: DatosMedallas = {
@@ -142,10 +149,13 @@ function agregar(
 async function contarTaller(
   supabase: Awaited<ReturnType<typeof createClient>>,
   uid: string,
+  desde?: string,
 ): Promise<Taller> {
   const n = (r: { count: number | null }) => r.count ?? 0
   const c = (tabla: string, col: string, extra?: (q: any) => any) => {
     let q = supabase.from(tabla).select('*', { count: 'exact', head: true }).eq(col, uid)
+    // `desde` acota al mes en curso, para evaluar las medallas mensuales.
+    if (desde) q = q.gte('created_at', inicioChile(desde))
     if (extra) q = extra(q)
     return q
   }
@@ -183,54 +193,96 @@ async function contarTaller(
 export async function revisarMedallas(): Promise<EstadoMedallas> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { datos: VACIO, ganadas: [], nuevas: [] }
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
+  const periodo = hoy.slice(0, 7)                 // YYYY-MM
+  const inicioMes = `${periodo}-01`
 
-  const [{ data: toques }, { data: mios }, taller] = await Promise.all([
+  const vacio = { datos: VACIO, datosMes: VACIO, ganadas: [], esteMes: [], nuevas: [], periodo }
+  if (!user) return vacio
+
+  const [{ data: toques }, { data: mios }, tallerVida, tallerMes] = await Promise.all([
     // Sólo los contactos que registró ESTA persona. Los anteriores a la columna
-    // tienen registrado_por NULL y no cuentan para nadie — atribuirlos sería
-    // inventar el dato.
+    // tienen registrado_por NULL y no cuentan para nadie.
     supabase
       .from('crm_interacciones')
       .select('prospecto_id, fecha, tipo, respondido, created_at')
       .eq('registrado_por', user.id),
-    // Los cierres y la cobertura se atribuyen por responsable: el prospecto ES suyo.
     supabase
       .from('prospectos')
       .select('id, etapa, origen')
       .eq('responsable_id', user.id),
     contarTaller(supabase, user.id),
+    contarTaller(supabase, user.id, inicioMes),
   ])
 
-  const datos = agregar((toques ?? []) as Toque[], mios ?? [], taller)
+  const todos = (toques ?? []) as Toque[]
+  const delMes = todos.filter(t => (t.fecha ?? '').startsWith(periodo))
 
-  const { data: yaTiene } = await supabase
+  const datos = agregar(todos, mios ?? [], tallerVida)
+  // La cartera del mes es la misma cartera; lo que cambia es cuánto de ella
+  // tocaste ESTE mes. Cubrir el 80% en un mes es un logro distinto a haberlo
+  // cubierto alguna vez.
+  const datosMes = agregar(delMes, mios ?? [], tallerMes)
+
+  const { data: filas } = await supabase
     .from('crm_medallas')
-    .select('medalla, ganada_en')
+    .select('medalla, ganada_en, periodo')
     .eq('profile_id', user.id)
 
-  const registradas = new Set((yaTiene ?? []).map(m => m.medalla))
-  const nuevas = medallasCumplidas(datos).filter(m => !registradas.has(m))
+  const previas = filas ?? []
+  const alguna = new Set(previas.map(f => f.medalla))
+  const delPeriodo = new Set(previas.filter(f => f.periodo === periodo).map(f => f.medalla))
+
+  // Cada alcance se evalúa contra su propia ventana y su propia condición de
+  // "ya la tengo": las únicas miran si existe cualquier fila, las mensuales si
+  // existe una de este período.
+  const cumpleVida = new Set(medallasCumplidas(datos))
+  const cumpleMes = new Set(medallasCumplidas(datosMes))
+  const nuevas = MEDALLAS.filter(m =>
+    m.alcance === 'unica'
+      ? cumpleVida.has(m.clave) && !alguna.has(m.clave)
+      : cumpleMes.has(m.clave) && !delPeriodo.has(m.clave),
+  ).map(m => m.clave)
 
   if (nuevas.length > 0) {
     const { error } = await supabase
       .from('crm_medallas')
       .upsert(
-        nuevas.map(medalla => ({ profile_id: user.id, medalla })),
-        { onConflict: 'profile_id,medalla', ignoreDuplicates: true },
+        nuevas.map(medalla => ({ profile_id: user.id, medalla, periodo })),
+        { onConflict: 'profile_id,medalla,periodo', ignoreDuplicates: true },
       )
     if (error) {
       console.error('[medallas] no se pudieron registrar:', error.message)
-      return { datos, ganadas: yaTiene ?? [], nuevas: [] }
+      return { ...vacio, datos, datosMes, ganadas: resumir(previas), esteMes: [...delPeriodo] }
     }
   }
 
   const { data: finales } = await supabase
     .from('crm_medallas')
-    .select('medalla, ganada_en')
+    .select('medalla, ganada_en, periodo')
     .eq('profile_id', user.id)
-    .order('ganada_en', { ascending: false })
 
-  return { datos, ganadas: finales ?? [], nuevas }
+  const listas = finales ?? previas
+  return {
+    datos,
+    datosMes,
+    ganadas: resumir(listas),
+    esteMes: listas.filter(f => f.periodo === periodo).map(f => f.medalla),
+    nuevas,
+    periodo,
+  }
+}
+
+/** Agrupa las filas por medalla: cuántos meses y cuál fue el último. */
+function resumir(filas: { medalla: string; ganada_en: string }[]) {
+  const m = new Map<string, { veces: number; ultima: string }>()
+  for (const f of filas) {
+    const a = m.get(f.medalla) ?? { veces: 0, ultima: f.ganada_en }
+    a.veces++
+    if (f.ganada_en > a.ultima) a.ultima = f.ganada_en
+    m.set(f.medalla, a)
+  }
+  return [...m.entries()].map(([medalla, v]) => ({ medalla, ...v }))
 }
 
 

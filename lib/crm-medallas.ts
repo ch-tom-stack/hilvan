@@ -33,8 +33,16 @@ export type Capitulo = 'hilvanar' | 'trama' | 'costura' | 'taller'
 /** Peso visual. Sin esto, tener veintiséis vale lo mismo que tener las fáciles. */
 export type Rareza = 'comun' | 'dificil' | 'rara' | 'legendaria'
 
+/**
+ * `unica`   — primeras veces e hitos de carrera. Se gana una vez y queda.
+ * `mensual` — describe un buen MES: se reinicia y acumula nivel. Sus números
+ *             se leen como mensuales, no como totales de por vida.
+ */
+export type Alcance = 'unica' | 'mensual'
+
 export interface DefinicionMedalla {
   clave: string
+  alcance: Alcance
   titulo: string
   capitulo: Capitulo
   rareza: Rareza
@@ -99,9 +107,14 @@ export const RANGOS: Rango[] = [
   { titulo: 'Puntada invisible', desde: 115, glosa: 'La más difícil: la que no se nota.' },
 ]
 
+/**
+ * Puntos del rango global. Cuenta medallas DISTINTAS: las repeticiones suman
+ * nivel, no puntos. Si sumaran, el rango máximo llegaría solo con el tiempo y
+ * dejaría de significar algo — amplitud y profundidad son ejes separados.
+ */
 export function puntosDe(claves: string[]): number {
   const porClave = new Map(MEDALLAS.map(m => [m.clave, m]))
-  return claves.reduce((t, c) => {
+  return [...new Set(claves)].reduce((t, c) => {
     const m = porClave.get(c)
     return t + (m ? PUNTOS_POR_RAREZA[m.rareza] : 0)
   }, 0)
@@ -125,103 +138,120 @@ export function rangoDe(puntos: number): { actual: Rango; siguiente: Rango | nul
 
 export const MEDALLAS: DefinicionMedalla[] = [
   // ── I · Hilvanar ──────────────────────────────────────────────────────────
-  { clave: 'primer_contacto', titulo: 'La primera puntada', capitulo: 'hilvanar', rareza: 'comun',
+  { clave: 'primer_contacto', alcance: 'unica', titulo: 'La primera puntada', capitulo: 'hilvanar', rareza: 'comun',
     criterio: 'Registrar tu primer contacto.' },
-  { clave: 'diez_marcas', titulo: 'Diez telas', capitulo: 'hilvanar', rareza: 'comun',
+  { clave: 'diez_marcas', alcance: 'mensual', titulo: 'Diez telas', capitulo: 'hilvanar', rareza: 'comun',
     criterio: 'Tocar 10 marcas distintas.',
     nota: 'Cuentan las marcas, no los toques: diez contactos a una sola marca no es esto.' },
-  { clave: 'cuatro_canales', titulo: 'Todas las agujas', capitulo: 'hilvanar', rareza: 'comun',
+  { clave: 'cuatro_canales', alcance: 'mensual', titulo: 'Todas las agujas', capitulo: 'hilvanar', rareza: 'comun',
     criterio: 'Usar los cuatro canales: correo, llamada, mensaje y reunión.' },
-  { clave: 'primera_reunion', titulo: 'Cara a cara', capitulo: 'hilvanar', rareza: 'dificil',
+  { clave: 'primera_reunion', alcance: 'unica', titulo: 'Cara a cara', capitulo: 'hilvanar', rareza: 'dificil',
     criterio: 'Registrar tu primera reunión.' },
-  { clave: 'primer_frio', titulo: 'Sin red', capitulo: 'hilvanar', rareza: 'comun',
+  { clave: 'primer_frio', alcance: 'unica', titulo: 'Sin red', capitulo: 'hilvanar', rareza: 'comun',
     criterio: 'Tocar tu primer prospecto nacido en frío.',
     nota: 'Nadie levantó la mano: escribes tú primero.' },
 
   // ── II · La trama ─────────────────────────────────────────────────────────
-  { clave: 'diez_contactos', titulo: 'Mano firme', capitulo: 'trama', rareza: 'comun',
+  { clave: 'diez_contactos', alcance: 'mensual', titulo: 'Mano firme', capitulo: 'trama', rareza: 'comun',
     criterio: 'Registrar 10 contactos.' },
-  { clave: 'cincuenta_contactos', titulo: 'Cincuenta', capitulo: 'trama', rareza: 'dificil',
+  { clave: 'cincuenta_contactos', alcance: 'mensual', titulo: 'Cincuenta', capitulo: 'trama', rareza: 'dificil',
     criterio: 'Registrar 50 contactos.' },
-  { clave: 'cien_contactos', titulo: 'Cien puntadas', capitulo: 'trama', rareza: 'rara',
+  { clave: 'cien_contactos', alcance: 'unica', titulo: 'Cien puntadas', capitulo: 'trama', rareza: 'rara',
     criterio: 'Registrar 100 contactos.',
     nota: 'La constancia es la parte difícil, no el arranque.' },
-  { clave: 'quinientos_contactos', titulo: 'Tejedora', capitulo: 'trama', rareza: 'legendaria',
+  { clave: 'quinientos_contactos', alcance: 'unica', titulo: 'Tejedora', capitulo: 'trama', rareza: 'legendaria',
     criterio: 'Registrar 500 contactos.' },
-  { clave: 'veinte_dias', titulo: 'Veinte jornadas', capitulo: 'trama', rareza: 'dificil',
+  { clave: 'veinte_dias', alcance: 'mensual', titulo: 'Veinte jornadas', capitulo: 'trama', rareza: 'dificil',
     criterio: 'Registrar algo en 20 días distintos.',
     nota: 'No tienen que ser seguidos. Faltar no rompe nada.' },
-  { clave: 'cincuenta_dias', titulo: 'Cincuenta jornadas', capitulo: 'trama', rareza: 'rara',
+  { clave: 'cincuenta_dias', alcance: 'unica', titulo: 'Cincuenta jornadas', capitulo: 'trama', rareza: 'rara',
     criterio: 'Registrar algo en 50 días distintos.' },
-  { clave: 'no_soltar', titulo: 'No soltar', capitulo: 'trama', rareza: 'dificil',
+  { clave: 'no_soltar', alcance: 'unica', titulo: 'No soltar', capitulo: 'trama', rareza: 'dificil',
     criterio: 'Llevar una marca hasta el contacto 16.',
     nota: 'El tope del mapa de calor de la tarjeta.' },
-  { clave: 'treinta_marcas', titulo: 'Treinta telas', capitulo: 'trama', rareza: 'dificil',
+  { clave: 'treinta_marcas', alcance: 'mensual', titulo: 'Treinta telas', capitulo: 'trama', rareza: 'dificil',
     criterio: 'Tocar 30 marcas distintas.' },
-  { clave: 'cobertura', titulo: 'Nadie olvidado', capitulo: 'trama', rareza: 'rara',
+  { clave: 'cobertura', alcance: 'mensual', titulo: 'Nadie olvidado', capitulo: 'trama', rareza: 'rara',
     criterio: 'Tener al menos un contacto registrado en el 80% de tu cartera.',
     nota: 'Mide cobertura, no volumen: se gana atendiendo a todos, no insistiéndole a pocos.' },
-  { clave: 'ambas_temperaturas', titulo: 'Frío y tibio', capitulo: 'trama', rareza: 'comun',
+  { clave: 'ambas_temperaturas', alcance: 'mensual', titulo: 'Frío y tibio', capitulo: 'trama', rareza: 'comun',
     criterio: 'Tocar prospectos nacidos en frío y prospectos entrantes.' },
 
   // ── III · La costura ──────────────────────────────────────────────────────
-  { clave: 'primera_respuesta', titulo: 'Del otro lado', capitulo: 'costura', rareza: 'comun',
+  { clave: 'primera_respuesta', alcance: 'unica', titulo: 'Del otro lado', capitulo: 'costura', rareza: 'comun',
     criterio: 'Que una marca responda a un contacto tuyo.' },
-  { clave: 'cinco_responden', titulo: 'Cinco voces', capitulo: 'costura', rareza: 'dificil',
+  { clave: 'cinco_responden', alcance: 'mensual', titulo: 'Cinco voces', capitulo: 'costura', rareza: 'dificil',
     criterio: 'Que 5 marcas distintas te respondan.' },
-  { clave: 'quince_responden', titulo: 'Quince voces', capitulo: 'costura', rareza: 'rara',
+  { clave: 'quince_responden', alcance: 'unica', titulo: 'Quince voces', capitulo: 'costura', rareza: 'rara',
     criterio: 'Que 15 marcas distintas te respondan.' },
-  { clave: 'tasa_veinte', titulo: 'Uno de cinco', capitulo: 'costura', rareza: 'dificil',
+  { clave: 'tasa_veinte', alcance: 'mensual', titulo: 'Uno de cinco', capitulo: 'costura', rareza: 'dificil',
     criterio: '20% de tus contactos con respuesta, sobre al menos 20 contactos.',
     nota: 'Porcentual: mejora escribiendo mejor, no escribiendo más.' },
-  { clave: 'tasa_treinta', titulo: 'Uno de tres', capitulo: 'costura', rareza: 'legendaria',
+  { clave: 'tasa_treinta', alcance: 'mensual', titulo: 'Uno de tres', capitulo: 'costura', rareza: 'legendaria',
     criterio: '33% de respuesta, sobre al menos 30 contactos.' },
-  { clave: 'primer_cierre', titulo: 'Costura firme', capitulo: 'costura', rareza: 'rara',
+  { clave: 'primer_cierre', alcance: 'unica', titulo: 'Costura firme', capitulo: 'costura', rareza: 'rara',
     criterio: 'Que un prospecto tuyo llegue a Confirmado.' },
-  { clave: 'tres_cierres', titulo: 'Tres costuras', capitulo: 'costura', rareza: 'legendaria',
+  { clave: 'tres_cierres', alcance: 'unica', titulo: 'Tres costuras', capitulo: 'costura', rareza: 'legendaria',
     criterio: 'Cerrar 3 prospectos.' },
-  { clave: 'frio_a_cierre', titulo: 'De la nada', capitulo: 'costura', rareza: 'legendaria',
+  { clave: 'frio_a_cierre', alcance: 'unica', titulo: 'De la nada', capitulo: 'costura', rareza: 'legendaria',
     criterio: 'Cerrar un prospecto que había nacido en frío.',
     nota: 'Lo más difícil del módulo: nadie había levantado la mano.' },
 
   // ── IV · El taller ────────────────────────────────────────────────────────
   // Todas se atribuyen por `created_by` de su tabla, salvo las que se indican.
-  { clave: 'primera_cotizacion', titulo: 'El primer número', capitulo: 'taller', rareza: 'comun',
+  { clave: 'primera_cotizacion', alcance: 'unica', titulo: 'El primer número', capitulo: 'taller', rareza: 'comun',
     criterio: 'Crear tu primera cotización.' },
-  { clave: 'diez_cotizaciones', titulo: 'Diez presupuestos', capitulo: 'taller', rareza: 'dificil',
+  { clave: 'diez_cotizaciones', alcance: 'unica', titulo: 'Diez presupuestos', capitulo: 'taller', rareza: 'dificil',
     criterio: 'Crear 10 cotizaciones.' },
-  { clave: 'cotizacion_aprobada', titulo: 'Aprobada', capitulo: 'taller', rareza: 'rara',
+  { clave: 'cotizacion_aprobada', alcance: 'unica', titulo: 'Aprobada', capitulo: 'taller', rareza: 'rara',
     criterio: 'Que una cotización tuya sea aprobada.' },
-  { clave: 'primer_rodaje', titulo: 'Acción', capitulo: 'taller', rareza: 'comun',
+  { clave: 'primer_rodaje', alcance: 'unica', titulo: 'Acción', capitulo: 'taller', rareza: 'comun',
     criterio: 'Crear tu primer rodaje.' },
-  { clave: 'cinco_rodajes', titulo: 'Cinco claquetas', capitulo: 'taller', rareza: 'dificil',
+  { clave: 'cinco_rodajes', alcance: 'unica', titulo: 'Cinco claquetas', capitulo: 'taller', rareza: 'dificil',
     criterio: 'Crear 5 rodajes.' },
-  { clave: 'primer_cliente', titulo: 'Casa nueva', capitulo: 'taller', rareza: 'comun',
+  { clave: 'primer_cliente', alcance: 'unica', titulo: 'Casa nueva', capitulo: 'taller', rareza: 'comun',
     criterio: 'Dar de alta un cliente.' },
-  { clave: 'primera_reserva', titulo: 'Salió del rack', capitulo: 'taller', rareza: 'comun',
+  { clave: 'primera_reserva', alcance: 'unica', titulo: 'Salió del rack', capitulo: 'taller', rareza: 'comun',
     criterio: 'Crear tu primera reserva de rental.' },
-  { clave: 'reserva_aprobada', titulo: 'Con tu firma', capitulo: 'taller', rareza: 'dificil',
+  { clave: 'reserva_aprobada', alcance: 'unica', titulo: 'Con tu firma', capitulo: 'taller', rareza: 'dificil',
     criterio: 'Aprobar una reserva de rental.' },
-  { clave: 'primera_rendicion', titulo: 'Cuentas claras', capitulo: 'taller', rareza: 'comun',
+  { clave: 'primera_rendicion', alcance: 'unica', titulo: 'Cuentas claras', capitulo: 'taller', rareza: 'comun',
     criterio: 'Cargar tu primer gasto en la rendición mensual.' },
-  { clave: 'calendario_limpio', titulo: 'Todo en su lugar', capitulo: 'taller', rareza: 'dificil',
+  { clave: 'calendario_limpio', alcance: 'mensual', titulo: 'Todo en su lugar', capitulo: 'taller', rareza: 'dificil',
     criterio: 'Clasificar 20 eventos del calendario.' },
-  { clave: 'oficio_completo', titulo: 'El oficio completo', capitulo: 'taller', rareza: 'legendaria',
+  { clave: 'oficio_completo', alcance: 'unica', titulo: 'El oficio completo', capitulo: 'taller', rareza: 'legendaria',
     criterio: 'Haber hecho algo en CRM, cotizaciones, rodaje y rental.',
     nota: 'La única que no se gana especializándose.' },
 
   // ── Sorpresas ─────────────────────────────────────────────────────────────
   // Todas se ganan trabajando normal. Ninguna pide hacer algo raro a propósito,
   // y ninguna premia inflar el contador.
-  { clave: 'madrugar', titulo: 'Antes que nadie', capitulo: 'trama', rareza: 'dificil', oculta: true,
+  { clave: 'madrugar', alcance: 'mensual', titulo: 'Antes que nadie', capitulo: 'trama', rareza: 'dificil', oculta: true,
     criterio: 'Registrar un contacto antes de las 8 de la mañana.' },
-  { clave: 'jornada_llena', titulo: 'Buena mañana', capitulo: 'trama', rareza: 'comun', oculta: true,
+  { clave: 'jornada_llena', alcance: 'mensual', titulo: 'Buena mañana', capitulo: 'trama', rareza: 'comun', oculta: true,
     criterio: 'Registrar 5 contactos en un mismo día.' },
-  { clave: 'a_la_primera', titulo: 'A la primera', capitulo: 'costura', rareza: 'rara', oculta: true,
+  { clave: 'a_la_primera', alcance: 'mensual', titulo: 'A la primera', capitulo: 'costura', rareza: 'rara', oculta: true,
     criterio: 'Que una marca responda a tu primer contacto con ella.' },
-  { clave: 'una_semana_viva', titulo: 'Semana entera', capitulo: 'trama', rareza: 'dificil', oculta: true,
+  { clave: 'una_semana_viva', alcance: 'mensual', titulo: 'Semana entera', capitulo: 'trama', rareza: 'dificil', oculta: true,
     criterio: 'Registrar algo cinco días distintos dentro de una misma semana.' },
 ]
+
+/**
+ * Meses ganados a los que el emblema gana presencia. Doce es un año entero
+ * ganando la misma medalla: eso sí merece verse distinto.
+ */
+export const HITOS_NIVEL = [3, 6, 12]
+
+export function nivelDe(veces: number): 0 | 1 | 2 | 3 {
+  if (veces >= 12) return 3
+  if (veces >= 6) return 2
+  if (veces >= 3) return 1
+  return 0
+}
+
+export function esMensual(clave: string): boolean {
+  return MEDALLAS.find(m => m.clave === clave)?.alcance === 'mensual'
+}
 
 export const RAREZA_LABEL: Record<Rareza, string> = {
   comun:      '',           // lo común no se anuncia
