@@ -29,7 +29,7 @@ export const EMBLEMAS: Record<string, string> = {
   // Cuatro agujas en abanico
   cuatro_canales: 'M12 21V10M12 21l-5-4M12 21l5-4M12 10L7 5M12 10l5-5M12 10V3',
   // Dos sillas frente a frente
-  primera_reunion: 'M4 20v-5a2 2 0 0 1 2-2h1v-4h2v4M20 20v-5a2 2 0 0 0-2-2h-1v-4h-2v4M11 16h2',
+  primera_reunion: 'M7 8h10v8H7zM2.4 12a1.8 1.8 0 1 0 3.6 0 1.8 1.8 0 1 0-3.6 0M18 12a1.8 1.8 0 1 0 3.6 0 1.8 1.8 0 1 0-3.6 0',
   // Salto al vacío
   primer_frio: 'M12 3v10m0 0l-3.5-3.5M12 13l3.5-3.5M4 17c2 2 4 2 6 0s4-2 6 0 4 2 4 2',
 
