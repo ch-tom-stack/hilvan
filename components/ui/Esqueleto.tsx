@@ -14,6 +14,8 @@ export default function Esqueleto({
   filas = 5,
   metricas = 0,
   columnas,
+  campos,
+  ficha,
 }: {
   /** El epígrafe del módulo. Se muestra de verdad: ya sabemos dónde estamos. */
   titulo: string
@@ -22,6 +24,14 @@ export default function Esqueleto({
   metricas?: number
   /** Columnas tipo Kanban en vez de filas. */
   columnas?: number
+  /**
+   * Campos de formulario en vez de filas. Las pantallas de edición cargan el
+   * registro antes de poder pintar nada: sin esto quedan en blanco igual que
+   * las listas.
+   */
+  campos?: number
+  /** Ficha: un encabezado grande y bloques, no una lista pareja. */
+  ficha?: boolean
 }) {
   return (
     <div className="p-6 lg:p-10">
@@ -44,7 +54,38 @@ export default function Esqueleto({
         </div>
       )}
 
-      {columnas ? (
+      {campos ? (
+        <div className="max-w-2xl space-y-5">
+          {Array.from({ length: campos }).map((_, i) => (
+            <div key={i} style={{ ['--i' as string]: i }}>
+              <div className="h-2 w-24 ch-shimmer mb-2" />
+              <div className="h-9 w-full ch-shimmer" />
+            </div>
+          ))}
+          <div className="h-10 w-32 ch-shimmer" />
+        </div>
+      ) : ficha ? (
+        <div className="max-w-4xl">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pb-8 mb-8 border-b border-ch-border">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} style={{ ['--i' as string]: i }}>
+                <div className="h-2 w-16 ch-shimmer mb-2" />
+                <div className="h-7 w-full ch-shimmer" />
+              </div>
+            ))}
+          </div>
+          <div className="grid lg:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} style={{ ['--i' as string]: i + 4 }} className="border border-ch-border p-5">
+                <div className="h-2.5 w-28 ch-shimmer mb-4" />
+                <div className="h-3 w-full ch-shimmer mb-2" />
+                <div className="h-3 w-4/5 ch-shimmer mb-2" />
+                <div className="h-3 w-2/3 ch-shimmer" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : columnas ? (
         <div className="flex gap-3 overflow-hidden">
           {Array.from({ length: columnas }).map((_, i) => (
             <div key={i} style={{ ['--i' as string]: i * 2 }} className="flex-1 min-w-[180px] border border-ch-border p-2 space-y-2">

@@ -1,0 +1,5 @@
+import Esqueleto from '@/components/ui/Esqueleto'
+
+export default function Cargando() {
+  return <Esqueleto titulo="Equipos · editar" campos={8} />
+}
