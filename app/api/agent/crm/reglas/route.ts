@@ -4,7 +4,7 @@ import { leerReglas, CLAVES_REGLA, type ClaveRegla } from '@/lib/crm-reglas'
 
 export const runtime = 'nodejs'
 
-// GET /api/agent/crm/reglas?doc=correos|cadencia|reparto
+// GET /api/agent/crm/reglas?doc=correos|cadencia|reparto|misiones
 //
 // Las reglas del CRM, servidas desde el repo. Solo LECTURA.
 //

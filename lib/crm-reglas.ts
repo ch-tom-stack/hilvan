@@ -17,6 +17,7 @@ export const DOCS_REGLAS = {
   correos:  'reglas-correos.md',
   cadencia: 'reglas-cadencia.md',
   reparto:  'reglas-reparto.md',
+  misiones: 'reglas-misiones.md',
 } as const
 
 export type ClaveRegla = keyof typeof DOCS_REGLAS

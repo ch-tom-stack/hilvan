@@ -1,13 +1,9 @@
 # Misiones — guía
 
 > **Esto es una guía, no un sistema estricto.** Sirve para orientar a quien
-> escribe una misión —el operador o Tomás—, no para autorizarla. Una buena
-> misión que no calce con nada de acá sigue siendo una buena misión: si el
-> documento y el criterio se contradicen, manda el criterio, y después se
-> corrige el documento.
->
-> **Estado: diseño en curso.** Mientras diga esto, el operador no genera
-> misiones: falta definir qué es la semanal y cómo participa Tomás en crearlas.
+> escribe una misión, no para autorizarla. Una buena misión que no calce con
+> nada de acá sigue siendo una buena misión: si el documento y el criterio se
+> contradicen, manda el criterio, y después se corrige el documento.
 
 ## Qué es una misión
 
@@ -20,18 +16,72 @@ llamada, una conversación, dejar un archivo ordenado en otra parte.
 
 ## Lo poco que es firme
 
-Son cuatro cosas, y están acá porque protegen a la persona que recibe la misión.
+Cinco cosas, y están acá porque protegen a la persona que recibe la misión.
 Todo lo demás en este documento es orientación.
 
-1. **La misión no cumplida vence.** No se arrastra, no se acumula, no se
+1. **La misión termina donde termina tu control.** Enviar depende de ti; que
+   respondan, no. Proponer una reunión depende de ti; que la acepten, no. Una
+   misión que solo se cumple si un tercero coopera es una trampa: la persona
+   hace todo bien y aun así falla. *Nunca* "consigue una reunión"; sí "deja
+   enviadas las tres propuestas".
+2. **La misión no cumplida vence.** No se arrastra, no se acumula, no se
    reprograma. Un tablero que crece es una máquina de culpa y deja de leerse.
-2. **Vencer es silencioso.** Sin aviso, sin reproche, sin registro visible para
+3. **Vencer es silencioso.** Sin aviso, sin reproche, sin registro visible para
    nadie. La misión simplemente ya no está.
-3. **En el día libre no llega misión diaria**, y la del día hábil anterior no
+4. **En el día libre no llega misión diaria**, y la del día hábil anterior no
    muere por haber pasado ese día. El vencimiento se cuenta en días hábiles de
    esa persona, no en días de calendario: la misión del lunes de Natalia sigue
    viva el miércoles.
-4. **Diego, FOCH e Ignacio no reciben misiones.** No tienen responsabilidades.
+5. **Diego, FOCH e Ignacio no reciben misiones.** No tienen responsabilidades.
+
+## Cómo se proponen
+
+- **El operador propone opciones, no una misión.** Para cada espacio trae dos o
+  tres alternativas con una recomendada y el porqué. Tomás elige, edita o
+  escribe la suya.
+- **La semana se genera completa y por adelantado.**
+- **Todo es editable en cualquier momento**, incluso en medio de la vuelta
+  diaria: la de mañana y la que ya se entregó.
+
+## Cómo se escribe una buena misión
+
+- **Pide un resultado, no un gesto.** "Elige uno y escríbele" es un gesto.
+  "Tus 15 detenidos: hoy decides cuáles siguen y cuáles se enfrían" es un
+  resultado.
+- **Que sea ambiciosa.** El techo bajo no protege a nadie; aburre.
+- **Trae guía para partir.** Sobre todo cuando la misión es de un área que la
+  persona todavía está definiendo. Decir "define el área" sin decir por dónde se
+  empieza es abandonar a alguien con una hoja en blanco.
+- **Contar no basta: verifica que siga vivo.** Una consulta que devuelve 2
+  reservas "pendientes" puede ser sedimento de hace tres meses, con fechas ya
+  pasadas y sin cliente. Cuenta y además comprueba que la acción todavía tenga
+  sentido hoy. El conteo verdadero produce misiones falsas.
+
+## Diarias y semanales
+
+- **La diaria mueve algo.**
+- **La semanal es del área propia de cada uno** —el tema que esa persona está
+  construyendo—, no del trabajo corriente. Y no es la suma de las diarias: el
+  criterio para reconocerla es que no se pueda partir en siete pedazos sin
+  perder el sentido.
+- **Cuando el área todavía no tiene estrategia, la semanal es una progresión, no
+  un ciclo.** No se puede pedir entrega semanal de algo que aún no está
+  definido: las primeras semanas construyen la estrategia que las siguientes van
+  a ejecutar.
+- **Formación:** conviene que entren metas educativas — Despega Creativo, Shoot
+  First Academy o cualquier literatura que sirva. Siempre con un producto que
+  dependa de la persona ("trae una frase que puedas usar"), no con horas de
+  consumo.
+
+## Avances del área
+
+Cada dos semanas, no cada semana. Si se pide avance semanal de un área que
+todavía no saben cómo enfrentar, la misión se convierte en un recordatorio
+quincenal de que van atrasados.
+
+El avance **se le muestra al equipo**, no se le reporta a Tomás. Eso lo mantiene
+como trabajo compartido y no como rendición de cuentas — que es la diferencia
+entre que quieran hacerlo o no.
 
 ## Jornadas
 
@@ -52,9 +102,9 @@ que se muevan.
 | Área | Quién | |
 |---|---|---|
 | CRM y respuesta a prospectos | Natalia, Simón | **Lo primero hoy para ambos.** Tomás opera un segmento chico —las reglas de criterio más raro en [`reglas-reparto.md`](reglas-reparto.md)— además de revisar. |
-| Contenidos culturales | Natalia | Área en formación: la está generando ella. |
+| **Contenidos culturales** | Natalia | Su área. **Son instituciones culturales como clientes** —museos, fundaciones, festivales, centros culturales—, no contenido que produzcamos por cuenta propia. |
+| **Asistencia a estudiantes** | Simón | Su área. |
 | Producción | Natalia | En ocasiones. |
-| Asistencia a estudiantes | Simón | |
 | Rental | Simón | |
 | Montaje | Simón, principalmente | Natalia y Tomás también montan; el montaje final es de Tomás. |
 | Propuesta de contenidos | Natalia, Simón | |
@@ -65,22 +115,18 @@ que se muevan.
 | Desarrollo de herramientas | Tomás | Hilván, Atelier, Bastidor. |
 | Proyectos propios | Josué | Sin CRM — ver abajo. |
 
-Natalia y Simón tienen acceso a Despega Creativo y Shoot First Academy. Es un
-insumo posible para misiones de formación, no una obligación que cumplir.
+Natalia y Simón tienen acceso a Despega Creativo y Shoot First Academy.
 
 ## De dónde puede salir una misión
 
 - **Hilván** — cotizaciones, rodajes, rental, financiero, CRM.
 - **El operador de CRM** — cadencia, seguimientos, correos pendientes. Ver
   [`reglas-cadencia.md`](reglas-cadencia.md) y [`reglas-correos.md`](reglas-correos.md).
-- **Atelier y Bastidor** — cuando existan. Van a alimentar al operador con lo que
-  Hilván no tiene.
+- **Atelier y Bastidor** — cuando existan.
 - **De ninguna de las anteriores.** Por el honor system, una misión puede nacer
   de una conversación o de algo que solo Tomás sabe.
 
 ## Lo que la app sabe y lo que no
-
-Útil para escribir misiones de CRM que apunten bien:
 
 - **La pertenencia está instrumentada.** Los 58 prospectos tienen responsable:
   Natalia 35, Simón 21, Tomás 2. Se puede apuntar con precisión a los de una
@@ -89,15 +135,47 @@ insumo posible para misiones de formación, no una obligación que cumplir.
   **sin autor** — las cargó el operador. No hay forma de saber si actuó la
   persona o el agente en su nombre.
 
-De ahí la fórmula: **la app apunta, la persona declara.** Se puede decir "12 de
-tus 35 prospectos llevan diez días sin movimiento" con total exactitud, y no se
-puede verificar que los haya movido. Está bien: para eso es el honor system.
+De ahí la fórmula: **la app apunta, la persona declara.**
 
-El mismo hueco explica por qué el honor system era necesario. En 60 días la app
-registró por persona casi solo cotizaciones —Tomás 25, Josué 3, Natalia 2,
-Simón 2— y 71 gastos entraron sin autor. Si la misión dependiera de lo que queda
-escrito, solo Tomás tendría misiones; no porque haga todo, sino porque lo suyo es
-lo único instrumentado.
+---
+
+# Ejemplo aprobado — una semana
+
+Aprobado por Tomás. Sirve de referencia de tono, tamaño y ambición; no es una
+plantilla que haya que repetir.
+
+## Natalia — instituciones culturales
+
+| Semana | Misión | Guía para partir |
+|---|---|---|
+| **1** | Levanta el mapa: qué instituciones culturales en Chile encargan audiovisual, con nombre, qué produjeron el último año y quién decide. | Parte por las que ya conocemos y por las que viste produciendo algo bueno. |
+| **2** | De ese mapa, a cuáles le sirve Casa Hiedra y a cuáles no. | Lo que descartas importa tanto como lo que dejas: escribe el porqué de cada descarte. |
+| **3** | Cómo compran: cuáles licitan, cuáles contratan directo, cuáles tienen presupuesto anual y cuándo se define. | Esto decide *cuándo* golpear la puerta, no *si*. Un museo con presupuesto que se fija en octubre no se contacta en marzo. |
+| **4** | La propuesta base: qué le ofrece Casa Hiedra a una institución cultural, con qué formatos y en qué rango de precio. | El rango importa — los presupuestos culturales no son los de marca. |
+
+| Diarias |
+|---|
+| Tus 15 detenidos hace más de diez días: revísalos hoy y decide cuáles siguen y cuáles se enfrían. |
+| De tus 11 sin primer contacto, escribe y **envía** el primer correo a cinco. |
+| Tus 6 conversaciones abiertas quedan hoy las 6 con próximo paso y fecha. |
+| **Formación:** una hora de Despega Creativo sobre posicionamiento. Trae una frase con la que presentarías el área a un museo. |
+
+## Simón — asistencia a estudiantes
+
+| Semana | Misión | Guía para partir |
+|---|---|---|
+| **1** | Define el área con tres preguntas: qué necesita un estudiante de audiovisual que hoy no tiene; qué de eso puede dar Casa Hiedra sin restarle tiempo a producción; y quién paga —el estudiante, la universidad, o nadie y es inversión de marca. | La tercera decide si esto es un negocio o una marca. Contéstala aunque no te guste la respuesta. |
+| **2** | Universidades y carreras objetivo: cuáles tienen audiovisual, cine o comunicación, cuántos alumnos, y quién es la persona concreta que decide. | Parte por la tuya, donde ya sabes cómo funciona por dentro. |
+| **3** | La oferta escrita: qué incluye, cuánto dura, cuánto cuesta y qué gana Casa Hiedra. | Si no puedes decir qué gana Casa Hiedra, la oferta todavía no está lista. |
+| **4** | Deja **enviadas** las propuestas a tres universidades. | |
+
+| Diarias |
+|---|
+| Tus 21 están todos en *contacto* y ninguno avanzó nunca. Elige los tres con más futuro y escríbeles hoy lo que haga falta para moverlos. |
+| Universidad Católica, Desigual y Enko llevan 16 días: las tres tienen respuesta enviada hoy, o se enfrían. |
+| **Formación:** media hora de Shoot First Academy sobre montaje, y aplica una cosa al corte que tienes en mano. |
+
+---
 
 ## Dos casos que no calzan con el mecanismo
 
@@ -128,17 +206,14 @@ Cada persona ve las suyas. Tomás ve las de todos y participa en crearlas.
 
 Al iniciar sesión, como aviso, y en `/perfil` junto al resto de los logros.
 
-## Diarias y semanales
-
-La semanal **no es la suma de las diarias**: es otra cosa. El criterio para
-reconocerla es que no se pueda partir en siete pedazos sin perder el sentido.
-
 ## Todavía sin decidir
 
-1. **Qué es la misión semanal.**
-2. **Cómo participa Tomás en la creación** — si aprueba borradores del operador,
-   si las escribe él, o ambas.
-3. **La forma del aviso al iniciar sesión.**
-4. **Si las misiones dan medallas.** Conviene decidirlo tarde: el sistema de
+1. **La forma del aviso al iniciar sesión.**
+2. **Si las misiones dan medallas.** Conviene decidirlo tarde: el sistema de
    medallas ya funciona solo, y acoplarlos temprano hace difícil cambiar
    cualquiera de los dos. Ver [`gamificacion.md`](gamificacion.md).
+3. **Dónde se guardan.** Que la semana se genere por adelantado y sea editable
+   en cualquier momento implica que las misiones son **registros en base de
+   datos**, no un texto que el operador redacta cada mañana: necesitan tabla
+   propia. Mientras no exista, el operador las **propone en su reporte** y
+   Tomás las elige a mano.

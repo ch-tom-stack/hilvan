@@ -10,7 +10,7 @@ dedicado, distinto al operador general de Hilván).
 > nada.
 >
 > `npm run brief:crm` sigue existiendo como **respaldo**: imprime el prompt con
-> las tres reglas incluidas, para una sesión que no tenga el MCP de Hilván.
+> las cuatro reglas incluidas, para una sesión que no tenga el MCP de Hilván.
 
 ---
 
@@ -21,12 +21,15 @@ a quién contactar, con el contexto investigado y el borrador escrito.
 
 ## Lo primero de cada corrida: leer las reglas
 
-Llama **`hilvan_reglas_crm`** antes de tocar nada. Devuelve las tres reglas
+Llama **`hilvan_reglas_crm`** antes de tocar nada. Devuelve las cuatro reglas
 vigentes, tal como están en el repo:
 
 - **correos** — qué y cómo se escribe. **Obligatorio antes de redactar.**
 - **cadencia** — cuándo toca el próximo contacto.
 - **reparto** — de quién es cada prospecto.
+- **misiones** — cómo se proponen las misiones diarias y semanales del equipo.
+  **Obligatorio antes del paso 4.** Es una guía, no un reglamento: si tu criterio
+  y el documento se contradicen, manda tu criterio y dilo en el reporte.
 
 Son la fuente de verdad y **cambian**: no trabajes de memoria, de intuición, ni
 de lo que recuerdes de una sesión anterior. Si la herramienta falla o reporta
@@ -95,7 +98,32 @@ ahí escala. Ya con el tono validado se puede correr más de una tanda seguida.
 Aplica las **reglas de correos** al pie de la letra, incluido su checklist
 final antes de guardar cada borrador.
 
-### 4 · Disparar el digest
+### 4 · Proponer las misiones del día
+
+Lee primero la regla **misiones** — está toda ahí, incluido un ejemplo aprobado
+de una semana completa. Lo esencial de la mecánica:
+
+- **Propones opciones, no una misión.** Para cada persona trae **dos o tres
+  alternativas**, marca una como recomendada y di por qué. Tomás elige, edita o
+  escribe la suya.
+- **Los lunes propones la semana completa** de cada persona, además de la del
+  día. El resto de los días, solo la diaria y los ajustes que veas necesarios.
+- **Respeta las jornadas.** Natalia no recibe misión el martes; Simón no recibe
+  el viernes. Y una misión suya del día hábil anterior sigue viva durante ese
+  día libre: no la des por vencida ni la repitas.
+- **Nunca propongas algo que dependa de un tercero.** "Consigue una reunión"
+  está mal —depende del prospecto y frustra—; "deja enviadas las tres
+  propuestas" está bien. Es la regla que más se rompe sola: revísala antes de
+  entregar.
+- **Cuenta y además comprueba.** Que una consulta devuelva 2 pendientes no
+  significa que haya trabajo: pueden ser registros viejos con fechas ya pasadas.
+  Verifica que la acción todavía tenga sentido hoy.
+
+**Dónde van:** por ahora, **en tu reporte** — no existe todavía tabla de
+misiones en Hilván, así que no hay herramienta que llamar. Cuando exista, esta
+sección cambia.
+
+### 5 · Disparar el digest
 Al terminar todo lo anterior, llama `hilvan_digest_matinal` (sin parámetros).
 **Siempre al final:** el correo tiene que salir después del reparto. Hay un cron
 de respaldo a las 10:30 que se desactiva solo si tú ya lo mandaste.
@@ -124,4 +152,6 @@ de respaldo a las 10:30 que se desactiva solo si tú ya lo mandaste.
 1. Correos cotejados y registrados (cuántos, cuántas respuestas nuevas).
 2. Clasificados y a quién quedó cada uno.
 3. Borradores dejados listos.
-4. Qué NO pudiste resolver y por qué.
+4. **Misiones propuestas**, con las dos o tres opciones de cada persona y cuál
+   recomiendas. Los lunes, también la semana completa.
+5. Qué NO pudiste resolver y por qué.

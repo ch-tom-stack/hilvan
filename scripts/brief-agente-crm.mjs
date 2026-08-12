@@ -19,7 +19,7 @@ const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DOCS = join(RAIZ, 'docs', 'crm')
 
 const PROMPT = 'AGENTE-CRM.md'
-const REGLAS = ['reglas-correos.md', 'reglas-cadencia.md', 'reglas-reparto.md']
+const REGLAS = ['reglas-correos.md', 'reglas-cadencia.md', 'reglas-reparto.md', 'reglas-misiones.md']
 
 function leer(nombre) {
   try {
