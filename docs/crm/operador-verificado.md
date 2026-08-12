@@ -124,6 +124,8 @@ barrido está completo.
 | `hilvan_registrar_interaccion` | Toques NUESTROS. Acepta fecha pasada (clave para backfill), tipo, resumen, `gmail_thread` (trazabilidad al hilo) y próximo paso. |
 | `hilvan_registrar_respuesta` | Mensajes RECIBIDOS. No corre la escalera; marca respondido el mensaje al que contesta. Guardar el cuerpo importa: ahí está la objeción. |
 | `hilvan_bitacora` | La conversación por líneas, con `direccion` y `quien`. Sin ella no se distingue "le escribimos 3 veces" de "nos escribieron 3 veces". |
+| `hilvan_notas_leer` | Las notas sueltas + el dossier de La Lectura. Reemplazan al campo `prospectos.notas`, que quedó vacío. Léelas antes de redactar. |
+| `hilvan_nota_escribir` | Una nota por tema. `bloqueada: true` la congela como registro: no se edita después, sólo se borra. |
 | `hilvan_hilo` | Abrir una línea cierra la vigente y reinicia la cadencia. Para contraparte nueva o marca retomada tras meses. |
 | `hilvan_editar_interaccion` | Corrige lo ya registrado. Poner `gmail_thread` en las cargadas a mano evita que el cotejo las duplique en cada corrida. |
 | `hilvan_solicitar_asignacion` | Deja una propuesta en la Bandeja; no reasigna. `para` = email, falla si no calza. |
