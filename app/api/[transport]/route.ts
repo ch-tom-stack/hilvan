@@ -1651,6 +1651,38 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_misiones_listar',
+      {
+        title: 'Misiones cargadas',
+        description: 'Las misiones que Tomás YA eligió y están cargadas en Hilván, con si la persona las declaró cumplidas. Sin parámetros trae la semana en curso; desde=YYYY-MM-DD trae desde esa fecha. LLÁMALA ANTES de proponer: sin esto vuelves a proponer espacios que ya están tomados. `cumplida` es solo lectura — la marca la persona en la app, nunca tú.',
+        inputSchema: { desde: z.string().optional() },
+      },
+      async ({ desde }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/misiones${desde ? `?desde=${encodeURIComponent(desde)}` : ''}`)),
+    )
+
+    server.registerTool(
+      'hilvan_misiones_crear',
+      {
+        title: 'Cargar misiones elegidas',
+        description: 'Carga las misiones que Tomás YA ELIGIÓ, para que aparezcan en el dashboard y el perfil de cada persona. NO cargues opciones ni propuestas: tú propones dos o tres alternativas en tu reporte, Tomás elige, y recién ahí llamas esto con las elegidas. Reglas que la herramienta hace cumplir (lee la regla `misiones` de hilvan_reglas_crm antes): el texto NO lleva conteos —"tus 11 sin primer contacto" envejece y la misión pasa a mentir; el número va en fuente_verificacion con verificado_en—; `persona` es el nombre o el email de un perfil real; la semanal se guarda en el lunes de su semana aunque mandes otro día. Valida TODO antes de escribir: si algo falla no escribe nada y te dice qué. Si ya hay misión en ese espacio responde 409; manda reemplazar:true para pisarla. Reversible con hilvan_deshacer (borra las creadas y restaura las pisadas).',
+        inputSchema: {
+          misiones: z.array(z.object({
+            persona: z.string(),
+            tipo: z.enum(['diaria', 'semanal']),
+            texto: z.string(),
+            guia: z.string().optional(),
+            fuente_verificacion: z.string().optional(),
+            verificado_en: z.string().optional(),
+            fecha_objetivo: z.string(),
+          })),
+          reemplazar: z.boolean().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/misiones', args)),
+    )
+
+    server.registerTool(
       'hilvan_editar_prospecto',
       {
         title: 'Editar prospecto (CRM)',

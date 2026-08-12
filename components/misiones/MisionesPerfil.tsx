@@ -9,12 +9,22 @@ function rotuloDia(iso: string, hoy: string): string {
   return txt.charAt(0).toUpperCase() + txt.slice(1)
 }
 
+function rotuloSemana(lunes: string): string {
+  const d = new Date(lunes + 'T12:00:00')
+  return d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })
+}
+
 /**
  * Las misiones en /perfil: la semana completa, junto al resto de los logros.
  *
  * A diferencia del aviso del dashboard, acá sí se ven las de los días que
  * vienen: la semana se despacha por adelantado y poder mirarla entera es el
  * punto. Lo que no aparece en ninguna de las dos vistas son las vencidas.
+ *
+ * Cada lista va en su propio scroll acotado. Sin eso la sección medía 1.398px
+ * con el panel de equipo abierto y empujaba las medallas fuera de la vista:
+ * una sección que crece con la cantidad de gente termina tapando al resto de
+ * la página.
  */
 export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) {
   const [mias, equipo] = await Promise.all([
@@ -30,17 +40,17 @@ export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) 
 
   return (
     <section className="border border-ch-border bg-ch-surface/20 p-5">
-      <div className="flex items-baseline justify-between gap-4 mb-4">
+      <div className="flex items-baseline justify-between gap-4 mb-5">
         <h2 className="font-body text-[9px] tracking-[0.5em] uppercase text-ch-subtle">
           Misiones
         </h2>
         <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle">
-          Semana del {lunesDeLaSemana(hoy)}
+          Semana del {rotuloSemana(lunesDeLaSemana(hoy))}
         </span>
       </div>
 
       {tengoAlgo && mias && (
-        <div className="space-y-4">
+        <div className="max-h-[26rem] overflow-y-auto pr-2 space-y-5">
           {mias.semanal && (
             <div>
               <p className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-green mb-2">
@@ -50,18 +60,14 @@ export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) 
             </div>
           )}
 
-          {mias.diarias.length > 0 && (
-            <div className="space-y-3">
-              {mias.diarias.map(m => (
-                <div key={m.id}>
-                  <p className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-subtle mb-2">
-                    {rotuloDia(m.fecha_objetivo, hoy)}
-                  </p>
-                  <TarjetaMision mision={m} />
-                </div>
-              ))}
+          {mias.diarias.map(m => (
+            <div key={m.id}>
+              <p className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-subtle mb-2">
+                {rotuloDia(m.fecha_objetivo, hoy)}
+              </p>
+              <TarjetaMision mision={m} />
             </div>
-          )}
+          ))}
         </div>
       )}
 
@@ -72,7 +78,7 @@ export default async function MisionesPerfil({ esAdmin }: { esAdmin: boolean }) 
           <p className="font-body text-[9px] tracking-[0.5em] uppercase text-ch-subtle mb-4">
             El equipo
           </p>
-          <div className="space-y-6">
+          <div className="max-h-[26rem] overflow-y-auto pr-2 space-y-6">
             {otros.map(p => (
               <div key={p.persona_id}>
                 <p className="font-body text-xs text-ch-muted mb-2">{p.nombre}</p>

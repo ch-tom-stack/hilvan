@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 
 // Tablas cuyo gasto se revierte borrando la fila creada (aplica SOLO para inserts,
 // no para ediciones como 'gasto-fecha' que usa UPDATE).
-const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos']
+const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos', 'misiones']
 
 // POST /api/agent/deshacer (JSON: { accion_id })
 // Revierte la escritura asociada a una acción registrada.
@@ -92,6 +92,48 @@ export async function POST(req: Request) {
     }
     await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
     return NextResponse.json({ ok: true, borrados: creados.length })
+  }
+
+  // ── Misiones: borra lo creado y restaura lo que se pisó ────────────────────
+  // Va ANTES del guard de resultado_tabla/_id: es multi-fila, y a diferencia de
+  // los otros bulk puede haber hecho UPDATE sobre misiones que ya existían. Sin
+  // restaurar el valor previo, deshacer dejaría la semana de alguien con el
+  // texto nuevo y sin forma de recuperar el anterior.
+  if (accion.herramienta === 'misiones-crear') {
+    const payload = accion.payload as {
+      creados?: { tabla: string; id: string }[]
+      restaurar?: Record<string, unknown>[]
+    } | null
+
+    for (const c of payload?.creados ?? []) {
+      if (!c?.tabla || !c?.id || !TABLAS_DELETE.includes(c.tabla)) continue
+      const { error } = await admin.from(c.tabla).delete().eq('id', c.id)
+      if (error) {
+        return NextResponse.json(
+          { error: `Error borrando misión ${c.id}: ${error.message}` },
+          { status: 500 },
+        )
+      }
+    }
+
+    for (const previo of payload?.restaurar ?? []) {
+      const { id, ...campos } = previo as { id?: string } & Record<string, unknown>
+      if (!id) continue
+      const { error } = await admin.from('misiones').update(campos).eq('id', id)
+      if (error) {
+        return NextResponse.json(
+          { error: `Error restaurando misión ${id}: ${error.message}` },
+          { status: 500 },
+        )
+      }
+    }
+
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({
+      ok: true,
+      borradas: payload?.creados?.length ?? 0,
+      restauradas: payload?.restaurar?.length ?? 0,
+    })
   }
 
   // ── Importar movimientos: revierte por payload.creados (multi-fila) ─────────

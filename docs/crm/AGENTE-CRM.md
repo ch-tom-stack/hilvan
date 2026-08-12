@@ -124,9 +124,28 @@ de una semana completa. Lo esencial de la mecánica:
   falso en tres días. El número va en la fuente de verificación con su fecha,
   nunca dentro de la misión.
 
-**Dónde van:** por ahora, **en tu reporte** — no existe todavía tabla de
-misiones en Hilván, así que no hay herramienta que llamar. Cuando exista, esta
-sección cambia.
+**Dónde van.** Dos pasos, y el orden importa:
+
+1. **Propones en tu reporte**, con las opciones. Nada se carga todavía.
+2. **Cuando Tomás elige, cargas las elegidas** con `hilvan_misiones_crear`.
+   Recién ahí aparecen en el dashboard y el perfil de cada persona.
+
+**Nunca cargues una propuesta.** La herramienta escribe lo que la gente va a
+ver al entrar; si cargas opciones, Natalia abre Hilván y encuentra tres
+misiones contradictorias que nadie eligió.
+
+**Antes de proponer, llama `hilvan_misiones_listar`.** Trae lo ya cargado de la
+semana. Sin eso propones espacios que ya están tomados y Tomás tiene que
+descartar a mano lo que tú debiste ver.
+
+La herramienta valida sola y **no escribe nada si algo falla**: rechaza personas
+que no existen, textos con conteos adentro, y responde 409 si el espacio ya
+tiene misión (manda `reemplazar: true` solo si Tomás decidió cambiarla). Todo
+es reversible con `hilvan_deshacer`.
+
+El campo `cumplida` que devuelve `hilvan_misiones_listar` es **solo lectura**:
+lo marca la persona en la app. No lo interpretes como reproche ni lo uses para
+insistir — vencer es silencioso también para ti.
 
 **Formato de entrega.** Todos los días, no solo los lunes, la sección trae las
 mismas cuatro piezas en este orden. Que sea siempre igual es el punto: así se
