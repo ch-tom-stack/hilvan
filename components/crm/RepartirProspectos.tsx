@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Prospecto } from '@/types'
 import { asignarResponsableMasivo, repartirPorReglas } from '@/app/actions/crm'
@@ -40,13 +41,32 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
   const alternarTodos = () =>
     setSel(todos ? new Set() : new Set(huerfanos.map(h => h.id)))
 
+  // Las reglas se niegan a asignar sin tamaño y segmento —adivinar es peor que
+  // esperar—, así que estos no los reparte nadie hasta clasificarlos. Decirlo
+  // antes de apretar evita el botón que "no hace nada".
+  const sinClasificar = huerfanos.filter(h => !h.tamano || !h.segmento)
+  const ningunoReparte = sinClasificar.length === huerfanos.length
+
   const porReglas = () => {
     startTransition(async () => {
       const res = await repartirPorReglas()
       if (res.error) { momento('error', { mensaje: res.error }); return }
       const r = res.resultado!
+
+      // Cuando no se asignó nada, el reparto NO fue un éxito silencioso: las
+      // reglas se negaron a adivinar. Un toast verde diciendo "0 asignados" se
+      // lee como un botón roto, que es justo lo que pasó.
+      if (r.asignados === 0) {
+        momento('error', {
+          mensaje: r.porClasificar === 1
+            ? 'Sin repartir: al prospecto le falta tamaño y segmento. Clasifícalo primero.'
+            : `Sin repartir: a ${r.porClasificar} les falta tamaño y segmento. Clasifícalos primero.`,
+        })
+        return
+      }
+
       momento('guardado', {
-        mensaje: `${r.asignados} asignado${r.asignados === 1 ? '' : 's'} por reglas${r.porClasificar ? ` · ${r.porClasificar} por clasificar` : ''}`,
+        mensaje: `${r.asignados} asignado${r.asignados === 1 ? '' : 's'} por reglas${r.porClasificar ? ` · ${r.porClasificar} sin clasificar, quedan pendientes` : ''}`,
       })
       router.refresh()
     })
@@ -69,7 +89,7 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
 
   return (
     <div className="border border-ch-gold/40 bg-ch-gold/5 mb-6">
-      <div className="flex items-center justify-between gap-4 px-4 py-3">
+      <div className="flex items-center justify-between gap-4 px-4 py-3 flex-wrap">
         <span className="font-body text-xs text-ch-gold">
           {huerfanos.length} prospecto{huerfanos.length === 1 ? '' : 's'} sin responsable
           <span className="text-ch-muted"> · nadie sabe a quién le toca contactarlos</span>
@@ -78,8 +98,11 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
           <button
             type="button"
             onClick={porReglas}
-            disabled={isPending}
-            className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-gold hover:text-ch-gold-light transition-colors ch-press disabled:opacity-40"
+            disabled={isPending || ningunoReparte}
+            title={ningunoReparte
+              ? 'Las reglas necesitan tamaño y segmento para decidir. Clasifícalos primero, o asigna a mano.'
+              : undefined}
+            className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-gold hover:text-ch-gold-light transition-colors ch-press disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isPending ? 'Repartiendo…' : 'Repartir por reglas'}
           </button>
@@ -92,6 +115,23 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
           </button>
         </div>
       </div>
+
+      {sinClasificar.length > 0 && (
+        <p className="px-4 pb-3 -mt-1 font-body text-[11px] text-ch-muted leading-relaxed">
+          {ningunoReparte ? 'Ninguno se puede repartir por reglas' : `${sinClasificar.length} no se pueden repartir por reglas`}:
+          les falta <span className="text-ch-cream">tamaño y segmento</span>, y sin eso las reglas no adivinan a quién le toca.
+          Clasifícalos —{' '}
+          {sinClasificar.map((h, i) => (
+            <span key={h.id}>
+              {i > 0 && ', '}
+              <Link href={`/crm/${h.id}`} className="text-ch-gold hover:text-ch-gold-light transition-colors">
+                {h.empresa}
+              </Link>
+            </span>
+          ))}
+          {' '}— o asígnalos a mano.
+        </p>
+      )}
 
       {abierto && (
         <div className="px-4 pb-4 border-t border-ch-gold/20 pt-3 ch-fade-up">

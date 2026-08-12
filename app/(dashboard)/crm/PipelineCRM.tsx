@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { normalizar, textoBuscable } from '@/lib/crm-buscar'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { reproducir, sfxEnabled, setSfxEnabled } from '@/lib/sfx'
@@ -49,6 +50,7 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   const pendientesSet = useMemo(() => new Set(pendientesIds), [pendientesIds])
 
   // filtros
+  const [busca, setBusca] = useState('')
   const [fResponsable, setFResponsable] = useState('')
   const [fOrigen, setFOrigen] = useState('')
   const [fScore, setFScore] = useState('')
@@ -77,14 +79,19 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   }, [prospectos])
 
   const filtrados = useMemo(() => {
+    // Se busca sobre lo ya cargado: son decenas de prospectos, no miles, así
+    // que filtrar en el cliente responde mientras se escribe. El día que esto
+    // no alcance, la búsqueda se va al servidor — no antes.
+    const q = normalizar(busca)
     return prospectos.filter(p => {
+      if (q && !textoBuscable(p).includes(q)) return false
       if (fResponsable && p.responsable?.id !== fResponsable) return false
       if (fOrigen && p.origen !== fOrigen) return false
       if (fScore && p.score !== fScore) return false
       if (fTemp && temperaturaDe(p.origen) !== fTemp) return false
       return true
     })
-  }, [prospectos, fResponsable, fOrigen, fScore, fTemp])
+  }, [prospectos, busca, fResponsable, fOrigen, fScore, fTemp])
 
   // Cuántos hay de cada temperatura — sobre TODOS, no sobre los filtrados: el
   // conteo del botón tiene que ser estable, si no cambia al hacerle click.
@@ -143,8 +150,8 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
   // el reparto es un pendiente global, no depende de la vista actual.
   const huerfanos = useMemo(() => prospectos.filter(p => !p.responsable), [prospectos])
 
-  const limpiarFiltros = () => { setFResponsable(''); setFOrigen(''); setFScore(''); setFTemp('') }
-  const hayFiltros = fResponsable || fOrigen || fScore || fTemp
+  const limpiarFiltros = () => { setBusca(''); setFResponsable(''); setFOrigen(''); setFScore(''); setFTemp('') }
+  const hayFiltros = busca || fResponsable || fOrigen || fScore || fTemp
 
   return (
     <>
@@ -283,7 +290,27 @@ export default function PipelineCRM({ prospectos, metricas, pendientesIds, total
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-2 ml-auto">
+        <div className="flex flex-wrap gap-2 ml-auto items-center">
+          <div className="relative">
+            <input
+              type="search"
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder="Buscar marca, contacto, correo…"
+              aria-label="Buscar en el CRM"
+              className="input-ch text-xs py-2 w-56 pr-7"
+            />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => setBusca('')}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-2 top-1/2 -translate-y-1/2 font-body text-xs text-ch-subtle hover:text-ch-cream transition-colors leading-none"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <select value={fResponsable} onChange={e => setFResponsable(e.target.value)} className="input-ch text-xs py-2">
             <option value="">Responsable · todos</option>
             {responsables.map(([id, nombre]) => <option key={id} value={id}>{nombre}</option>)}
