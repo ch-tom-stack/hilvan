@@ -81,7 +81,7 @@ export default function PiePerfil({
       // tokens —el nombre en ch-muted pesa lo mismo que un ítem inactivo— y el
       // fondo marca cuál está activo.
       className={`ch-press block border-t border-ch-border group transition-colors ${
-        compacto ? 'px-6 pt-4 shrink-0' : 'px-2 pt-4'
+        compacto ? 'px-6 pt-5 shrink-0' : 'px-3 pt-5 pb-1'
       } ${activo ? 'bg-ch-surface/40' : ''}`}
       // El drawer llega hasta el borde inferior de la pantalla: sin el área
       // segura, el rango queda debajo de la barra de inicio del iPhone.

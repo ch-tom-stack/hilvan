@@ -19,6 +19,12 @@ import { movimientoReducido } from '@/lib/preferencias'
  * cada vuelta suelta menos papel. Ese detalle es lo que se ve mecánico y no
  * animado, y no lo produce ningún easing.
  *
+ * La única licencia con la física: el grosor tiene tope. Un pergamino con 38
+ * medallas daría un rollo de 36px de radio, desproporcionado al lado del de
+ * arriba. Se calcula sobre un largo acotado, así que la vara siempre recorre
+ * el mismo rango de grosor y de giro. En movimiento no se nota — lo que se
+ * lee es que adelgaza mientras baja, no cuánto medía al empezar.
+ *
  * La vara de arriba es el resto de la hoja: radio constante y sin giro, porque
  * no suelta ni recoge. Girarla sería movimiento sin causa.
  */
@@ -27,6 +33,12 @@ const NUCLEO = 5      // radio de la vara desnuda
 const GROSOR = 2      // "espesor" del papel: define cuántas capas caben
 const VUELO = 20      // cuánto sobresale el rollo a la izquierda del papel
 const R_ARRIBA = 12   // el rollo que sobra arriba, constante
+const R_TOPE = 15     // hasta acá engorda el rollo, por largo que sea el papel
+
+// El largo que produce exactamente el radio tope. Un pergamino con más
+// contenido que esto no engorda más: se comprime el papel, no la vara.
+//   L = π(R² − r₀²) / t
+const LARGO_TOPE = (Math.PI * (R_TOPE ** 2 - NUCLEO ** 2)) / GROSOR
 const TINTA = '#8e8e86'
 const RELLENO = '#2a2a25'
 const LINEA = '#6e6e66'
@@ -57,7 +69,9 @@ function Vara({ ancho, r, giro }: { ancho: number; r: number; giro: number }) {
   if (ancho <= 0) return null
   const xTapa = Math.max(r, ancho - r - 1)
   return (
-    <svg width={ancho} height={r * 2 + 2} className="block shrink-0" aria-hidden>
+    // `overflow-visible`: la circunferencia del extremo llega justo a x=0, así
+    // que la mitad exterior del trazo caía fuera del lienzo y se cortaba.
+    <svg width={ancho} height={r * 2 + 2} className="block shrink-0 overflow-visible" aria-hidden>
       <path
         d={`M ${r} 1 H ${xTapa} A ${r} ${r} 0 0 1 ${xTapa} ${r * 2 + 1} H ${r}`}
         fill={RELLENO} stroke={TINTA} strokeWidth={1.4}
@@ -154,8 +168,10 @@ export default function Pergamino({
   }
 
   const alto = p * largo
-  const r = radioDe(largo - alto)
-  const giro = largo > 0 ? ((radioDe(largo) - r) / GROSOR) * 360 : 0
+  // El rollo se calcula sobre el largo acotado, no sobre el real.
+  const largoRollo = Math.min(largo, LARGO_TOPE)
+  const r = radioDe((1 - p) * largoRollo)
+  const giro = largoRollo > 0 ? ((radioDe(largoRollo) - r) / GROSOR) * 360 : 0
   const anchoVara = Math.max(0, ancho - VUELO)
 
   return (
