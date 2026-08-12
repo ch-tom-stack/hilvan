@@ -214,6 +214,26 @@ input:-webkit-autofill:focus {
 }
 .ch-modal-panel { animation: ch-modal-panel 0.2s var(--ch-ease) both; }
 
+/* El emblema se dibuja solo: el trazo avanza como si alguien lo estuviera
+   cosiendo. Es la única animación del sistema que dura casi un segundo, y se
+   la gana porque ocurre una vez en la vida de cada medalla. */
+@keyframes ch-emblema-traza {
+  from { stroke-dashoffset: var(--largo, 120); }
+  to   { stroke-dashoffset: 0; }
+}
+.ch-emblema-traza {
+  stroke-dasharray: var(--largo, 120);
+  animation: ch-emblema-traza 0.9s var(--ch-ease) both;
+}
+
+/* Medalla recién ganada: crece un pelo y vuelve. Acompaña al trazo. */
+@keyframes ch-medalla-nueva {
+  0%   { transform: scale(0.96); }
+  55%  { transform: scale(1.02); }
+  100% { transform: none; }
+}
+.ch-medalla-nueva { animation: ch-medalla-nueva 0.7s var(--ch-ease) both; }
+
 /* Aparece un pendiente */
 @keyframes ch-badge-pop {
   0%   { transform: scale(0); opacity: 0; }
@@ -263,9 +283,11 @@ input:-webkit-autofill:focus {
 @media (prefers-reduced-motion: reduce) {
   .ch-fade-up, .ch-pulse, .ch-shake, .ch-flash-row, .ch-settle, .ch-enfriar,
   .ch-badge-pop, .ch-glow-hito, .ch-live-dot, .ch-shimmer, .ch-bar-fill,
-  .ch-recibe, .ch-modal-fondo, .ch-modal-panel {
+  .ch-recibe, .ch-modal-fondo, .ch-modal-panel, .ch-medalla-nueva {
     animation: none !important;
   }
+  /* El emblema se muestra entero, sin dibujarse. */
+  .ch-emblema-traza { animation: none !important; stroke-dasharray: none; }
   /* Las salidas conservan el desvanecido —dice que la fila se fue— pero
      pierden el desplazamiento. */
   .ch-salir-ok, .ch-salir-no {

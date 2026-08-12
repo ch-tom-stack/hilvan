@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import { revisarMedallas, type EstadoMedallas } from '@/app/actions/medallas'
 import {
   CAPITULOS, MEDALLAS, RAREZA_LABEL, visiblesDe, ocultas, progresoMedalla,
+  puntosDe, puntosTotales, rangoDe,
   type DefinicionMedalla, type DatosMedallas,
 } from '@/lib/crm-medallas'
+import Emblema from '@/components/perfil/Emblema'
 import { momento } from '@/lib/momentos'
 import { formatFecha } from '@/lib/fechas'
 
@@ -43,6 +45,9 @@ export default function Medallas() {
   if (!estado) return null
 
   const ganadas = new Map(estado.ganadas.map(g => [g.medalla, g.ganada_en]))
+  const nuevas = new Set(estado.nuevas)
+  const puntos = puntosDe([...ganadas.keys()])
+  const { actual, siguiente, fraccion } = rangoDe(puntos)
   let orden = 0   // el escalonado es continuo entre capítulos, no se reinicia
 
   return (
@@ -60,9 +65,35 @@ export default function Medallas() {
       <p className="font-body text-[11px] text-ch-subtle leading-relaxed mt-2 max-w-prose">
         Captar es eso: puntadas que puede que se suelten, y algunas se vuelven costura.
         Ninguna de estas medallas te compara con el resto del equipo — son sobre tu
-        propia historia. Cuentan desde que la app registra quién hace cada contacto;
+        propia historia. Cuentan desde que la app registra quién hace cada cosa;
         lo anterior no tiene autor y no se le puede atribuir a nadie.
       </p>
+
+      {/* Rango. El progreso profesional no es la cuenta de medallas sino su
+          peso: una legendaria vale doce comunes. Sin esto, coleccionar las
+          fáciles se vería igual de lejos que hacer el trabajo difícil. */}
+      <div className="border border-ch-border bg-ch-black/20 p-4 mt-5">
+        <div className="flex items-baseline justify-between gap-3 flex-wrap">
+          <p className="font-display italic text-2xl text-ch-cream leading-none">{actual.titulo}</p>
+          <span className="font-body text-[10px] tracking-[0.2em] uppercase text-ch-subtle tabular-nums">
+            {puntos} de {puntosTotales()} puntos
+          </span>
+        </div>
+        <p className="font-body text-[11px] text-ch-muted italic mt-1.5">{actual.glosa}</p>
+        {siguiente && (
+          <div className="mt-3">
+            <div className="w-full h-px bg-ch-border relative overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 bg-ch-green ch-bar-fill"
+                style={{ width: `${Math.round(fraccion * 100)}%`, ['--w' as string]: `${Math.round(fraccion * 100)}%` }}
+              />
+            </div>
+            <p className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle mt-1.5">
+              {siguiente.desde - puntos} para {siguiente.titulo}
+            </p>
+          </div>
+        )}
+      </div>
 
       {CAPITULOS.map(cap => {
         const medallas = visiblesDe(cap.clave)
@@ -90,6 +121,7 @@ export default function Medallas() {
                   fecha={ganadas.get(m.clave) ?? null}
                   datos={estado.datos}
                   indice={orden++}
+                  nueva={nuevas.has(m.clave)}
                 />
               ))}
             </div>
@@ -97,7 +129,7 @@ export default function Medallas() {
         )
       })}
 
-      <Sorpresas ganadas={ganadas} datos={estado.datos} desde={orden} />
+      <Sorpresas ganadas={ganadas} datos={estado.datos} desde={orden} nuevas={nuevas} />
     </div>
   )
 }
@@ -108,11 +140,12 @@ export default function Medallas() {
  * hacer algo raro a propósito, y ninguna premia inflar el contador.
  */
 function Sorpresas({
-  ganadas, datos, desde,
+  ganadas, datos, desde, nuevas,
 }: {
   ganadas: Map<string, string>
   datos: DatosMedallas
   desde: number
+  nuevas: Set<string>
 }) {
   const todas = ocultas()
   const listas = todas.filter(m => ganadas.has(m.clave))
@@ -133,7 +166,7 @@ function Sorpresas({
 
       <div className="grid gap-2 sm:grid-cols-2">
         {listas.map((m, i) => (
-          <Medalla key={m.clave} def={m} fecha={ganadas.get(m.clave)!} datos={datos} indice={desde + i} />
+          <Medalla key={m.clave} def={m} fecha={ganadas.get(m.clave)!} datos={datos} indice={desde + i} nueva={nuevas.has(m.clave)} />
         ))}
         {faltan > 0 && (
           <div
@@ -151,12 +184,14 @@ function Sorpresas({
 }
 
 function Medalla({
-  def, fecha, datos, indice,
+  def, fecha, datos, indice, nueva = false,
 }: {
   def: DefinicionMedalla
   fecha: string | null
   datos: DatosMedallas
   indice: number
+  /** Se acaba de ganar en esta sesión: el emblema se dibuja solo. */
+  nueva?: boolean
 }) {
   const ganada = fecha !== null
   const prog = ganada ? null : progresoMedalla(def.clave, datos)
@@ -182,11 +217,14 @@ function Medalla({
     <div
       style={{ ['--i' as string]: indice }}
       className={`border p-3.5 transition-colors ${
-        ganada && def.rareza === 'legendaria' ? '' : 'ch-fade-up ch-stagger'
+        nueva ? 'ch-medalla-nueva' : ganada && def.rareza === 'legendaria' ? '' : 'ch-fade-up ch-stagger'
       } ${marco}`}
     >
-      <div className="flex items-baseline justify-between gap-2 flex-wrap">
-        <p className={`font-display italic text-lg leading-tight ${titulo}`}>{def.titulo}</p>
+      <div className="flex items-start justify-between gap-2 flex-wrap">
+        <div className={`flex items-center gap-2.5 min-w-0 ${titulo}`}>
+          <Emblema clave={def.clave} nueva={nueva} className={ganada ? '' : 'opacity-40'} />
+          <p className="font-display italic text-lg leading-tight">{def.titulo}</p>
+        </div>
         {ganada ? (
           <span className={`font-body text-[9px] tracking-[0.15em] uppercase shrink-0 ${
             preciada ? 'text-ch-gold' : 'text-ch-green'

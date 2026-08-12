@@ -28,7 +28,7 @@
 // 4. Los porcentajes exigen piso. Un 100% de respuesta con un contacto no dice
 //    nada; sin mínimo, la medalla premia no haber trabajado.
 
-export type Capitulo = 'hilvanar' | 'trama' | 'costura'
+export type Capitulo = 'hilvanar' | 'trama' | 'costura' | 'taller'
 
 /** Peso visual. Sin esto, tener veintiséis vale lo mismo que tener las fáciles. */
 export type Rareza = 'comun' | 'dificil' | 'rara' | 'legendaria'
@@ -65,7 +65,63 @@ export const CAPITULOS: { clave: Capitulo; numero: string; titulo: string; bajad
     titulo: 'La costura',
     bajada: 'Cuando el hilván se vuelve costura de verdad.',
   },
+  {
+    clave: 'taller',
+    numero: 'IV',
+    titulo: 'El taller',
+    bajada: 'El resto del oficio: cotizar, rodar, arrendar, atender.',
+  },
 ]
+
+// ── Rangos ───────────────────────────────────────────────────────────────────
+// Progreso profesional, no colección. Los rangos son etapas reales de la
+// costura y la última es una técnica de verdad: la puntada invisible es la más
+// difícil justamente porque no se ve. Es la idea del oficio bien hecho.
+
+const PUNTOS_POR_RAREZA: Record<Rareza, number> = {
+  comun: 1, dificil: 3, rara: 6, legendaria: 12,
+}
+
+export interface Rango {
+  titulo: string
+  desde: number
+  glosa: string
+}
+
+// Calibrados contra los 154 puntos totales. La primera versión (0/8/22/45/80)
+// dejaba a alguien en el penúltimo rango al PRIMER MES: el tope tiene que ser
+// una aspiración de años, no de ocho semanas, o deja de significar algo.
+export const RANGOS: Rango[] = [
+  { titulo: 'Hilván suelto',     desde: 0,   glosa: 'Las primeras puntadas. Todavía se sueltan.' },
+  { titulo: 'Hilván firme',      desde: 12,  glosa: 'La tela ya aguanta que la muevan.' },
+  { titulo: 'Puntada segura',    desde: 35,  glosa: 'Ya no se deshace sola.' },
+  { titulo: 'Costura',           desde: 70,  glosa: 'Lo provisional se volvió definitivo.' },
+  { titulo: 'Puntada invisible', desde: 115, glosa: 'La más difícil: la que no se nota.' },
+]
+
+export function puntosDe(claves: string[]): number {
+  const porClave = new Map(MEDALLAS.map(m => [m.clave, m]))
+  return claves.reduce((t, c) => {
+    const m = porClave.get(c)
+    return t + (m ? PUNTOS_POR_RAREZA[m.rareza] : 0)
+  }, 0)
+}
+
+export function puntosTotales(): number {
+  return MEDALLAS.reduce((t, m) => t + PUNTOS_POR_RAREZA[m.rareza], 0)
+}
+
+/** Rango actual y cuánto falta para el próximo (null si ya es el último). */
+export function rangoDe(puntos: number): { actual: Rango; siguiente: Rango | null; fraccion: number } {
+  let i = 0
+  for (let k = 0; k < RANGOS.length; k++) if (puntos >= RANGOS[k].desde) i = k
+  const actual = RANGOS[i]
+  const siguiente = RANGOS[i + 1] ?? null
+  const fraccion = siguiente
+    ? Math.max(0, Math.min(1, (puntos - actual.desde) / (siguiente.desde - actual.desde)))
+    : 1
+  return { actual, siguiente, fraccion }
+}
 
 export const MEDALLAS: DefinicionMedalla[] = [
   // ── I · Hilvanar ──────────────────────────────────────────────────────────
@@ -128,6 +184,32 @@ export const MEDALLAS: DefinicionMedalla[] = [
     criterio: 'Cerrar un prospecto que había nacido en frío.',
     nota: 'Lo más difícil del módulo: nadie había levantado la mano.' },
 
+  // ── IV · El taller ────────────────────────────────────────────────────────
+  // Todas se atribuyen por `created_by` de su tabla, salvo las que se indican.
+  { clave: 'primera_cotizacion', titulo: 'El primer número', capitulo: 'taller', rareza: 'comun',
+    criterio: 'Crear tu primera cotización.' },
+  { clave: 'diez_cotizaciones', titulo: 'Diez presupuestos', capitulo: 'taller', rareza: 'dificil',
+    criterio: 'Crear 10 cotizaciones.' },
+  { clave: 'cotizacion_aprobada', titulo: 'Aprobada', capitulo: 'taller', rareza: 'rara',
+    criterio: 'Que una cotización tuya sea aprobada.' },
+  { clave: 'primer_rodaje', titulo: 'Acción', capitulo: 'taller', rareza: 'comun',
+    criterio: 'Crear tu primer rodaje.' },
+  { clave: 'cinco_rodajes', titulo: 'Cinco claquetas', capitulo: 'taller', rareza: 'dificil',
+    criterio: 'Crear 5 rodajes.' },
+  { clave: 'primer_cliente', titulo: 'Casa nueva', capitulo: 'taller', rareza: 'comun',
+    criterio: 'Dar de alta un cliente.' },
+  { clave: 'primera_reserva', titulo: 'Salió del rack', capitulo: 'taller', rareza: 'comun',
+    criterio: 'Crear tu primera reserva de rental.' },
+  { clave: 'reserva_aprobada', titulo: 'Con tu firma', capitulo: 'taller', rareza: 'dificil',
+    criterio: 'Aprobar una reserva de rental.' },
+  { clave: 'primera_rendicion', titulo: 'Cuentas claras', capitulo: 'taller', rareza: 'comun',
+    criterio: 'Cargar tu primer gasto en la rendición mensual.' },
+  { clave: 'calendario_limpio', titulo: 'Todo en su lugar', capitulo: 'taller', rareza: 'dificil',
+    criterio: 'Clasificar 20 eventos del calendario.' },
+  { clave: 'oficio_completo', titulo: 'El oficio completo', capitulo: 'taller', rareza: 'legendaria',
+    criterio: 'Haber hecho algo en CRM, cotizaciones, rodaje y rental.',
+    nota: 'La única que no se gana especializándose.' },
+
   // ── Sorpresas ─────────────────────────────────────────────────────────────
   // Todas se ganan trabajando normal. Ninguna pide hacer algo raro a propósito,
   // y ninguna premia inflar el contador.
@@ -177,6 +259,16 @@ export interface DatosMedallas {
   toqueEntrante: boolean
   cierres: number
   cierresFrios: number
+
+  // ── El taller: el resto de la app ──────────────────────────────────────────
+  cotizaciones: number
+  cotizacionesAprobadas: number
+  rodajes: number
+  clientes: number
+  reservas: number
+  reservasAprobadas: number
+  gastosMensuales: number
+  eventosClasificados: number
 }
 
 const CANALES_TOTALES = 4
@@ -213,6 +305,18 @@ export function medallasCumplidas(d: DatosMedallas): string[] {
   si(d.cierres >= 1, 'primer_cierre')
   si(d.cierres >= 3, 'tres_cierres')
   si(d.cierresFrios >= 1, 'frio_a_cierre')
+
+  si(d.cotizaciones >= 1, 'primera_cotizacion')
+  si(d.cotizaciones >= 10, 'diez_cotizaciones')
+  si(d.cotizacionesAprobadas >= 1, 'cotizacion_aprobada')
+  si(d.rodajes >= 1, 'primer_rodaje')
+  si(d.rodajes >= 5, 'cinco_rodajes')
+  si(d.clientes >= 1, 'primer_cliente')
+  si(d.reservas >= 1, 'primera_reserva')
+  si(d.reservasAprobadas >= 1, 'reserva_aprobada')
+  si(d.gastosMensuales >= 1, 'primera_rendicion')
+  si(d.eventosClasificados >= 20, 'calendario_limpio')
+  si(d.contactos >= 1 && d.cotizaciones >= 1 && d.rodajes >= 1 && d.reservas >= 1, 'oficio_completo')
 
   si(d.madrugo, 'madrugar')
   si(d.maxEnUnDia >= 5, 'jornada_llena')
@@ -252,6 +356,9 @@ export function progresoMedalla(
     case 'cinco_responden':      return p(d.marcasQueRespondieron, 5, 'marcas')
     case 'quince_responden':     return p(d.marcasQueRespondieron, 15, 'marcas')
     case 'tres_cierres':         return p(d.cierres, 3, 'cierres')
+    case 'diez_cotizaciones':    return p(d.cotizaciones, 10, 'cotizaciones')
+    case 'cinco_rodajes':        return p(d.rodajes, 5, 'rodajes')
+    case 'calendario_limpio':    return p(d.eventosClasificados, 20, 'eventos')
     case 'cobertura':
       // Antes del piso se muestra el avance HACIA el piso: si no, alguien con
       // 4 prospectos todos tocados vería 100% y la medalla no llegaría nunca.

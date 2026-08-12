@@ -21,6 +21,8 @@ const VACIO: DatosMedallas = {
   maxToquesEnUnaMarca: 0, maxEnUnDia: 0, maxDiasEnUnaSemana: 0, madrugo: false,
   cartera: 0, carteraTocada: 0, toqueFrio: false, toqueEntrante: false,
   cierres: 0, cierresFrios: 0,
+  cotizaciones: 0, cotizacionesAprobadas: 0, rodajes: 0, clientes: 0,
+  reservas: 0, reservasAprobadas: 0, gastosMensuales: 0, eventosClasificados: 0,
 }
 
 interface Toque {
@@ -46,7 +48,23 @@ function horaChile(iso: string): number {
   return parseInt(h, 10)
 }
 
-function agregar(toques: Toque[], mios: { id: string; etapa: string; origen: string | null }[]): DatosMedallas {
+/** Lo que hizo la persona fuera del CRM. Cada tabla trae su propia atribución. */
+interface Taller {
+  cotizaciones: number
+  cotizacionesAprobadas: number
+  rodajes: number
+  clientes: number
+  reservas: number
+  reservasAprobadas: number
+  gastosMensuales: number
+  eventosClasificados: number
+}
+
+function agregar(
+  toques: Toque[],
+  mios: { id: string; etapa: string; origen: string | null }[],
+  taller: Taller,
+): DatosMedallas {
   const porMarca = new Map<string, Toque[]>()
   const porDia = new Map<string, number>()
   const porSemana = new Map<string, Set<string>>()
@@ -105,6 +123,52 @@ function agregar(toques: Toque[], mios: { id: string; etapa: string; origen: str
     toqueEntrante: temps.has('entrante'),
     cierres: confirmados.length,
     cierresFrios: confirmados.filter(p => temperaturaDe(p.origen) === 'frio').length,
+    ...taller,
+  }
+}
+
+/**
+ * Cuenta lo que la persona hizo en el resto de la app.
+ *
+ * Cada tabla trae su propia columna de atribución —`created_by`, `cargado_por_id`,
+ * `clasificado_por`— y por eso se consulta una por una en vez de con un helper
+ * genérico. `equipos` y `maletas` NO tienen atribución: no hay medallas de
+ * equipos, y no se inventa una asignándoselas a alguien.
+ *
+ * `head: true` con `count` no trae filas: sólo el número, que es todo lo que
+ * necesitan estas medallas.
+ */
+async function contarTaller(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  uid: string,
+): Promise<Taller> {
+  const n = (r: { count: number | null }) => r.count ?? 0
+  const c = (tabla: string, col: string, extra?: (q: any) => any) => {
+    let q = supabase.from(tabla).select('*', { count: 'exact', head: true }).eq(col, uid)
+    if (extra) q = extra(q)
+    return q
+  }
+
+  const [cot, cotAp, rod, cli, res, resAp, gas, eve] = await Promise.all([
+    c('cotizaciones', 'created_by'),
+    c('cotizaciones', 'created_by', q => q.eq('estado', 'aprobada')),
+    c('rodajes', 'created_by'),
+    c('clientes', 'created_by'),
+    c('rental_reservas', 'created_by'),
+    c('rental_reservas', 'aprobada_por'),
+    c('rendicion_mensual_gastos', 'cargado_por_id'),
+    c('eventos_calendario', 'clasificado_por'),
+  ])
+
+  return {
+    cotizaciones: n(cot),
+    cotizacionesAprobadas: n(cotAp),
+    rodajes: n(rod),
+    clientes: n(cli),
+    reservas: n(res),
+    reservasAprobadas: n(resAp),
+    gastosMensuales: n(gas),
+    eventosClasificados: n(eve),
   }
 }
 
@@ -120,7 +184,7 @@ export async function revisarMedallas(): Promise<EstadoMedallas> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { datos: VACIO, ganadas: [], nuevas: [] }
 
-  const [{ data: toques }, { data: mios }] = await Promise.all([
+  const [{ data: toques }, { data: mios }, taller] = await Promise.all([
     // Sólo los contactos que registró ESTA persona. Los anteriores a la columna
     // tienen registrado_por NULL y no cuentan para nadie — atribuirlos sería
     // inventar el dato.
@@ -133,9 +197,10 @@ export async function revisarMedallas(): Promise<EstadoMedallas> {
       .from('prospectos')
       .select('id, etapa, origen')
       .eq('responsable_id', user.id),
+    contarTaller(supabase, user.id),
   ])
 
-  const datos = agregar((toques ?? []) as Toque[], mios ?? [])
+  const datos = agregar((toques ?? []) as Toque[], mios ?? [], taller)
 
   const { data: yaTiene } = await supabase
     .from('crm_medallas')
