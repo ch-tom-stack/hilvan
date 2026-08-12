@@ -25,7 +25,7 @@ que bajarlos.
 La literatura de gamificación es específica: el efecto de sobrejustificación es
 fuerte con recompensas **anunciadas y esperadas**, y débil o positivo con
 feedback **inesperado** que informa competencia. Anunciar las medallas las
-convierte en lo primero. Con la tira del sidebar ya tienen por dónde
+convierte en lo primero. Con el pie del sidebar ya tienen por dónde
 descubrirse solas.
 
 ### Cerrada: equipos y maletas no van a tener medallas
