@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { esEtapaValida, hoyChile } from '@/lib/agent-crm'
-import { calcularCadencia, fueraDeAgenda } from '@/lib/crm-cadencia'
+import { calcularCadencia, fueraDeAgenda, aToques, CAMPOS_TOQUE } from '@/lib/crm-cadencia'
 
 export const runtime = 'nodejs'
 
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     .select(
       'id, empresa, nombre_contacto, etapa, score, producto_objetivo, origen, tamano, segmento, snooze_hasta, ' +
       'responsable:profiles!prospectos_responsable_id_fkey(id, nombre), ' +
-      'crm_interacciones(fecha, respondido)',
+      `crm_interacciones(${CAMPOS_TOQUE})`,
     )
     .order('updated_at', { ascending: false })
 
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
   const hoy = hoyChile()
   const prospectos = (data ?? []).map((p: any) => {
     const { crm_interacciones, snooze_hasta, ...resto } = p
-    const cad = calcularCadencia(crm_interacciones ?? [], hoy, snooze_hasta)
+    const cad = calcularCadencia(aToques(crm_interacciones), hoy, snooze_hasta)
     return {
       ...resto,
       ultimo_toque: cad.ultimoToque,

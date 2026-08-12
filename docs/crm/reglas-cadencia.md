@@ -57,6 +57,26 @@ pero "probable" no alcanza para sacarlo del tablero sin que nadie lo mire.
 > El otro 16 —el de la Biblioteca, donde ~80% acepta— cuenta **toques totales**,
 > respondidos incluidos. No se contradicen; no hay que mezclarlos al leer métricas.
 
+## Qué cuenta como toque (ago 2026)
+
+El reloj mira **sólo los mensajes que enviamos nosotros, en líneas vivas**.
+
+- **Lo recibido no es un toque.** Una respuesta del cliente se registra con
+  `hilvan_registrar_respuesta` y NO corre la escalera: si contara, contestar nos
+  "gastaría" un turno y además empujaría la próxima fecha hacia adelante,
+  escondiendo justo al que más urge atender. Lo que sí hace es marcar
+  respondido el mensaje al que contesta, y eso lo pone en estado `respondio`
+  — el más urgente de todos.
+- **Cerrar una línea borra su escalera.** Al abrir una línea nueva
+  (`hilvan_hilo` con `accion: abrir`), los toques sin respuesta de la anterior
+  dejan de contar. Es lo que permite retomar una marca después de meses, o
+  pasar al reemplazo de quien se fue, sin que el prospecto arranque agotado.
+  Reabrir la línea los devuelve al conteo.
+
+Consecuencia práctica: si una marca quedó `agotado` con un interlocutor que ya
+no está, no hay que descartarla — se abre una línea con la persona nueva y la
+cadencia parte limpia.
+
 ## Dónde se aplica
 
 - **`AgendaDeHoy`** (franja en `/crm`): la lista del día de cada persona, con

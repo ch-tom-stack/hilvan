@@ -15,6 +15,7 @@ interface Props {
 
 // Orden de severidad: lo que requiere acción / crea cosas, primero.
 const GRUPOS: { tipo: string; titulo: string; descripcion: string; verbo: string }[] = [
+  { tipo: 'reasignacion',     titulo: 'Solicitudes de asignación', descripcion: 'Alguien del equipo pide llevar un prospecto', verbo: 'Asignar' },
   { tipo: 'prospecto_nuevo',  titulo: 'Leads nuevos detectados', descripcion: 'Altas propuestas (p. ej. desde correos)', verbo: 'Aprobar y crear' },
   { tipo: 'cambio_etapa',     titulo: 'Cambios de etapa sugeridos', descripcion: 'Movimientos propuestos en el pipeline', verbo: 'Aplicar' },
   { tipo: 'interaccion',      titulo: 'Interacciones sugeridas', descripcion: 'Toques propuestos para la bitácora', verbo: 'Aplicar' },
@@ -195,6 +196,21 @@ function ItemAprobacion({
 }
 
 function PreviewPayload({ tipo, payload }: { tipo: string; payload: any }) {
+  if (tipo === 'reasignacion') {
+    return (
+      <div className="font-body text-sm text-ch-cream space-y-1">
+        <p>
+          <span className="text-ch-muted">{payload.desde_nombre ?? 'Sin responsable'}</span>
+          <span className="text-ch-subtle mx-2">→</span>
+          <span className="text-ch-gold">{payload.hacia_nombre}</span>
+        </p>
+        {payload.motivo && <p className="text-xs text-ch-muted">{payload.motivo}</p>}
+        {payload.pedido_por_nombre && (
+          <p className="text-[11px] text-ch-subtle">Lo pide {payload.pedido_por_nombre}</p>
+        )}
+      </div>
+    )
+  }
   if (tipo === 'cambio_etapa') {
     const etapa = payload.etapa as EtapaProspecto
     return (

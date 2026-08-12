@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hoyChile } from '@/lib/agent-crm'
-import { calcularCadencia, prioridadCadencia, fueraDeAgenda, sumarDias } from '@/lib/crm-cadencia'
+import { calcularCadencia, prioridadCadencia, fueraDeAgenda, sumarDias, aToques, CAMPOS_TOQUE } from '@/lib/crm-cadencia'
 
 export const runtime = 'nodejs'
 
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     .select(
       'id, empresa, etapa, snooze_hasta, ' +
       'responsable:profiles!prospectos_responsable_id_fkey(nombre), ' +
-      'crm_interacciones(fecha, respondido, proximo_paso, fecha_proximo)',
+      `crm_interacciones(${CAMPOS_TOQUE}, proximo_paso, fecha_proximo)`,
     )
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     .filter((p: any) => !fueraDeAgenda(p.etapa))
     .map((p: any) => {
       const toques = p.crm_interacciones ?? []
-      const cad = calcularCadencia(toques, hoy, p.snooze_hasta)
+      const cad = calcularCadencia(aToques(toques), hoy, p.snooze_hasta)
 
       // El próximo paso que alguien haya anotado, si lo hay: no manda sobre la
       // fecha, pero le dice al agente qué se comprometió.

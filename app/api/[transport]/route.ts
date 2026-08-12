@@ -1694,6 +1694,71 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_bitacora',
+      {
+        title: 'Bitácora conversacional (CRM)',
+        description: 'La conversación completa con una marca, agrupada en líneas (hilos): quién dijo qué, a quién, y contestando a qué. Cada mensaje trae `direccion` (enviado = nosotros | recibido = ellos) y `quien` (nombre real). Úsala en vez de hilvan_interacciones cuando necesites ENTENDER la conversación: sin la dirección no se distingue "le escribimos tres veces" de "nos escribieron tres veces". Devuelve también las líneas cerradas y por qué se cerraron.',
+        inputSchema: { prospecto_id: z.string() },
+      },
+      async ({ prospecto_id }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/bitacora?prospecto_id=${encodeURIComponent(prospecto_id)}`)),
+    )
+
+    server.registerTool(
+      'hilvan_registrar_respuesta',
+      {
+        title: 'Registrar respuesta recibida (CRM)',
+        description: 'Registra lo que la contraparte CONTESTÓ (mensaje entrante). Es la otra mitad del cotejo de correos: hasta ahora encontrar una respuesta sólo permitía marcar un booleano y el contenido —la objeción, el "está caro", el "vuelve en marzo"— se perdía. Marca automáticamente como respondido el mensaje al que contesta, que es de donde la cadencia saca el estado más urgente. NO uses hilvan_registrar_interaccion para esto: eso registra toques NUESTROS y correría la escalera al revés.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          resumen: z.string().optional().describe('en una línea: qué dijeron'),
+          cuerpo: z.string().optional().describe('la respuesta completa'),
+          fecha: z.string().optional().describe('YYYY-MM-DD, default hoy'),
+          tipo: z.string().optional().describe('correo|llamada|mensaje|reunion'),
+          contacto_id: z.string().optional().describe('quién de la marca contestó'),
+          responde_a: z.string().optional().describe('id del mensaje nuestro; default el último enviado'),
+          hilo_id: z.string().optional(),
+          gmail_thread: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/respuesta', args)),
+    )
+
+    server.registerTool(
+      'hilvan_hilo',
+      {
+        title: 'Líneas de conversación (CRM)',
+        description: 'Abre, cierra o reabre una línea de la bitácora. ABRIR cierra la vigente y REINICIA LA CADENCIA: los toques sin respuesta del interlocutor anterior dejan de contar. Úsalo cuando cambie la contraparte en la marca o cuando se retome después de mucho tiempo — así el prospecto no arranca agotado con la persona nueva. motivo/motivo_cierre: cambio_contacto | cambio_responsable | reinicio | sin_respuesta | manual.',
+        inputSchema: {
+          accion: z.string().describe('abrir | cerrar | reabrir'),
+          prospecto_id: z.string().optional().describe('requerido para abrir'),
+          hilo_id: z.string().optional().describe('requerido para cerrar/reabrir'),
+          contacto_id: z.string().optional().describe('con quién es la línea nueva'),
+          titulo: z.string().optional(),
+          motivo: z.string().optional().describe('al cerrar'),
+          motivo_cierre: z.string().optional().describe('al abrir: por qué se cierra la anterior'),
+          cerrar_actual: z.boolean().optional().describe('default true'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/hilo', args)),
+    )
+
+    server.registerTool(
+      'hilvan_solicitar_asignacion',
+      {
+        title: 'Pedir un prospecto (CRM)',
+        description: 'Pide que un prospecto pase a otra persona. NO reasigna: deja una propuesta en la Bandeja para que la resuelva quien gestiona el reparto. `para` es el EMAIL de quien lo llevaría — si no calza con ningún usuario falla, en vez de adivinar por parecido de nombre. Usa esto cuando alguien del equipo pida llevar una marca; el reparto automático sigue siendo el camino normal.',
+        inputSchema: {
+          prospecto_id: z.string(),
+          para: z.string().describe('email del futuro responsable'),
+          motivo: z.string().optional(),
+          pedido_por: z.string().optional().describe('nombre de quien lo pide'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/solicitar-asignacion', args)),
+    )
+
+    server.registerTool(
       'hilvan_clasificar_prospecto',
       {
         title: 'Clasificar prospecto (CRM)',

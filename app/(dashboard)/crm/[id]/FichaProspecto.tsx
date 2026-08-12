@@ -3,9 +3,9 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Prospecto, CrmInteraccion, CrmContacto, CrmBorrador, CrmLectura, CrmInsight, EtapaProspecto, ChecklistItem } from '@/types'
+import type { Prospecto, CrmInteraccion, CrmHilo, CrmContacto, CrmBorrador, CrmLectura, CrmInsight, EtapaProspecto, ChecklistItem } from '@/types'
 import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO, TAMANOS_EMPRESA, TAMANO_LABELS, SEGMENTOS_PROSPECTO, SEGMENTO_LABELS } from '@/types'
-import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable, asignarPrioridad, clasificarProspecto } from '@/app/actions/crm'
+import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, actualizarNotas, asignarResponsable, asignarPrioridad, clasificarProspecto, solicitarAsignacion } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
 import ContactosProspecto from '@/components/crm/ContactosProspecto'
@@ -19,6 +19,7 @@ import { useCambiado } from '@/components/ui/useCambiado'
 interface Props {
   prospecto: Prospecto
   interacciones: CrmInteraccion[]
+  hilos: CrmHilo[]
   contactos: CrmContacto[]
   borradores: CrmBorrador[]
   lecturas: CrmLectura[]
@@ -26,7 +27,7 @@ interface Props {
   responsables: { id: string; nombre: string }[]
 }
 
-export default function FichaProspecto({ prospecto, interacciones, contactos, borradores, lecturas, insights, responsables }: Props) {
+export default function FichaProspecto({ prospecto, interacciones, hilos, contactos, borradores, lecturas, insights, responsables }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
@@ -49,6 +50,20 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
       resp.marcar()
       momento('guardado', { mensaje: 'Responsable actualizado' })
       router.refresh()
+    })
+  }
+
+  const pedirProspecto = () => {
+    const motivo = window.prompt('¿Por qué lo quieres llevar tú? (opcional)') ?? undefined
+    startTransition(async () => {
+      try {
+        const res = await solicitarAsignacion(p.id, { motivo })
+        if (res.error) { toastError(res.error); return }
+        momento('guardado', { mensaje: 'Solicitud enviada a la Bandeja' })
+        router.refresh()
+      } catch (e) {
+        toastError(e instanceof Error ? e.message : 'Error al pedir el prospecto')
+      }
     })
   }
 
@@ -161,6 +176,18 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
             <option value="">Sin asignar</option>
             {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
           </select>
+          {/* Cambiar el selector reasigna de inmediato; pedirlo abre una
+              propuesta en la Bandeja. Las dos vías conviven porque no son la
+              misma decisión: repartir es de quien ve la carga del equipo,
+              pedir es de quien quiere el prospecto. */}
+          <button
+            type="button"
+            onClick={pedirProspecto}
+            disabled={isPending}
+            className="mt-1.5 font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle hover:text-ch-green transition-colors disabled:opacity-50"
+          >
+            Pedir este prospecto
+          </button>
         </div>
         <div ref={prio.ref}>
           <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Prioridad</p>
@@ -250,7 +277,8 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
           </div>
 
           {/* Bitácora */}
-          <Bitacora prospectoId={p.id} interacciones={interacciones} />
+          <Bitacora prospectoId={p.id} interacciones={interacciones} hilos={hilos} contactos={contactos}
+            personas={Object.fromEntries(responsables.map(r => [r.id, r.nombre]))} />
         </div>
 
         {/* Columna lateral: acciones */}

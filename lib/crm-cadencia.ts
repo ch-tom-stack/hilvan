@@ -70,7 +70,55 @@ export interface Cadencia {
 export interface ToqueCadencia {
   fecha: string | null
   respondido?: boolean | null
+  /**
+   * 'enviado' (lo tocamos nosotros) | 'recibido' (contestaron ellos).
+   *
+   * Sólo lo enviado es un toque. Si un mensaje recibido contara, una respuesta
+   * del cliente correría la escalera igual que si lo hubiéramos perseguido —y
+   * además reiniciaría el reloj hacia adelante, escondiendo justo al que más
+   * urge contestar.
+   */
+  direccion?: string | null
+  /**
+   * false cuando el hilo al que pertenece está cerrado. Un hilo cerrado es un
+   * borrón deliberado: cambió la contraparte o se retoma después de meses, y
+   * arrastrar los 12 correos sin respuesta del interlocutor anterior dejaría al
+   * prospecto agotado desde el primer mensaje al nuevo.
+   */
+  cuentaCadencia?: boolean | null
 }
+
+/**
+ * Los toques que el reloj mira: enviados por nosotros, en hilos vivos.
+ *
+ * Ausente = cuenta. Las filas viejas no traen estos campos y tienen que seguir
+ * comportándose igual que antes.
+ */
+export function esToqueContable(t: ToqueCadencia): boolean {
+  if (t.direccion === 'recibido') return false
+  if (t.cuentaCadencia === false) return false
+  return true
+}
+
+/**
+ * Normaliza filas de `crm_interacciones` a toques.
+ *
+ * Existe para que todos los consumidores lean los mismos campos: el mapeo entre
+ * la columna `cuenta_cadencia` y la propiedad `cuentaCadencia` es exactamente el
+ * tipo de detalle que un call site nuevo olvida, y olvidarlo no falla —cuenta
+ * de más, en silencio.
+ */
+export function aToques(filas: any[] | null | undefined): ToqueCadencia[] {
+  return (filas ?? []).map((f) => ({
+    fecha: f.fecha ?? null,
+    respondido: f.respondido ?? null,
+    direccion: f.direccion ?? null,
+    cuentaCadencia: f.cuenta_cadencia ?? null,
+  }))
+}
+
+/** Campos que hay que traer de `crm_interacciones` para calcular cadencia. */
+export const CAMPOS_TOQUE = 'fecha, respondido, direccion, cuenta_cadencia'
 
 // ── Fechas planas ────────────────────────────────────────────────────────────
 
@@ -116,6 +164,7 @@ export function calcularCadencia(
 ): Cadencia {
   const orden = toques
     .filter((t): t is ToqueCadencia & { fecha: string } => Boolean(t.fecha))
+    .filter(esToqueContable)
     .sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0))
 
   const base = { snoozeMax: snoozeMaximo(2), intervalo: 2 }

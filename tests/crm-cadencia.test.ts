@@ -7,6 +7,8 @@ import {
   sumarDias,
   LIMITE_SIN_RESPUESTA,
   fueraDeAgenda,
+  aToques,
+  esToqueContable,
   type ToqueCadencia,
 } from '@/lib/crm-cadencia'
 
@@ -156,5 +158,51 @@ describe('fueraDeAgenda', () => {
     for (const e of ['prospecto', 'contacto', 'conversacion']) {
       expect(fueraDeAgenda(e)).toBe(false)
     }
+  })
+})
+
+describe('qué cuenta como toque', () => {
+  it('un mensaje recibido no es un toque nuestro', () => {
+    // Le escribimos el 05 y contestaron el 06. El reloj se cuenta desde
+    // NUESTRO último envío, no desde su respuesta.
+    const c = calcularCadencia([
+      { fecha: '2026-08-05', respondido: true, direccion: 'enviado' },
+      { fecha: '2026-08-06', direccion: 'recibido' },
+    ], LUNES)
+    expect(c.ultimoToque).toBe('2026-08-05')
+    expect(c.estado).toBe('respondio')
+  })
+
+  it('una respuesta sola no cuenta como haber contactado', () => {
+    const c = calcularCadencia([{ fecha: '2026-08-06', direccion: 'recibido' }], LUNES)
+    expect(c.estado).toBe('nunca')
+    expect(c.ultimoToque).toBeNull()
+  })
+
+  it('cerrar el hilo borra la escalera anterior', () => {
+    // 16 sin respuesta con el interlocutor viejo: agotado.
+    const viejos: ToqueCadencia[] = Array.from({ length: 16 }, (_, i) => ({
+      fecha: sumarDias('2026-01-05', i * 7), respondido: false, direccion: 'enviado',
+    }))
+    expect(calcularCadencia(viejos, LUNES).estado).toBe('agotado')
+
+    // Mismo prospecto, hilo cerrado y uno nuevo con otra persona: empieza limpio.
+    const cerrados = viejos.map(t => ({ ...t, cuentaCadencia: false }))
+    const c = calcularCadencia([...cerrados, { fecha: '2026-08-10', direccion: 'enviado' }], LUNES)
+    expect(c.estado).toBe('espera')
+    expect(c.sinRespuesta).toBe(1)
+  })
+
+  it('lo que no declara dirección sigue contando (filas viejas)', () => {
+    const c = calcularCadencia([{ fecha: '2026-08-05' }], LUNES)
+    expect(c.ultimoToque).toBe('2026-08-05')
+  })
+})
+
+describe('aToques', () => {
+  it('traduce cuenta_cadencia sin perderlo por el camino', () => {
+    const [t] = aToques([{ fecha: '2026-08-05', respondido: true, direccion: 'recibido', cuenta_cadencia: false }])
+    expect(t).toEqual({ fecha: '2026-08-05', respondido: true, direccion: 'recibido', cuentaCadencia: false })
+    expect(esToqueContable(t)).toBe(false)
   })
 })

@@ -1167,6 +1167,47 @@ export interface CrmInteraccion {
   fecha_proximo?: string | null
   gmail_thread?: string | null
   created_at: string
+
+  // ── Bitácora conversacional (ago 2026) ──
+  hilo_id?: string | null
+  /** 'enviado' (nosotros) | 'recibido' (la contraparte). Ausente = enviado. */
+  direccion?: string | null
+  /** Con quién de la marca: destinatario si enviado, autor si recibido. */
+  contacto_id?: string | null
+  /** Quién de Casa Hiedra lo mandó. `enviado_por` (texto) es el legado. */
+  enviado_por_id?: string | null
+  enviado_por?: string | null
+  /** A qué mensaje contesta este. */
+  responde_a?: string | null
+  /** false si su hilo está cerrado: no cuenta para la cadencia. */
+  cuenta_cadencia?: boolean | null
+}
+
+/**
+ * Una línea de conversación con una marca.
+ *
+ * Se cierra y se abre otra cuando cambia la contraparte o cuando se retoma el
+ * contacto después de mucho tiempo: son conversaciones distintas, y arrastrar
+ * la escalera de la anterior deja al prospecto agotado desde el primer mensaje.
+ */
+export interface CrmHilo {
+  id: string
+  prospecto_id: string
+  contacto_id?: string | null
+  responsable_id?: string | null
+  titulo?: string | null
+  abierto_at: string
+  cerrado_at?: string | null
+  motivo_cierre?: string | null
+  created_at: string
+}
+
+export const MOTIVOS_CIERRE_HILO: Record<string, string> = {
+  cambio_contacto:    'Cambió la contraparte',
+  cambio_responsable: 'Cambió el responsable',
+  reinicio:           'Se retoma después de tiempo',
+  sin_respuesta:      'Se agotó sin respuesta',
+  manual:             'Cerrado a mano',
 }
 
 // Árbol de contactos de una marca: varias personas por prospecto.

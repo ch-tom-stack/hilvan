@@ -62,9 +62,31 @@ de género manda sobre el producto. Tomás recibe menos por diseño: sus criteri
 
 - **Sin `segmento` no se asigna.** Queda "por clasificar" — asignar a ciegas es
   peor que dejarlo pendiente.
-- **Nunca se reasigna** un prospecto que ya tiene responsable.
+- **El reparto automático nunca reasigna** un prospecto que ya tiene
+  responsable. Sí existe una vía para cambiarlo, y es pedirlo (ver abajo).
 - La clasificación se hace **con fuente** (sitio, Instagram, dossier de La
   Lectura). Si no hay cómo determinarla, se deja pendiente y se reporta.
+
+## Pedir un prospecto (ago 2026)
+
+La regla anterior era "nunca se reasigna, y punto". No resultó viable: en la
+práctica alguien conoce al cliente, tiene el contexto o le sobra capacidad, y
+sin una vía para decirlo la única salida era saltarse la regla.
+
+Ahora hay una: **se pide, no se toma.**
+
+- Desde la ficha del prospecto: *Pedir este prospecto*.
+- Desde el operador: `hilvan_solicitar_asignacion` (`para` = el email de quien
+  lo llevaría; si no calza con un usuario, falla en vez de adivinar).
+
+En ambos casos NO se reasigna nada: queda una propuesta en la Bandeja que
+resuelve quien gestiona el reparto. Eso conserva lo que la regla protegía —que
+nadie elija su propia carga— sin obligar a nadie a saltársela. Una sola
+solicitud viva por prospecto.
+
+Al aprobarse, el hilo abierto de la bitácora pasa también al nuevo responsable:
+el emisor de la conversación cambió, y dejarlo apuntando al anterior haría que
+los mensajes que vengan queden atribuidos a quien ya no la lleva.
 
 ## Dónde se aplican
 

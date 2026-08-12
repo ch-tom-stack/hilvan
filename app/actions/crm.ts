@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import type {
   Prospecto,
   CrmInteraccion,
+  CrmHilo,
   CrmContacto,
   CrmBorrador,
   CrmLectura,
@@ -15,13 +16,14 @@ import type {
   EtapaProspecto,
   Profile,
 } from '@/types'
-import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION } from '@/types'
+import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION, MOTIVOS_CIERRE_HILO } from '@/types'
 import { aplicarEfectoAprobacion, AplicarError, CAMPOS_CORREGIBLES, type AprobacionRow } from '@/lib/crm-aprobaciones'
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
-import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, fueraDeAgenda, type Cadencia } from '@/lib/crm-cadencia'
+import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, fueraDeAgenda, aToques, CAMPOS_TOQUE, type Cadencia } from '@/lib/crm-cadencia'
 import { HERRAMIENTA_DIGEST } from '@/lib/agent-crm'
 import { evaluarCotejo, HERRAMIENTAS_COTEJO, type EstadoCotejo } from '@/lib/crm-reconciliacion'
+import { hiloVigente, insertarRespuesta, abrirHiloEn, cerrarHiloEn, reabrirHiloEn, type RespuestaInput } from '@/lib/crm-conversacion'
 
 // ── Acceso ───────────────────────────────────────────────────────────────────
 // El CRM es admin + productor (oculto para contabilidad). Toda mutación verifica
@@ -62,7 +64,7 @@ const PROSPECTO_SELECT =
 // el mapa de calor y la fecha más reciente da los días sin tocar (C4).
 // `toques` trae fecha + respondido de cada interacción: con eso el motor de
 // cadencia (lib/crm-cadencia.ts) resuelve cuándo toca el próximo contacto.
-const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count), toques:crm_interacciones(fecha, respondido)`
+const PIPELINE_SELECT = `${PROSPECTO_SELECT}, crm_interacciones(count), toques:crm_interacciones(${CAMPOS_TOQUE})`
 
 export async function getPipeline(): Promise<Prospecto[]> {
   const supabase = await createClient()
@@ -74,7 +76,7 @@ export async function getPipeline(): Promise<Prospecto[]> {
   if (error) return []
   const hoy = hoyChileISO()
   return (data ?? []).map((r: any) => {
-    const toques: { fecha: string | null; respondido?: boolean | null }[] = Array.isArray(r.toques) ? r.toques : []
+    const toques = aToques(Array.isArray(r.toques) ? r.toques : [])
     const fechas: string[] = toques.map(t => t?.fecha).filter(Boolean) as string[]
     // Fecha plana YYYY-MM-DD: comparar como string es correcto y evita UTC.
     const ultima = fechas.length ? fechas.sort().at(-1) ?? null : null
@@ -90,6 +92,7 @@ export async function getPipeline(): Promise<Prospecto[]> {
 export async function getProspecto(id: string): Promise<{
   prospecto: Prospecto | null
   interacciones: CrmInteraccion[]
+  hilos: CrmHilo[]
   contactos: CrmContacto[]
   borradores: CrmBorrador[]
   lecturas: CrmLectura[]
@@ -136,9 +139,17 @@ export async function getProspecto(id: string): Promise<{
     .eq('prospecto_id', id)
     .order('created_at', { ascending: false })
 
+  // Las líneas de conversación: la bitácora se agrupa por hilo, no por fecha.
+  const { data: hilos } = await supabase
+    .from('crm_hilos')
+    .select('*')
+    .eq('prospecto_id', id)
+    .order('abierto_at', { ascending: false })
+
   return {
     prospecto: (prospecto as unknown as Prospecto) ?? null,
     interacciones: (interacciones ?? []) as CrmInteraccion[],
+    hilos: (hilos ?? []) as CrmHilo[],
     contactos: (contactos ?? []) as CrmContacto[],
     borradores: (borradores ?? []) as CrmBorrador[],
     lecturas: (lecturas ?? []) as CrmLectura[],
@@ -277,6 +288,26 @@ export interface ItemAgenda {
   estado: string          // respondio | nunca | atrasado | hoy
   ultimoToque: string | null
   diasAtraso: number
+  /**
+   * Quién mandó el último mensaje. Importa porque el reparto cambia: al recibir
+   * una marca que llevaba otra persona, lo primero que hace falta saber es
+   * quién habló y cuándo, para no escribir como si fuera el primer contacto.
+   */
+  ultimoPor: string | null
+}
+
+/** Quién mandó el toque de esa fecha. null si no se registró (filas viejas). */
+function quienToco(
+  toques: any[] | null | undefined,
+  fecha: string | null,
+  nombres: Map<string, string>,
+): string | null {
+  if (!fecha) return null
+  const t = (toques ?? []).find(
+    (x: any) => x.fecha === fecha && (x.direccion ?? 'enviado') === 'enviado',
+  )
+  if (!t) return null
+  return (t.enviado_por_id ? nombres.get(t.enviado_por_id) : null) ?? t.enviado_por ?? null
 }
 
 export interface FilaDigestMatinal {
@@ -307,7 +338,8 @@ function listaAgendaHtml(agenda: ItemAgenda[]): string {
         a.estado === 'respondio' ? '<span style="color:#c9a84c;font-weight:600;">te respondió</span> · '
         : a.diasAtraso > 0 ? `<span style="color:#c9a84c;">${a.diasAtraso} día${a.diasAtraso === 1 ? '' : 's'} atrasado</span> · `
         : ''
-      const ultimo = a.ultimoToque ? `último contacto ${a.ultimoToque}` : 'sin contactar aún'
+      const porQuien = a.ultimoPor ? ` por ${a.ultimoPor}` : ''
+      const ultimo = a.ultimoToque ? `último contacto ${a.ultimoToque}${porQuien}` : 'sin contactar aún'
       return `<li style="margin-bottom:4px;"><strong>${a.empresa}</strong> — ${marca}${ultimo}</li>`
     }).join('')}
   </ul>`
@@ -371,10 +403,14 @@ export async function procesarDigestMatinal(
   ) as { id: string; nombre: string; email: string | null }[]
 
   const [{ data: prospectos }, { data: borradores }, cotejo] = await Promise.all([
-    admin.from('prospectos').select('id, empresa, etapa, responsable_id, snooze_hasta, crm_interacciones(fecha, respondido)'),
+    admin.from('prospectos').select(`id, empresa, etapa, responsable_id, snooze_hasta, crm_interacciones(${CAMPOS_TOQUE}, enviado_por_id, enviado_por)`),
     admin.from('crm_borradores').select('prospecto_id').eq('estado', 'listo'),
     getEstadoCotejo(),
   ])
+
+  // Todos los perfiles, no sólo los operadores: un toque viejo puede ser de
+  // alguien que ya no está en el equipo de captación, y su nombre igual importa.
+  const nombrePorId = new Map((perfiles ?? []).map((x: any) => [x.id, x.nombre as string]))
 
   const respDe = new Map<string, string | null>()
   const activos = new Map<string, { total: number; porContactar: number }>()
@@ -391,7 +427,7 @@ export async function procesarDigestMatinal(
 
     // La lista del día sale del mismo motor que la agenda de la app: una sola
     // fuente de verdad, para que el correo y la pantalla nunca se contradigan.
-    const cad = calcularCadencia(p.crm_interacciones ?? [], hoy, p.snooze_hasta)
+    const cad = calcularCadencia(aToques(p.crm_interacciones), hoy, p.snooze_hasta)
     if (!cad.pendiente) continue
     const arr = agendaDe.get(p.responsable_id) ?? []
     arr.push({
@@ -399,6 +435,7 @@ export async function procesarDigestMatinal(
       estado: cad.estado,
       ultimoToque: cad.ultimoToque,
       diasAtraso: cad.diasAtraso,
+      ultimoPor: quienToco(p.crm_interacciones, cad.ultimoToque, nombrePorId),
       _prio: prioridadCadencia(cad),
     })
     agendaDe.set(p.responsable_id, arr)
@@ -528,7 +565,7 @@ export async function proponerEnFrioAgotados(
 
   const { data: prospectos } = await admin
     .from('prospectos')
-    .select('id, empresa, etapa, snooze_hasta, crm_interacciones(fecha, respondido)')
+    .select(`id, empresa, etapa, snooze_hasta, crm_interacciones(${CAMPOS_TOQUE})`)
     .not('etapa', 'in', '("en_frio","descartado","confirmado","nurture")')
 
   // Los que ya tienen una propuesta pendiente no se vuelven a proponer.
@@ -542,7 +579,7 @@ export async function proponerEnFrioAgotados(
   const empresas: string[] = []
   for (const p of (prospectos ?? []) as any[]) {
     if (pendientes.has(p.id)) continue
-    const cad = calcularCadencia(p.crm_interacciones ?? [], hoy, p.snooze_hasta)
+    const cad = calcularCadencia(aToques(p.crm_interacciones), hoy, p.snooze_hasta)
     if (cad.estado !== 'agotado') continue
     empresas.push(p.empresa)
     if (opts.dryRun) continue
@@ -768,6 +805,9 @@ export interface InteraccionInput {
   proximo_paso?: string
   fecha_proximo?: string  // YYYY-MM-DD
   gmail_thread?: string
+  hilo_id?: string
+  contacto_id?: string    // con quién de la marca
+  responde_a?: string     // a qué mensaje contesta
 }
 
 /**
@@ -797,6 +837,8 @@ export async function registrarInteraccion(
   const acceso = await verificarAccesoCrm()
   if (!acceso.ok) return { error: acceso.error }
 
+  const hiloId = input.hilo_id || (await hiloVigente(acceso.supabase, prospectoId, acceso.user.id))
+
   const { error } = await acceso.supabase.from('crm_interacciones').insert({
     prospecto_id: prospectoId,
     fecha: input.fecha || null,
@@ -807,9 +849,16 @@ export async function registrarInteraccion(
     proximo_paso: limpiar(input.proximo_paso),
     fecha_proximo: input.fecha_proximo || null,
     gmail_thread: limpiar(input.gmail_thread),
+    hilo_id: hiloId,
+    direccion: 'enviado',
+    contacto_id: input.contacto_id || null,
+    responde_a: input.responde_a || null,
     // Quién lo registró. Sin esto no hay tracking por persona: lo único
     // atribuible era el responsable del prospecto, que es el REPARTO.
     registrado_por: acceso.user.id,
+    // Quién lo ENVIÓ. No siempre es quien lo registra —Natalia puede anotar un
+    // correo que mandó Simón— pero por defecto es la misma persona.
+    enviado_por_id: acceso.user.id,
   })
 
   if (error) return { error: error.message }
@@ -820,6 +869,134 @@ export async function registrarInteraccion(
 
   revalidatePath('/crm')
   revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+// ── Bitácora conversacional: hilos y respuestas (ago 2026) ───────────────────
+
+/**
+ * Registra un mensaje RECIBIDO: lo que la contraparte contestó.
+ *
+ * Marca respondido en el mensaje al que contesta (o en el último que enviamos),
+ * que es de donde el motor de cadencia saca el estado 'respondio' — el más
+ * urgente de todos, porque le debemos respuesta a alguien que habló.
+ */
+export async function registrarRespuesta(
+  prospectoId: string,
+  input: RespuestaInput,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const res = await insertarRespuesta(acceso.supabase, prospectoId, input, acceso.user.id)
+  if (res.error) return { error: res.error }
+
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+/** Abre una línea nueva; por defecto cierra la vigente (son conversaciones distintas). */
+export async function abrirHilo(
+  prospectoId: string,
+  opts: { contacto_id?: string; titulo?: string; motivo_cierre?: string; cerrar_actual?: boolean } = {},
+): Promise<{ ok?: true; hilo_id?: string; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const res = await abrirHiloEn(acceso.supabase, prospectoId, opts)
+  if (res.error) return { error: res.error }
+
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true, hilo_id: res.hilo_id }
+}
+
+export async function cerrarHilo(
+  hiloId: string,
+  prospectoId: string,
+  motivo = 'manual',
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+  if (!MOTIVOS_CIERRE_HILO[motivo]) return { error: 'Motivo de cierre inválido' }
+
+  const err = await cerrarHiloEn(acceso.supabase, hiloId, motivo)
+  if (err) return { error: err }
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+export async function reabrirHilo(
+  hiloId: string,
+  prospectoId: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const err = await reabrirHiloEn(acceso.supabase, hiloId)
+  if (err) return { error: err }
+  revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+/**
+ * Pide que un prospecto se asigne o reasigne.
+ *
+ * No reasigna: crea una propuesta en la Bandeja para que la resuelva quien
+ * gestiona el equipo. Las reglas de reparto existen para que la carga no se
+ * elija sola, y una reasignación directa por el interesado las vaciaría.
+ */
+export async function solicitarAsignacion(
+  prospectoId: string,
+  opts: { hacia_id?: string; motivo?: string } = {},
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const [{ data: p }, { data: yo }] = await Promise.all([
+    acceso.supabase.from('prospectos')
+      .select('empresa, responsable_id, responsable:profiles!prospectos_responsable_id_fkey(nombre)')
+      .eq('id', prospectoId).maybeSingle<any>(),
+    acceso.supabase.from('profiles').select('nombre').eq('id', acceso.user.id).maybeSingle<{ nombre: string }>(),
+  ])
+  if (!p) return { error: 'Prospecto no encontrado' }
+
+  const hacia = opts.hacia_id || acceso.user.id
+  if (hacia === p.responsable_id) return { error: 'Ese prospecto ya está asignado a esa persona' }
+
+  const { data: destino } = await acceso.supabase
+    .from('profiles').select('nombre').eq('id', hacia).maybeSingle<{ nombre: string }>()
+  if (!destino) return { error: 'Persona de destino no encontrada' }
+
+  // Una sola solicitud viva por prospecto: dos pendientes para lo mismo hacen
+  // que aprobar la segunda deshaga la primera sin que nadie lo note.
+  const { data: yaHay } = await acceso.supabase
+    .from('crm_aprobaciones').select('id')
+    .eq('prospecto_id', prospectoId).eq('tipo', 'reasignacion').eq('estado', 'pendiente')
+    .maybeSingle<{ id: string }>()
+  if (yaHay) return { error: 'Ya hay una solicitud pendiente para este prospecto' }
+
+  const { error } = await acceso.supabase.from('crm_aprobaciones').insert({
+    tipo: 'reasignacion',
+    prospecto_id: prospectoId,
+    estado: 'pendiente',
+    origen: 'chat',
+    payload: {
+      empresa: p.empresa,
+      hacia_id: hacia,
+      hacia_nombre: destino.nombre,
+      desde_id: p.responsable_id,
+      desde_nombre: p.responsable?.nombre ?? null,
+      pedido_por_id: acceso.user.id,
+      pedido_por_nombre: yo?.nombre ?? null,
+      motivo: limpiar(opts.motivo),
+    },
+    nota_agente: `${yo?.nombre ?? 'Alguien'} pide que ${p.empresa} pase a ${destino.nombre}.`,
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath('/crm')
+  revalidatePath('/crm/aprobaciones')
   return { ok: true }
 }
 
@@ -1023,13 +1200,13 @@ export async function snoozeProspecto(
 
   const { data: p } = await acceso.supabase
     .from('prospectos')
-    .select('snooze_hasta, crm_interacciones(fecha, respondido)')
+    .select(`snooze_hasta, crm_interacciones(${CAMPOS_TOQUE})`)
     .eq('id', id)
     .maybeSingle<{ snooze_hasta: string | null; crm_interacciones: { fecha: string | null; respondido: boolean | null }[] }>()
   if (!p) return { error: 'Prospecto no encontrado' }
 
   const hoy = hoyChileISO()
-  const cad = calcularCadencia(p.crm_interacciones ?? [], hoy, p.snooze_hasta)
+  const cad = calcularCadencia(aToques(p.crm_interacciones), hoy, p.snooze_hasta)
   const tope = snoozeMaximo(cad.intervalo)
   if (dias > tope) return { error: `El máximo para este tramo son ${tope} día${tope === 1 ? '' : 's'}` }
 

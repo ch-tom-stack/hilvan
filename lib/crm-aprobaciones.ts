@@ -125,6 +125,34 @@ export async function aplicarEfectoAprobacion(
     return { interaccion_id: data.id }
   }
 
+  if (ap.tipo === 'reasignacion') {
+    // Cambiar de dueño es lo único que las reglas de reparto no dejan hacer
+    // solo: pasa por acá justamente para que lo autorice quien ve la carga
+    // completa del equipo, y no el interesado.
+    const prospectoId = ap.prospecto_id || payload.prospecto_id
+    if (!prospectoId) throw new AplicarError('La solicitud no dice de qué prospecto')
+    if (!payload.hacia_id) throw new AplicarError('La solicitud no dice hacia quién')
+
+    const { data: destino } = await client
+      .from('profiles').select('id').eq('id', payload.hacia_id).maybeSingle()
+    if (!destino) throw new AplicarError('La persona de destino ya no existe')
+
+    const { error } = await client
+      .from('prospectos').update({ responsable_id: payload.hacia_id }).eq('id', prospectoId)
+    if (error) throw new AplicarError(error.message)
+
+    // El hilo abierto sigue a su nuevo dueño: el emisor de la conversación
+    // cambió, y dejarlo apuntando al anterior haría que la bitácora atribuyera
+    // mal los mensajes que vengan.
+    await client
+      .from('crm_hilos')
+      .update({ responsable_id: payload.hacia_id })
+      .eq('prospecto_id', prospectoId)
+      .is('cerrado_at', null)
+
+    return { prospecto_id: prospectoId, responsable_id: payload.hacia_id }
+  }
+
   if (ap.tipo === 'brief_cotizacion') {
     // Handoff (F5): al aprobar el brief, garantizamos que exista un cliente en
     // CH-7 y lo linkeamos al prospecto. NO se crea la cotización: se entrega el
