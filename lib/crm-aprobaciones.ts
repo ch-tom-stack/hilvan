@@ -58,9 +58,18 @@ export async function aplicarEfectoAprobacion(
 
   if (ap.tipo === 'prospecto_nuevo') {
     if (!payload.empresa) throw new AplicarError('La propuesta no tiene empresa')
+
+    // Si el lead viene con lectura, el hito ya está cumplido: la investigación
+    // se hizo, por eso existe el dossier. Se marca al crear y no después porque
+    // esta era la única de las tres vías de registrar lectura que no lo hacía
+    // —el endpoint del agente y la ficha sí—, y el resultado era una ficha que
+    // mostraba el dossier con el hito en blanco.
+    const hayLectura = Boolean(payload.dossier || payload.url)
+
     const { data, error } = await client
       .from('prospectos')
       .insert({
+        checklist: hayLectura ? ['lectura'] : [],
         empresa: payload.empresa,
         nombre_contacto: payload.nombre_contacto ?? null,
         email: payload.email ?? null,
@@ -83,7 +92,7 @@ export async function aplicarEfectoAprobacion(
     // solo vivía en el Supabase del sitio y en Hilván quedaba el resumen en
     // texto plano; acá es el insumo del brief cuando el prospecto avanza.
     // No bloquea la aprobación: el prospecto ya existe y es lo que importa.
-    if (payload.dossier || payload.url) {
+    if (hayLectura) {
       const { error: errLectura } = await client.from('crm_lecturas').insert({
         prospecto_id: data.id,
         url: payload.url ?? null,
