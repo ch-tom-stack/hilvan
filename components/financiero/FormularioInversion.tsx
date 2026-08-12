@@ -217,7 +217,7 @@ export default function FormularioInversion({ inversion, onGuardado, onCancelar 
                 campos.tratamiento_contable === op
                   ? 'border-ch-cream text-ch-cream bg-ch-cream/10'
                   : 'border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-cream/50'
-              }`}
+              } ch-press`}
             >
               {op === 'gasto_directo' ? 'Gasto directo del período' : 'Activo fijo (el contador lo deprecia)'}
             </button>
@@ -283,7 +283,7 @@ export default function FormularioInversion({ inversion, onGuardado, onCancelar 
               onClick={() => set('factura_casa_hiedra', !campos.factura_casa_hiedra)}
               className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
                 campos.factura_casa_hiedra ? 'bg-ch-cream' : 'bg-ch-border'
-              }`}
+              } ch-press`}
             >
               <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-ch-dark shadow ring-0 transition-transform ${
                 campos.factura_casa_hiedra ? 'translate-x-4' : 'translate-x-0'
@@ -314,7 +314,7 @@ export default function FormularioInversion({ inversion, onGuardado, onCancelar 
             <button
               type="button"
               onClick={() => set('comprobante_url', null)}
-              className="text-ch-muted hover:text-red-400 font-body text-[10px] tracking-widest uppercase transition-colors"
+              className="text-ch-muted hover:text-red-400 font-body text-[10px] tracking-widest uppercase transition-colors ch-press"
             >
               ✕ Quitar
             </button>
@@ -363,14 +363,14 @@ export default function FormularioInversion({ inversion, onGuardado, onCancelar 
         <button
           type="submit"
           disabled={isPending || uploading}
-          className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-8 py-3 transition-colors disabled:opacity-50"
+          className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-8 py-3 transition-colors disabled:opacity-50 ch-press"
         >
           {isPending ? 'Guardando...' : 'Guardar inversión'}
         </button>
         <button
           type="button"
           onClick={onCancelar}
-          className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase transition-colors"
+          className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase transition-colors ch-press"
         >
           Cancelar
         </button>

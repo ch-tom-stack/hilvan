@@ -65,7 +65,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
           <button
             onClick={() => startTransition(async () => { await generarCitaciones(id); momento('citaciones.enviadas'); recargar() })}
             disabled={isPending}
-            className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
+            className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50 ch-press"
           >
             {isPending ? 'Generando...' : 'Generar citaciones'}
           </button>
@@ -96,7 +96,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
               <button
                 key={did}
                 onClick={() => setFiltroDept(did)}
-                className={`text-xs px-3 py-1 rounded-full transition-colors ${filtroDept === did ? 'bg-ch-cream text-ch-dark' : 'text-ch-muted border border-ch-border hover:border-ch-muted'}`}
+                className={`text-xs px-3 py-1 rounded-full transition-colors ${filtroDept === did ? 'bg-ch-cream text-ch-dark' : 'text-ch-muted border border-ch-border hover:border-ch-muted'} ch-press`}
               >
                 {label}
               </button>
@@ -176,7 +176,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
                             <label className="text-xs text-ch-muted">Mensaje de citación</label>
-                            <button onClick={() => setMensajeEditando({ id: citacion.id, texto: mensajeActual })} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">
+                            <button onClick={() => setMensajeEditando({ id: citacion.id, texto: mensajeActual })} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors ch-press">
                               Editar
                             </button>
                           </div>
@@ -191,11 +191,11 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
                               <div className="flex gap-2 mt-2">
                                 <button
                                   onClick={() => startTransition(async () => { await actualizarMensajeCitacion(citacion.id, id, mensajeEditando.texto); setMensajeEditando(null); recargar() })}
-                                  className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors"
+                                  className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors ch-press"
                                 >
                                   Guardar
                                 </button>
-                                <button onClick={() => setMensajeEditando(null)} className="text-xs text-ch-muted px-3 py-1.5 hover:text-ch-cream">Cancelar</button>
+                                <button onClick={() => setMensajeEditando(null)} className="text-xs text-ch-muted px-3 py-1.5 hover:text-ch-cream ch-press">Cancelar</button>
                               </div>
                             </div>
                           ) : (
@@ -204,10 +204,10 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          <button onClick={() => copiar(mensajeActual, `msg-${citacion.id}`)} className="text-xs border border-ch-border px-3 py-1.5 rounded-[2px] text-ch-muted hover:border-ch-muted hover:text-ch-cream transition-colors">
+                          <button onClick={() => copiar(mensajeActual, `msg-${citacion.id}`)} className="text-xs border border-ch-border px-3 py-1.5 rounded-[2px] text-ch-muted hover:border-ch-muted hover:text-ch-cream transition-colors ch-press">
                             {copiado === `msg-${citacion.id}` ? '✓ Copiado' : 'Copiar mensaje'}
                           </button>
-                          <button onClick={() => copiar(link!, `link-${citacion.id}`)} className="text-xs border border-ch-border px-3 py-1.5 rounded-[2px] text-ch-muted hover:border-ch-muted hover:text-ch-cream transition-colors">
+                          <button onClick={() => copiar(link!, `link-${citacion.id}`)} className="text-xs border border-ch-border px-3 py-1.5 rounded-[2px] text-ch-muted hover:border-ch-muted hover:text-ch-cream transition-colors ch-press">
                             {copiado === `link-${citacion.id}` ? '✓ Copiado' : 'Copiar link'}
                           </button>
                           {persona.telefono && (
@@ -217,7 +217,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
                           )}
                           <button
                             onClick={() => startTransition(async () => { await marcarWhatsappEnviado(citacion.id, id); recargar() })}
-                            className={`text-xs border px-3 py-1.5 rounded-[2px] transition-colors ${citacion.whatsapp_enviado ? 'border-emerald-800 text-emerald-500 bg-emerald-950/30' : 'border-ch-border text-ch-muted hover:border-ch-muted'}`}
+                            className={`text-xs border px-3 py-1.5 rounded-[2px] transition-colors ${citacion.whatsapp_enviado ? 'border-emerald-800 text-emerald-500 bg-emerald-950/30' : 'border-ch-border text-ch-muted hover:border-ch-muted'} ch-press`}
                           >
                             {citacion.whatsapp_enviado ? '✓ WA enviado' : 'Marcar WA enviado'}
                           </button>
@@ -225,7 +225,7 @@ export default function CitacionesPage({ params }: { params: Promise<{ id: strin
                             <button
                               onClick={() => startTransition(async () => { await enviarEmailCitacion(citacion.id, id); recargar() })}
                               disabled={isPending}
-                              className={`text-xs border px-3 py-1.5 rounded-[2px] transition-colors ${citacion.email_enviado_at ? 'border-emerald-800 text-emerald-500 bg-emerald-950/30' : 'border-ch-border text-ch-muted hover:border-ch-muted hover:text-ch-cream'}`}
+                              className={`text-xs border px-3 py-1.5 rounded-[2px] transition-colors ${citacion.email_enviado_at ? 'border-emerald-800 text-emerald-500 bg-emerald-950/30' : 'border-ch-border text-ch-muted hover:border-ch-muted hover:text-ch-cream'} ch-press`}
                             >
                               {citacion.email_enviado_at ? '✓ Email enviado' : 'Enviar email'}
                             </button>

@@ -314,7 +314,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                 {/* Estado — click cicla */}
                 <button
                   onClick={cambiarEstado}
-                  className={`text-xs px-2 py-0.5 rounded-full transition-colors hover:opacity-70 ${cfg.clase}`}
+                  className={`text-xs px-2 py-0.5 rounded-full transition-colors hover:opacity-70 ${cfg.clase} ch-press`}
                   title="Click para cambiar estado"
                 >
                   {cfg.label}
@@ -340,7 +340,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                   setCambiosSinGuardar(true)
                   programarAutoSave()
                 }} disabled={!puedeUndo} title="Deshacer (⌘Z)"
-                  className="text-xs px-2 py-1 text-ch-subtle hover:text-ch-muted disabled:opacity-30 transition-colors">
+                  className="text-xs px-2 py-1 text-ch-subtle hover:text-ch-muted disabled:opacity-30 transition-colors ch-press">
                   ↩
                 </button>
                 <button onClick={() => {
@@ -351,14 +351,14 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                   setCambiosSinGuardar(true)
                   programarAutoSave()
                 }} disabled={!puedeRedo} title="Rehacer (⌘⇧Z)"
-                  className="text-xs px-2 py-1 text-ch-subtle hover:text-ch-muted disabled:opacity-30 transition-colors border-l border-ch-border">
+                  className="text-xs px-2 py-1 text-ch-subtle hover:text-ch-muted disabled:opacity-30 transition-colors border-l border-ch-border ch-press">
                   ↪
                 </button>
               </div>
 
               {cambiosSinGuardar ? (
                 <button onClick={guardarAhora} disabled={guardando}
-                  className="text-xs bg-amber-500 text-black font-medium px-3 py-1.5 rounded-[2px] hover:bg-amber-400 transition-colors disabled:opacity-50">
+                  className="text-xs bg-amber-500 text-black font-medium px-3 py-1.5 rounded-[2px] hover:bg-amber-400 transition-colors disabled:opacity-50 ch-press">
                   {guardando ? 'Guardando...' : '● Guardar'}
                 </button>
               ) : (
@@ -438,11 +438,11 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       {/* TABS MÓVIL */}
       <div className="lg:hidden flex border-b border-ch-border">
         <button onClick={() => setTabMobil('plan')}
-          className={`flex-1 py-2 text-xs font-medium ${tabMobil === 'plan' ? 'text-ch-cream border-b-2 border-ch-cream' : 'text-ch-subtle'}`}>
+          className={`flex-1 py-2 text-xs font-medium ${tabMobil === 'plan' ? 'text-ch-cream border-b-2 border-ch-cream' : 'text-ch-subtle'} ch-press`}>
           Plan
         </button>
         <button onClick={() => setTabMobil('equipo')}
-          className={`flex-1 py-2 text-xs font-medium ${tabMobil === 'equipo' ? 'text-ch-cream border-b-2 border-ch-cream' : 'text-ch-subtle'}`}>
+          className={`flex-1 py-2 text-xs font-medium ${tabMobil === 'equipo' ? 'text-ch-cream border-b-2 border-ch-cream' : 'text-ch-subtle'} ch-press`}>
           Equipo ({equipo.length})
         </button>
       </div>

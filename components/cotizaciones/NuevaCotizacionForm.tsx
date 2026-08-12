@@ -95,7 +95,7 @@ export default function NuevaCotizacionForm({ clientes, proyectos }: Props) {
                 clienteMode === mode
                   ? 'bg-ch-cream text-ch-dark font-medium'
                   : 'bg-ch-border/20 text-ch-muted hover:text-ch-cream'
-              }`}
+              } ch-press`}
             >
               {mode === 'libre' ? 'Texto libre' : mode === 'existente' ? 'De la BD' : 'Crear nuevo'}
             </button>
@@ -154,7 +154,7 @@ export default function NuevaCotizacionForm({ clientes, proyectos }: Props) {
               type="button"
               onClick={handleCrearCliente}
               disabled={creandoCliente || !nuevoClienteNombre.trim()}
-              className="px-4 py-2 bg-ch-cream/10 border border-ch-cream/20 text-ch-cream font-body text-xs rounded hover:bg-ch-cream/20 transition-colors disabled:opacity-40"
+              className="px-4 py-2 bg-ch-cream/10 border border-ch-cream/20 text-ch-cream font-body text-xs rounded hover:bg-ch-cream/20 transition-colors disabled:opacity-40 ch-press"
             >
               {creandoCliente ? 'Guardando...' : 'Guardar cliente'}
             </button>
@@ -192,7 +192,7 @@ export default function NuevaCotizacionForm({ clientes, proyectos }: Props) {
         <button
           type="submit"
           disabled={isPending}
-          className="flex-1 py-3 bg-ch-cream text-ch-dark font-body text-sm font-medium rounded hover:bg-ch-cream/90 transition-colors disabled:opacity-50"
+          className="flex-1 py-3 bg-ch-cream text-ch-dark font-body text-sm font-medium rounded hover:bg-ch-cream/90 transition-colors disabled:opacity-50 ch-press"
         >
           {isPending ? 'Creando...' : 'Crear cotización'}
         </button>

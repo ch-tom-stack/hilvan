@@ -58,13 +58,13 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
         <div className="flex gap-2">
           <button
             onClick={() => setModalDept({ open: true })}
-            className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors"
+            className="text-xs text-ch-muted border border-ch-border px-3 py-1.5 rounded-[2px] hover:border-ch-muted transition-colors ch-press"
           >
             + Departamento
           </button>
           <button
             onClick={() => { setModalPersona({ open: true }); setColaboradorSeleccionado(null); setBusqueda('') }}
-            className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors"
+            className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors ch-press"
           >
             + Persona
           </button>
@@ -157,10 +157,10 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
               <p className="text-xs text-ch-subtle mt-1">Solo va al jefe del departamento. El resto hereda la hora general.</p>
             </div>
             <div className="flex gap-3 pt-1">
-              <button type="submit" disabled={isPending} className="bg-ch-cream text-ch-dark text-sm font-medium px-4 py-2 rounded-[2px] hover:bg-white transition-colors">
+              <button type="submit" disabled={isPending} className="bg-ch-cream text-ch-dark text-sm font-medium px-4 py-2 rounded-[2px] hover:bg-white transition-colors ch-press">
                 {isPending ? 'Guardando...' : 'Guardar'}
               </button>
-              <button type="button" onClick={() => setModalDept({ open: false })} className="text-sm text-ch-muted px-3 py-2 hover:text-ch-cream">
+              <button type="button" onClick={() => setModalDept({ open: false })} className="text-sm text-ch-muted px-3 py-2 hover:text-ch-cream ch-press">
                 Cancelar
               </button>
             </div>
@@ -207,7 +207,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
                         key={c.id}
                         type="button"
                         onClick={() => { setColaboradorSeleccionado(c); setBusqueda(c.nombre); setSugerencias([]) }}
-                        className="w-full text-left px-3 py-2 text-sm text-ch-cream hover:bg-ch-dark transition-colors"
+                        className="w-full text-left px-3 py-2 text-sm text-ch-cream hover:bg-ch-dark transition-colors ch-press"
                       >
                         <span>{c.nombre}</span>
                         {c.rol_habitual && <span className="text-ch-muted ml-2 text-xs">{c.rol_habitual}</span>}
@@ -300,10 +300,10 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
             )}
 
             <div className="flex gap-3 pt-1">
-              <button type="submit" disabled={isPending} className="bg-ch-cream text-ch-dark text-sm font-medium px-4 py-2 rounded-[2px] hover:bg-white transition-colors">
+              <button type="submit" disabled={isPending} className="bg-ch-cream text-ch-dark text-sm font-medium px-4 py-2 rounded-[2px] hover:bg-white transition-colors ch-press">
                 {isPending ? 'Guardando...' : 'Guardar'}
               </button>
-              <button type="button" onClick={() => setModalPersona({ open: false })} className="text-sm text-ch-muted px-3 py-2 hover:text-ch-cream">
+              <button type="button" onClick={() => setModalPersona({ open: false })} className="text-sm text-ch-muted px-3 py-2 hover:text-ch-cream ch-press">
                 Cancelar
               </button>
             </div>
@@ -324,8 +324,8 @@ function DepartamentoCard({ dept, rodajeId, onEditDept, onEditPersona, onDelete,
           {dept.hora_llamado && <span className="text-xs text-ch-subtle">{formatHora(dept.hora_llamado)}</span>}
         </div>
         <div className="flex gap-2">
-          <button onClick={onEditDept} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">Editar</button>
-          <button onClick={onDelete} className="text-xs text-ch-border hover:text-red-400 transition-colors">Eliminar</button>
+          <button onClick={onEditDept} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors ch-press">Editar</button>
+          <button onClick={onDelete} className="text-xs text-ch-border hover:text-red-400 transition-colors ch-press">Eliminar</button>
         </div>
       </div>
       {miembros.length === 0 ? (
@@ -365,8 +365,8 @@ function PersonaRow({ persona, onEdit, onDelete }: any) {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">Editar</button>
-          <button onClick={onDelete} className="text-xs text-ch-border hover:text-red-400 transition-colors">Quitar</button>
+          <button onClick={onEdit} className="text-xs text-ch-subtle hover:text-ch-muted transition-colors ch-press">Editar</button>
+          <button onClick={onDelete} className="text-xs text-ch-border hover:text-red-400 transition-colors ch-press">Quitar</button>
         </div>
       </div>
     </div>

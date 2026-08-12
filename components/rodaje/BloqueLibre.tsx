@@ -57,7 +57,7 @@ export default function BloqueLibre({
   }
 
   const btn = (activo: boolean) =>
-    `text-[11px] px-1.5 py-0.5 rounded-[2px] border transition-colors ${
+    `ch-press text-[11px] px-1.5 py-0.5 rounded-[2px] border transition-colors ${
       activo ? 'border-ch-cream text-ch-cream bg-ch-surface' : 'border-ch-border text-ch-subtle hover:text-ch-muted'
     }`
 
@@ -106,7 +106,7 @@ export default function BloqueLibre({
         <div className="flex items-center gap-0.5">
           {COLORES_TEXTO.map(c => (
             <button key={c} onClick={() => onEstilo({ color: c })}
-              className={`w-4 h-4 rounded-full border ${e.color === c ? 'border-ch-cream' : 'border-ch-border'}`}
+              className={`w-4 h-4 rounded-full border ${e.color === c ? 'border-ch-cream' : 'border-ch-border'} ch-press`}
               style={{ backgroundColor: c }} title="Color de texto" />
           ))}
         </div>
@@ -115,7 +115,7 @@ export default function BloqueLibre({
         <div className="flex items-center gap-0.5">
           {COLORES_FONDO.map(c => (
             <button key={c} onClick={() => onEstilo({ color_fondo: c === 'transparent' ? undefined : c })}
-              className={`w-4 h-4 rounded-[2px] border ${(e.color_fondo || 'transparent') === c ? 'border-ch-cream' : 'border-ch-border'}`}
+              className={`w-4 h-4 rounded-[2px] border ${(e.color_fondo || 'transparent') === c ? 'border-ch-cream' : 'border-ch-border'} ch-press`}
               style={c === 'transparent' ? { backgroundImage: 'linear-gradient(45deg,#555 25%,transparent 25%,transparent 75%,#555 75%)', backgroundSize: '6px 6px' } : { backgroundColor: c }}
               title="Color de fondo" />
           ))}
@@ -129,17 +129,17 @@ export default function BloqueLibre({
               onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; if (f) onSubirImagen(f) }} />
           </label>
           {bloque.imagen_url && (
-            <button onClick={onEliminarImagen} className="text-[11px] text-red-500/70 hover:text-red-400">✕ img</button>
+            <button onClick={onEliminarImagen} className="text-[11px] text-red-500/70 hover:text-red-400 ch-press">✕ img</button>
           )}
           {/* Eliminar bloque */}
           {confirmar ? (
             <span className="text-[11px]">
-              <button onClick={onEliminar} className="text-red-400 hover:text-red-300 font-medium">Sí</button>
+              <button onClick={onEliminar} className="text-red-400 hover:text-red-300 font-medium ch-press">Sí</button>
               <span className="text-ch-border mx-1">·</span>
-              <button onClick={() => setConfirmar(false)} className="text-ch-subtle hover:text-ch-muted">No</button>
+              <button onClick={() => setConfirmar(false)} className="text-ch-subtle hover:text-ch-muted ch-press">No</button>
             </span>
           ) : (
-            <button onClick={() => setConfirmar(true)} className="text-ch-border hover:text-red-500 text-xs">✕</button>
+            <button onClick={() => setConfirmar(true)} className="text-ch-border hover:text-red-500 text-xs ch-press">✕</button>
           )}
         </div>
       </div>

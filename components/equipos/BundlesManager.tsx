@@ -145,7 +145,7 @@ function BundleForm({
             form.fisico
               ? 'border-ch-gold text-ch-gold bg-ch-gold/10'
               : 'border-ch-border text-ch-muted hover:text-ch-cream'
-          }`}
+          } ch-press`}
         >
           Físico
         </button>
@@ -156,7 +156,7 @@ function BundleForm({
             !form.fisico
               ? 'border-ch-green text-ch-green'
               : 'border-ch-border text-ch-muted hover:text-ch-cream'
-          }`}
+          } ch-press`}
         >
           Rental
         </button>
@@ -165,13 +165,13 @@ function BundleForm({
       <div className="flex gap-3 pt-1">
         <button
           onClick={() => onSave(form)}
-          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors"
+          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors ch-press"
         >
           Guardar
         </button>
         <button
           onClick={onCancel}
-          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors"
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors ch-press"
         >
           Cancelar
         </button>
@@ -248,13 +248,13 @@ function AgregarItemForm({
       <button
         onClick={handleSave}
         disabled={pending || !selectedId}
-        className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors disabled:opacity-50"
+        className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors disabled:opacity-50 ch-press"
       >
         {pending ? '…' : 'Agregar'}
       </button>
       <button
         onClick={onCancel}
-        className="text-ch-muted hover:text-ch-cream font-body text-xs px-2 transition-colors"
+        className="text-ch-muted hover:text-ch-cream font-body text-xs px-2 transition-colors ch-press"
       >
         ✕
       </button>
@@ -361,13 +361,13 @@ function BundleCard({
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setEditando(true)}
-            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors ch-press"
           >
             Editar
           </button>
           <button
             onClick={onEliminar}
-            className="border border-ch-border text-ch-muted hover:text-red-400 font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors"
+            className="border border-ch-border text-ch-muted hover:text-red-400 font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors ch-press"
           >
             Eliminar
           </button>
@@ -422,7 +422,7 @@ function BundleCard({
                     <button
                       onClick={() => handleEliminarItem(item.id)}
                       disabled={pending}
-                      className="text-ch-subtle hover:text-red-400 font-body text-[9px] transition-colors disabled:opacity-50"
+                      className="text-ch-subtle hover:text-red-400 font-body text-[9px] transition-colors disabled:opacity-50 ch-press"
                     >
                       ✕
                     </button>
@@ -440,7 +440,7 @@ function BundleCard({
               setMostrarAgregarEquipo(v => !v)
               setMostrarAgregarBundle(false)
             }}
-            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors ch-press"
           >
             + Equipo
           </button>
@@ -449,7 +449,7 @@ function BundleCard({
               setMostrarAgregarBundle(v => !v)
               setMostrarAgregarEquipo(false)
             }}
-            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.3em] uppercase px-3 py-1.5 transition-colors ch-press"
           >
             + Bundle
           </button>
@@ -539,7 +539,7 @@ export default function BundlesManager({ bundles: initialBundles, equipos }: Pro
         <button
           onClick={() => setMostrarFormNuevo(v => !v)}
           className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium
-                     text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors duration-200"
+                     text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors duration-200 ch-press"
         >
           + Nuevo Bundle
         </button>
@@ -559,7 +559,7 @@ export default function BundlesManager({ bundles: initialBundles, equipos }: Pro
           <p className="text-ch-muted font-body text-sm">No hay bundles registrados aún.</p>
           <button
             onClick={() => setMostrarFormNuevo(true)}
-            className="text-ch-green font-body text-sm mt-2 inline-block hover:text-ch-green-light"
+            className="text-ch-green font-body text-sm mt-2 inline-block hover:text-ch-green-light ch-press"
           >
             Crear el primero →
           </button>

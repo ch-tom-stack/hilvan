@@ -97,12 +97,12 @@ function NavPeriodo({ mes }: { mes: string }) {
   return (
     <div className="flex items-center gap-3">
       <button onClick={() => navMes(-1)}
-        className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-3 py-1.5 transition-colors">
+        className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-3 py-1.5 transition-colors ch-press">
         ← anterior
       </button>
       <span className="font-body text-sm text-ch-cream capitalize">{formatMes(mes)}</span>
       <button onClick={() => navMes(1)}
-        className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-3 py-1.5 transition-colors">
+        className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-3 py-1.5 transition-colors ch-press">
         siguiente →
       </button>
     </div>
@@ -271,7 +271,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
           <button
             onClick={handleExportar}
             disabled={exportando}
-            className="border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-cream/50 font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors disabled:opacity-50"
+            className="border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-cream/50 font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors disabled:opacity-50 ch-press"
           >
             {exportando ? 'Generando…' : 'Exportar para contador →'}
           </button>
@@ -445,15 +445,15 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                 {!editandoNomina ? (
                   <button
                     onClick={() => { setNominaEdit(nomina.map(p => ({ ...p }))); setEditandoNomina(true) }}
-                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors ch-press"
                     title="Editar nómina"
                   >✎</button>
                 ) : (
                   <div className="flex items-center gap-1">
                     <button onClick={handleGuardarNomina} disabled={nominaPending}
-                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50">✓</button>
+                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50 ch-press">✓</button>
                     <button onClick={() => setEditandoNomina(false)}
-                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors">✕</button>
+                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors ch-press">✕</button>
                   </div>
                 )}
               </div>
@@ -500,13 +500,13 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                     />
                     <button
                       onClick={() => setNominaEdit(prev => prev.filter((_, j) => j !== i))}
-                      className="text-red-400/60 hover:text-red-400 font-body text-[10px] transition-colors"
+                      className="text-red-400/60 hover:text-red-400 font-body text-[10px] transition-colors ch-press"
                     >✕</button>
                   </div>
                 ))}
                 <button
                   onClick={() => setNominaEdit(prev => [...prev, { nombre: '', monto: 0, tipo: 'honorarios' }])}
-                  className="font-body text-[9px] text-ch-subtle hover:text-ch-cream transition-colors mt-1"
+                  className="font-body text-[9px] text-ch-subtle hover:text-ch-cream transition-colors mt-1 ch-press"
                 >+ agregar persona</button>
               </div>
             )}
@@ -554,7 +554,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                       setPpmInput(String(Math.round(ppmTasa * 10000) / 100))
                       setEditandoPPM(true)
                     }}
-                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors ch-press"
                     title="Editar tasa PPM"
                   >
                     ✎
@@ -576,13 +576,13 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                     <button
                       onClick={handleGuardarPPM}
                       disabled={ppmPending}
-                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50"
+                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50 ch-press"
                     >
                       ✓
                     </button>
                     <button
                       onClick={() => setEditandoPPM(false)}
-                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors ch-press"
                     >
                       ✕
                     </button>
@@ -605,7 +605,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                       setPreviredInput(String(previred))
                       setEditandoPrevired(true)
                     }}
-                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors ch-press"
                     title="Editar monto Previred"
                   >
                     ✎
@@ -626,13 +626,13 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                     <button
                       onClick={handleGuardarPrevired}
                       disabled={previredPending}
-                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50"
+                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50 ch-press"
                     >
                       ✓
                     </button>
                     <button
                       onClick={() => setEditandoPrevired(false)}
-                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors ch-press"
                     >
                       ✕
                     </button>
@@ -655,7 +655,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                       setIuscInput(String(iusc))
                       setEditandoIUSC(true)
                     }}
-                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                    className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors ch-press"
                     title="Editar monto IUSC"
                   >
                     ✎
@@ -676,13 +676,13 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                     <button
                       onClick={handleGuardarIUSC}
                       disabled={iuscPending}
-                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50"
+                      className="text-ch-green hover:text-ch-green-light font-body text-[10px] transition-colors disabled:opacity-50 ch-press"
                     >
                       ✓
                     </button>
                     <button
                       onClick={() => setEditandoIUSC(false)}
-                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors"
+                      className="text-ch-subtle hover:text-ch-cream font-body text-[10px] transition-colors ch-press"
                     >
                       ✕
                     </button>

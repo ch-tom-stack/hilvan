@@ -54,7 +54,7 @@ function Seccion({ titulo, count, children, defaultOpen = true }: {
     <div className="border border-ch-border">
       <button
         onClick={() => setAbierta(a => !a)}
-        className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-colors ch-press"
       >
         <span className="font-body text-[10px] tracking-[0.4em] uppercase text-ch-muted flex items-center gap-2">
           {titulo}
@@ -260,7 +260,7 @@ export default function FichaProyecto({
         </div>
         <button
           onClick={() => setEditando(e => !e)}
-          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors flex-shrink-0"
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors flex-shrink-0 ch-press"
         >
           {editando ? 'Cancelar' : 'Editar'}
         </button>
@@ -303,7 +303,7 @@ export default function FichaProyecto({
               rows={2} className={`${inputCls} resize-none`} />
           </div>
           <button onClick={guardar} disabled={isPending || !form.nombre.trim()}
-            className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-6 py-2 transition-colors disabled:opacity-50">
+            className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-6 py-2 transition-colors disabled:opacity-50 ch-press">
             {isPending ? 'Guardando…' : 'Guardar cambios'}
           </button>
         </div>
@@ -388,7 +388,7 @@ export default function FichaProyecto({
                   disabled={isPending}
                   className={`w-3.5 h-3.5 border flex-shrink-0 transition-colors ${
                     t.completada ? 'bg-ch-green border-ch-green' : 'border-ch-border hover:border-ch-cream'
-                  }`}
+                  } ch-press`}
                 />
                 <span className={`font-body text-sm flex-1 ${t.completada ? 'line-through text-ch-muted/50' : 'text-ch-cream'}`}>
                   {t.texto}
@@ -396,13 +396,13 @@ export default function FichaProyecto({
                 {confirmBorrarTarea === t.id ? (
                   <span className="flex items-center gap-2 text-xs font-body flex-shrink-0">
                     <button onClick={() => handleBorrarTarea(t.id)} disabled={isPending}
-                      className="text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors">Sí</button>
+                      className="text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors ch-press">Sí</button>
                     <button onClick={() => setConfirmBorrarTarea(null)}
-                      className="text-ch-muted hover:text-ch-cream uppercase tracking-widest transition-colors">No</button>
+                      className="text-ch-muted hover:text-ch-cream uppercase tracking-widest transition-colors ch-press">No</button>
                   </span>
                 ) : (
                   <button onClick={() => setConfirmBorrarTarea(t.id)}
-                    className="text-ch-muted/40 hover:text-red-400 font-body text-xs flex-shrink-0 transition-colors">✕</button>
+                    className="text-ch-muted/40 hover:text-red-400 font-body text-xs flex-shrink-0 transition-colors ch-press">✕</button>
                 )}
               </div>
             ))}
@@ -420,7 +420,7 @@ export default function FichaProyecto({
             <button
               onClick={agregarTarea}
               disabled={isPending || !textoTarea.trim()}
-              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-4 py-2 transition-colors disabled:opacity-40"
+              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-4 py-2 transition-colors disabled:opacity-40 ch-press"
             >
               + Agregar
             </button>
@@ -450,7 +450,7 @@ export default function FichaProyecto({
                     <button
                       onClick={() => handleDesvincular(cp.contacto_id)}
                       disabled={isPending}
-                      className="font-body text-[9px] tracking-widest uppercase text-ch-muted hover:text-red-400 transition-colors flex-shrink-0 ml-4"
+                      className="font-body text-[9px] tracking-widest uppercase text-ch-muted hover:text-red-400 transition-colors flex-shrink-0 ml-4 ch-press"
                     >
                       Desvincular
                     </button>
@@ -473,7 +473,7 @@ export default function FichaProyecto({
                       <button
                         onClick={() => handleVincular(c.id)}
                         disabled={isPending}
-                        className="font-body text-[9px] tracking-widest uppercase text-ch-muted hover:text-ch-cream transition-colors flex-shrink-0 ml-4"
+                        className="font-body text-[9px] tracking-widest uppercase text-ch-muted hover:text-ch-cream transition-colors flex-shrink-0 ml-4 ch-press"
                       >
                         + Vincular
                       </button>

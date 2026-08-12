@@ -136,7 +136,7 @@ export default function TablaReservas({ reservas: inicial, equipos, maletas, cli
       {puedeGestionar && !formulario && (
         <button
           onClick={() => setFormulario(true)}
-          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors mb-8"
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2.5 transition-colors mb-8 ch-press"
         >
           + Nueva reserva
         </button>
@@ -147,7 +147,7 @@ export default function TablaReservas({ reservas: inicial, equipos, maletas, cli
         <div className="border border-ch-border bg-ch-surface/30 p-6 mb-8 rounded-[2px]">
           <div className="flex items-center justify-between mb-5">
             <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Nueva reserva</p>
-            <button onClick={() => setFormulario(false)} className="text-ch-subtle hover:text-ch-muted text-xl leading-none">×</button>
+            <button onClick={() => setFormulario(false)} className="text-ch-subtle hover:text-ch-muted text-xl leading-none ch-press">×</button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -164,7 +164,7 @@ export default function TablaReservas({ reservas: inicial, equipos, maletas, cli
                       form.tipo === t
                         ? 'border-ch-cream text-ch-cream'
                         : 'border-ch-border text-ch-muted hover:text-ch-cream'
-                    }`}
+                    } ch-press`}
                   >
                     {t === 'equipo' ? 'Equipo' : 'Maleta'}
                   </button>
@@ -233,14 +233,14 @@ export default function TablaReservas({ reservas: inicial, equipos, maletas, cli
               <button
                 type="button"
                 onClick={() => { setFormulario(false); setError('') }}
-                className="flex-1 border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.35em] uppercase py-2.5 transition-colors"
+                className="flex-1 border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.35em] uppercase py-2.5 transition-colors ch-press"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={pending}
-                className="flex-1 border border-ch-cream text-ch-cream hover:bg-ch-dark font-body text-[9px] tracking-[0.35em] uppercase py-2.5 transition-colors disabled:opacity-50"
+                className="flex-1 border border-ch-cream text-ch-cream hover:bg-ch-dark font-body text-[9px] tracking-[0.35em] uppercase py-2.5 transition-colors disabled:opacity-50 ch-press"
               >
                 {pending ? 'Guardando…' : 'Crear reserva'}
               </button>
@@ -348,7 +348,7 @@ function ReservaRow({ reserva: r, nombreItem, puedeGestionar, pending, onEstado,
                   key={a.estado}
                   onClick={() => onEstado(r.id, a.estado)}
                   disabled={pending}
-                  className="font-body text-[9px] tracking-[0.3em] uppercase border border-ch-border text-ch-muted hover:text-ch-cream px-3 py-1.5 transition-colors disabled:opacity-50"
+                  className="font-body text-[9px] tracking-[0.3em] uppercase border border-ch-border text-ch-muted hover:text-ch-cream px-3 py-1.5 transition-colors disabled:opacity-50 ch-press"
                 >
                   {a.label}
                 </button>
@@ -357,7 +357,7 @@ function ReservaRow({ reserva: r, nombreItem, puedeGestionar, pending, onEstado,
                 <button
                   onClick={() => onEliminar(r.id)}
                   disabled={pending}
-                  className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-subtle hover:text-red-400 transition-colors disabled:opacity-50"
+                  className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-subtle hover:text-red-400 transition-colors disabled:opacity-50 ch-press"
                 >
                   Eliminar
                 </button>

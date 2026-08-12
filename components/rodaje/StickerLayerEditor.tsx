@@ -154,9 +154,9 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
       <div className="flex items-center gap-2 flex-wrap px-4 py-2 border-b border-ch-border text-xs">
         <span className="text-[9px] tracking-[0.4em] uppercase text-ch-subtle mr-1">Stickers</span>
         <button onClick={() => fileRef.current?.click()} disabled={ocupado}
-          className="text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] hover:text-ch-cream disabled:opacity-50">+ imagen</button>
+          className="text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] hover:text-ch-cream disabled:opacity-50 ch-press">+ imagen</button>
         <button onClick={agregarNota} disabled={ocupado}
-          className="text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] hover:text-ch-cream disabled:opacity-50">+ nota</button>
+          className="text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] hover:text-ch-cream disabled:opacity-50 ch-press">+ nota</button>
         <label className="flex items-center gap-1 text-ch-muted cursor-pointer ml-1">
           <input type="checkbox" checked={quitarAuto} onChange={e => setQuitarAuto(e.target.checked)} />
           quitar fondo al subir
@@ -170,23 +170,23 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
       {seleccionado && (
         <div className="flex items-center gap-2 flex-wrap px-4 py-1.5 border-b border-ch-border/60 text-xs bg-ch-surface/40">
           {seleccionado.tipo === 'imagen' && (crop ? <>
-            <button onClick={aplicarRecorte} disabled={ocupado} className="text-ch-green hover:text-ch-green-light disabled:opacity-50">aplicar recorte</button>
+            <button onClick={aplicarRecorte} disabled={ocupado} className="text-ch-green hover:text-ch-green-light disabled:opacity-50 ch-press">aplicar recorte</button>
             <span className="text-ch-border">·</span>
-            <button onClick={() => setCrop(null)} className="text-ch-muted hover:text-ch-cream">cancelar</button>
+            <button onClick={() => setCrop(null)} className="text-ch-muted hover:text-ch-cream ch-press">cancelar</button>
             <span className="text-ch-border">·</span>
           </> : <>
-            <button onClick={() => aplicarOp(seleccionado, 'quitar-fondo')} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">quitar fondo</button>
+            <button onClick={() => aplicarOp(seleccionado, 'quitar-fondo')} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50 ch-press">quitar fondo</button>
             <span className="text-ch-border">·</span>
-            <button onClick={() => aplicarOp(seleccionado, 'borde', { color: 'ffffff', grosor: '12' })} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">borde</button>
+            <button onClick={() => aplicarOp(seleccionado, 'borde', { color: 'ffffff', grosor: '12' })} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50 ch-press">borde</button>
             <span className="text-ch-border">·</span>
-            <button onClick={() => aplicarOp(seleccionado, 'trim')} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">auto-trim</button>
+            <button onClick={() => aplicarOp(seleccionado, 'trim')} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50 ch-press">auto-trim</button>
             <span className="text-ch-border">·</span>
-            <button onClick={() => setCrop({ x: 0.12, y: 0.12, w: 0.76, h: 0.76 })} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50">✂ recortar</button>
+            <button onClick={() => setCrop({ x: 0.12, y: 0.12, w: 0.76, h: 0.76 })} disabled={ocupado} className="text-ch-muted hover:text-ch-cream disabled:opacity-50 ch-press">✂ recortar</button>
             <span className="text-ch-border">·</span>
           </>)}
-          <button onClick={() => actualizarSticker(seleccionado.id, rodajeId, { z: maxZ + 1 }).then(() => setStickers(p => p.map(x => x.id === seleccionado.id ? { ...x, z: maxZ + 1 } : x)))} className="text-ch-muted hover:text-ch-cream">al frente</button>
+          <button onClick={() => actualizarSticker(seleccionado.id, rodajeId, { z: maxZ + 1 }).then(() => setStickers(p => p.map(x => x.id === seleccionado.id ? { ...x, z: maxZ + 1 } : x)))} className="text-ch-muted hover:text-ch-cream ch-press">al frente</button>
           <span className="text-ch-border">·</span>
-          <button onClick={() => borrar(seleccionado)} className="text-red-500/70 hover:text-red-400">eliminar</button>
+          <button onClick={() => borrar(seleccionado)} className="text-red-500/70 hover:text-red-400 ch-press">eliminar</button>
         </div>
       )}
 

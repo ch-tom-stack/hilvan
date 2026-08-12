@@ -45,7 +45,7 @@ export default async function ColaboradoresPage({
             placeholder="Buscar por nombre..."
             className="bg-ch-surface border border-ch-border text-ch-cream font-body text-xs px-3 py-2 placeholder:text-ch-muted focus:outline-none focus:border-ch-muted w-52"
           />
-          <button type="submit" className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-widest uppercase px-4 py-2 transition-colors">
+          <button type="submit" className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-widest uppercase px-4 py-2 transition-colors ch-press">
             Buscar
           </button>
           {q && (

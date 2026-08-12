@@ -151,7 +151,7 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
             formAbierto
               ? 'border-ch-green/50 text-ch-green bg-ch-green/5'
               : 'border-ch-border text-ch-muted hover:text-ch-cream'
-          }`}>
+          } ch-press`}>
           {formAbierto ? '− Cancelar' : '+ Nuevo crédito / préstamo'}
         </button>
       </div>
@@ -246,7 +246,7 @@ function GastoFijoCard({
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
         <button onClick={onToggleExpand}
-          className="font-body text-[10px] text-ch-muted shrink-0">
+          className="font-body text-[10px] text-ch-muted shrink-0 ch-press">
           {expandido ? '▾' : '▸'}
         </button>
 
@@ -281,7 +281,7 @@ function GastoFijoCard({
             type="button"
             onClick={() => onToggleActivo(!gasto.activo)}
             disabled={isPending}
-            className={`w-7 h-3.5 rounded-full transition-colors relative disabled:opacity-50 ${gasto.activo ? 'bg-ch-green' : 'bg-ch-border'}`}
+            className={`w-7 h-3.5 rounded-full transition-colors relative disabled:opacity-50 ${gasto.activo ? 'bg-ch-green' : 'bg-ch-border'} ch-press`}
             title={gasto.activo ? 'Marcar inactivo' : 'Marcar activo'}>
             <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${gasto.activo ? 'left-[14px]' : 'left-0.5'}`} />
           </button>
@@ -289,16 +289,16 @@ function GastoFijoCard({
           {/* Eliminar */}
           {!confirmarEliminar ? (
             <button onClick={onConfirmarEliminar} disabled={isPending}
-              className="font-body text-[10px] text-ch-muted/40 hover:text-red-400 transition-colors disabled:opacity-30">
+              className="font-body text-[10px] text-ch-muted/40 hover:text-red-400 transition-colors disabled:opacity-30 ch-press">
               ✕
             </button>
           ) : (
             <span className="flex items-center gap-1">
               <span className="font-body text-[10px] text-ch-muted">¿Eliminar?</span>
               <button onClick={onEliminar}
-                className="font-body text-[10px] text-red-400 hover:text-red-300 px-1 transition-colors">Sí</button>
+                className="font-body text-[10px] text-red-400 hover:text-red-300 px-1 transition-colors ch-press">Sí</button>
               <button onClick={onCancelarEliminar}
-                className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 transition-colors">No</button>
+                className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 transition-colors ch-press">No</button>
             </span>
           )}
         </div>
@@ -342,7 +342,7 @@ function GastoFijoCard({
                         <button
                           onClick={() => onIniciarPago(cuota.id, new Date().toISOString().split('T')[0])}
                           disabled={isPending}
-                          className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-border/50 text-ch-muted hover:text-ch-cream hover:border-ch-green/50 transition-colors disabled:opacity-30 whitespace-nowrap">
+                          className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 border border-ch-border/50 text-ch-muted hover:text-ch-cream hover:border-ch-green/50 transition-colors disabled:opacity-30 whitespace-nowrap ch-press">
                           Marcar pagada
                         </button>
                       )}
@@ -357,11 +357,11 @@ function GastoFijoCard({
                           <button
                             onClick={() => onConfirmarPago(cuota.id)}
                             disabled={isPending || !pagando?.fecha}
-                            className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 bg-ch-green text-ch-black transition-colors disabled:opacity-50">
+                            className="font-body text-[9px] tracking-wider uppercase px-2 py-0.5 bg-ch-green text-ch-black transition-colors disabled:opacity-50 ch-press">
                             ✓
                           </button>
                           <button onClick={onCancelarPago}
-                            className="font-body text-[9px] text-ch-muted hover:text-ch-cream px-1 transition-colors">
+                            className="font-body text-[9px] text-ch-muted hover:text-ch-cream px-1 transition-colors ch-press">
                             ✕
                           </button>
                         </span>
@@ -370,7 +370,7 @@ function GastoFijoCard({
                         <button
                           onClick={() => onDesmarcar(cuota.id)}
                           disabled={isPending}
-                          className="font-body text-[9px] text-ch-muted/40 hover:text-ch-muted transition-colors disabled:opacity-30 px-1"
+                          className="font-body text-[9px] text-ch-muted/40 hover:text-ch-muted transition-colors disabled:opacity-30 px-1 ch-press"
                           title="Desmarcar">
                           ↩
                         </button>
@@ -465,11 +465,11 @@ function FormNuevo({ form, setForm, onCrear, onCancelar, isPending, valido }: {
 
       <div className="flex gap-3 pt-1">
         <button onClick={onCrear} disabled={!valido || isPending}
-          className="font-body text-[10px] tracking-[0.35em] uppercase px-6 py-2.5 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50">
+          className="font-body text-[10px] tracking-[0.35em] uppercase px-6 py-2.5 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50 ch-press">
           {isPending ? 'Creando...' : 'Crear y generar cuotas'}
         </button>
         <button onClick={onCancelar}
-          className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-3 transition-colors">
+          className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-3 transition-colors ch-press">
           Cancelar
         </button>
       </div>

@@ -69,7 +69,7 @@ export default function DepBlock({
       {/* Header departamento */}
       <div className="flex items-center justify-between px-4 py-3 bg-ch-dark/40">
         <div className="flex items-center gap-3">
-          <button onClick={() => setCollapsed(v => !v)} className="text-ch-muted hover:text-ch-cream transition-colors text-xs">
+          <button onClick={() => setCollapsed(v => !v)} className="text-ch-muted hover:text-ch-cream transition-colors text-xs ch-press">
             {collapsed ? '▶' : '▼'}
           </button>
           <span className="font-body text-sm font-medium text-ch-cream uppercase tracking-wider">
@@ -83,15 +83,15 @@ export default function DepBlock({
           <span className="font-body text-sm text-ch-cream">{formatCLP(subtotal)}</span>
           {editable && (
             <div className="flex items-center gap-1">
-              <button onClick={onAgregarSg} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20">
+              <button onClick={onAgregarSg} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20 ch-press">
                 + sub-grupo
               </button>
-              <button onClick={() => onAgregarItem(undefined)} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20">
+              <button onClick={() => onAgregarItem(undefined)} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20 ch-press">
                 + ítem
               </button>
-              <button onClick={onPrecio} title="Precio del bundle" className={`font-body text-[10px] px-1 transition-colors ${bundle ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'}`}>$</button>
-              <button onClick={onRenombrar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1">✎</button>
-              <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 transition-colors px-1">✕</button>
+              <button onClick={onPrecio} title="Precio del bundle" className={`font-body text-[10px] px-1 transition-colors ${bundle ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'} ch-press`}>$</button>
+              <button onClick={onRenombrar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1 ch-press">✎</button>
+              <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 transition-colors px-1 ch-press">✕</button>
             </div>
           )}
         </div>
@@ -196,12 +196,12 @@ function SgBlock({
           <span className="font-body text-xs text-ch-cream">{formatCLP(subtotal)}</span>
           {editable && (
             <div className="flex items-center gap-1">
-              <button onClick={onAgregarItem} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20">
+              <button onClick={onAgregarItem} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20 ch-press">
                 + ítem
               </button>
-              <button onClick={onPrecio} title="Precio del bundle" className={`font-body text-[10px] px-1 transition-colors ${sg.precio_manual != null ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'}`}>$</button>
-              <button onClick={onRenombrar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1">✎</button>
-              <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 px-1">✕</button>
+              <button onClick={onPrecio} title="Precio del bundle" className={`font-body text-[10px] px-1 transition-colors ${sg.precio_manual != null ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'} ch-press`}>$</button>
+              <button onClick={onRenombrar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 ch-press">✎</button>
+              <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 px-1 ch-press">✕</button>
             </div>
           )}
         </div>
@@ -298,8 +298,8 @@ function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onE
         </span>
         {editable && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onEditar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1">✎</button>
-            <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 px-1">✕</button>
+            <button onClick={onEditar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 ch-press">✎</button>
+            <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 px-1 ch-press">✕</button>
           </div>
         )}
       </div>

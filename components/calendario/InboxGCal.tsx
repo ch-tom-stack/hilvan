@@ -49,21 +49,21 @@ function FilaEvento({ evento }: { evento: EventoCalendario }) {
         <button
           onClick={() => handleClasificar('rodaje')}
           disabled={pending}
-          className="text-[10px] font-body px-2 py-1 border border-ch-green/40 text-ch-green rounded-[2px] hover:bg-ch-green/10 transition-colors disabled:opacity-40"
+          className="text-[10px] font-body px-2 py-1 border border-ch-green/40 text-ch-green rounded-[2px] hover:bg-ch-green/10 transition-colors disabled:opacity-40 ch-press"
         >
           Rodaje
         </button>
         <button
           onClick={() => handleClasificar('reunion')}
           disabled={pending}
-          className="text-[10px] font-body px-2 py-1 border border-blue-400/40 text-blue-400 rounded-[2px] hover:bg-blue-400/10 transition-colors disabled:opacity-40"
+          className="text-[10px] font-body px-2 py-1 border border-blue-400/40 text-blue-400 rounded-[2px] hover:bg-blue-400/10 transition-colors disabled:opacity-40 ch-press"
         >
           Reunión
         </button>
         <button
           onClick={() => handleClasificar('ignorar')}
           disabled={pending}
-          className="text-[10px] font-body px-2 py-1 border border-ch-border text-ch-subtle rounded-[2px] hover:bg-ch-surface transition-colors disabled:opacity-40"
+          className="text-[10px] font-body px-2 py-1 border border-ch-border text-ch-subtle rounded-[2px] hover:bg-ch-surface transition-colors disabled:opacity-40 ch-press"
         >
           Ignorar
         </button>
@@ -100,7 +100,7 @@ export default function InboxGCal({ eventos, esAdmin }: Props) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setAbierto(v => !v)}
-            className="flex items-center gap-2 text-left"
+            className="flex items-center gap-2 text-left ch-press"
           >
             <p className="text-[9px] font-body tracking-[0.4em] uppercase text-ch-muted">
               Inbox Google Calendar
@@ -125,14 +125,14 @@ export default function InboxGCal({ eventos, esAdmin }: Props) {
             <button
               onClick={handleSync}
               disabled={syncPending}
-              className="text-[10px] font-body text-ch-muted border border-ch-border rounded-[2px] px-3 py-1 hover:text-ch-cream transition-colors disabled:opacity-40"
+              className="text-[10px] font-body text-ch-muted border border-ch-border rounded-[2px] px-3 py-1 hover:text-ch-cream transition-colors disabled:opacity-40 ch-press"
             >
               {syncPending ? 'Sincronizando…' : '↻ Sincronizar'}
             </button>
           )}
           <button
             onClick={() => setAbierto(v => !v)}
-            className="text-ch-subtle hover:text-ch-muted transition-colors text-xs"
+            className="text-ch-subtle hover:text-ch-muted transition-colors text-xs ch-press"
           >
             {abierto ? '▲' : '▼'}
           </button>

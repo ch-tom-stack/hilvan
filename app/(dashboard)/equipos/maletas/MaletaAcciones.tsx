@@ -65,14 +65,14 @@ export default function MaletaAcciones({ maletaId, maletaNombre }: Props) {
           <button
             onClick={() => setConfirmando(null)}
             disabled={pending}
-            className="flex-1 border border-ch-border text-ch-muted font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:text-ch-cream"
+            className="flex-1 border border-ch-border text-ch-muted font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:text-ch-cream ch-press"
           >
             Cancelar
           </button>
           <button
             onClick={handleEliminar}
             disabled={pending}
-            className="flex-1 border border-red-400/40 text-red-400 font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:bg-red-400/10 disabled:opacity-40"
+            className="flex-1 border border-red-400/40 text-red-400 font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:bg-red-400/10 disabled:opacity-40 ch-press"
           >
             {pending ? 'Eliminando…' : 'Confirmar'}
           </button>
@@ -91,14 +91,14 @@ export default function MaletaAcciones({ maletaId, maletaNombre }: Props) {
           <button
             onClick={() => setConfirmando(null)}
             disabled={pending}
-            className="flex-1 border border-ch-border text-ch-muted font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:text-ch-cream"
+            className="flex-1 border border-ch-border text-ch-muted font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:text-ch-cream ch-press"
           >
             Cancelar
           </button>
           <button
             onClick={handleConvertir}
             disabled={pending}
-            className="flex-1 border border-ch-green/50 text-ch-green font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:bg-ch-green/10 disabled:opacity-40"
+            className="flex-1 border border-ch-green/50 text-ch-green font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:bg-ch-green/10 disabled:opacity-40 ch-press"
           >
             {pending ? 'Creando…' : 'Confirmar'}
           </button>
@@ -113,13 +113,13 @@ export default function MaletaAcciones({ maletaId, maletaNombre }: Props) {
       {error && <p className="font-body text-[10px] text-ch-gold text-center">{error}</p>}
       <button
         onClick={() => setConfirmando('convertir')}
-        className="w-full border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-muted font-body text-[9px] tracking-widest uppercase py-2 transition-colors"
+        className="w-full border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-muted font-body text-[9px] tracking-widest uppercase py-2 transition-colors ch-press"
       >
         → Convertir a bundle
       </button>
       <button
         onClick={() => setConfirmando('eliminar')}
-        className="w-full border border-ch-border text-ch-subtle hover:text-red-400 hover:border-red-400/40 font-body text-[9px] tracking-widest uppercase py-2 transition-colors"
+        className="w-full border border-ch-border text-ch-subtle hover:text-red-400 hover:border-red-400/40 font-body text-[9px] tracking-widest uppercase py-2 transition-colors ch-press"
       >
         Eliminar
       </button>

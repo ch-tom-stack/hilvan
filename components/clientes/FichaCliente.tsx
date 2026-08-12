@@ -46,7 +46,7 @@ function Seccion({ titulo, count, children, defaultOpen = true }: {
     <div className="border border-ch-border">
       <button
         onClick={() => setAbierta(a => !a)}
-        className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/5 transition-colors ch-press"
       >
         <span className="font-body text-[10px] tracking-[0.4em] uppercase text-ch-muted flex items-center gap-2">
           {titulo}
@@ -250,7 +250,7 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
         </div>
         <button
           onClick={() => setEditando(e => !e)}
-          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors flex-shrink-0"
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors flex-shrink-0 ch-press"
         >
           {editando ? 'Cancelar' : 'Editar'}
         </button>
@@ -289,7 +289,7 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
           <div><label className={labelCls}>Notas</label>
             <textarea value={formCliente.notas} onChange={e => setFormCliente(f => ({ ...f, notas: e.target.value }))} rows={2} className={`${inputCls} resize-none`} /></div>
           <button onClick={guardarCliente} disabled={isPending || !formCliente.nombre.trim()}
-            className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-6 py-2 transition-colors disabled:opacity-50">
+            className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-6 py-2 transition-colors disabled:opacity-50 ch-press">
             {isPending ? 'Guardando…' : 'Guardar cambios'}
           </button>
         </div>
@@ -349,18 +349,18 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
               </div>
               <div className="flex gap-3">
                 <button onClick={crearNuevoProyecto} disabled={isPending || !formProyecto.nombre.trim()}
-                  className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 transition-colors disabled:opacity-50">
+                  className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 transition-colors disabled:opacity-50 ch-press">
                   {isPending ? 'Creando…' : 'Crear proyecto'}
                 </button>
                 <button onClick={() => setMostrarFormProyecto(false)}
-                  className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase transition-colors">
+                  className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase transition-colors ch-press">
                   Cancelar
                 </button>
               </div>
             </div>
           ) : (
             <button onClick={() => setMostrarFormProyecto(true)}
-              className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted hover:text-ch-cream transition-colors mt-1">
+              className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted hover:text-ch-cream transition-colors mt-1 ch-press">
               + Nuevo proyecto
             </button>
           )}
@@ -378,7 +378,7 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
             {[...tareasPendientes, ...tareasCompletadas].map(t => (
               <div key={t.id} className="flex items-center gap-3 py-1.5 border-b border-ch-border/30">
                 <button onClick={() => handleToggleTarea(t)} disabled={isPending}
-                  className={`w-3.5 h-3.5 border flex-shrink-0 transition-colors ${t.completada ? 'bg-ch-green border-ch-green' : 'border-ch-border hover:border-ch-cream'}`}
+                  className={`w-3.5 h-3.5 border flex-shrink-0 transition-colors ${t.completada ? 'bg-ch-green border-ch-green' : 'border-ch-border hover:border-ch-cream'} ch-press`}
                 />
                 <span className={`font-body text-sm flex-1 ${t.completada ? 'line-through text-ch-muted/50' : 'text-ch-cream'}`}>
                   {t.texto}
@@ -423,9 +423,9 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
                   <div className="flex items-center gap-3 py-2 text-xs font-body">
                     <span className="text-ch-muted">¿Eliminar <strong className="text-ch-cream">{c.nombre}</strong>?</span>
                     <button onClick={() => borrarContacto(c.id)} disabled={isPending}
-                      className="text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors">Sí</button>
+                      className="text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors ch-press">Sí</button>
                     <button onClick={() => setConfirmBorrarContacto(null)}
-                      className="text-ch-muted hover:text-ch-cream uppercase tracking-widest transition-colors">No</button>
+                      className="text-ch-muted hover:text-ch-cream uppercase tracking-widest transition-colors ch-press">No</button>
                   </div>
                 ) : editandoContacto?.id === c.id ? (
                   <div className="border border-ch-border/50 p-4 space-y-3">
@@ -443,11 +443,11 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
                     </div>
                     <div className="flex gap-3">
                       <button onClick={guardarContacto} disabled={isPending || !formContacto.nombre.trim()}
-                        className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 transition-colors disabled:opacity-50">
+                        className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 transition-colors disabled:opacity-50 ch-press">
                         {isPending ? 'Guardando…' : 'Guardar'}
                       </button>
                       <button onClick={() => setEditandoContacto(null)}
-                        className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase transition-colors">
+                        className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase transition-colors ch-press">
                         Cancelar
                       </button>
                     </div>
@@ -465,11 +465,11 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
                     </div>
                     <div className="flex gap-3 flex-shrink-0 ml-4">
                       <button onClick={() => abrirEditarContacto(c)}
-                        className="font-body text-[9px] tracking-widest uppercase text-ch-muted hover:text-ch-cream transition-colors">
+                        className="font-body text-[9px] tracking-widest uppercase text-ch-muted hover:text-ch-cream transition-colors ch-press">
                         Editar
                       </button>
                       <button onClick={() => setConfirmBorrarContacto(c.id)}
-                        className="font-body text-[9px] tracking-widest uppercase text-ch-muted hover:text-red-400 transition-colors">
+                        className="font-body text-[9px] tracking-widest uppercase text-ch-muted hover:text-red-400 transition-colors ch-press">
                         ✕
                       </button>
                     </div>
@@ -496,18 +496,18 @@ export default function FichaCliente({ cliente: clienteInicial, proyectos: proye
               </div>
               <div className="flex gap-3">
                 <button onClick={guardarContacto} disabled={isPending || !formContacto.nombre.trim()}
-                  className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 transition-colors disabled:opacity-50">
+                  className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 transition-colors disabled:opacity-50 ch-press">
                   {isPending ? 'Guardando…' : 'Agregar contacto'}
                 </button>
                 <button onClick={() => setMostrarFormContacto(false)}
-                  className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase transition-colors">
+                  className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase transition-colors ch-press">
                   Cancelar
                 </button>
               </div>
             </div>
           ) : (
             <button onClick={() => { setEditandoContacto(null); setMostrarFormContacto(true) }}
-              className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted hover:text-ch-cream transition-colors mt-1">
+              className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted hover:text-ch-cream transition-colors mt-1 ch-press">
               + Agregar contacto
             </button>
           )}

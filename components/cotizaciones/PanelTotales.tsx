@@ -36,7 +36,7 @@ export default function PanelTotales({ cot, setCot, totales, showInterno, setSho
           onClick={() => setShowInterno(v => !v)}
           className={`font-body text-xs px-2 py-0.5 rounded transition-colors ${
             showInterno ? 'bg-ch-cream/10 text-ch-cream' : 'text-ch-muted hover:text-ch-cream'
-          }`}
+          } ch-press`}
         >
           {showInterno ? 'Vista interna' : 'Ver márgenes'}
         </button>

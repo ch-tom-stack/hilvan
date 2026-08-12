@@ -89,7 +89,7 @@ export default function PanelFacturacion({ cot, setCot }: { cot: Cotizacion; set
             </div>
           </div>
           <button onClick={handleRegistrarFactura} disabled={!facturaForm.fecha_factura_emitida || guardandoFactura}
-            className="border border-ch-green/60 text-ch-green hover:bg-ch-green/10 font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors disabled:opacity-40">
+            className="border border-ch-green/60 text-ch-green hover:bg-ch-green/10 font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors disabled:opacity-40 ch-press">
             {guardandoFactura ? 'Guardando...' : 'Registrar factura'}
           </button>
         </div>
@@ -113,7 +113,7 @@ export default function PanelFacturacion({ cot, setCot }: { cot: Cotizacion; set
                 className="input-ch w-full text-sm" />
             </div>
             <button onClick={handleRegistrarPago} disabled={!facturaForm.fecha_pago_recibido || guardandoFactura}
-              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors disabled:opacity-40">
+              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.35em] uppercase px-4 py-2 transition-colors disabled:opacity-40 ch-press">
               {guardandoFactura ? 'Guardando...' : 'Registrar pago'}
             </button>
           </div>

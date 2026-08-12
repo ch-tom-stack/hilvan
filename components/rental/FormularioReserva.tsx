@@ -125,7 +125,7 @@ export default function FormularioReserva({
                 tipo === 'equipo'
                   ? 'border-ch-green bg-ch-surface text-ch-cream'
                   : 'border-ch-border text-ch-muted hover:text-ch-cream'
-              }`}
+              } ch-press`}
             >
               Equipo
             </button>
@@ -136,7 +136,7 @@ export default function FormularioReserva({
                 tipo === 'maleta'
                   ? 'border-ch-green bg-ch-surface text-ch-cream'
                   : 'border-ch-border text-ch-muted hover:text-ch-cream'
-              }`}
+              } ch-press`}
             >
               Maleta
             </button>
@@ -325,7 +325,7 @@ export default function FormularioReserva({
             type="button"
             onClick={() => router.back()}
             className="flex-1 border border-ch-border text-ch-muted hover:text-ch-cream font-body
-                       text-[9px] tracking-[0.35em] uppercase py-3 transition-colors"
+                       text-[9px] tracking-[0.35em] uppercase py-3 transition-colors ch-press"
           >
             Cancelar
           </button>
@@ -333,7 +333,7 @@ export default function FormularioReserva({
             type="submit"
             disabled={pending}
             className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium
-                       text-[9px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50"
+                       text-[9px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50 ch-press"
           >
             {pending ? 'Enviando…' : 'Enviar solicitud →'}
           </button>

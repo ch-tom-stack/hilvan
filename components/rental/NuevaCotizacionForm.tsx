@@ -107,7 +107,7 @@ export default function NuevaCotizacionForm({ clientes, reservaId, reservaData }
                   modoCliente === 'lista'
                     ? 'border-ch-green text-ch-cream bg-ch-surface'
                     : 'border-ch-border text-ch-subtle hover:text-ch-muted'
-                }`}
+                } ch-press`}
               >
                 De lista
               </button>
@@ -118,7 +118,7 @@ export default function NuevaCotizacionForm({ clientes, reservaId, reservaData }
                   modoCliente === 'libre'
                     ? 'border-ch-green text-ch-cream bg-ch-surface'
                     : 'border-ch-border text-ch-subtle hover:text-ch-muted'
-                }`}
+                } ch-press`}
               >
                 Libre
               </button>
@@ -219,7 +219,7 @@ export default function NuevaCotizacionForm({ clientes, reservaId, reservaData }
             type="button"
             onClick={() => router.back()}
             className="flex-1 border border-ch-border text-ch-muted hover:text-ch-cream font-body
-                       text-[9px] tracking-[0.35em] uppercase py-3 transition-colors"
+                       text-[9px] tracking-[0.35em] uppercase py-3 transition-colors ch-press"
           >
             Cancelar
           </button>
@@ -227,7 +227,7 @@ export default function NuevaCotizacionForm({ clientes, reservaId, reservaData }
             type="submit"
             disabled={pending}
             className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium
-                       text-[9px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50"
+                       text-[9px] tracking-[0.35em] uppercase py-3 transition-colors disabled:opacity-50 ch-press"
           >
             {pending ? 'Creando…' : 'Crear cotización →'}
           </button>

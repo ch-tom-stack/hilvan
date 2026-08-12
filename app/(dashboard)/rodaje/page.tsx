@@ -54,7 +54,7 @@ export default async function RodajePage({
           {etiqueta && <input type="hidden" name="etiqueta" value={etiqueta} />}
           <button
             type="submit"
-            className="px-4 py-2 border border-ch-border rounded-[2px] text-sm text-ch-muted hover:text-ch-cream hover:border-ch-cream/40 transition-colors"
+            className="px-4 py-2 border border-ch-border rounded-[2px] text-sm text-ch-muted hover:text-ch-cream hover:border-ch-cream/40 transition-colors ch-press"
           >
             Buscar
           </button>

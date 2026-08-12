@@ -34,7 +34,7 @@ export function EncargoPanel({ cot, setCot }: { cot: Cotizacion; setCot: React.D
 
   return (
     <div>
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between mb-2">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between mb-2 ch-press">
         <span className="font-body text-[10px] uppercase tracking-wider text-ch-muted">Encargo</span>
         <span className="text-ch-muted/40 text-xs">{open ? '▲' : '▼'}</span>
       </button>
@@ -91,7 +91,7 @@ export function NotasPanel({ cot, setCot }: { cot: Cotizacion; setCot: React.Dis
 
   return (
     <div>
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between mb-2">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between mb-2 ch-press">
         <span className="font-body text-[10px] uppercase tracking-wider text-ch-muted">
           Notas al cliente {texto && <span className="text-ch-cream/40 normal-case tracking-normal">·</span>}
         </span>
@@ -112,7 +112,7 @@ export function NotasPanel({ cot, setCot }: { cot: Cotizacion; setCot: React.Dis
             <div className="space-y-1">
               {NOTAS_SUGERIDAS.map((n, i) => (
                 <button key={i} onClick={() => agregarSugerida(n)}
-                  className="w-full text-left font-body text-[10px] text-ch-muted/60 hover:text-ch-muted leading-snug px-1 py-0.5 hover:bg-white/5 transition-colors rounded">
+                  className="w-full text-left font-body text-[10px] text-ch-muted/60 hover:text-ch-muted leading-snug px-1 py-0.5 hover:bg-white/5 transition-colors rounded ch-press">
                   + {n.slice(0, 55)}…
                 </button>
               ))}

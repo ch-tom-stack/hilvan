@@ -55,7 +55,7 @@ export default function EventoDetalle({ evento, eventosGCal, onClose }: Props) {
         <h3 className="font-display italic text-lg text-ch-cream leading-tight flex-1">
           {evento.title}
         </h3>
-        <button onClick={onClose} className="text-ch-subtle hover:text-ch-muted transition-colors text-xs shrink-0">✕</button>
+        <button onClick={onClose} className="text-ch-subtle hover:text-ch-muted transition-colors text-xs shrink-0 ch-press">✕</button>
       </div>
 
       {/* Fecha */}
@@ -119,7 +119,7 @@ export default function EventoDetalle({ evento, eventosGCal, onClose }: Props) {
                 key={op.value}
                 onClick={() => handleClasificar(op.value)}
                 disabled={pending || clasificacionActual === op.value}
-                className={`text-xs font-body border rounded-[2px] px-3 py-1.5 text-left transition-colors disabled:opacity-40 ${op.color}`}
+                className={`text-xs font-body border rounded-[2px] px-3 py-1.5 text-left transition-colors disabled:opacity-40 ${op.color} ch-press`}
               >
                 {op.label}
               </button>

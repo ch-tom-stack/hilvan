@@ -145,7 +145,7 @@ export default function ListaInversiones({ inversiones: inicial }: Props) {
 
         <button
           onClick={abrirNueva}
-          className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors"
+          className="border border-ch-cream text-ch-cream hover:bg-ch-cream hover:text-ch-dark font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors ch-press"
         >
           + Nueva inversión
         </button>
@@ -206,13 +206,13 @@ export default function ListaInversiones({ inversiones: inicial }: Props) {
                           <button
                             onClick={() => ejecutarEliminar(inv.id)}
                             disabled={isPending}
-                            className="border border-red-400 text-red-400 hover:bg-red-400 hover:text-ch-dark font-body text-[10px] tracking-widest uppercase px-3 py-1 transition-colors disabled:opacity-50"
+                            className="border border-red-400 text-red-400 hover:bg-red-400 hover:text-ch-dark font-body text-[10px] tracking-widest uppercase px-3 py-1 transition-colors disabled:opacity-50 ch-press"
                           >
                             Sí
                           </button>
                           <button
                             onClick={cancelarEliminar}
-                            className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-widest uppercase transition-colors"
+                            className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-widest uppercase transition-colors ch-press"
                           >
                             No
                           </button>
@@ -299,13 +299,13 @@ export default function ListaInversiones({ inversiones: inicial }: Props) {
                           <div className="flex items-center gap-3 shrink-0 pt-0.5">
                             <button
                               onClick={() => abrirEditar(inv)}
-                              className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-widest uppercase transition-colors"
+                              className="text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-widest uppercase transition-colors ch-press"
                             >
                               Editar
                             </button>
                             <button
                               onClick={() => confirmarEliminar(inv.id)}
-                              className="text-ch-muted hover:text-red-400 font-body text-[10px] tracking-widest uppercase transition-colors"
+                              className="text-ch-muted hover:text-red-400 font-body text-[10px] tracking-widest uppercase transition-colors ch-press"
                             >
                               ✕
                             </button>

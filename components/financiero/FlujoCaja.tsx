@@ -167,11 +167,11 @@ export default function FlujoCaja({ datos }: Props) {
                 onKeyDown={e => { if (e.key === 'Enter') guardarApertura(); if (e.key === 'Escape') setEditandoApertura(false) }}
               />
               <button onClick={guardarApertura} disabled={isPending}
-                className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50">
+                className="font-body text-[10px] tracking-wider uppercase px-3 py-1.5 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50 ch-press">
                 Guardar
               </button>
               <button onClick={() => setEditandoApertura(false)}
-                className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-2">
+                className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-2 ch-press">
                 Cancelar
               </button>
             </div>
@@ -179,7 +179,7 @@ export default function FlujoCaja({ datos }: Props) {
             <div className="flex items-center gap-3">
               <span className="font-mono text-2xl text-ch-cream">{formatCLP(saldoApertura)}</span>
               <button onClick={() => { setAperturaInput(String(saldoApertura)); setEditandoApertura(true) }}
-                className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors">
+                className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors ch-press">
                 ✎ Editar
               </button>
             </div>
@@ -205,7 +205,7 @@ export default function FlujoCaja({ datos }: Props) {
             Próximos 60 días — {datos.hoy} → {datos.fin_ventana}
           </p>
           <button onClick={abrirNuevo}
-            className="font-body text-[10px] tracking-[0.35em] uppercase px-4 py-2 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors">
+            className="font-body text-[10px] tracking-[0.35em] uppercase px-4 py-2 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors ch-press">
             + Movimiento
           </button>
         </div>
@@ -336,11 +336,11 @@ function FilaMovimiento({
             {!confirmando ? (
               <>
                 <button onClick={onEditar} disabled={isPending}
-                  className="font-body text-[10px] text-ch-muted/50 hover:text-ch-cream transition-colors px-0.5 disabled:opacity-30">
+                  className="font-body text-[10px] text-ch-muted/50 hover:text-ch-cream transition-colors px-0.5 disabled:opacity-30 ch-press">
                   ✎
                 </button>
                 <button onClick={onConfirmarEliminar} disabled={isPending}
-                  className="font-body text-[10px] text-ch-muted/40 hover:text-red-400 transition-colors px-0.5 disabled:opacity-30">
+                  className="font-body text-[10px] text-ch-muted/40 hover:text-red-400 transition-colors px-0.5 disabled:opacity-30 ch-press">
                   ✕
                 </button>
               </>
@@ -348,11 +348,11 @@ function FilaMovimiento({
               <>
                 <span className="font-body text-[10px] text-ch-muted">¿Eliminar?</span>
                 <button onClick={onEliminar}
-                  className="font-body text-[10px] text-red-400 hover:text-red-300 px-1 transition-colors">
+                  className="font-body text-[10px] text-red-400 hover:text-red-300 px-1 transition-colors ch-press">
                   Sí
                 </button>
                 <button onClick={onCancelarEliminar}
-                  className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 transition-colors">
+                  className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 transition-colors ch-press">
                   No
                 </button>
               </>
@@ -397,7 +397,7 @@ function FormMovimiento({ form, setForm, onGuardar, onCancelar, isPending }: {
               form.tipo === t
                 ? t === 'entrada' ? 'bg-ch-green/20 border-ch-green/60 text-ch-green' : 'bg-red-500/10 border-red-500/50 text-red-400'
                 : 'border-ch-border/40 text-ch-muted hover:text-ch-cream'
-            }`}>
+            } ch-press`}>
             {t === 'entrada' ? '↑ Entrada' : '↓ Salida'}
           </button>
         ))}
@@ -427,11 +427,11 @@ function FormMovimiento({ form, setForm, onGuardar, onCancelar, isPending }: {
 
       <div className="flex gap-2 pt-1">
         <button onClick={onGuardar} disabled={!valido || isPending}
-          className="font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50">
+          className="font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 bg-ch-green hover:bg-ch-green-light text-ch-black transition-colors disabled:opacity-50 ch-press">
           {isPending ? 'Guardando...' : form.editingId ? 'Actualizar' : 'Agregar'}
         </button>
         <button onClick={onCancelar}
-          className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-3 transition-colors">
+          className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-3 transition-colors ch-press">
           Cancelar
         </button>
       </div>
@@ -476,7 +476,7 @@ function CierreForm({ cierreInput, setCierreInput, cierreNotas, setCierreNotas, 
         </div>
       </div>
       <button onClick={onGuardar} disabled={!valido || guardando}
-        className="font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50">
+        className="font-body text-[10px] tracking-[0.35em] uppercase px-5 py-2 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50 ch-press">
         {guardando ? 'Guardando...' : 'Cerrar período'}
       </button>
     </div>

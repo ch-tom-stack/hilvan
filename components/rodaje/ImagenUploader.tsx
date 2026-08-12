@@ -78,14 +78,14 @@ export function ImagenUploader({ rodajeId, campo, valorActual, label, onSubida, 
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="text-xs text-ch-muted hover:text-ch-cream transition-colors"
+              className="text-xs text-ch-muted hover:text-ch-cream transition-colors ch-press"
             >
               Cambiar imagen
             </button>
             <button
               type="button"
               onClick={handleEliminar}
-              className="text-xs text-red-500 hover:text-red-400 transition-colors"
+              className="text-xs text-red-500 hover:text-red-400 transition-colors ch-press"
             >
               Eliminar
             </button>
@@ -96,7 +96,7 @@ export function ImagenUploader({ rodajeId, campo, valorActual, label, onSubida, 
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={subiendo}
-          className="w-full border border-dashed border-ch-border rounded-[2px] px-4 py-4 text-xs text-ch-border hover:border-ch-muted hover:text-ch-muted transition-colors disabled:opacity-50 text-center"
+          className="w-full border border-dashed border-ch-border rounded-[2px] px-4 py-4 text-xs text-ch-border hover:border-ch-muted hover:text-ch-muted transition-colors disabled:opacity-50 text-center ch-press"
         >
           {subiendo ? 'Subiendo...' : '+ Subir imagen'}
         </button>

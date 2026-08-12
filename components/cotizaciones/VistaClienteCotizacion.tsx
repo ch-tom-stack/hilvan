@@ -225,14 +225,14 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
               <button
                 onClick={() => handleRespuesta('aprobada')}
                 disabled={isPending}
-                className="flex-1 py-2.5 bg-gray-900 text-white font-sans text-sm font-medium rounded-[2px] hover:bg-gray-700 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 bg-gray-900 text-white font-sans text-sm font-medium rounded-[2px] hover:bg-gray-700 transition-colors disabled:opacity-50 ch-press"
               >
                 {isPending ? 'Enviando...' : 'Aprobar cotización'}
               </button>
               <button
                 onClick={() => handleRespuesta('rechazada')}
                 disabled={isPending}
-                className="px-5 py-2.5 border border-gray-300 text-gray-500 font-sans text-sm rounded-[2px] hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 border border-gray-300 text-gray-500 font-sans text-sm rounded-[2px] hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-50 ch-press"
               >
                 Rechazar
               </button>

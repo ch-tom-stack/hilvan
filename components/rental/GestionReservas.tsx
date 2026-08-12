@@ -97,7 +97,7 @@ function FilaReserva({
       {/* Fila principal */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-4 px-5 py-4 hover:bg-ch-surface/30 transition-colors text-left"
+        className="w-full flex items-center gap-4 px-5 py-4 hover:bg-ch-surface/30 transition-colors text-left ch-press"
         disabled={pending}
       >
         <div className="flex-1 min-w-0">
@@ -138,21 +138,21 @@ function FilaReserva({
                   <button
                     onClick={() => cambiarEstado('aprobada')}
                     disabled={pending}
-                    className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50"
+                    className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50 ch-press"
                   >
                     Aprobar
                   </button>
                   <button
                     onClick={() => cambiarEstado('denegada')}
                     disabled={pending}
-                    className="border border-red-900/50 text-red-400 hover:bg-red-950/30 font-body text-[9px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50"
+                    className="border border-red-900/50 text-red-400 hover:bg-red-950/30 font-body text-[9px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50 ch-press"
                   >
                     Denegar
                   </button>
                   <button
                     onClick={eliminar}
                     disabled={pending}
-                    className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-subtle hover:text-red-400 transition-colors disabled:opacity-50"
+                    className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-subtle hover:text-red-400 transition-colors disabled:opacity-50 ch-press"
                   >
                     Eliminar
                   </button>
@@ -162,7 +162,7 @@ function FilaReserva({
                 <button
                   onClick={() => cambiarEstado('entregada')}
                   disabled={pending}
-                  className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50"
+                  className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50 ch-press"
                 >
                   Marcar entregada
                 </button>
@@ -171,7 +171,7 @@ function FilaReserva({
                 <button
                   onClick={() => cambiarEstado('devuelta')}
                   disabled={pending}
-                  className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50"
+                  className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50 ch-press"
                 >
                   Marcar devuelta
                 </button>

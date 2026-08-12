@@ -57,7 +57,7 @@ export default function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregad
         <div className="flex gap-2">
           <button
             onClick={() => setMostrarForm(!mostrarForm)}
-            className="text-xs bg-ch-cream text-ch-dark font-medium px-2.5 py-1 rounded-[2px] hover:bg-white transition-colors"
+            className="text-xs bg-ch-cream text-ch-dark font-medium px-2.5 py-1 rounded-[2px] hover:bg-white transition-colors ch-press"
           >
             + Persona
           </button>
@@ -102,11 +102,11 @@ export default function PanelEquipo({ equipo, rodaje, rodajeId, onPersonaAgregad
             <button
               onClick={handleAgregar}
               disabled={guardando || !nombre.trim()}
-              className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
+              className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50 ch-press"
             >
               {guardando ? '...' : 'Agregar'}
             </button>
-            <button onClick={() => setMostrarForm(false)} className="text-xs text-ch-subtle hover:text-ch-muted px-2">
+            <button onClick={() => setMostrarForm(false)} className="text-xs text-ch-subtle hover:text-ch-muted px-2 ch-press">
               Cancelar
             </button>
           </div>

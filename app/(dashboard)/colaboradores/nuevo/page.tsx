@@ -99,7 +99,7 @@ export default function NuevoColaboradorPage() {
               <button key={esp} type="button" onClick={() => toggleEsp(esp)}
                 className={`font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border transition-colors ${
                   form.especialidades.includes(esp) ? 'border-ch-green text-ch-cream bg-ch-green/10' : 'border-ch-border text-ch-muted hover:text-ch-cream'
-                }`}>
+                } ch-press`}>
                 {esp}
               </button>
             ))}
@@ -121,7 +121,7 @@ export default function NuevoColaboradorPage() {
 
         <div className="pt-4 border-t border-ch-border">
           <button onClick={submit} disabled={isPending || !form.nombre.trim()}
-            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-8 py-3 transition-colors disabled:opacity-50">
+            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-8 py-3 transition-colors disabled:opacity-50 ch-press">
             {isPending ? 'Creando...' : 'Crear colaborador'}
           </button>
         </div>

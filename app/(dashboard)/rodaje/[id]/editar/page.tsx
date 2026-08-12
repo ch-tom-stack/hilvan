@@ -186,7 +186,7 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
           <button
             type="submit"
             disabled={isPending}
-            className="bg-[#E6E2ED] text-ch-black text-sm font-medium px-5 py-2 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
+            className="bg-[#E6E2ED] text-ch-black text-sm font-medium px-5 py-2 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50 ch-press"
           >
             {isPending ? 'Guardando...' : 'Guardar cambios'}
           </button>
@@ -233,7 +233,7 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
         {!confirmEliminar ? (
           <button
             onClick={() => setConfirmEliminar(true)}
-            className="text-sm text-red-500 border border-red-900 px-4 py-2 rounded-[2px] hover:bg-red-950/30 transition-colors"
+            className="text-sm text-red-500 border border-red-900 px-4 py-2 rounded-[2px] hover:bg-red-950/30 transition-colors ch-press"
           >
             Eliminar rodaje
           </button>
@@ -246,13 +246,13 @@ export default function EditarRodajePage({ params }: { params: Promise<{ id: str
               <button
                 onClick={() => startTransition(async () => { await eliminarRodaje(id) })}
                 disabled={isPending}
-                className="text-sm bg-red-700 text-white px-4 py-2 rounded-[2px] hover:bg-red-600 transition-colors disabled:opacity-50"
+                className="text-sm bg-red-700 text-white px-4 py-2 rounded-[2px] hover:bg-red-600 transition-colors disabled:opacity-50 ch-press"
               >
                 {isPending ? 'Eliminando...' : 'Sí, eliminar'}
               </button>
               <button
                 onClick={() => setConfirmEliminar(false)}
-                className="text-sm text-ch-muted px-4 py-2 hover:text-ch-cream transition-colors"
+                className="text-sm text-ch-muted px-4 py-2 hover:text-ch-cream transition-colors ch-press"
               >
                 Cancelar
               </button>

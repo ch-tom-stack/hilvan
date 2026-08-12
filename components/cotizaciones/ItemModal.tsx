@@ -154,7 +154,7 @@ export default function ItemModal({
             <h2 className="font-body text-sm font-medium text-ch-cream">
               {mode === 'nuevo' ? 'Nuevo ítem' : 'Editar ítem'}
             </h2>
-            <button type="button" onClick={onCerrar} className="text-ch-muted hover:text-ch-cream text-lg">✕</button>
+            <button type="button" onClick={onCerrar} className="text-ch-muted hover:text-ch-cream text-lg ch-press">✕</button>
           </div>
 
           {/* Ubicación: mover entre categorías / dentro o fuera de subgrupos (solo al editar) */}
@@ -210,7 +210,7 @@ export default function ItemModal({
                       key={t.id}
                       type="button"
                       onClick={() => aplicarTarifa(t)}
-                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-ch-border/10 transition-colors text-left"
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-ch-border/10 transition-colors text-left ch-press"
                     >
                       <span className="font-body text-xs text-ch-cream truncate">{t.nombre}</span>
                       <span className="font-body text-xs text-ch-muted shrink-0 ml-2">{formatCLP(t.precio_referencial)}</span>
@@ -241,7 +241,7 @@ export default function ItemModal({
                       key={e.id}
                       type="button"
                       onClick={() => aplicarEquipo(e)}
-                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-ch-border/10 transition-colors text-left"
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-ch-border/10 transition-colors text-left ch-press"
                     >
                       <span className="font-body text-xs text-ch-cream truncate">{e.nombre}</span>
                       <span className="font-body text-xs text-ch-muted shrink-0 ml-2">{e.precio_jornada ? formatCLP(e.precio_jornada) : '—'}</span>
@@ -441,14 +441,14 @@ export default function ItemModal({
             <button
               type="submit"
               disabled={isPending || !nombre.trim()}
-              className="flex-1 py-2.5 bg-ch-cream text-ch-dark font-body text-sm font-medium rounded hover:bg-ch-cream/90 transition-colors disabled:opacity-50"
+              className="flex-1 py-2.5 bg-ch-cream text-ch-dark font-body text-sm font-medium rounded hover:bg-ch-cream/90 transition-colors disabled:opacity-50 ch-press"
             >
               {isPending ? 'Guardando...' : mode === 'nuevo' ? 'Agregar ítem' : 'Guardar cambios'}
             </button>
             <button
               type="button"
               onClick={onCerrar}
-              className="px-4 py-2.5 border border-ch-border text-ch-muted font-body text-sm rounded hover:text-ch-cream hover:border-ch-cream/40 transition-colors"
+              className="px-4 py-2.5 border border-ch-border text-ch-muted font-body text-sm rounded hover:text-ch-cream hover:border-ch-cream/40 transition-colors ch-press"
             >
               Cancelar
             </button>

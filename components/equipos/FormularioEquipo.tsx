@@ -279,6 +279,7 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
       <div className="flex items-center gap-4 py-2">
         <button
           type="button"
+          className="ch-press"
           onClick={() => setRentable(!rentable)}
           style={{
             width: '44px',
@@ -321,7 +322,7 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
                 <button
                   type="button"
                   onClick={() => eliminarFoto(url)}
-                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-body text-xs tracking-widest"
+                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-body text-xs tracking-widest ch-press"
                 >
                   QUITAR
                 </button>
@@ -353,14 +354,14 @@ export default function FormularioEquipo({ categorias, equipo }: Props) {
         <button
           type="submit"
           disabled={guardando}
-          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-8 py-4 transition-colors duration-200 disabled:opacity-50"
+          className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-8 py-4 transition-colors duration-200 disabled:opacity-50 ch-press"
         >
           {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Agregar equipo'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/equipos')}
-          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-8 py-4 transition-colors duration-200"
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-8 py-4 transition-colors duration-200 ch-press"
         >
           Cancelar
         </button>

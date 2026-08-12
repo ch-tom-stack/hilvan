@@ -130,7 +130,7 @@ export default function NuevoClientePage() {
 
         <div className="pt-4 border-t border-ch-border">
           <button onClick={submit} disabled={isPending || !form.nombre.trim()}
-            className="bg-ch-cream hover:bg-white text-ch-dark font-body font-medium text-[10px] tracking-[0.35em] uppercase px-8 py-3 transition-colors disabled:opacity-50">
+            className="bg-ch-cream hover:bg-white text-ch-dark font-body font-medium text-[10px] tracking-[0.35em] uppercase px-8 py-3 transition-colors disabled:opacity-50 ch-press">
             {isPending ? 'Creando…' : 'Crear cliente'}
           </button>
         </div>

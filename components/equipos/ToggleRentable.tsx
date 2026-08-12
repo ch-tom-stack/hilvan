@@ -43,7 +43,7 @@ export default function ToggleRentable({ id, rentable: initialRentable }: Props)
         activo
           ? 'border-ch-green bg-ch-green/20'
           : 'border-ch-border bg-transparent'
-      }`}
+      } ch-press`}
     >
       <span
         className={`inline-block h-2.5 w-2.5 rounded-full transition-transform duration-200 ${

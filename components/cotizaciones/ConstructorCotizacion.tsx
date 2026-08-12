@@ -389,7 +389,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             ) : (
               <button
                 onClick={() => setEditandoNombre(true)}
-                className="font-body text-sm text-ch-cream truncate hover:text-white"
+                className="font-body text-sm text-ch-cream truncate hover:text-white ch-press"
               >
                 {cot.nombre}
               </button>
@@ -398,7 +398,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
             <div className="relative">
               <button
                 onClick={() => setEstadoOpen(o => !o)}
-                className={`font-body text-xs ${ESTADO_CONFIG[cot.estado]?.color} flex items-center gap-1 hover:opacity-80 transition-opacity`}
+                className={`font-body text-xs ${ESTADO_CONFIG[cot.estado]?.color} flex items-center gap-1 hover:opacity-80 transition-opacity ch-press`}
               >
                 {ESTADO_CONFIG[cot.estado]?.label}
                 <span className="text-[8px] opacity-50">▾</span>
@@ -428,7 +428,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                         }}
                         className={`w-full text-left px-3 py-2 font-body text-xs ${color} hover:bg-ch-border/20 transition-colors disabled:opacity-50 ${
                           key === cot.estado ? 'bg-ch-border/10' : ''
-                        }`}
+                        } ch-press`}
                       >
                         {label}
                       </button>
@@ -452,7 +452,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                 } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear versión') }
               })}
               disabled={isPending}
-              className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
+              className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors ch-press"
             >
               + versión
             </button>
@@ -465,7 +465,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                 } catch (e) { toastError(e instanceof Error ? e.message : 'Error al crear variante') }
               })}
               disabled={isPending}
-              className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
+              className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors ch-press"
             >
               + variante
             </button>
@@ -478,7 +478,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                 } catch (e) { toastError(e instanceof Error ? e.message : 'Error al duplicar') }
               })}
               disabled={isPending}
-              className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors"
+              className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors ch-press"
             >
               duplicar
             </button>
@@ -511,7 +511,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           {cot.estado === 'borrador' ? (
             <button
               onClick={handleEnviar}
-              className="px-4 py-1.5 bg-ch-cream text-ch-dark font-body text-xs font-medium rounded hover:bg-ch-cream/90 transition-colors"
+              className="px-4 py-1.5 bg-ch-cream text-ch-dark font-body text-xs font-medium rounded hover:bg-ch-cream/90 transition-colors ch-press"
             >
               Enviar al cliente
             </button>
@@ -522,7 +522,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
                 linkCopiado
                   ? 'border-ch-green/40 text-ch-green'
                   : 'border-ch-border text-ch-muted hover:text-ch-cream'
-              }`}
+              } ch-press`}
             >
               {linkCopiado ? '✓ Link copiado' : 'Copiar link'}
             </button>
@@ -580,7 +580,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           {editable && (
             <button
               onClick={handleAgregarDep}
-              className="w-full py-3 border border-dashed border-ch-border/40 rounded text-ch-muted font-body text-xs hover:text-ch-cream hover:border-ch-border transition-colors"
+              className="w-full py-3 border border-dashed border-ch-border/40 rounded text-ch-muted font-body text-xs hover:text-ch-cream hover:border-ch-border transition-colors ch-press"
             >
               + Agregar departamento
             </button>

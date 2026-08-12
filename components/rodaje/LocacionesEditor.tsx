@@ -91,7 +91,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
               type="button"
               onClick={geocodificar}
               disabled={buscando || !form.direccion}
-              className="text-xs border border-ch-border text-ch-muted px-3 py-1.5 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors disabled:opacity-40 shrink-0"
+              className="text-xs border border-ch-border text-ch-muted px-3 py-1.5 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors disabled:opacity-40 shrink-0 ch-press"
             >
               {buscando ? '...' : '📍 Geocodificar'}
             </button>
@@ -165,11 +165,11 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
               notas: form.notas || undefined,
             })}
             disabled={isPending || !form.nombre}
-            className="text-xs bg-[#E6E2ED] text-ch-black font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
+            className="text-xs bg-[#E6E2ED] text-ch-black font-medium px-3 py-1.5 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50 ch-press"
           >
             {isPending ? 'Guardando...' : 'Guardar'}
           </button>
-          <button type="button" onClick={onCancelar} className="text-xs text-ch-muted px-3 py-1.5 hover:text-ch-cream">
+          <button type="button" onClick={onCancelar} className="text-xs text-ch-muted px-3 py-1.5 hover:text-ch-cream ch-press">
             Cancelar
           </button>
         </div>
@@ -186,7 +186,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
           <button
             type="button"
             onClick={() => setAgregando(true)}
-            className="text-xs text-ch-muted hover:text-ch-cream transition-colors"
+            className="text-xs text-ch-muted hover:text-ch-cream transition-colors ch-press"
           >
             + Agregar
           </button>
@@ -241,7 +241,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
                   <button
                     type="button"
                     onClick={() => setEditando(loc.id)}
-                    className="text-xs text-ch-border hover:text-ch-cream transition-colors"
+                    className="text-xs text-ch-border hover:text-ch-cream transition-colors ch-press"
                   >
                     Editar
                   </button>
@@ -259,7 +259,7 @@ export function LocacionesEditor({ rodajeId, locaciones, onActualizar }: Props) 
                         }
                       })
                     }}
-                    className="text-xs text-ch-border hover:text-red-400 transition-colors"
+                    className="text-xs text-ch-border hover:text-red-400 transition-colors ch-press"
                   >
                     Eliminar
                   </button>

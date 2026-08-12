@@ -155,7 +155,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
         <button
           onClick={generarFichaLink}
           disabled={generandoLinkOnboarding}
-          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50"
+          className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.3em] uppercase px-4 py-2 transition-colors disabled:opacity-50 ch-press"
         >
           {generandoLinkOnboarding ? 'Generando...' : 'Enviar ficha al colaborador'}
         </button>
@@ -175,7 +175,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
             onClick={() => setSeccion(tab)}
             className={`font-body text-[10px] tracking-[0.2em] uppercase px-3 py-3 whitespace-nowrap transition-colors border-b-2 -mb-px ${
               seccion === tab ? 'border-ch-green text-ch-cream' : 'border-transparent text-ch-muted hover:text-ch-cream'
-            }`}
+            } ch-press`}
           >
             {tab === 'identidad' ? 'Identidad' :
              tab === 'bancario' ? 'Bancario' :
@@ -313,7 +313,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
                 <button key={esp} onClick={() => toggleEspecialidad(esp)}
                   className={`font-body text-[10px] tracking-wider uppercase px-3 py-1.5 border transition-colors ${
                     activa ? 'border-ch-green text-ch-cream bg-ch-green/10' : 'border-ch-border text-ch-muted hover:text-ch-cream'
-                  }`}>
+                  } ch-press`}>
                   {esp}
                 </button>
               )
@@ -335,7 +335,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
                 { tipo: 'release', label: 'Autorización de imagen' },
               ].map(({ tipo, label }) => (
                 <button key={tipo} onClick={() => generarContrato(tipo)} disabled={isPending}
-                  className="border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-muted font-body text-xs px-4 py-3 text-left transition-colors disabled:opacity-50">
+                  className="border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-muted font-body text-xs px-4 py-3 text-left transition-colors disabled:opacity-50 ch-press">
                   {label}
                   <span className="block text-[9px] tracking-wider text-ch-muted/60 mt-0.5">→ descarga .docx</span>
                 </button>
@@ -380,7 +380,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
           <div>
             <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted mb-3">Link temporal para rendiciones</p>
             <button onClick={generarLink} disabled={generandoLink}
-              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-4 py-2 transition-colors disabled:opacity-50">
+              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-xs px-4 py-2 transition-colors disabled:opacity-50 ch-press">
               {generandoLink ? 'Generando...' : 'Generar link (7 días)'}
             </button>
             {linkGenerado && (
@@ -420,7 +420,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
               </div>
             </div>
             <button onClick={agregarTarifa} disabled={isPending || !nuevaTarifa.monto_dia}
-              className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-widest uppercase px-4 py-2 transition-colors disabled:opacity-50">
+              className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[10px] tracking-widest uppercase px-4 py-2 transition-colors disabled:opacity-50 ch-press">
               Agregar
             </button>
           </div>
@@ -442,7 +442,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
                       await eliminarTarifa(t.id, colaborador.id)
                       setTarifas(prev => prev.filter(x => x.id !== t.id))
                     } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar tarifa') }
-                  })} className="text-ch-muted hover:text-red-400 font-body text-xs transition-colors">
+                  })} className="text-ch-muted hover:text-red-400 font-body text-xs transition-colors ch-press">
                     ✕
                   </button>
                 </div>
@@ -487,7 +487,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
       {['identidad', 'bancario', 'fiscal', 'especialidades'].includes(seccion) && (
         <div className="flex items-center gap-4 mt-8 pt-6 border-t border-ch-border">
           <button onClick={guardar} disabled={isPending}
-            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors disabled:opacity-50">
+            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-6 py-3 transition-colors disabled:opacity-50 ch-press">
             {isPending ? 'Guardando...' : guardado ? 'Guardado ✓' : 'Guardar cambios'}
           </button>
           <button onClick={() => startTransition(async () => {
@@ -497,7 +497,7 @@ export default function FichaColaborador({ colaborador, tarifas: tarifasIniciale
               toastOk('Colaborador eliminado')
               router.push('/colaboradores')
             } catch (e) { toastError(e instanceof Error ? e.message : 'Error al eliminar colaborador') }
-          })} className="text-ch-muted hover:text-red-400 font-body text-xs transition-colors">
+          })} className="text-ch-muted hover:text-red-400 font-body text-xs transition-colors ch-press">
             Eliminar
           </button>
         </div>

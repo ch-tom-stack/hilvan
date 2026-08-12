@@ -115,7 +115,7 @@ function FormAgregarItem({
               tipo === t
                 ? 'border-ch-green text-ch-cream bg-ch-surface'
                 : 'border-ch-border text-ch-subtle hover:text-ch-muted'
-            }`}
+            } ch-press`}
           >
             {t === 'equipo' ? 'Equipo' : t === 'maleta' ? 'Maleta' : 'Libre'}
           </button>
@@ -188,11 +188,11 @@ function FormAgregarItem({
 
       <div className="flex gap-2">
         <button type="button" onClick={onDone}
-          className="flex-1 border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-widest uppercase py-2 transition-colors">
+          className="flex-1 border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-widest uppercase py-2 transition-colors ch-press">
           Cancelar
         </button>
         <button type="submit" disabled={pending}
-          className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-widest uppercase py-2 transition-colors disabled:opacity-50">
+          className="flex-1 bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-widest uppercase py-2 transition-colors disabled:opacity-50 ch-press">
           {pending ? 'Agregando…' : 'Agregar'}
         </button>
       </div>
@@ -307,7 +307,7 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
           <p className="text-ch-muted font-body text-[9px] tracking-[0.4em] uppercase">Ítems</p>
           <button
             onClick={() => setAddingSeccion(true)}
-            className="font-body text-[9px] tracking-widest uppercase text-ch-green hover:text-ch-green-light transition-colors"
+            className="font-body text-[9px] tracking-widest uppercase text-ch-green hover:text-ch-green-light transition-colors ch-press"
           >
             + Agregar sección
           </button>
@@ -324,11 +324,11 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
               className="flex-1 bg-ch-surface border border-ch-border text-ch-cream text-sm px-3 py-2 focus:outline-none focus:border-ch-green rounded-[2px] placeholder:text-ch-subtle"
             />
             <button onClick={agregarSeccion} disabled={pending}
-              className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-widest uppercase px-4 py-2 disabled:opacity-50">
+              className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body text-[9px] tracking-widest uppercase px-4 py-2 disabled:opacity-50 ch-press">
               Agregar
             </button>
             <button onClick={() => setAddingSeccion(false)}
-              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-widest uppercase px-4 py-2">
+              className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[9px] tracking-widest uppercase px-4 py-2 ch-press">
               ×
             </button>
           </div>
@@ -342,7 +342,7 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
                 <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">{sec.nombre}</p>
                 <button
                   onClick={() => setAddingItemEnSeccion(addingItemEnSeccion === sec.id ? null : sec.id)}
-                  className="font-body text-[9px] tracking-widest uppercase text-ch-green hover:text-ch-green-light transition-colors"
+                  className="font-body text-[9px] tracking-widest uppercase text-ch-green hover:text-ch-green-light transition-colors ch-press"
                 >
                   + Ítem
                 </button>
@@ -383,7 +383,7 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
                       <button
                         onClick={() => eliminarItem(item.id)}
                         disabled={pending}
-                        className="font-body text-[9px] text-ch-subtle hover:text-red-400 transition-colors disabled:opacity-50"
+                        className="font-body text-[9px] text-ch-subtle hover:text-red-400 transition-colors disabled:opacity-50 ch-press"
                       >
                         ×
                       </button>

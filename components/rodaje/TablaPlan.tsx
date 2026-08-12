@@ -188,13 +188,13 @@ export default function TablaPlan({
           <div className="flex border border-ch-border rounded-[2px] overflow-hidden">
             <button
               onClick={() => setVistaTimeline(false)}
-              className={`text-xs px-2 py-0.5 transition-colors ${!vistaTimeline ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'}`}
+              className={`text-xs px-2 py-0.5 transition-colors ${!vistaTimeline ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'} ch-press`}
             >
               ☰ Tabla
             </button>
             <button
               onClick={() => setVistaTimeline(true)}
-              className={`text-xs px-2 py-0.5 transition-colors border-l border-ch-border ${vistaTimeline ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'}`}
+              className={`text-xs px-2 py-0.5 transition-colors border-l border-ch-border ${vistaTimeline ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'} ch-press`}
             >
               ▬ Timeline
             </button>
@@ -210,14 +210,14 @@ export default function TablaPlan({
         <div className="flex gap-2 relative" ref={plantillasRef}>
           <button
             onClick={(e) => { e.stopPropagation(); setMostrarPlantillas(!mostrarPlantillas) }}
-            className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors"
+            className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors ch-press"
           >
             + Plantilla
           </button>
           <button
             onClick={() => onCrear({ titulo: 'Nuevo bloque', tipo: 'rodaje', duracion_min: 30 })}
             disabled={creando}
-            className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50"
+            className="text-xs text-ch-muted border border-ch-border px-3 py-1 rounded-[2px] hover:border-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50 ch-press"
           >
             {creando ? '...' : '+ Bloque'}
           </button>
@@ -225,7 +225,7 @@ export default function TablaPlan({
             onClick={() => onCrear({ titulo: 'Libre', tipo: 'libre', duracion_min: 0 })}
             disabled={creando}
             title="Lienzo libre: pega imágenes, chistes, notas con tu propia letra y color"
-            className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50"
+            className="text-xs bg-ch-cream text-ch-dark font-medium px-3 py-1 rounded-[2px] hover:bg-white transition-colors disabled:opacity-50 ch-press"
           >
             + Libre
           </button>
@@ -243,7 +243,7 @@ export default function TablaPlan({
                     await onCrearDesdePlantilla(p.label)
                   }}
                   disabled={creando}
-                  className="w-full text-left px-3 py-2 text-sm text-ch-muted hover:bg-ch-dark transition-colors flex items-center justify-between disabled:opacity-50"
+                  className="w-full text-left px-3 py-2 text-sm text-ch-muted hover:bg-ch-dark transition-colors flex items-center justify-between disabled:opacity-50 ch-press"
                 >
                   <span>{p.label}</span>
                   {p.duracion_min > 0 && <span className="text-xs text-ch-subtle">{p.duracion_min}min</span>}
@@ -292,7 +292,7 @@ export default function TablaPlan({
         <div className="text-center py-12 text-ch-subtle text-sm">
           <p>El plan está vacío.</p>
           <button onClick={() => onCrear({ titulo: 'Nuevo bloque', tipo: 'rodaje', duracion_min: 30 })}
-            className="text-ch-cream mt-2 inline-block hover:underline">
+            className="text-ch-cream mt-2 inline-block hover:underline ch-press">
             Agregar primer bloque →
           </button>
         </div>
@@ -341,9 +341,9 @@ export default function TablaPlan({
                   {/* Orden */}
                   <div className="flex flex-col items-center justify-center gap-0 opacity-0 group-hover:opacity-100">
                     <button onClick={() => mover(idx, -1)} disabled={idx === 0}
-                      className="text-ch-subtle hover:text-ch-muted disabled:opacity-20 text-[9px] leading-none py-0.5">▲</button>
+                      className="text-ch-subtle hover:text-ch-muted disabled:opacity-20 text-[9px] leading-none py-0.5 ch-press">▲</button>
                     <button onClick={() => mover(idx, 1)} disabled={idx === bloquesRaiz.length - 1}
-                      className="text-ch-subtle hover:text-ch-muted disabled:opacity-20 text-[9px] leading-none py-0.5">▼</button>
+                      className="text-ch-subtle hover:text-ch-muted disabled:opacity-20 text-[9px] leading-none py-0.5 ch-press">▼</button>
                   </div>
 
                   {/* Hora calculada */}
@@ -357,7 +357,7 @@ export default function TablaPlan({
                   <div className="flex items-center gap-1 px-1 relative" onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => setColorPickerAbierto(colorPickerAbierto === bloque.id ? null : bloque.id)}
-                      className="w-2.5 h-2.5 rounded-sm shrink-0 border border-ch-border"
+                      className="w-2.5 h-2.5 rounded-sm shrink-0 border border-ch-border ch-press"
                       style={{ backgroundColor: bloque.scenes_color || '#353135' }}
                     />
                     {colorPickerAbierto === bloque.id && (
@@ -406,7 +406,7 @@ export default function TablaPlan({
                   {/* D/N */}
                   <div className="flex items-center justify-center">
                     <button onClick={() => actualizarCelda(bloque.id, 'dia_noche', bloque.dia_noche === 'D' ? 'N' : 'D')}
-                      className={`text-xs w-6 h-6 rounded-[2px] font-medium transition-colors ${bloque.dia_noche === 'N' ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'}`}>
+                      className={`text-xs w-6 h-6 rounded-[2px] font-medium transition-colors ${bloque.dia_noche === 'N' ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'} ch-press`}>
                       {bloque.dia_noche || 'D'}
                     </button>
                   </div>
@@ -416,7 +416,7 @@ export default function TablaPlan({
                     <button onClick={() => {
                       const ciclo: Record<string, string> = { 'I': 'E', 'E': '-', '-': 'I' }
                       actualizarCelda(bloque.id, 'interior_exterior', ciclo[bloque.interior_exterior || 'I'])
-                    }} className="text-xs text-ch-subtle hover:text-ch-muted w-6 h-6 rounded-[2px] transition-colors">
+                    }} className="text-xs text-ch-subtle hover:text-ch-muted w-6 h-6 rounded-[2px] transition-colors ch-press">
                       {bloque.interior_exterior || 'I'}
                     </button>
                   </div>
@@ -429,7 +429,7 @@ export default function TablaPlan({
                       type="button"
                       onClick={() => bloque.hora_inicio_fija ? desanclar(bloque.id) : anclarAqui(bloque.id, casc.inicio_min)}
                       title={bloque.hora_inicio_fija ? 'Anclado — clic para liberar y seguir al bloque anterior' : 'Libre — sigue al bloque anterior. Clic para anclar acá'}
-                      className={`shrink-0 w-3 text-[9px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${bloque.hora_inicio_fija ? '!opacity-100 text-ch-gold' : 'text-ch-border hover:text-ch-muted'}`}
+                      className={`shrink-0 w-3 text-[9px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${bloque.hora_inicio_fija ? '!opacity-100 text-ch-gold' : 'text-ch-border hover:text-ch-muted'} ch-press`}
                     >
                       📌
                     </button>
@@ -468,13 +468,13 @@ export default function TablaPlan({
                         />
                         <button
                           onClick={() => handleEliminarImagen(bloque.id, bloque.imagen_url!)}
-                          className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-ch-dark border border-ch-border rounded-full text-[8px] text-red-400 hidden group-hover/img:flex items-center justify-center leading-none"
+                          className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-ch-dark border border-ch-border rounded-full text-[8px] text-red-400 hidden group-hover/img:flex items-center justify-center leading-none ch-press"
                         >✕</button>
                       </div>
                     ) : (
                       <button
                         onClick={() => handleSeleccionarImagen(bloque.id)}
-                        className="text-ch-border hover:text-ch-muted opacity-0 group-hover:opacity-100 transition-all text-xs leading-none"
+                        className="text-ch-border hover:text-ch-muted opacity-0 group-hover:opacity-100 transition-all text-xs leading-none ch-press"
                         title="Agregar imagen"
                       >⬜</button>
                     )}
@@ -485,19 +485,19 @@ export default function TablaPlan({
                     {isEliminando ? (
                       <>
                         <button onClick={async () => { setConfirmarEliminar(null); await onEliminar(bloque.id) }}
-                          className="text-xs text-red-400 hover:text-red-300 font-medium transition-colors">
+                          className="text-xs text-red-400 hover:text-red-300 font-medium transition-colors ch-press">
                           Sí
                         </button>
                         <span className="text-ch-border">·</span>
                         <button onClick={() => setConfirmarEliminar(null)}
-                          className="text-xs text-ch-subtle hover:text-ch-muted transition-colors">
+                          className="text-xs text-ch-subtle hover:text-ch-muted transition-colors ch-press">
                           No
                         </button>
                       </>
                     ) : (
                       <button
                         onClick={() => setConfirmarEliminar(bloque.id)}
-                        className="text-ch-border hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs"
+                        className="text-ch-border hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs ch-press"
                       >
                         ✕
                       </button>
@@ -544,7 +544,7 @@ export default function TablaPlan({
                               type="button"
                               onClick={() => bloque.hora_inicio_fija ? desanclar(bloque.id) : anclarAqui(bloque.id, casc.inicio_min)}
                               title={bloque.hora_inicio_fija ? 'Anclado — clic para liberar' : 'Libre — clic para anclar acá'}
-                              className={`text-[10px] leading-none ${bloque.hora_inicio_fija ? 'text-ch-gold' : 'text-ch-border'}`}
+                              className={`text-[10px] leading-none ${bloque.hora_inicio_fija ? 'text-ch-gold' : 'text-ch-border'} ch-press`}
                             >
                               📌
                             </button>
@@ -561,22 +561,22 @@ export default function TablaPlan({
                       </div>
                       <div className="flex gap-3 items-center flex-wrap">
                         <button onClick={() => actualizarCelda(bloque.id, 'dia_noche', bloque.dia_noche === 'D' ? 'N' : 'D')}
-                          className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px]">{bloque.dia_noche || 'D'}</button>
+                          className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] ch-press">{bloque.dia_noche || 'D'}</button>
                         <button onClick={() => {
                           const ciclo: Record<string, string> = { 'I': 'E', 'E': '-', '-': 'I' }
                           actualizarCelda(bloque.id, 'interior_exterior', ciclo[bloque.interior_exterior || 'I'])
-                        }} className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px]">{bloque.interior_exterior || 'I'}</button>
+                        }} className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] ch-press">{bloque.interior_exterior || 'I'}</button>
                         <button
                           onClick={() => handleSeleccionarImagen(bloque.id)}
                           disabled={subiendoImagen === bloque.id}
-                          className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] disabled:opacity-50"
+                          className="text-xs text-ch-muted border border-ch-border px-2 py-0.5 rounded-[2px] disabled:opacity-50 ch-press"
                         >{subiendoImagen === bloque.id ? '...' : bloque.imagen_url ? '→ cambiar img' : '+ imagen'}</button>
                         {bloque.imagen_url && (
                           <button onClick={() => handleEliminarImagen(bloque.id, bloque.imagen_url!)}
-                            className="text-xs text-red-500/70 border border-red-900/40 px-2 py-0.5 rounded-[2px]">✕ imagen</button>
+                            className="text-xs text-red-500/70 border border-red-900/40 px-2 py-0.5 rounded-[2px] ch-press">✕ imagen</button>
                         )}
                         <button onClick={async () => await onEliminar(bloque.id)}
-                          className="text-xs text-red-500 ml-auto">Eliminar</button>
+                          className="text-xs text-red-500 ml-auto ch-press">Eliminar</button>
                       </div>
                       {bloque.imagen_url && (
                         <img src={bloque.imagen_url} alt="" className="w-full max-h-40 object-cover rounded-[2px] border border-ch-border" />

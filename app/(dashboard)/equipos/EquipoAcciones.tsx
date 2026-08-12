@@ -41,14 +41,14 @@ export default function EquipoAcciones({ equipoId, equipoNombre }: Props) {
           <button
             onClick={() => setConfirmando(false)}
             disabled={pending}
-            className="flex-1 border border-ch-border text-ch-muted font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:text-ch-cream"
+            className="flex-1 border border-ch-border text-ch-muted font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:text-ch-cream ch-press"
           >
             Cancelar
           </button>
           <button
             onClick={handleEliminar}
             disabled={pending}
-            className="flex-1 border border-red-400/40 text-red-400 font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:bg-red-400/10 disabled:opacity-40"
+            className="flex-1 border border-red-400/40 text-red-400 font-body text-[9px] tracking-widest uppercase py-2 transition-colors hover:bg-red-400/10 disabled:opacity-40 ch-press"
           >
             {pending ? 'Eliminando…' : 'Confirmar'}
           </button>
@@ -61,7 +61,7 @@ export default function EquipoAcciones({ equipoId, equipoNombre }: Props) {
   return (
     <button
       onClick={() => setConfirmando(true)}
-      className="border border-ch-border text-ch-subtle hover:text-red-400 hover:border-red-400/40 font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors"
+      className="border border-ch-border text-ch-subtle hover:text-red-400 hover:border-red-400/40 font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors ch-press"
     >
       Eliminar
     </button>
