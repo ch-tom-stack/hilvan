@@ -53,7 +53,7 @@ function apiBase(extra: ToolExtra): string {
 // Reenvía a /api/agent/* con el token de servicio.
 async function callAgent(
   extra: ToolExtra,
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<unknown> {
@@ -1749,6 +1749,31 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/notas', args)),
+    )
+
+    server.registerTool(
+      'hilvan_nota_editar',
+      {
+        title: 'Corregir una nota (CRM)',
+        description: 'Corrige una nota. nota_id REQUERIDO; sólo se escriben los campos que mandes (los que omitas quedan intactos). Existe para que puedas arreglar lo que escribiste mal en vez de dejar dos notas del mismo tema: escribir una encima deja basura. NO sirve para notas bloqueadas —eso es un registro y cambiarlo en silencio es justo lo que el candado impide—: si una bloqueada está mal, bórrala con hilvan_nota_borrar y escribe otra. Guarda el valor anterior en la auditoría.',
+        inputSchema: {
+          nota_id: z.string(),
+          cuerpo: z.string().optional(),
+          titulo: z.string().optional(),
+          tipo: z.string().optional().describe('nota | lectura | acuerdo'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'PATCH', '/crm/notas', args)),
+    )
+
+    server.registerTool(
+      'hilvan_nota_borrar',
+      {
+        title: 'Borrar una nota (CRM)',
+        description: 'Borra una nota. Acepta también las BLOQUEADAS: el candado impide editar, no borrar, porque borrar es visible y queda entero en la auditoría —la nota completa se guarda ahí— mientras que editar un registro en silencio no deja rastro. Es la salida cuando algo se bloqueó mal. Antes de borrar algo que no escribiste tú, dilo en el reporte.',
+        inputSchema: { nota_id: z.string() },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'DELETE', '/crm/notas', args)),
     )
 
     server.registerTool(

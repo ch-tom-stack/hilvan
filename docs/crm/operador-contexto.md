@@ -43,6 +43,8 @@ por canal anterior a esa fecha es inválida.
 | `hilvan_bitacora` | leer la conversación completa: quién dijo qué, a quién |
 | `hilvan_notas_leer` | lo que se sabe de la marca y no cabe en la bitácora |
 | `hilvan_nota_escribir` | agregar una nota (una por tema) |
+| `hilvan_nota_editar` | corregir una nota propia |
+| `hilvan_nota_borrar` | borrar una nota (única salida si se bloqueó mal) |
 | `hilvan_hilo` | abrir / cerrar / reabrir una línea de conversación |
 | `hilvan_editar_interaccion` | corregir una interacción (sobre todo `gmail_thread`) |
 | `hilvan_solicitar_asignacion` | pedir que un prospecto pase a otra persona |
