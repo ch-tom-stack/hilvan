@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { temperaturaDe } from '@/lib/crm-temperatura'
 import { medallasCumplidas, type DatosMedallas } from '@/lib/crm-medallas'
+import { DIAS_HABILES, haceDiasHabiles } from '@/lib/ritmo'
 
 // OJO: archivo 'use server'. Todo export tiene que ser una función async —
 // exportar una constante invalida el módulo entero y el build falla señalando
@@ -230,4 +231,105 @@ export async function revisarMedallas(): Promise<EstadoMedallas> {
     .order('ganada_en', { ascending: false })
 
   return { datos, ganadas: finales ?? [], nuevas }
+}
+
+
+// ── Ritmo del período ────────────────────────────────────────────────────────
+
+export interface EstadoRitmo {
+  /** Actividad en los últimos DIAS_HABILES días hábiles. */
+  actividad: number
+  /** La misma ventana, corrida un período hacia atrás. */
+  anterior: number
+  desde: string
+  detalle: { etiqueta: string; n: number }[]
+}
+
+/**
+ * Instante UTC que corresponde a las 00:00 de Chile en `fecha`.
+ *
+ * `created_at` es un timestamp y las ventanas son fechas planas. Comparar
+ * contra 'YYYY-MM-DD' pelado lo interpreta como medianoche UTC, que en Chile
+ * son las 20:00 o 21:00 del día ANTERIOR — la ventana se corre y cuenta
+ * actividad que no corresponde. Y el desfase no es fijo: Chile cambia de hora.
+ *
+ * El offset se saca con formatToParts y NO con
+ * `new Date(fecha.toLocaleString('en-US', { timeZone }))`, que es el truco de
+ * siempre y está mal: ese string se re-parsea en la zona del PROCESO, así que
+ * da correcto sólo si el servidor corre en UTC. En Vercel corre en UTC y en un
+ * equipo chileno no — habría dado bien en producción y mal en desarrollo, que
+ * es la peor forma de estar roto.
+ *
+ * LÍMITE CONOCIDO: el día que Chile adelanta la hora (primer domingo de
+ * septiembre) la medianoche no existe — el reloj salta de 00:00 a 01:00 — y el
+ * borde cae en las 23:00 del día anterior. Es una hora de más en un extremo de
+ * una ventana de diez días hábiles, dos veces al año. Corregirlo cuesta más de
+ * lo que arregla.
+ */
+const FMT_CHILE = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Santiago', hour12: false,
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit',
+})
+
+function inicioChile(fecha: string): string {
+  // Mediodía para sondear el offset sin caer en el salto de horario.
+  const sonda = new Date(fecha + 'T12:00:00Z')
+  const p: Record<string, string> = {}
+  for (const x of FMT_CHILE.formatToParts(sonda)) p[x.type] = x.value
+  // La hora de pared de Chile, leída COMO SI fuera UTC.
+  const pared = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second)
+  const offset = pared - sonda.getTime()          // negativo: Chile va detrás
+  const [a, m, d] = fecha.split('-').map(Number)
+  return new Date(Date.UTC(a, m - 1, d) - offset).toISOString()
+}
+
+/** Tablas que cuentan como actividad, con su columna de atribución. */
+const FUENTES: { tabla: string; col: string; etiqueta: string }[] = [
+  { tabla: 'crm_interacciones',        col: 'registrado_por',  etiqueta: 'contactos' },
+  { tabla: 'cotizaciones',             col: 'created_by',      etiqueta: 'cotizaciones' },
+  { tabla: 'rodajes',                  col: 'created_by',      etiqueta: 'rodajes' },
+  { tabla: 'rental_reservas',          col: 'created_by',      etiqueta: 'reservas' },
+  { tabla: 'clientes',                 col: 'created_by',      etiqueta: 'clientes' },
+  { tabla: 'rendicion_mensual_gastos', col: 'cargado_por_id',  etiqueta: 'gastos' },
+  { tabla: 'eventos_calendario',       col: 'clasificado_por', etiqueta: 'eventos' },
+]
+
+/**
+ * Ritmo de trabajo del período. Cuenta actividad en TODA la app, no sólo
+ * captación: una semana de rodaje daría cero si midiera contactos, y la
+ * persona estaría trabajando a full.
+ */
+export async function getRitmo(): Promise<EstadoRitmo> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
+  const desde = haceDiasHabiles(hoy, DIAS_HABILES)
+  const desdeAnterior = haceDiasHabiles(desde, DIAS_HABILES)
+
+  if (!user) return { actividad: 0, anterior: 0, desde, detalle: [] }
+
+  const contar = (tabla: string, col: string, a: string, b?: string) => {
+    let q = supabase.from(tabla).select('*', { count: 'exact', head: true })
+      .eq(col, user.id)
+      .gte('created_at', inicioChile(a))
+    if (b) q = q.lt('created_at', inicioChile(b))
+    return q
+  }
+
+  const [actuales, previos] = await Promise.all([
+    Promise.all(FUENTES.map(f => contar(f.tabla, f.col, desde))),
+    Promise.all(FUENTES.map(f => contar(f.tabla, f.col, desdeAnterior, desde))),
+  ])
+
+  const detalle = FUENTES
+    .map((f, i) => ({ etiqueta: f.etiqueta, n: actuales[i].count ?? 0 }))
+    .filter(d => d.n > 0)
+
+  return {
+    actividad: actuales.reduce((t, r) => t + (r.count ?? 0), 0),
+    anterior: previos.reduce((t, r) => t + (r.count ?? 0), 0),
+    desde,
+    detalle,
+  }
 }

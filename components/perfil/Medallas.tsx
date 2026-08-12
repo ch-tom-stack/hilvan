@@ -8,6 +8,7 @@ import {
   type DefinicionMedalla, type DatosMedallas,
 } from '@/lib/crm-medallas'
 import Emblema from '@/components/perfil/Emblema'
+import RitmoActual from '@/components/perfil/RitmoActual'
 import { momento } from '@/lib/momentos'
 import { formatFecha } from '@/lib/fechas'
 
@@ -94,6 +95,11 @@ export default function Medallas() {
           </div>
         )}
       </div>
+
+      {/* El ritmo va DEBAJO del histórico: primero lo que llevas acumulado,
+          después cómo vienes. Al revés, el período se leería como la medida
+          principal y una semana mala taparía un año bueno. */}
+      <RitmoActual />
 
       {CAPITULOS.map(cap => {
         const medallas = visiblesDe(cap.clave)
