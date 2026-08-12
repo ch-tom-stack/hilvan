@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { MEDALLAS, RAREZA_LABEL, type DefinicionMedalla } from '@/lib/crm-medallas'
 import Emblema from '@/components/perfil/Emblema'
+import { getPreferencias } from '@/lib/preferencias'
 
 /**
  * El momento de desbloquear una medalla rara o legendaria.
@@ -23,6 +24,7 @@ export default function RevelacionMedalla() {
 
   useEffect(() => {
     const oir = (e: Event) => {
+      if (!getPreferencias().medallas) return
       const clave = (e as CustomEvent<{ clave: string }>).detail?.clave
       const def = MEDALLAS.find(m => m.clave === clave)
       if (def) setCola(c => (c.some(x => x.clave === def.clave) ? c : [...c, def]))

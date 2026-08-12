@@ -11,6 +11,7 @@ import Emblema from '@/components/perfil/Emblema'
 import RitmoActual from '@/components/perfil/RitmoActual'
 import Resumen from '@/components/perfil/Resumen'
 import { momento } from '@/lib/momentos'
+import { getPreferencias, setPreferencias } from '@/lib/preferencias'
 import { formatFecha } from '@/lib/fechas'
 
 /**
@@ -26,8 +27,14 @@ import { formatFecha } from '@/lib/fechas'
  */
 export default function Medallas() {
   const [estado, setEstado] = useState<EstadoMedallas | null>(null)
+  const [visibles, setVisibles] = useState(true)
+
+  useEffect(() => { setVisibles(getPreferencias().medallas) }, [])
 
   useEffect(() => {
+    // Apagadas: no se revisa siquiera. Apagar algo que igual corre por detrás
+    // no es una preferencia, es un adorno.
+    if (!visibles) return
     let vivo = true
     revisarMedallas()
       .then(e => {
@@ -42,7 +49,25 @@ export default function Medallas() {
       })
       .catch(() => { /* quedarse sin vitrina es un degradado aceptable */ })
     return () => { vivo = false }
-  }, [])
+  }, [visibles])
+
+  const alternar = (v: boolean) => { setPreferencias({ medallas: v }); setVisibles(v) }
+
+  // Apagadas: queda la línea para volver a encenderlas. Desaparecer del todo
+  // convertiría una preferencia en una puerta sin manilla.
+  if (!visibles) {
+    return (
+      <div className="border border-ch-border bg-ch-surface/20 px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+        <p className="font-body text-[11px] text-ch-subtle">Medallas ocultas.</p>
+        <button
+          onClick={() => alternar(true)}
+          className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-muted hover:text-ch-cream transition-colors"
+        >
+          Mostrar
+        </button>
+      </div>
+    )
+  }
 
   if (!estado) return null
 
@@ -58,9 +83,18 @@ export default function Medallas() {
       {/* Portada */}
       <div className="flex items-baseline justify-between gap-4 mb-1 flex-wrap">
         <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted">Medallas</h2>
-        <span className="font-body text-[10px] text-ch-subtle tabular-nums">
-          {ganadas.size} de {MEDALLAS.length}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="font-body text-[10px] text-ch-subtle tabular-nums">
+            {ganadas.size} de {MEDALLAS.length}
+          </span>
+          <button
+            onClick={() => alternar(false)}
+            title="Ocultar medallas"
+            className="font-body text-[9px] tracking-[0.25em] uppercase text-ch-subtle hover:text-ch-cream transition-colors"
+          >
+            Ocultar
+          </button>
+        </div>
       </div>
       <p className="font-display italic text-2xl text-ch-cream leading-tight mt-2 max-w-lg">
         Un hilván es la puntada que sostiene la tela antes de la costura.
@@ -101,6 +135,8 @@ export default function Medallas() {
       {/* El ritmo va DEBAJO del histórico: primero lo que llevas acumulado,
           después cómo vienes. Al revés, el período se leería como la medida
           principal y una semana mala taparía un año bueno. */}
+      <MasCerca estado={estado} ganadas={ganadas} esteMes={esteMes} />
+
       <RitmoActual />
       <Resumen />
 
@@ -140,6 +176,59 @@ export default function Medallas() {
       })}
 
       <Sorpresas ganadas={ganadas} esteMes={esteMes} estado={estado} desde={orden} nuevas={nuevas} />
+    </div>
+  )
+}
+
+/**
+ * La medalla más cerca de caer.
+ *
+ * El efecto de gradiente de meta dice que el esfuerzo acelera cerca del
+ * objetivo — pero eso sólo sirve si sabes cuál está cerca. Con 38 tarjetas hay
+ * que buscarla, y buscar es justo lo que nadie hace.
+ *
+ * Excluye las ocultas: mostrar "te falta poco" para algo que no se anuncia
+ * arruinaría la sorpresa, que es toda su gracia.
+ */
+function MasCerca({
+  estado, ganadas, esteMes,
+}: {
+  estado: EstadoMedallas
+  ganadas: Map<string, { veces: number; ultima: string }>
+  esteMes: Set<string>
+}) {
+  const candidatas = MEDALLAS
+    .filter(m => !m.oculta)
+    .filter(m => (m.alcance === 'mensual' ? !esteMes.has(m.clave) : !ganadas.has(m.clave)))
+    .map(m => ({
+      m,
+      p: progresoMedalla(m.clave, m.alcance === 'mensual' ? estado.datosMes : estado.datos),
+    }))
+    .filter((x): x is { m: DefinicionMedalla; p: { fraccion: number; texto: string } } => !!x.p && x.p.fraccion > 0)
+    .sort((a, b) => b.p.fraccion - a.p.fraccion)
+
+  const top = candidatas[0]
+  if (!top || top.p.fraccion < 0.25) return null   // "1 de 100" no es estar cerca
+
+  return (
+    <div className="border border-ch-green/30 bg-ch-green/5 p-4 mt-3">
+      <div className="flex items-center gap-3">
+        <div className="text-ch-green"><Emblema clave={top.m.clave} /></div>
+        <div className="min-w-0">
+          <p className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-green">La más cerca</p>
+          <p className="font-display italic text-xl text-ch-cream leading-tight mt-0.5">{top.m.titulo}</p>
+        </div>
+        <span className="font-body text-[10px] tracking-[0.15em] uppercase text-ch-muted ml-auto shrink-0 tabular-nums">
+          {top.p.texto}
+        </span>
+      </div>
+      <div className="w-full h-px bg-ch-border relative overflow-hidden mt-3">
+        <div
+          className="absolute inset-y-0 left-0 bg-ch-green ch-bar-fill"
+          style={{ width: `${Math.round(top.p.fraccion * 100)}%`, ['--w' as string]: `${Math.round(top.p.fraccion * 100)}%` }}
+        />
+      </div>
+      <p className="font-body text-[11px] text-ch-muted mt-2">{top.m.criterio}</p>
     </div>
   )
 }

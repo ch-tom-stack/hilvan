@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ultimasMedallas, type UltimasMedallas } from '@/app/actions/medallas'
 import { MEDALLAS } from '@/lib/crm-medallas'
 import { EMBLEMAS, EMBLEMA_DEFECTO } from '@/lib/emblemas'
+import { getPreferencias } from '@/lib/preferencias'
 
 /**
  * Tus últimas medallas, arriba del pie del sidebar.
@@ -18,6 +19,7 @@ export default function TiraMedallas({ compacta = false }: { compacta?: boolean 
   const [datos, setDatos] = useState<UltimasMedallas | null>(null)
 
   useEffect(() => {
+    if (!getPreferencias().medallas) return
     let vivo = true
     ultimasMedallas(4).then(d => { if (vivo) setDatos(d) }).catch(() => {})
     return () => { vivo = false }

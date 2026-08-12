@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { crearRodaje } from '@/app/actions/rodaje'
 import Link from 'next/link'
+import BotonEnviar from '@/components/ui/BotonEnviar'
 
 export default async function NuevoRodajePage() {
   const supabase = await createClient()
@@ -132,12 +133,12 @@ export default async function NuevoRodajePage() {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            className="bg-ch-cream text-ch-dark text-sm font-medium px-5 py-2 rounded-[2px] hover:bg-white transition-colors"
+          <BotonEnviar
+            pendiente="Creando…"
+            className="bg-ch-cream text-ch-dark text-sm font-medium px-5 py-2 rounded-[2px] hover:bg-white"
           >
             Crear rodaje
-          </button>
+          </BotonEnviar>
           <Link href="/rodaje" className="text-sm text-ch-muted px-4 py-2 hover:text-ch-cream transition-colors">
             Cancelar
           </Link>

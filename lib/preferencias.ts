@@ -18,10 +18,20 @@ export interface Preferencias {
   volumen: Volumen
   /** Confeti y celebraciones grandes. Independiente del sonido. */
   celebraciones: boolean
+  /**
+   * Mostrar medallas y rangos.
+   *
+   * Existe por autonomía, que es el hueco que señala la literatura de
+   * autodeterminación: los badges se sienten manipuladores salvo cuando la
+   * persona participa en sus propios términos. Nadie eligió tener medallas —
+   * esto convierte el sistema en algo que se elige.
+   */
+  medallas: boolean
 }
 
 export const PREFERENCIAS_POR_DEFECTO: Preferencias = {
   sonido: true,
+  medallas: true,
   volumen: 'medio',
   celebraciones: true,
 }
@@ -50,6 +60,9 @@ function leerDeStorage(): Preferencias {
         volumen: p.volumen && p.volumen in FACTOR_VOLUMEN ? p.volumen : PREFERENCIAS_POR_DEFECTO.volumen,
         celebraciones:
           typeof p.celebraciones === 'boolean' ? p.celebraciones : PREFERENCIAS_POR_DEFECTO.celebraciones,
+        // Quien guardó preferencias antes de que existieran las medallas no
+        // tiene la clave: cae al default (visibles), no a apagadas.
+        medallas: typeof p.medallas === 'boolean' ? p.medallas : PREFERENCIAS_POR_DEFECTO.medallas,
       }
     } catch {
       // JSON corrupto: se ignora y se cae al default.

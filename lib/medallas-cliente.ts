@@ -12,6 +12,7 @@
 import { revisarMedallas } from '@/app/actions/medallas'
 import { MEDALLAS } from '@/lib/crm-medallas'
 import { momento } from '@/lib/momentos'
+import { getPreferencias } from '@/lib/preferencias'
 import { EVENTO_MEDALLA } from '@/components/perfil/RevelacionMedalla'
 
 /**
@@ -59,6 +60,7 @@ async function revisar(): Promise<void> {
  */
 export function revisarMedallasSuave(): void {
   if (typeof window === 'undefined') return
+  if (!getPreferencias().medallas) return
 
   const desde = Date.now() - ultima
   if (desde >= ESPERA_MS && !enVuelo) {
