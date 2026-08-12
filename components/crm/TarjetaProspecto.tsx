@@ -13,6 +13,7 @@ import {
 } from '@/lib/crm-temperatura'
 import { registrarToque } from '@/app/actions/crm'
 import { momento } from '@/lib/momentos'
+import { revisarMedallasSuave } from '@/lib/medallas-cliente'
 
 // El toque de un click. Cuatro canales: registrar y detallar son dos momentos
 // distintos, y el detalle se agrega después desde la ficha si vale la pena.
@@ -139,6 +140,7 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
         momento('error', { mensaje: res.error })
         return
       }
+      revisarMedallasSuave()
       router.refresh()
     })
   }

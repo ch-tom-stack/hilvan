@@ -7,6 +7,7 @@ import { TIPOS_INTERACCION } from '@/types'
 import { registrarInteraccion, registrarToque, eliminarInteraccion, type InteraccionInput } from '@/app/actions/crm'
 import { toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
+import { revisarMedallasSuave } from '@/lib/medallas-cliente'
 import { formatFecha, parseFechaLocal } from '@/lib/fechas'
 
 function hoyISO(): string {
@@ -83,6 +84,7 @@ export default function Bitacora({ prospectoId, interacciones }: Props) {
       try {
         const res = await registrarInteraccion(prospectoId, form)
         if (res.error) { toastError(res.error); return }
+        revisarMedallasSuave()
         momento('crm.contacto', { mensaje: 'Interacción registrada' })
         setForm({ fecha: hoyISO(), tipo: 'correo', resumen: '', cuerpo: '', respondido: false, proximo_paso: '', fecha_proximo: '' })
         setAbierto(false)

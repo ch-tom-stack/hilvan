@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Prospecto } from '@/types'
 import { registrarToque, snoozeProspecto } from '@/app/actions/crm'
 import { momento } from '@/lib/momentos'
+import { revisarMedallasSuave } from '@/lib/medallas-cliente'
 import { prioridadCadencia } from '@/lib/crm-cadencia'
 import { formatFecha } from '@/lib/fechas'
 
@@ -69,6 +70,7 @@ export default function AgendaDeHoy({ prospectos, usuarioId }: Props) {
         momento('error', { mensaje: res.error })
         return
       }
+      revisarMedallasSuave()
       router.refresh()
     })
   }
