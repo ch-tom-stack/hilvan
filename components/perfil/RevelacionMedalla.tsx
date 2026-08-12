@@ -22,11 +22,15 @@ import {
  * apareciendo dentro, **de menos a más significativa**, para que la última cosa
  * que se ve sea la mejor que ganaste.
  *
- * CUÁNDO SE ABRE. Sólo si entre las nuevas hay al menos una rara o legendaria.
- * Una común sola se queda con su sonido y su toast: interrumpir por algo que
- * pasa seguido es lo que enseña a odiar las notificaciones. Pero si el
- * pergamino ya se abrió por una rara, las comunes de esa misma tanda entran
- * también — ya están adentro del momento, y esconderlas sería raro.
+ * CUÁNDO SE ABRE. Siempre que haya una medalla nueva, sea cual sea su rareza
+ * (decisión de Tomás: "la común también debe abrir, pura dopamina"). Antes las
+ * comunes se quedaban con un toast, para no interrumpir por algo frecuente.
+ *
+ * Lo que se conserva de esa idea: el SONIDO sigue escalando con la rareza, así
+ * que una común y una legendaria abren el mismo pergamino pero no suenan igual.
+ * Si en la práctica interrumpe demasiado —`revisarMedallasSuave` corre después
+ * de registrar en el CRM, así que puede aparecer en medio de una ráfaga— el
+ * umbral vuelve con una condición, no con un rediseño.
  *
  * El sonido de cada medalla suena **cuando aparece**, no todos juntos al
  * detectarlas. Antes se disparaban en un bucle mientras la pantalla mostraba
@@ -92,13 +96,6 @@ export default function RevelacionMedalla() {
         .map(c => MEDALLAS.find(m => m.clave === c))
         .filter((d): d is DefinicionMedalla => !!d)
       if (defs.length === 0) return
-
-      const excepcional = defs.some(d => d.rareza === 'rara' || d.rareza === 'legendaria')
-      if (!excepcional) {
-        // Nada que detenga la pantalla: cada una con su sonido y su toast.
-        defs.forEach(d => momento(`medalla.${d.rareza}` as never, { mensaje: `Medalla: ${d.titulo}` }))
-        return
-      }
 
       setTanda(defs.slice().sort((a, b) => PESO[a.rareza] - PESO[b.rareza]))
       setReveladas(0)
