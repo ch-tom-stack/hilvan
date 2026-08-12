@@ -157,8 +157,8 @@ legítimo, porque el objetivo *es* hacerla, no el resultado que produce.
 ## Pendiente de decidir
 
 1. **Qué es la misión semanal.**
-3. **Cómo participa Tomás en la creación.**
-4. **La forma del aviso al iniciar sesión.**
-5. **Si las misiones dan medallas.** No decidido, y conviene decidirlo tarde: el
+2. **Cómo participa Tomás en la creación.**
+3. **La forma del aviso al iniciar sesión.**
+4. **Si las misiones dan medallas.** No decidido, y conviene decidirlo tarde: el
    sistema de medallas ya funciona solo y acoplarlos temprano hace difícil
    cambiar cualquiera de los dos. Ver [`gamificacion.md`](gamificacion.md).
