@@ -24,7 +24,10 @@ const FECHA = /^\d{4}-\d{2}-\d{2}$/
  * Las misiones cargadas, para que el operador sepa qué ya eligió Tomás y no
  * vuelva a proponer lo mismo. Sin `desde`, la semana en curso.
  *
- * NO devuelve si están cumplidas. Eso es de cada persona.
+ * Devuelve `cumplida` porque al agente le sirve para diseñar mejor: si un
+ * tipo de misión nunca se cumple, lo que hay que revisar es la misión.
+ * Lo que no existe es una vista donde alguien revise el cumplimiento ajeno —
+ * el registro histórico vive en el perfil de cada persona y sólo ahí.
  */
 export async function GET(req: Request) {
   const unauthorized = requireAgentToken(req)
@@ -38,7 +41,7 @@ export async function GET(req: Request) {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('misiones')
-    .select('id, tipo, texto, guia, fuente_verificacion, verificado_en, fecha_objetivo, persona:profiles!misiones_persona_id_fkey(nombre, email)')
+    .select('id, tipo, texto, guia, fuente_verificacion, verificado_en, fecha_objetivo, cumplida_en, persona:profiles!misiones_persona_id_fkey(nombre, email)')
     .gte('fecha_objetivo', desde || lunesDeLaSemana(hoyChile()))
     .order('fecha_objetivo')
 
@@ -54,10 +57,9 @@ export async function GET(req: Request) {
       guia: m.guia,
       fuente_verificacion: m.fuente_verificacion,
       verificado_en: m.verificado_en,
-      // `cumplida_en` NO se expone. El agente sólo necesita saber que un
-      // espacio está tomado para no volver a proponerlo; si además supiera
-      // quién declaró y quién no, ese dato llegaría a Tomás en el reporte y
-      // el registro dejaría de ser privado por la puerta de atrás.
+      // Sí se expone: al agente le sirve para calibrar. Si un tipo de misión
+      // nunca se cumple, el problema es la misión, no la persona.
+      cumplida: !!m.cumplida_en,
     })),
   })
 }
