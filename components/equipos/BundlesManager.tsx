@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { toastOk, toastError } from '@/lib/toast'
 import { useConfirm } from '@/components/ui/useConfirm'
 import { formatCLP } from '@/types'
+import { useCambiado } from '@/components/ui/useCambiado'
 import type { Bundle, BundleItem } from '@/app/actions/bundles'
 import {
   crearBundle,
@@ -274,6 +275,7 @@ function BundleCard({
   bundles: Bundle[]
   onEliminar: () => void
 }) {
+  const cam = useCambiado<HTMLDivElement>()
   const [editando, setEditando] = useState(false)
   const [mostrarAgregarEquipo, setMostrarAgregarEquipo] = useState(false)
   const [mostrarAgregarBundle, setMostrarAgregarBundle] = useState(false)
@@ -293,6 +295,7 @@ function BundleCard({
         toastError(result.error)
       } else {
         toastOk('Bundle actualizado')
+        cam.marcar()
         setEditando(false)
       }
     })
@@ -328,7 +331,7 @@ function BundleCard({
   }
 
   return (
-    <div className="border border-ch-border bg-ch-surface/10 p-5">
+    <div ref={cam.ref} className="border border-ch-border bg-ch-surface/10 p-5">
       {ConfirmDialog}
 
       {/* Encabezado del bundle */}

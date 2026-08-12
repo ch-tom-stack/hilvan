@@ -8,6 +8,7 @@ import type { PersonaNomina } from '@/app/actions/financiero'
 import { generarZIPContador } from '@/lib/exportar-contador'
 import { toastOk, toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
+import { useCambiado } from '@/components/ui/useCambiado'
 import { parseFechaLocal } from '@/lib/fechas'
 import { formatCLP } from '@/types'
 
@@ -161,6 +162,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
 
   // ── Nómina editable ───────────────────────────────────────────────────────
   const [nomina, setNominaLocal] = useState<PersonaNomina[]>(nominaInicial)
+  const cam = useCambiado<HTMLDivElement>()
   const [editandoNomina, setEditandoNomina] = useState(false)
   const [nominaEdit, setNominaEdit] = useState<PersonaNomina[]>(nominaInicial)
   const [nominaPending, startNominaTransition] = useTransition()
@@ -175,7 +177,8 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
       } else {
         setNominaLocal(nominaEdit)
         setEditandoNomina(false)
-        toastOk('Nómina actualizada')
+        cam.marcar()
+        momento('guardado', { mensaje: 'Nómina actualizada' })
       }
     })
   }
@@ -194,7 +197,8 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
       } else {
         setPreviredLocal(nuevo)
         setEditandoPrevired(false)
-        toastOk('Monto Previred actualizado')
+        cam.marcar()
+        momento('guardado', { mensaje: 'Previred actualizado' })
       }
     })
   }
@@ -213,7 +217,8 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
       } else {
         setIuscLocal(nuevo)
         setEditandoIUSC(false)
-        toastOk('Monto IUSC actualizado')
+        cam.marcar()
+        momento('guardado', { mensaje: 'IUSC actualizado' })
       }
     })
   }
@@ -233,7 +238,8 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
       } else {
         setPpmTasaLocal(tasaDecimal)
         setEditandoPPM(false)
-        toastOk('Tasa PPM actualizada')
+        cam.marcar()
+        momento('guardado', { mensaje: 'Tasa PPM actualizada' })
       }
     })
   }
@@ -432,7 +438,7 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
 
           {/* Nómina */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div ref={cam.ref} className="flex items-center justify-between mb-3">
               <p className="font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted">Nómina</p>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-medium tabular-nums text-red-400">{clp(totalNomina)}</span>

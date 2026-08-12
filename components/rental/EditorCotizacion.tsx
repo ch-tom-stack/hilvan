@@ -16,6 +16,7 @@ import {
   ESTADO_RENTAL_COT_LABELS,
 } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
+import { useCambiado } from '@/components/ui/useCambiado'
 import type {
   RentalCotizacion,
   RentalCotizacionSeccion,
@@ -200,6 +201,7 @@ function FormAgregarItem({
 }
 
 export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props) {
+  const cam = useCambiado<HTMLDivElement>()
   const [pending, startTransition] = useTransition()
   const [addingItemEnSeccion, setAddingItemEnSeccion] = useState<string | null>(null)
   const [addingSeccion, setAddingSeccion] = useState(false)
@@ -212,6 +214,7 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
       const r = await actualizarRentalCotizacion(cotizacion.id, { estado })
       if (r.ok) {
         toastOk('Estado actualizado')
+        cam.marcar()
         // Reusa los momentos del CRM: mover una cotización de estado es el
         // mismo gesto que mover una tarjeta de etapa.
         momento(estado === 'rechazada' ? 'crm.retroceso' : 'crm.avance', { mensaje: '' })
@@ -239,7 +242,7 @@ export default function EditorCotizacion({ cotizacion, equipos, maletas }: Props
   const reserva = cotizacion.reserva
 
   return (
-    <div className="space-y-8">
+    <div ref={cam.ref} className="space-y-8">
 
       {/* Info header */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -45,8 +45,9 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
   const cambiarResponsable = (responsableId: string) => {
     startTransition(async () => {
       const res = await asignarResponsable(p.id, responsableId || null)
-      if (res.error) { toastError(res.error); return }
-      toastOk('Responsable actualizado')
+      if (res.error) { toastError(res.error); momento('error', { mensaje: res.error }); return }
+      resp.marcar()
+      momento('guardado', { mensaje: 'Responsable actualizado' })
       router.refresh()
     })
   }
@@ -54,8 +55,11 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
   const clasificar = (tamano: string, segmento: string) => {
     startTransition(async () => {
       const res = await clasificarProspecto(p.id, { tamano: tamano || null, segmento: segmento || null })
-      if (res.error) { toastError(res.error); return }
-      toastOk('Clasificación guardada')
+      if (res.error) { toastError(res.error); momento('error', { mensaje: res.error }); return }
+      // Ambos, porque la clasificación es un solo dato en dos campos: marcar
+      // sólo el que tocaste dejaría al otro sin acusar que también cambió.
+      tam.marcar(); seg.marcar()
+      momento('guardado', { mensaje: 'Clasificación guardada' })
       router.refresh()
     })
   }
@@ -63,8 +67,9 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
   const cambiarPrioridad = (valor: string) => {
     startTransition(async () => {
       const res = await asignarPrioridad(p.id, valor)
-      if (res.error) { toastError(res.error); return }
-      toastOk('Prioridad actualizada')
+      if (res.error) { toastError(res.error); momento('error', { mensaje: res.error }); return }
+      prio.marcar()
+      momento('guardado', { mensaje: 'Prioridad actualizada' })
       router.refresh()
     })
   }
@@ -85,6 +90,10 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
   const marcados = new Set((p.checklist ?? []) as ChecklistItem[])
 
   const { ref: refChecklist, marcar: marcarChecklist } = useCambiado<HTMLDivElement>()
+  const resp = useCambiado<HTMLDivElement>()
+  const prio = useCambiado<HTMLDivElement>()
+  const tam  = useCambiado<HTMLDivElement>()
+  const seg  = useCambiado<HTMLDivElement>()
 
   const toggle = (item: ChecklistItem) => {
     marcarChecklist()
@@ -141,7 +150,7 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
 
       {/* Datos rápidos */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 mb-8 pb-8 border-b border-ch-border">
-        <div>
+        <div ref={resp.ref}>
           <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Responsable</p>
           <select
             value={p.responsable?.id ?? ''}
@@ -153,7 +162,7 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
             {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
           </select>
         </div>
-        <div>
+        <div ref={prio.ref}>
           <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Prioridad</p>
           <select
             value={p.score ?? ''}
@@ -165,7 +174,7 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
             {SCORES_PROSPECTO.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
           </select>
         </div>
-        <div>
+        <div ref={tam.ref}>
           <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Tamaño</p>
           <select
             value={p.tamano ?? ''}
@@ -177,7 +186,7 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
             {TAMANOS_EMPRESA.map(t => <option key={t} value={t}>{TAMANO_LABELS[t]}</option>)}
           </select>
         </div>
-        <div>
+        <div ref={seg.ref}>
           <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Segmento</p>
           <select
             value={p.segmento ?? ''}
