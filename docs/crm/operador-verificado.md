@@ -121,7 +121,12 @@ barrido está completo.
 | `hilvan_metricas_crm` | KPI Falabella + conteos. Sin params. |
 | `hilvan_biblioteca_contactos` | Solo lectura; con ~3 interacciones sus promedios son ruido — no usar para metas. |
 | `hilvan_buscar_prospecto` | Busca por empresa/contacto/email. |
-| `hilvan_registrar_interaccion` | Acepta fecha pasada (clave para backfill), tipo, resumen, `gmail_thread` (trazabilidad al hilo) y próximo paso. |
+| `hilvan_registrar_interaccion` | Toques NUESTROS. Acepta fecha pasada (clave para backfill), tipo, resumen, `gmail_thread` (trazabilidad al hilo) y próximo paso. |
+| `hilvan_registrar_respuesta` | Mensajes RECIBIDOS. No corre la escalera; marca respondido el mensaje al que contesta. Guardar el cuerpo importa: ahí está la objeción. |
+| `hilvan_bitacora` | La conversación por líneas, con `direccion` y `quien`. Sin ella no se distingue "le escribimos 3 veces" de "nos escribieron 3 veces". |
+| `hilvan_hilo` | Abrir una línea cierra la vigente y reinicia la cadencia. Para contraparte nueva o marca retomada tras meses. |
+| `hilvan_editar_interaccion` | Corrige lo ya registrado. Poner `gmail_thread` en las cargadas a mano evita que el cotejo las duplique en cada corrida. |
+| `hilvan_solicitar_asignacion` | Deja una propuesta en la Bandeja; no reasigna. `para` = email, falla si no calza. |
 | `hilvan_mover_etapa` | Directo, sin validar evidencia — la disciplina es del operador. Etapas: prospecto→contacto→conversacion→confirmado, + en_frio/nurture/descartado. `confirmado` dispara handoff a cotización: NUNCA por inferencia. |
 | `hilvan_crear_prospecto` | `como_propuesta=true` deja en Bandeja (regla general); directo solo con evidencia exacta (criterio confirmado por Tomás). Acepta etapa inicial ≠ prospecto. |
 | `hilvan_borrador_escribir/leer` | Escribe en `crm_borradores`; **no envía nunca**. Estados borrador/listo/enviado. |

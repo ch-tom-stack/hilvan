@@ -38,7 +38,12 @@ por canal anterior a esa fecha es inválida.
 |---|---|
 | `hilvan_pipeline` · `hilvan_buscar_prospecto` | leer el tablero |
 | `hilvan_metricas_crm` · `hilvan_biblioteca_contactos` | métricas e insights |
-| `hilvan_registrar_interaccion` | **registrar un toque** |
+| `hilvan_registrar_interaccion` | **registrar un toque NUESTRO** |
+| `hilvan_registrar_respuesta` | **registrar lo que CONTESTARON** (no uses la de arriba para esto) |
+| `hilvan_bitacora` | leer la conversación completa: quién dijo qué, a quién |
+| `hilvan_hilo` | abrir / cerrar / reabrir una línea de conversación |
+| `hilvan_editar_interaccion` | corregir una interacción (sobre todo `gmail_thread`) |
+| `hilvan_solicitar_asignacion` | pedir que un prospecto pase a otra persona |
 | `hilvan_crear_prospecto` · `hilvan_mover_etapa` | alta y avance |
 | `hilvan_borrador_escribir` · `hilvan_borrador_leer` | **redactar el próximo contacto** |
 | `hilvan_listar_aprobaciones` · `hilvan_resolver_aprobacion` | la Bandeja |
