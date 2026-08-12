@@ -140,8 +140,9 @@ function agregar(
  *
  * Cada tabla trae su propia columna de atribución —`created_by`, `cargado_por_id`,
  * `clasificado_por`— y por eso se consulta una por una en vez de con un helper
- * genérico. `equipos` y `maletas` NO tienen atribución: no hay medallas de
- * equipos, y no se inventa una asignándoselas a alguien.
+ * genérico. `equipos` y `maletas` NO tienen atribución y no la van a tener
+ * (decisión de ago 2026: el trabajo ahí es poco y no da para medir), así que
+ * no hay medallas de ese módulo — ni se inventan asignándoselas a alguien.
  *
  * `head: true` con `count` no trae filas: sólo el número, que es todo lo que
  * necesitan estas medallas.

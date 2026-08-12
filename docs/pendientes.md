@@ -28,6 +28,12 @@ feedback **inesperado** que informa competencia. Anunciar las medallas las
 convierte en lo primero. Con la tira del sidebar ya tienen por dónde
 descubrirse solas.
 
+### Cerrada: equipos y maletas no van a tener medallas
+`equipos` y `maletas` no guardan quién creó cada ficha, y **no se va a agregar**
+(decisión de Tomás, 12 ago 2026): el trabajo que se hace ahí es poco y no da
+para medir. Si alguien vuelve a proponer la migración de `created_by`, esta es
+la respuesta. El capítulo El taller mide el resto de la app y queda así.
+
 ### El cron de seguimientos del CRM sigue apagado
 La condición que se puso para encenderlo —que registrar fuera de un click— se
 cumplió hace rato. Queda como decisión.
@@ -59,10 +65,6 @@ todo el expediente.
 ---
 
 ## 3. Construible
-
-### `equipos` y `maletas` no tienen `created_by`
-Sin atribución no puede haber medallas de ese módulo, y no se inventa
-asignándoselas a alguien. Una migración chica abriría el capítulo.
 
 ### Dos momentos de sonido sin dónde vivir
 `movimiento.conciliado` y `lead.entrante` están definidos y nunca suenan: los
