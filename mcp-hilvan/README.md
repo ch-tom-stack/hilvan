@@ -23,6 +23,19 @@ node test-client.mjs
 ```
 Debe listar las herramientas y traer las cuentas por cobrar.
 
+> ## ⚠️ Este NO es el MCP que usa Cowork
+>
+> Hay **dos** implementaciones y es fácil editar la equivocada:
+>
+> | | Dónde | Tools | Quién lo usa |
+> |---|---|---|---|
+> | **Remoto** | `app/api/[transport]/route.ts` | **82** | **Cowork y el operador del CRM.** Se despliega con Vercel. |
+> | Local (este) | `mcp-hilvan/server.mjs` | 75 | Respaldo por stdio. Le faltan Repertorio, insights e interacciones. |
+>
+> **Si cambias una herramienta o su descripción, hazlo en el remoto.** Editar
+> solo este archivo no llega a nadie: pasó con la descripción de
+> `hilvan_reglas_crm` al sumar la regla de misiones.
+
 ## Conectar a Cowork / Claude Code
 Agregar a la config de MCP del cliente (ejemplo genérico):
 ```json
