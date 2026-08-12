@@ -79,24 +79,36 @@ export async function getRodaje(id: string) {
   return data
 }
 
+/**
+ * Texto de formulario a valor de base: recorta y convierte vacío en null.
+ *
+ * Sin el trim, un espacio de más al final entra a la base y no se ve en ningún
+ * lado — hasta que alguien busca el rodaje por nombre exacto y no aparece.
+ * Pasó con "CONTENIDOS CH ".
+ */
+function limpiarTexto(v: FormDataEntryValue | null): string | null {
+  const t = typeof v === 'string' ? v.trim() : ''
+  return t === '' ? null : t
+}
+
 export async function crearRodaje(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const payload = {
-    nombre: formData.get('nombre') as string,
+    nombre: limpiarTexto(formData.get('nombre')) ?? '',
     fecha: (formData.get('fecha') as string) || null,
     fecha_confirmada: formData.get('fecha_confirmada') === 'true',
-    proyecto_id: (formData.get('proyecto_id') as string) || null,
-    cotizacion_id: (formData.get('cotizacion_id') as string) || null,
-    locacion_nombre: (formData.get('locacion_nombre') as string) || null,
-    locacion_direccion: (formData.get('locacion_direccion') as string) || null,
+    proyecto_id: limpiarTexto(formData.get('proyecto_id')),
+    cotizacion_id: limpiarTexto(formData.get('cotizacion_id')),
+    locacion_nombre: limpiarTexto(formData.get('locacion_nombre')),
+    locacion_direccion: limpiarTexto(formData.get('locacion_direccion')),
     locacion_lat: formData.get('locacion_lat') ? parseFloat(formData.get('locacion_lat') as string) : null,
     locacion_lng: formData.get('locacion_lng') ? parseFloat(formData.get('locacion_lng') as string) : null,
-    hora_llamado_general: (formData.get('hora_llamado_general') as string) || null,
-    notas_generales: (formData.get('notas_generales') as string) || null,
+    hora_llamado_general: limpiarTexto(formData.get('hora_llamado_general')),
+    notas_generales: limpiarTexto(formData.get('notas_generales')),
     visibilidad_plan: (formData.get('visibilidad_plan') as string) || 'completo',
-    chiste_texto: (formData.get('chiste_texto') as string) || null,
+    chiste_texto: limpiarTexto(formData.get('chiste_texto')),
     estado: 'borrador' as const,
     created_by: user?.id || null,
   }
@@ -110,19 +122,19 @@ export async function actualizarRodaje(id: string, formData: FormData) {
   const supabase = await createClient()
 
   const payload: any = {
-    nombre: formData.get('nombre') as string,
+    nombre: limpiarTexto(formData.get('nombre')) ?? '',
     fecha: (formData.get('fecha') as string) || null,
     fecha_confirmada: formData.get('fecha_confirmada') === 'true',
-    proyecto_id: (formData.get('proyecto_id') as string) || null,
-    cotizacion_id: (formData.get('cotizacion_id') as string) || null,
-    locacion_nombre: (formData.get('locacion_nombre') as string) || null,
-    locacion_direccion: (formData.get('locacion_direccion') as string) || null,
+    proyecto_id: limpiarTexto(formData.get('proyecto_id')),
+    cotizacion_id: limpiarTexto(formData.get('cotizacion_id')),
+    locacion_nombre: limpiarTexto(formData.get('locacion_nombre')),
+    locacion_direccion: limpiarTexto(formData.get('locacion_direccion')),
     locacion_lat: formData.get('locacion_lat') ? parseFloat(formData.get('locacion_lat') as string) : null,
     locacion_lng: formData.get('locacion_lng') ? parseFloat(formData.get('locacion_lng') as string) : null,
-    hora_llamado_general: (formData.get('hora_llamado_general') as string) || null,
-    notas_generales: (formData.get('notas_generales') as string) || null,
+    hora_llamado_general: limpiarTexto(formData.get('hora_llamado_general')),
+    notas_generales: limpiarTexto(formData.get('notas_generales')),
     visibilidad_plan: (formData.get('visibilidad_plan') as string) || 'completo',
-    chiste_texto: (formData.get('chiste_texto') as string) || null,
+    chiste_texto: limpiarTexto(formData.get('chiste_texto')),
     estado: formData.get('estado') as string,
   }
 
@@ -164,7 +176,7 @@ export async function crearDepartamento(rodajeId: string, formData: FormData) {
 
   const { error } = await supabase.from('rodaje_departamentos').insert({
     rodaje_id: rodajeId,
-    nombre: formData.get('nombre') as string,
+    nombre: limpiarTexto(formData.get('nombre')) ?? '',
     hora_llamado: (formData.get('hora_llamado') as string) || null,
     orden,
   })
@@ -175,7 +187,7 @@ export async function crearDepartamento(rodajeId: string, formData: FormData) {
 export async function actualizarDepartamento(id: string, rodajeId: string, formData: FormData) {
   const supabase = await createClient()
   const { error } = await supabase.from('rodaje_departamentos').update({
-    nombre: formData.get('nombre') as string,
+    nombre: limpiarTexto(formData.get('nombre')) ?? '',
     hora_llamado: (formData.get('hora_llamado') as string) || null,
   }).eq('id', id)
   if (error) throw error
@@ -203,7 +215,7 @@ export async function getColaboradores(query?: string) {
 export async function crearColaborador(formData: FormData) {
   const supabase = await createClient()
   const { data, error } = await supabase.from('colaboradores').insert({
-    nombre: formData.get('nombre') as string,
+    nombre: limpiarTexto(formData.get('nombre')) ?? '',
     email: (formData.get('email') as string) || null,
     telefono: (formData.get('telefono') as string) || null,
     rol_habitual: (formData.get('rol_habitual') as string) || null,
@@ -216,7 +228,7 @@ export async function crearColaborador(formData: FormData) {
 export async function actualizarColaborador(id: string, formData: FormData) {
   const supabase = await createClient()
   const { error } = await supabase.from('colaboradores').update({
-    nombre: formData.get('nombre') as string,
+    nombre: limpiarTexto(formData.get('nombre')) ?? '',
     email: (formData.get('email') as string) || null,
     telefono: (formData.get('telefono') as string) || null,
     rol_habitual: (formData.get('rol_habitual') as string) || null,
@@ -236,7 +248,7 @@ export async function agregarPersonaEquipo(rodajeId: string, formData: FormData)
   let colaboradorIdFinal = colaboradorId
   if (!colaboradorId && guardarEnDirectorio) {
     const { data: nuevoColab } = await supabase.from('colaboradores').insert({
-      nombre: formData.get('nombre') as string,
+      nombre: limpiarTexto(formData.get('nombre')) ?? '',
       email: (formData.get('email') as string) || null,
       telefono: (formData.get('telefono') as string) || null,
       rol_habitual: (formData.get('rol') as string) || null,
@@ -248,7 +260,7 @@ export async function agregarPersonaEquipo(rodajeId: string, formData: FormData)
     rodaje_id: rodajeId,
     departamento_id: (formData.get('departamento_id') as string) || null,
     colaborador_id: colaboradorIdFinal,
-    nombre: formData.get('nombre') as string,
+    nombre: limpiarTexto(formData.get('nombre')) ?? '',
     rol: (formData.get('rol') as string) || null,
     email: (formData.get('email') as string) || null,
     telefono: (formData.get('telefono') as string) || null,
@@ -265,7 +277,7 @@ export async function actualizarPersonaEquipo(id: string, rodajeId: string, form
   const supabase = await createClient()
   const { error } = await supabase.from('rodaje_equipo_tecnico').update({
     departamento_id: (formData.get('departamento_id') as string) || null,
-    nombre: formData.get('nombre') as string,
+    nombre: limpiarTexto(formData.get('nombre')) ?? '',
     rol: (formData.get('rol') as string) || null,
     email: (formData.get('email') as string) || null,
     telefono: (formData.get('telefono') as string) || null,
