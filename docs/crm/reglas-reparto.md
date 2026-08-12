@@ -1,8 +1,12 @@
 # Reglas de reparto de prospectos — CRM (CH-10)
 
 Fuente de verdad de **a quién le toca cada prospecto**. Confirmadas por Tomás
-(ago 2026). Implementadas en `lib/crm-asignacion.ts` (`personaSegunReglas`) — si
-estas reglas cambian, ese archivo cambia con ellas.
+(ago 2026).
+
+> Nota de implementación (para quien desarrolla, no para operar): la lógica vive
+> en `lib/crm-asignacion.ts` (`personaSegunReglas`) — si estas reglas cambian,
+> ese archivo cambia con ellas. Es una ruta del repositorio: no existe en la
+> sesión del operador y no hay que abrirla.
 
 El reparto NO se decide por temperatura (frío vs entrante): el frío ya tiene
 dueño —quien lo encontró— y reasignar cuando entra en calor bota la curva de

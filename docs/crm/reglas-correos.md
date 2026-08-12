@@ -2,8 +2,9 @@
 
 Fuente de verdad del **qué y cómo se escribe** un correo de outreach de Casa
 Hiedra. Acordadas con Tomás el 6-ago-2026 tras leer los 28 correos reales de
-Natalia. Complementa `reglas-cadencia.md` (cuándo se manda) y
-`reglas-reparto.md` (de quién es el prospecto).
+Natalia. Es una de las tres reglas que entrega `hilvan_reglas_crm`: las otras
+dos son la de **cadencia** (cuándo se manda) y la de **reparto** (de quién es el
+prospecto). Vienen en la misma respuesta — no hay que ir a buscarlas.
 
 > Quien redacte —persona o agente— trabaja con este documento a la vista.
 > Antes vivía en la memoria de un chat, que no es accesible para todos.

@@ -1,10 +1,14 @@
 # Reglas de cadencia de contacto — CRM (CH-10)
 
 Fuente de verdad de **cuándo toca el próximo contacto** de un prospecto.
-Confirmadas por Tomás (ago 2026). Implementadas en `lib/crm-cadencia.ts`
-(`calcularCadencia`), con tests en `tests/crm-cadencia.test.ts`.
+Confirmadas por Tomás (ago 2026).
 
-El **qué decir** en cada toque no vive acá: eso es `components/crm/ComoAbordarlo.tsx`.
+El **qué decir** en cada toque no vive acá: eso son las reglas de correos, que
+`hilvan_reglas_crm` entrega en la misma respuesta.
+
+> Nota de implementación (para quien desarrolla, no para operar): la lógica vive
+> en `lib/crm-cadencia.ts` con tests en `tests/crm-cadencia.test.ts`. Son rutas
+> del repositorio — no existen en la sesión del operador y no hay que abrirlas.
 
 ---
 

@@ -33,6 +33,12 @@ de lo que recuerdes de una sesión anterior. Si la herramienta falla o reporta
 `faltantes`, **detente y avisa** — clasificar o redactar sin las reglas produce
 trabajo que hay que deshacer.
 
+**Lo que devuelve la herramienta ES el documento completo.** No existe ningún
+archivo que abrir: `docs/crm/*.md`, `lib/*.ts` y demás rutas que veas
+mencionadas son del repositorio de Hilván, al que tu sesión no tiene acceso. Que
+no estén en tu filesystem es lo esperado, no una falla — no las busques ni lo
+reportes como problema.
+
 ## La regla de oro
 **Registras y preparas. No envías ni decides.** Nunca mandas un correo, nunca
 apruebas una propuesta, nunca inventas un dato. Si no tienes fuente, lo dejas
