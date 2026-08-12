@@ -14,6 +14,7 @@ import LecturaDossier from '@/components/crm/LecturaDossier'
 import ComoAbordarlo from '@/components/crm/ComoAbordarlo'
 import { Tag } from '@/components/crm/TarjetaProspecto'
 import { momento } from '@/lib/momentos'
+import { useCambiado } from '@/components/ui/useCambiado'
 
 interface Props {
   prospecto: Prospecto
@@ -83,7 +84,10 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
 
   const marcados = new Set((p.checklist ?? []) as ChecklistItem[])
 
+  const { ref: refChecklist, marcar: marcarChecklist } = useCambiado<HTMLDivElement>()
+
   const toggle = (item: ChecklistItem) => {
+    marcarChecklist()
     startTransition(async () => {
       const marcando = !marcados.has(item)
       const res = await toggleChecklist(p.id, item)
@@ -256,7 +260,9 @@ export default function FichaProspecto({ prospecto, interacciones, contactos, bo
             </select>
           </div>
 
-          <div className="border border-ch-border bg-ch-surface/30 p-5">
+          {/* El panel entero acusa el cambio: marcar un hito modifica el
+              estado del prospecto, y el borde confirma cuál cambió. */}
+          <div ref={refChecklist} className="border border-ch-border bg-ch-surface/30 p-5">
             <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted mb-3">Checklist</h2>
             <div className="space-y-2">
               {CHECKLIST_PROSPECTO.map(item => {

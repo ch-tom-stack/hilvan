@@ -266,7 +266,25 @@ input:-webkit-autofill:focus {
   background: linear-gradient(90deg, #242422 25%, #2e2e2b 50%, #242422 75%);
   background-size: 200% 100%;
   animation: ch-shimmer 1.4s linear infinite;
+  /* El desfase lo pone --i: ocho filas latiendo al unísono se leen como un
+     patrón mecánico; en cascada se leen como contenido llegando en orden. */
+  animation-delay: calc(var(--i, 0) * 90ms);
 }
+
+/* ── Algo que acabas de cambiar ──────────────────────────────────────────────
+   Distinto de ch-flash-row, que tiñe una fila de una lista. Esto marca el
+   BORDE del elemento que modificaste, sin mover el layout ni depender de que
+   sea una fila: sirve en un toggle, un campo, una tarjeta o un total.
+
+   Existe porque una modificación no es una carga: no hay nada que esperar, así
+   que un esqueleto sobra y un toast en la esquina mira al lado equivocado. Lo
+   que confirma un cambio es el objeto cambiado. */
+@keyframes ch-cambiado {
+  0%   { box-shadow: inset 0 0 0 1px rgba(122, 158, 126, 0.85); }
+  70%  { box-shadow: inset 0 0 0 1px rgba(122, 158, 126, 0.35); }
+  100% { box-shadow: inset 0 0 0 1px rgba(122, 158, 126, 0); }
+}
+.ch-cambiado { animation: ch-cambiado 0.85s var(--ch-ease) both; }
 
 /* Barra que crece hasta --w */
 @keyframes ch-bar-fill {
@@ -283,9 +301,12 @@ input:-webkit-autofill:focus {
 @media (prefers-reduced-motion: reduce) {
   .ch-fade-up, .ch-pulse, .ch-shake, .ch-flash-row, .ch-settle, .ch-enfriar,
   .ch-badge-pop, .ch-glow-hito, .ch-live-dot, .ch-shimmer, .ch-bar-fill,
-  .ch-recibe, .ch-modal-fondo, .ch-modal-panel, .ch-medalla-nueva {
+  .ch-recibe, .ch-modal-fondo, .ch-modal-panel, .ch-medalla-nueva,
+  .ch-cambiado {
     animation: none !important;
   }
+  /* El shimmer se queda, sin cascada: es información de que algo carga. */
+  .ch-shimmer { animation-delay: 0ms !important; }
   /* El emblema se muestra entero, sin dibujarse. */
   .ch-emblema-traza { animation: none !important; stroke-dasharray: none; }
   /* Las salidas conservan el desvanecido —dice que la fila se fue— pero

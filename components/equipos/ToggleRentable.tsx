@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { toggleRentable } from '@/app/actions/equipos'
 import { toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
+import { useCambiado } from '@/components/ui/useCambiado'
 
 interface Props {
   id: string
@@ -13,10 +14,12 @@ interface Props {
 export default function ToggleRentable({ id, rentable: initialRentable }: Props) {
   const [activo, setActivo] = useState(initialRentable)
   const [pending, startTransition] = useTransition()
+  const { ref, marcar } = useCambiado<HTMLButtonElement>()
 
   function handleToggle() {
     const nuevo = !activo
     setActivo(nuevo) // optimistic
+    marcar()          // el propio botón acusa el cambio, no un toast
     // Dentro del gesto: es micro-feedback local, esperar al servidor lo
     // desacopla del click y se siente roto.
     momento(nuevo ? 'toggle.on' : 'toggle.off')
@@ -32,6 +35,7 @@ export default function ToggleRentable({ id, rentable: initialRentable }: Props)
 
   return (
     <button
+      ref={ref}
       onClick={handleToggle}
       disabled={pending}
       title={activo ? 'Quitar del rental' : 'Agregar al rental'}

@@ -15,6 +15,7 @@ export type Animacion =
   | 'ch-settle'
   | 'ch-badge-pop'
   | 'ch-glow-hito'
+  | 'ch-cambiado'
 
 /** Dispara una animación sobre un elemento. No-op si el elemento no existe. */
 export function animar(el: Element | null | undefined, anim: Animacion): void {

@@ -36,7 +36,7 @@ export default function Esqueleto({
       {metricas > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
           {Array.from({ length: metricas }).map((_, i) => (
-            <div key={i} className="border border-ch-border p-4">
+            <div key={i} style={{ ['--i' as string]: i }} className="border border-ch-border p-4">
               <div className="h-2.5 w-20 ch-shimmer mb-3" />
               <div className="h-7 w-14 ch-shimmer" />
             </div>
@@ -47,7 +47,7 @@ export default function Esqueleto({
       {columnas ? (
         <div className="flex gap-3 overflow-hidden">
           {Array.from({ length: columnas }).map((_, i) => (
-            <div key={i} className="flex-1 min-w-[180px] border border-ch-border p-2 space-y-2">
+            <div key={i} style={{ ['--i' as string]: i * 2 }} className="flex-1 min-w-[180px] border border-ch-border p-2 space-y-2">
               <div className="h-3 w-24 ch-shimmer mb-3" />
               {Array.from({ length: 3 }).map((_, j) => (
                 <div key={j} className="border border-ch-border p-3">
@@ -61,7 +61,7 @@ export default function Esqueleto({
       ) : (
         <div className="space-y-2">
           {Array.from({ length: filas }).map((_, i) => (
-            <div key={i} className="border border-ch-border p-4">
+            <div key={i} style={{ ['--i' as string]: i }} className="border border-ch-border p-4">
               <div className="h-4 w-1/2 ch-shimmer mb-2" />
               <div className="h-2.5 w-1/3 ch-shimmer" />
             </div>
