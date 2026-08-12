@@ -6,6 +6,7 @@ import type { CrmContacto } from '@/types'
 import { crearContacto, actualizarContacto, eliminarContacto, type ContactoInput } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
+import { useCambiado } from '@/components/ui/useCambiado'
 
 interface Props {
   prospectoId: string
@@ -29,6 +30,7 @@ function aFormState(c: CrmContacto): FormState {
 }
 
 export default function ContactosProspecto({ prospectoId, contactos }: Props) {
+  const cam = useCambiado<HTMLDivElement>()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   // 'nuevo' para alta, el id para edición, null cerrado
@@ -66,6 +68,7 @@ export default function ContactosProspecto({ prospectoId, contactos }: Props) {
           : await actualizarContacto(editando as string, prospectoId, input)
         if (res.error) { toastError(res.error); return }
         momento('guardado', { mensaje: 'Contacto guardado' })
+        cam.marcar()
         cerrar()
         router.refresh()
       } catch (e) {
@@ -92,7 +95,7 @@ export default function ContactosProspecto({ prospectoId, contactos }: Props) {
   }
 
   return (
-    <div className="border border-ch-border bg-ch-surface/30 p-5">
+    <div ref={cam.ref} className="border border-ch-border bg-ch-surface/30 p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-body text-[10px] tracking-[0.35em] uppercase text-ch-muted">Contactos</h2>
         {editando === null && (

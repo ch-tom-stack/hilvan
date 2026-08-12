@@ -7,6 +7,7 @@ import {
 } from '@/app/actions/financiero'
 import { toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
+import { useCambiado } from '@/components/ui/useCambiado'
 import type { GastoFijo, GastoFijoCuota, TipoGastoFijo } from '@/types'
 import { formatCLP } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
@@ -44,6 +45,7 @@ const FORM_VACIO = {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
+  const cam = useCambiado<HTMLDivElement>()
   const [isPending, startTransition] = useTransition()
   const [gastos, setGastos] = useState<GastoFijo[]>(inicial)
   const [formAbierto, setFormAbierto] = useState(false)
@@ -112,6 +114,7 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
       try {
         const updated = await marcarCuotaPagada(cuotaId, fecha)
         momento('gasto.pagado')
+        cam.marcar()
         setGastos(prev => prev.map(g => g.id !== gastoId ? g : {
           ...g,
           cuotas: (g.cuotas ?? []).map(c => c.id === cuotaId ? updated : c),
@@ -139,7 +142,7 @@ export default function Creditos({ inicial }: { inicial: GastoFijo[] }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-10">
+    <div ref={cam.ref} className="space-y-10">
 
       {/* Botón nuevo */}
       <div className="flex justify-end">

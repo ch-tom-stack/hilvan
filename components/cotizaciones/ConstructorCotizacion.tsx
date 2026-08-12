@@ -4,6 +4,7 @@ import { useState, useTransition, useCallback } from 'react'
 import { useConfirm, usePrompt } from '@/components/ui/useConfirm'
 import { toastOk, toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
+import { useCambiado } from '@/components/ui/useCambiado'
 import {
   actualizarCotizacion,
   enviarCotizacion,
@@ -59,6 +60,10 @@ const ESTADO_CONFIG: Record<string, { label: string; color: string }> = {
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function ConstructorCotizacion({ cotizacion: initial, tarifas, equipos }: Props) {
+  // Un solo ref para el panel de totales: cambie el precio de un
+  // departamento, de un subgrupo o de un ítem, lo que la persona mira para
+  // saber si el cambio surtió efecto es el total.
+  const cam = useCambiado<HTMLDivElement>()
   const [cot, setCot] = useState<Cotizacion>(initial)
   const [isPending, startTransition] = useTransition()
   const [linkCopiado, setLinkCopiado] = useState(false)
@@ -163,6 +168,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     if (precio_manual === undefined) return
     try {
       await actualizarDepartamento(dep.id, cot.id, { precio_manual })
+      cam.marcar()
       actualizarDepLocal(dep.id, d => ({ ...d, precio_manual }))
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al fijar el precio')
@@ -176,6 +182,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     if (precio_manual === undefined) return
     try {
       await actualizarSubgrupo(sg.id, cot.id, { precio_manual })
+      cam.marcar()
       actualizarSgLocal(dep.id, sg.id, s => ({ ...s, precio_manual }))
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al fijar el precio')
@@ -580,7 +587,11 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           )}
         </div>
 
-        {/* ── COLUMNA DERECHA: totales ── */}
+        {/* ── COLUMNA DERECHA: totales ──
+            Envuelto para poder marcarlo: cambiar el precio de un departamento
+            o un subgrupo mueve el total, y el total es lo que la persona mira
+            para saber si el cambio surtió efecto. */}
+        <div ref={cam.ref}>
         <PanelTotales
           cot={cot}
           setCot={setCot}
@@ -589,6 +600,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           setShowInterno={setShowInterno}
           editable={editable}
         />
+        </div>
       </div>
 
       {/* ── MODAL ÍTEM ── */}
