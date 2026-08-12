@@ -146,3 +146,51 @@ export async function getMisionesEquipo(): Promise<MisionesPersona[]> {
     }
   }).sort((a, b) => a.nombre.localeCompare(b.nombre))
 }
+
+export interface SemanaCumplida {
+  lunes: string
+  misiones: Mision[]
+}
+
+/**
+ * El registro de lo cumplido.
+ *
+ * Existe porque las misiones se guardaban y no se veían: las dos consultas de
+ * arriba filtran desde el lunes en curso, así que cada lunes la semana anterior
+ * desaparecía de la vista aunque la fila siguiera en la tabla. Lo hecho es el
+ * logro de la persona y tiene que quedar en alguna parte.
+ *
+ * **Sólo las cumplidas.** Nunca las que vencieron. Es la misma asimetría del
+ * resto del sistema: vencer es silencioso, cumplir queda. Un registro que
+ * listara lo no hecho sería una libreta de notas, no un registro de logros.
+ *
+ * Incluye la semana en curso. Se repite con "Tu semana" de más arriba, pero no
+ * en la misma forma: allá es la tarjeta completa con su fuente y su guía, acá
+ * es una línea con un visto. Dejarla fuera habría hecho que el registro naciera
+ * vacío el día que se estrena, que es cuando más importa que se entienda para
+ * qué está.
+ */
+export async function getMisionesCumplidas(): Promise<SemanaCumplida[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('misiones')
+    .select('*')
+    .eq('persona_id', user.id)
+    .not('cumplida_en', 'is', null)
+    .order('fecha_objetivo', { ascending: false })
+
+  if (error || !data) return []
+
+  const porSemana = new Map<string, Mision[]>()
+  for (const m of data as Mision[]) {
+    const k = lunesDeLaSemana(m.fecha_objetivo)
+    porSemana.set(k, [...(porSemana.get(k) ?? []), m])
+  }
+
+  return [...porSemana.entries()]
+    .map(([lunes, misiones]) => ({ lunes, misiones }))
+    .sort((a, b) => b.lunes.localeCompare(a.lunes))
+}
