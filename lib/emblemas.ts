@@ -61,13 +61,13 @@ export const EMBLEMAS: Record<string, string> = {
   // Cinco voces
   cinco_responden: 'M4 6h7v6H6l-2 2V6zM13 10h7v6h-5l-2 2v-8z',
   // Coro
-  quince_responden: 'M3 5h6v5H5l-2 2V5zM10 8h5v4h-3l-2 2V8zM16 4h5v5h-3l-2 2V4z',
+  quince_responden: 'M4 5h16v11h-9l-5 4V5M8 9h8M8 12h5',
   // Uno de cinco marcado
   tasa_veinte: 'M12 4a8 8 0 1 0 0 16 8 8 0 1 0 0-16M12 12V4A8 8 0 0 1 19.6 9.5Z',
   // Uno de tres
   tasa_treinta: 'M12 4a8 8 0 1 0 0 16 8 8 0 1 0 0-16M12 12V4A8 8 0 0 1 18.9 16Z',
   // Costura rematada
-  primer_cierre: 'M4 12h16M4 12l3-3M4 12l3 3M20 12l-3-3M20 12l-3 3M8 8v8M12 8v8M16 8v8',
+  primer_cierre: 'M3 12h13M16.5 12a2.5 2.5 0 1 0 .1 0M6 10v4M11 10v4',
   // Tres costuras
   tres_cierres: 'M4 6h16M4 12h16M4 18h16M12 4v4M12 10v4M12 16v4',
   // De la nada: hilo que aparece del vacío
@@ -75,10 +75,10 @@ export const EMBLEMAS: Record<string, string> = {
 
   // ── IV · El taller ────────────────────────────────────────────────────────
   primera_cotizacion: 'M6 3h9l3 3v15H6zM15 3v3h3M9 11h6M9 14h6M9 17h3',
-  diez_cotizaciones: 'M4 5h9l3 3v13H4zM13 5v3h3M8 20h12V9M7 12h6M7 15h6',
+  diez_cotizaciones: 'M8 4h7l3 3v13H8zM15 4v3h3M11 12h6M11 16h4M5 7v13h3',
   cotizacion_aprobada: 'M6 3h9l3 3v15H6zM15 3v3h3M8 13l3 3 5-6',
   primer_rodaje: 'M3 8h18v12H3zM3 8l2-4h14l2 4M7 4l-2 4M12 4l-2 4M17 4l-2 4',
-  cinco_rodajes: 'M3 9h14v11H3zM3 9l2-3h10l2 3M8 6L6 9M13 6l-2 3M19 11l2-1v9l-2-1z',
+  cinco_rodajes: 'M12 4a8 8 0 1 0 0 16 8 8 0 1 0 0-16M12 10a2 2 0 1 0 0 4 2 2 0 1 0 0-4M12 5v3M12 16v3M5 12h3M16 12h3',
   primer_cliente: 'M12 4a3.5 3.5 0 1 1 0 .1M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2',
   primera_reserva: 'M4 7h16v13H4zM4 11h16M8 4v4M16 4v4M10 15h4',
   reserva_aprobada: 'M4 7h16v13H4zM4 11h16M8 4v4M16 4v4M9 15l2 2 4-4',
