@@ -46,7 +46,7 @@ export default function StickerLayerEditor({ rodajeId, iniciales, children }: { 
   async function agregarImagen(file: File) {
     setOcupado(true)
     try {
-      let dataUrl = quitarAuto ? await procesar(file, 'quitar-fondo') : await fileToDataUrl(file)
+      const dataUrl = quitarAuto ? await procesar(file, 'quitar-fondo') : await fileToDataUrl(file)
       const url = await subirImagenSticker(rodajeId, `s${Date.now()}`, dataUrl)
       const nuevo = await crearSticker(rodajeId, { tipo: 'imagen', imagen_url: url, x: 0.34, y: 0.3, w: 0.24, z: maxZ + 1 })
       setStickers(p => [...p, nuevo]); setSel(nuevo.id); momento('subido', { mensaje: '' })

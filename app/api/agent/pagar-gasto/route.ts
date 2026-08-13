@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "origen debe ser 'proyecto' o 'mensual'" }, { status: 400 })
   }
   // fecha_pago: opcional, default hoy. Formato YYYY-MM-DD.
-  let fecha = typeof fecha_pago === 'string' && fecha_pago.trim() ? fecha_pago.trim() : new Date().toISOString().slice(0, 10)
+  const fecha = typeof fecha_pago === 'string' && fecha_pago.trim() ? fecha_pago.trim() : new Date().toISOString().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     return NextResponse.json({ error: 'fecha_pago inválida (formato YYYY-MM-DD)' }, { status: 400 })
   }

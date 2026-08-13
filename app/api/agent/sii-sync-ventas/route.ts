@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   let body: any
   try { body = await req.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
 
-  let periodo = String(body?.periodo ?? '').trim().replace('-', '')
+  const periodo = String(body?.periodo ?? '').trim().replace('-', '')
   if (!/^\d{6}$/.test(periodo)) {
     return NextResponse.json({ error: 'periodo inválido (formato AAAAMM, ej. 202606)' }, { status: 400 })
   }
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
   )]
 
   // ── 2) Detalle por DTE ─────────────────────────────────────────────────────
-  let ventas: FilaVenta[] = []
+  const ventas: FilaVenta[] = []
   for (const dte of dtes) {
     const r = await ag(`/sii/rcv/ventas/detalle/${rut}/${periodo}/${dte}?tipo=rcv_csv`)
     if (!r.ok) { errores.push(`Ventas detalle dte ${dte}: HTTP ${r.status}`); continue }

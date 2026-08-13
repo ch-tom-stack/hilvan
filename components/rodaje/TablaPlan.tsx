@@ -298,7 +298,7 @@ export default function TablaPlan({
         </div>
       ) : buscarBloque.trim() && !bloquesRaiz.some(bloqueCoincide) ? (
         <div className="text-center py-12 text-ch-subtle text-sm">
-          <p>Sin bloques que coincidan con "{buscarBloque}".</p>
+          <p>Sin bloques que coincidan con &ldquo;{buscarBloque}&rdquo;.</p>
         </div>
       ) : (
         <div className="lg:overflow-x-auto" onClick={() => { setVisibilidadAbierta(null); setColorPickerAbierto(null) }}>

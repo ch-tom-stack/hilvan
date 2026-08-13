@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   }
 
   // periodo: aceptar AAAAMM o AAAA-MM.
-  let periodo = String(body?.periodo ?? '').trim().replace('-', '')
+  const periodo = String(body?.periodo ?? '').trim().replace('-', '')
   if (!/^\d{6}$/.test(periodo)) {
     return NextResponse.json({ error: 'periodo inválido (formato AAAAMM, ej. 202606)' }, { status: 400 })
   }
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 
   const errores: string[] = []
   let compras: FilaSugerida[] = []
-  let honorarios: FilaSugerida[] = []
+  const honorarios: FilaSugerida[] = []
 
   // ── RCV compras (facturas recibidas) ──────────────────────────────────────
   // tipo=rcv_csv devuelve TODOS los DTE del período como array en `data`
