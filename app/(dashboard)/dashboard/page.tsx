@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 import AvisoMisiones from '@/components/misiones/AvisoMisiones'
+import MuroReconocimientos from '@/components/reconocimientos/MuroReconocimientos'
 
 const MODULOS = [
   { nombre: 'Cotizaciones', desc: 'Presupuestos y aprobaciones',      href: '/cotizaciones' },
@@ -164,6 +165,9 @@ export default async function DashboardPage() {
         </div>
 
       </div>
+
+      {/* Al pie: un reconocimiento no es una tarea y no compite con el día. */}
+      <MuroReconocimientos />
 
       <div className="pt-14 pb-4 flex justify-center">
         <img src="/logos/logo-horizontal-negro.png" alt="Casa Hiedra" className="h-5 w-auto opacity-20" />
