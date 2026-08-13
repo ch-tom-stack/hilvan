@@ -14,6 +14,7 @@ import { momento } from '@/lib/momentos'
 import { getPreferencias, setPreferencias } from '@/lib/preferencias'
 import { EVENTO_MEDALLA } from '@/components/perfil/RevelacionMedalla'
 import { formatFecha } from '@/lib/fechas'
+import BotonPergamino from '@/components/perfil/BotonPergamino'
 
 /**
  * Vitrina de medallas, en tres capítulos.
@@ -26,7 +27,7 @@ import { formatFecha } from '@/lib/fechas'
  * verlas venir. Y la rareza tiene peso visual, porque cerrar un prospecto frío
  * no puede verse igual que registrar el primer contacto.
  */
-export default function Medallas() {
+export default function Medallas({ persona = '' }: { persona?: string }) {
   const [estado, setEstado] = useState<EstadoMedallas | null>(null)
   const [visibles, setVisibles] = useState(true)
 
@@ -168,6 +169,7 @@ export default function Medallas() {
                   datos={m.alcance === 'mensual' ? estado.datosMes : estado.datos}
                   indice={orden++}
                   nueva={nuevas.has(m.clave)}
+                  persona={persona}
                 />
               ))}
             </div>
@@ -292,7 +294,7 @@ function Sorpresas({
 }
 
 function Medalla({
-  def, logro, activa, datos, indice, nueva = false,
+  def, logro, activa, datos, indice, nueva = false, persona = '',
 }: {
   def: DefinicionMedalla
   /** Historial de la medalla: cuántos meses y el último. null si nunca. */
@@ -303,6 +305,8 @@ function Medalla({
   indice: number
   /** Se acaba de ganar en esta sesión: el emblema se dibuja solo. */
   nueva?: boolean
+  /** Para firmar el pergamino descargable. */
+  persona?: string
 }) {
   const ganada = activa
   const veces = logro?.veces ?? 0
@@ -331,7 +335,7 @@ function Medalla({
   return (
     <div
       style={{ ['--i' as string]: indice }}
-      className={`border p-3.5 transition-colors ${
+      className={`group border p-3.5 transition-colors ${
         nueva ? 'ch-medalla-nueva' : ganada && def.rareza === 'legendaria' ? '' : 'ch-fade-up ch-stagger'
       } ${marco}`}
     >
@@ -346,10 +350,18 @@ function Medalla({
           <p className="font-display italic text-lg leading-tight">{def.titulo}</p>
         </div>
         {logro ? (
-          <span className={`font-body text-[9px] tracking-[0.15em] uppercase shrink-0 ${
-            preciada ? 'text-ch-gold' : ganada ? 'text-ch-green' : 'text-ch-subtle'
-          }`}>
-            {veces > 1 ? `×${veces} · ` : ''}{formatFecha(logro.ultima)}
+          <span className="flex items-center gap-2.5 shrink-0">
+            {ganada && (
+              <BotonPergamino
+                clave={def.clave} titulo={def.titulo} rareza={def.rareza}
+                criterio={def.criterio} persona={persona} fecha={formatFecha(logro.ultima)}
+              />
+            )}
+            <span className={`font-body text-[9px] tracking-[0.15em] uppercase ${
+              preciada ? 'text-ch-gold' : ganada ? 'text-ch-green' : 'text-ch-subtle'
+            }`}>
+              {veces > 1 ? `×${veces} · ` : ''}{formatFecha(logro.ultima)}
+            </span>
           </span>
         ) : RAREZA_LABEL[def.rareza] ? (
           <span className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle/70 shrink-0">

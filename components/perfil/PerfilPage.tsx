@@ -197,7 +197,7 @@ export default function PerfilPage({ profile, email, misiones }: Props) {
         {/* Las medallas son del CRM: sólo tienen sentido para quien capta. */}
         {(profile.rol === 'admin' || profile.rol === 'productor') && (
           <Pergamino titulo="Medallas">
-            <Medallas />
+            <Medallas persona={nombre || email} />
           </Pergamino>
         )}
 
