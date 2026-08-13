@@ -40,7 +40,13 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
   // Sin nombre usamos el email como etiqueta — el humano lo completa al aprobar.
   // NO se inventa un nombre a partir del correo.
   const nombre = strA(body?.nombre) || email
-  const origen = (strA(body?.origen) || 'lectura').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30) || 'lectura'
+  // Default 'web', no 'lectura'. El endpoint se llama /api/lectura-lead y de
+  // ahí venía la suposición, pero lo sirve todo el sitio: landings, briefs y La
+  // Lectura. Asumir 'lectura' etiquetó como investigación a 25 leads de
+  // formulario. Desde ago-2026 el sitio manda `origen` explícito en los tres
+  // flujos; si llega vacío es un emisor sin actualizar, y 'web' lo dice sin
+  // afirmar de más.
+  const origen = (strA(body?.origen) || 'web').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30) || 'web'
   const nota = strA(body?.nota)
   const empresa = strA(body?.empresa) || nombre
   const prodRaw = strA(body?.producto)?.toLowerCase() ?? null
@@ -73,27 +79,40 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
 
   // Qué llegó de verdad, no qué dice `origen`.
   //
-  // El sitio manda `origen: 'lectura'` en TODOS los leads —los 17 registrados—
-  // vengan de La Lectura o de un landing de producto. Etiquetar por ese campo
-  // hacía que un formulario de tres líneas apareciera en el CRM como si fuera
-  // un dossier: el equipo abría la ficha esperando la investigación y
-  // encontraba "Plazo: Explorando opciones".
+  // El sitio ya manda `origen` explícito (landing | brief | lectura), pero la
+  // etiqueta se decide igual por el DOSSIER, que es un hecho y no una
+  // declaración. Regla del emisor: una Lectura fallida no produce lead —el
+  // sitio avisa por correo y no llama a Hilván—, así que la ausencia de dossier
+  // significa "esto no fue una Lectura", nunca "la Lectura falló".
   //
-  // La señal confiable es el dossier: lo produce el sitio al hacer la Lectura y
-  // no existe si no la hubo.
+  // Se mantiene la comprobación porque el costo de equivocarse es asimétrico:
+  // rotular "La Lectura" un formulario de tres líneas hizo que el equipo
+  // abriera fichas esperando investigación y encontrara "Plazo: Explorando
+  // opciones". Al revés no pasa nada.
   const hayLectura = Boolean(dossier)
   const etiqueta = hayLectura
     ? 'La Lectura'
     : origen === 'lectura' ? 'Sitio' : origen.charAt(0).toUpperCase() + origen.slice(1)
+
+  // La procedencia es UNA LÍNEA. El contenido va aparte.
+  //
+  // Desde ago-2026 el sitio manda en `nota` el documento completo —una Lectura
+  // ronda los 5.000 caracteres y el tope es 14.000—. Concatenarlo acá dejaba el
+  // documento incrustado entre "Lead entrante desde el sitio" y "Producto
+  // sugerido: lookbook", ilegible y sin poder marcarlo como registro.
   const notas = [
     `[${etiqueta}] Lead entrante desde el sitio.`,
-    nota || '',
     producto ? `Producto sugerido: ${producto}.` : '',
     url ? `Sitio/IG: ${url}` : '',
   ].filter(Boolean).join(' ').trim()
 
+  // `nota` es el campo del contrato nuevo; `lectura` sobrevive como fallback
+  // para emisores no actualizados. Se guarda tal cual: qué es —documento o
+  // formulario— lo decide el dossier al aprobar, no el campo por el que llegó.
+  const contenido = nota || lectura
+
   const payload: Record<string, unknown> = { empresa, nombre_contacto: nombre, email, origen, notas }
-  if (lectura) payload.lectura = lectura
+  if (contenido) payload.contenido = contenido
   if (producto) payload.producto_objetivo = producto
   if (arquetipo) payload.arquetipo = arquetipo
   if (angulo) payload.angulo = angulo

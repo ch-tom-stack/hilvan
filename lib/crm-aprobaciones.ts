@@ -97,18 +97,23 @@ export async function aplicarEfectoAprobacion(
     if (payload.notas) {
       notas.push({ tipo: 'nota', titulo: 'Procedencia', cuerpo: String(payload.notas), bloqueada: false })
     }
-    if (payload.lectura) {
-      // El título "La Lectura" está reservado a lo que vino con dossier. El
-      // sitio manda el resumen del formulario de landing dentro del campo
-      // `lectura` —96 caracteres: "Plazo: Explorando opciones"— y llamarlo así
-      // hacía que el CRM afirmara que existía una investigación que nadie hizo.
-      // Un texto suelto sin dossier es lo que el lead escribió, y se guarda
-      // como tal: sin candado, porque no es un documento recibido.
+    // El cuerpo que mandó el sitio. `contenido` es el campo del contrato nuevo;
+    // `lectura` sobrevive para propuestas creadas antes del cambio.
+    const cuerpoSitio = payload.contenido ?? payload.lectura
+    if (cuerpoSitio) {
+      // Qué es lo que llegó lo decide el DOSSIER, no el campo por el que vino.
+      // Regla del emisor: una Lectura fallida no produce lead —el sitio avisa
+      // por correo y no llama a Hilván—, así que la ausencia de dossier
+      // significa "esto no fue una Lectura", nunca "la Lectura falló".
+      //
+      // Importa porque el título miente barato: llamar "La Lectura" al resumen
+      // de un formulario hacía que el CRM afirmara, y encima con candado, que
+      // existía una investigación que nadie hizo.
       const esDossier = Boolean(payload.dossier)
       notas.push({
         tipo: esDossier ? 'lectura' : 'nota',
         titulo: esDossier ? 'La Lectura' : 'Lo que dijo en el formulario',
-        cuerpo: String(payload.lectura),
+        cuerpo: String(cuerpoSitio),
         bloqueada: esDossier,
       })
     }

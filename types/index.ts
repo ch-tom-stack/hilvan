@@ -1066,6 +1066,10 @@ export const PRODUCTO_LABELS: Record<Producto, string> = {
 // filtro del pipeline no lo ofrecía, así que ese grupo era infiltrable.
 export const ORIGENES_PROSPECTO = [
   'lectura',
+  // Formularios del sitio, separados de 'lectura' desde ago-2026: antes todo
+  // lo que entraba por el webhook se etiquetaba como investigación.
+  'landing',
+  'brief',
   'web',
   'feria',
   'referido',
