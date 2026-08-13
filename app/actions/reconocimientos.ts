@@ -10,6 +10,7 @@ export interface Reconocimiento {
   otorgado_por_nombre: string
   titulo: string
   texto: string
+  imagen_url?: string | null
   created_at: string
   visto_en?: string | null
 }
@@ -42,6 +43,7 @@ export async function getReconocimientos(limite = 12): Promise<Reconocimiento[]>
     otorgado_por_nombre: r.autor?.nombre ?? r.autor?.email ?? '—',
     titulo: r.titulo,
     texto: r.texto,
+    imagen_url: r.imagen_url,
     created_at: r.created_at,
     visto_en: r.visto_en,
   }))
@@ -69,6 +71,7 @@ export async function getReconocimientosSinVer(): Promise<Reconocimiento[]> {
     otorgado_por_nombre: r.autor?.nombre ?? r.autor?.email ?? '—',
     titulo: r.titulo,
     texto: r.texto,
+    imagen_url: r.imagen_url,
     created_at: r.created_at,
     visto_en: null,
   }))
@@ -115,7 +118,9 @@ export async function getDestinatarios(): Promise<{ id: string; nombre: string }
  * palmada en la espalda —se agradece y se olvida—. Lo que lo hace valer es que
  * alguien se sentó a escribir por qué.
  */
-export async function crearReconocimiento(persona_id: string, titulo: string, texto: string) {
+export async function crearReconocimiento(
+  persona_id: string, titulo: string, texto: string, imagen_url?: string | null,
+) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Sin sesión' }
@@ -132,11 +137,45 @@ export async function crearReconocimiento(persona_id: string, titulo: string, te
 
   const { error } = await supabase
     .from('reconocimientos')
-    .insert({ persona_id, otorgado_por: user.id, titulo: t, texto: x })
+    .insert({ persona_id, otorgado_por: user.id, titulo: t, texto: x, imagen_url: imagen_url || null })
 
   if (error) return { error: 'No se pudo guardar' }
 
   revalidatePath('/dashboard')
   revalidatePath('/perfil')
   return { ok: true }
+}
+
+/**
+ * Sube la imagen de una mención.
+ *
+ * Llega ya reducida y convertida a PNG desde el cliente, así que la lista
+ * blanca es de uno: lo que no genere el navegador no entra. Con eso el tope de
+ * tamaño alcanza como única defensa —el archivo original puede pesar 40 MB y
+ * llegar acá pesando 300 KB— y no hay que confiar en la extensión de un nombre.
+ */
+export async function subirImagenReconocimiento(dataUrl: string): Promise<{ url?: string; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Sin sesión' }
+
+  const { data: perfil } = await supabase
+    .from('profiles').select('rol').eq('id', user.id).single()
+  if (perfil?.rol !== 'admin') return { error: 'No autorizado' }
+
+  const m = /^data:image\/png;base64,(.+)$/.exec(dataUrl)
+  if (!m) return { error: 'Formato inválido' }
+
+  const buf = Buffer.from(m[1], 'base64')
+  if (buf.length > 4 * 1024 * 1024) return { error: 'La imagen quedó muy grande' }
+
+  const nombre = `${user.id}/${crypto.randomUUID()}.png`
+  const { error } = await supabase.storage
+    .from('reconocimientos')
+    .upload(nombre, buf, { contentType: 'image/png', upsert: false })
+
+  if (error) return { error: 'No se pudo subir' }
+
+  const { data } = supabase.storage.from('reconocimientos').getPublicUrl(nombre)
+  return { url: data.publicUrl }
 }

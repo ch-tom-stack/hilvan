@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { crearReconocimiento } from '@/app/actions/reconocimientos'
+import { crearReconocimiento, subirImagenReconocimiento } from '@/app/actions/reconocimientos'
 import { toastError, toastOk } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
 
@@ -24,18 +24,54 @@ export default function EscribirReconocimiento({
   const [persona, setPersona] = useState('')
   const [titulo, setTitulo] = useState('')
   const [texto, setTexto] = useState('')
+  const [imagen, setImagen] = useState<string | null>(null)   // dataURL, para la vista previa
+  const [subiendo, setSubiendo] = useState(false)
   const [pendiente, startTransition] = useTransition()
+
+  /**
+   * Reduce y convierte a PNG en el navegador antes de subir.
+   *
+   * Así el servidor recibe siempre lo mismo —una lista blanca de un solo
+   * formato— y no hay que fiarse de la extensión del nombre. Y una foto de
+   * teléfono de 8 MB llega pesando poco más de cien kilos.
+   */
+  async function elegir(file: File) {
+    if (!file.type.startsWith('image/')) { toastError('Tiene que ser una imagen'); return }
+    setSubiendo(true)
+    try {
+      const bitmap = await createImageBitmap(file)
+      const MAX = 1000
+      const escala = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height))
+      const lienzo = document.createElement('canvas')
+      lienzo.width = Math.round(bitmap.width * escala)
+      lienzo.height = Math.round(bitmap.height * escala)
+      lienzo.getContext('2d')?.drawImage(bitmap, 0, 0, lienzo.width, lienzo.height)
+      setImagen(lienzo.toDataURL('image/png'))
+    } catch {
+      toastError('No se pudo leer la imagen')
+    } finally {
+      setSubiendo(false)
+    }
+  }
 
   if (destinatarios.length === 0) return null
 
   function enviar() {
     startTransition(async () => {
       try {
-        const res = await crearReconocimiento(persona, titulo, texto)
+        let url: string | null = null
+        if (imagen) {
+          const sub = await subirImagenReconocimiento(imagen)
+          // La imagen es un adorno: si falla, la mención igual se manda. Perder
+          // el texto escrito por no poder subir una foto sería absurdo.
+          if (sub.error) toastError(`${sub.error} — se envía sin imagen`)
+          else url = sub.url ?? null
+        }
+        const res = await crearReconocimiento(persona, titulo, texto, url)
         if (res?.error) { toastError(res.error); return }
         momento('hito.alcanzado', { mensaje: 'Reconocimiento enviado' })
         toastOk('Le va a llegar al entrar')
-        setPersona(''); setTitulo(''); setTexto(''); setAbierto(false)
+        setPersona(''); setTitulo(''); setTexto(''); setImagen(null); setAbierto(false)
       } catch {
         toastError('No se pudo enviar')
       }
@@ -93,6 +129,29 @@ export default function EscribirReconocimiento({
         placeholder="Qué hizo, y por qué ninguna regla lo habría visto."
         className="w-full bg-ch-surface border border-ch-border px-3 py-2 font-body text-sm text-ch-cream placeholder:text-ch-subtle leading-relaxed rounded-[2px]"
       />
+
+      {/* La imagen, pegada como una foto en el papel */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <label className="ch-press border border-ch-border px-3 py-1.5 font-body text-[9px] tracking-[0.25em] uppercase text-ch-subtle hover:text-ch-cream hover:border-ch-muted transition-colors cursor-pointer">
+          {subiendo ? 'Leyendo…' : imagen ? 'Cambiar imagen' : 'Pegar una imagen'}
+          <input
+            type="file" accept="image/*" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) void elegir(f) }}
+          />
+        </label>
+        {imagen && (
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imagen} alt="" className="h-14 w-auto border border-ch-border -rotate-1" />
+            <button
+              onClick={() => setImagen(null)}
+              className="ch-press font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle hover:text-ch-cream transition-colors"
+            >
+              Quitar
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center justify-between gap-4">
         <p className="font-body text-[10px] text-ch-subtle">

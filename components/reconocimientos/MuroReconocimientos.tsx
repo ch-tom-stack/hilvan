@@ -49,6 +49,13 @@ export default async function MuroReconocimientos() {
                 <p className="font-body text-[13px] text-ch-muted leading-relaxed mt-2.5 max-w-prose">
                   {r.texto}
                 </p>
+                {r.imagen_url && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={r.imagen_url} alt=""
+                    className="mt-4 max-h-64 w-auto border border-ch-border -rotate-1"
+                  />
+                )}
                 <p className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle mt-3">
                   {r.otorgado_por_nombre} · {cuando(r.created_at)}
                 </p>

@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS public.reconocimientos (
 
   titulo       text NOT NULL,
   texto        text NOT NULL,
+  -- Una imagen pegada, como una foto en el pergamino. Opcional: la mención
+  -- vale por lo escrito, la imagen sólo la hace más entretenida.
+  imagen_url   text,
 
   visto_en     timestamptz,
   created_at   timestamptz NOT NULL DEFAULT now()
@@ -45,3 +48,6 @@ CREATE POLICY "acceso por sesión" ON public.reconocimientos FOR ALL USING (true
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.reconocimientos TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.reconocimientos TO service_role;
+
+-- Para bases donde la tabla ya existía sin la columna:
+ALTER TABLE public.reconocimientos ADD COLUMN IF NOT EXISTS imagen_url text;

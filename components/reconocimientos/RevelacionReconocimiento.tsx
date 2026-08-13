@@ -124,6 +124,13 @@ export default function RevelacionReconocimiento() {
                 <p className="font-body text-sm text-ch-muted leading-relaxed mt-4">
                   {r.texto}
                 </p>
+                {r.imagen_url && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={r.imagen_url} alt=""
+                    className="mt-6 max-h-72 w-auto border border-ch-border -rotate-1"
+                  />
+                )}
                 <p className="font-body text-[9px] tracking-[0.25em] uppercase text-ch-subtle mt-6">
                   {r.otorgado_por_nombre}
                 </p>
