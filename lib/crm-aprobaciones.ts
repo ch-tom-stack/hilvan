@@ -98,7 +98,19 @@ export async function aplicarEfectoAprobacion(
       notas.push({ tipo: 'nota', titulo: 'Procedencia', cuerpo: String(payload.notas), bloqueada: false })
     }
     if (payload.lectura) {
-      notas.push({ tipo: 'lectura', titulo: 'La Lectura', cuerpo: String(payload.lectura), bloqueada: true })
+      // El título "La Lectura" está reservado a lo que vino con dossier. El
+      // sitio manda el resumen del formulario de landing dentro del campo
+      // `lectura` —96 caracteres: "Plazo: Explorando opciones"— y llamarlo así
+      // hacía que el CRM afirmara que existía una investigación que nadie hizo.
+      // Un texto suelto sin dossier es lo que el lead escribió, y se guarda
+      // como tal: sin candado, porque no es un documento recibido.
+      const esDossier = Boolean(payload.dossier)
+      notas.push({
+        tipo: esDossier ? 'lectura' : 'nota',
+        titulo: esDossier ? 'La Lectura' : 'Lo que dijo en el formulario',
+        cuerpo: String(payload.lectura),
+        bloqueada: esDossier,
+      })
     }
     if (notas.length) {
       const { error: errNotas } = await client

@@ -71,11 +71,20 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
     return { ok: true, duplicado: true, mensaje: 'Ya hay un lead con ese email (propuesta o prospecto).' }
   }
 
-  // La procedencia va en una nota corta; el texto de La Lectura va aparte y
-  // se guarda como nota bloqueada al aprobar. Antes se concatenaba todo en un
-  // solo campo con un prefijo "[La Lectura]" puesto a mano, y así terminaron 19
-  // prospectos con el dossier enterrado dentro de sus notas.
-  const etiqueta = origen === 'lectura' ? 'La Lectura' : origen.charAt(0).toUpperCase() + origen.slice(1)
+  // Qué llegó de verdad, no qué dice `origen`.
+  //
+  // El sitio manda `origen: 'lectura'` en TODOS los leads —los 17 registrados—
+  // vengan de La Lectura o de un landing de producto. Etiquetar por ese campo
+  // hacía que un formulario de tres líneas apareciera en el CRM como si fuera
+  // un dossier: el equipo abría la ficha esperando la investigación y
+  // encontraba "Plazo: Explorando opciones".
+  //
+  // La señal confiable es el dossier: lo produce el sitio al hacer la Lectura y
+  // no existe si no la hubo.
+  const hayLectura = Boolean(dossier)
+  const etiqueta = hayLectura
+    ? 'La Lectura'
+    : origen === 'lectura' ? 'Sitio' : origen.charAt(0).toUpperCase() + origen.slice(1)
   const notas = [
     `[${etiqueta}] Lead entrante desde el sitio.`,
     nota || '',
