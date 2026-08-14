@@ -14,7 +14,7 @@ aprendizaje de lo ya investigado.
 
 ---
 
-## Los dos ejes que hay que clasificar
+## Los ejes que hay que clasificar
 
 **`tamano`** — `chica` · `mediana` · `grande`
 Marca conocida o cadena = grande; pyme establecida = mediana; emprendimiento = chica.
@@ -65,9 +65,10 @@ Se evalúa en orden. **Gana la primera que calza.**
 | 9 | producto `lookbook` + tamaño `chica` | **Natalia** |
 | — | cualquier otra | **Simón** (fallback) |
 
-**Por qué ese orden:** la regla 3 pisa a la 4 y la 5 a propósito — la excepción
-de género manda sobre el producto. Tomás recibe menos por diseño: sus criterios
-(grandes y medianas-grandes) son los más raros.
+**Por qué ese orden:** las reglas 1 a 4 son de especialidad —quién trabaja mejor
+ese tipo de marca— y por eso pisan a las de producto y tamaño, que son el
+criterio por defecto. Tomás recibe menos por diseño: sus condiciones (grandes y
+medianas-grandes) son las más raras.
 
 ---
 
