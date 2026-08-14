@@ -6,13 +6,13 @@ import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
 
 export const runtime = 'nodejs'
 
-// POST /api/agent/crm/clasificar { prospecto_id, tamano?, segmento? }
-// Fija los ejes de asignación (tamaño de empresa + segmento). Si el prospecto NO
+// POST /api/agent/crm/clasificar { prospecto_id, tamano?, rubro?, tipo_cliente? }
+// Fija los ejes de asignación (tamaño + rubro + tipo de cliente). Si el prospecto NO
 // tiene responsable, lo asigna EN EL ACTO según las reglas deterministas
 // (ver lib/crm-asignacion.ts). NO reasigna si ya tiene dueño. Solo interno,
 // no envía nada.
 const TAMANOS = ['chica', 'mediana', 'grande']
-const SEGMENTOS = ['general', 'estudiante', 'ropa_intima_fem', 'masculino_estereotipo', 'rental']
+import { RUBROS_PROSPECTO, TIPOS_CLIENTE } from '@/types'
 const strA = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)
 
 export async function POST(req: Request) {
@@ -26,11 +26,14 @@ export async function POST(req: Request) {
   if (!prospectoId) return NextResponse.json({ error: 'Falta prospecto_id' }, { status: 400 })
 
   const tamanoIn = strA(body?.tamano)
-  const segmentoIn = strA(body?.segmento)
+  const rubroIn = strA(body?.rubro)
+  const clienteIn = strA(body?.tipo_cliente)
   const tamano = tamanoIn && TAMANOS.includes(tamanoIn) ? tamanoIn : null
-  const segmento = segmentoIn && SEGMENTOS.includes(segmentoIn) ? segmentoIn : null
+  const rubro = rubroIn && (RUBROS_PROSPECTO as readonly string[]).includes(rubroIn) ? rubroIn : null
+  const tipo_cliente = clienteIn && (TIPOS_CLIENTE as readonly string[]).includes(clienteIn) ? clienteIn : null
   if (tamanoIn && !tamano) return NextResponse.json({ error: `tamano inválido (${TAMANOS.join('|')})` }, { status: 400 })
-  if (segmentoIn && !segmento) return NextResponse.json({ error: `segmento inválido (${SEGMENTOS.join('|')})` }, { status: 400 })
+  if (rubroIn && !rubro) return NextResponse.json({ error: `rubro inválido (${RUBROS_PROSPECTO.join('|')})` }, { status: 400 })
+  if (clienteIn && !tipo_cliente) return NextResponse.json({ error: `tipo_cliente inválido (${TIPOS_CLIENTE.join('|')})` }, { status: 400 })
 
   const admin = createAdminClient()
   const { data: p } = await admin
@@ -40,11 +43,11 @@ export async function POST(req: Request) {
     .maybeSingle<{ responsable_id: string | null; producto_objetivo: string | null }>()
   if (!p) return NextResponse.json({ error: 'prospecto_id no encontrado' }, { status: 404 })
 
-  const patch: Record<string, unknown> = { tamano, segmento }
+  const patch: Record<string, unknown> = { tamano, rubro, tipo_cliente }
   let asignado: string | null = null
 
   if (!p.responsable_id) {
-    const persona = personaSegunReglas({ producto: p.producto_objetivo, tamano, segmento })
+    const persona = personaSegunReglas({ producto: p.producto_objetivo, tamano, rubro, tipo_cliente })
     if (persona) {
       const { data: perfiles } = await admin.from('profiles').select('id, email').in('rol', ['admin', 'productor'])
       const map = new Map<string, string>()
@@ -62,5 +65,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
   await registrarAccion({ herramienta: 'crm-clasificar', payload: body, resultado_tabla: 'prospectos', resultado_id: prospectoId, ok: true })
-  return NextResponse.json({ prospecto_id: prospectoId, tamano, segmento, responsable_asignado: asignado })
+  return NextResponse.json({ prospecto_id: prospectoId, tamano, rubro, tipo_cliente, responsable_asignado: asignado })
 }

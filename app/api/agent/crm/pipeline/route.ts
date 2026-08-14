@@ -18,13 +18,14 @@ export async function GET(req: Request) {
   const etapa = url.searchParams.get('etapa')?.trim()
   const admin = createAdminClient()
 
-  // `tamano`, `segmento` y el estado de cadencia van en la lista a propósito:
+  // `tamano`, `rubro`, `tipo_cliente` y el estado de cadencia van en la lista a
+  // propósito:
   // sin ellos, saber quién está sin clasificar o atrasado obligaba a pedir el
   // detalle prospecto por prospecto —58 llamadas para dos campos.
   let query = admin
     .from('prospectos')
     .select(
-      'id, empresa, nombre_contacto, etapa, score, producto_objetivo, origen, tamano, segmento, snooze_hasta, ' +
+      'id, empresa, nombre_contacto, etapa, score, producto_objetivo, origen, tamano, rubro, tipo_cliente, snooze_hasta, ' +
       'responsable:profiles!prospectos_responsable_id_fkey(id, nombre), ' +
       `crm_interacciones(${CAMPOS_TOQUE})`,
     )
@@ -49,7 +50,7 @@ export async function GET(req: Request) {
       toques: (crm_interacciones ?? []).length,
       cadencia: fueraDeAgenda(p.etapa) ? null : cad.estado,
       dias_atraso: fueraDeAgenda(p.etapa) ? 0 : cad.diasAtraso,
-      sin_clasificar: !p.tamano || !p.segmento,
+      sin_clasificar: !p.tamano || !p.rubro,
     }
   })
 

@@ -19,15 +19,28 @@ aprendizaje de lo ya investigado.
 **`tamano`** — `chica` · `mediana` · `grande`
 Marca conocida o cadena = grande; pyme establecida = mediana; emprendimiento = chica.
 
-**`segmento`** — uno solo:
+**`rubro`** — de qué es la marca. Es el eje que decide: **sin rubro no se
+asigna**.
 
-| Valor | Cuándo |
-|---|---|
-| `estudiante` | Es un/a estudiante o proyecto estudiantil |
-| `rental` | Busca **arriendo de equipos**, no producción |
-| `ropa_intima_fem` | Ropa íntima femenina o productos asociados |
-| `masculino_estereotipo` | Rubro que por estereotipo trataría mejor con un hombre: deportes masculinos, herramientas, ferretería |
-| `general` | Todo lo demás |
+`moda` · `moda_intima` · `belleza` · `deporte` · `herramientas` · `consumo`
+(alimentos y bebidas) · `retail` · `servicios` · `educacion` · `inmobiliaria` ·
+`turismo` · `entretenimiento` · `rental` (busca arriendo de equipos, no
+producción) · `otro`
+
+**`tipo_cliente`** — con quién se trabaja. Pregunta distinta del rubro: una
+agencia de moda es las dos cosas.
+
+`marca` (directa) · `agencia` · `institucion` · `emprendedor` · `estudiante` ·
+`productora`
+
+> **Cambió en ago-2026.** Antes había un solo eje, `segmento`, con valores como
+> `ropa_intima_fem` y `masculino_estereotipo`: clasificaba el trabajo por el
+> género de quien aparece o compra, cuando "deportes/herramientas" son dos
+> rubros. Además no repartía —45 de 66 prospectos caían en `general`—, así que
+> en los hechos casi todo se resolvía por producto y tamaño.
+>
+> **A cada persona le toca exactamente lo mismo que antes.** Cambió cómo se
+> nombra, no quién trabaja qué.
 
 El **producto objetivo** (`banco` · `lookbook` · `spot` · `videoclip`) también
 entra en las reglas; normalmente viene del lead o de La Lectura
@@ -41,10 +54,10 @@ Se evalúa en orden. **Gana la primera que calza.**
 
 | # | Condición | Responsable |
 |---|---|---|
-| 1 | segmento `rental` | **Josué** |
-| 2 | segmento `estudiante` | **Simón** |
-| 3 | segmento `masculino_estereotipo` | **Simón** |
-| 4 | segmento `ropa_intima_fem` | **Natalia** |
+| 1 | rubro `rental` | **Josué** |
+| 2 | tipo de cliente `estudiante` | **Simón** |
+| 3 | rubro `deporte` o `herramientas` | **Simón** |
+| 4 | rubro `moda_intima` | **Natalia** |
 | 5 | producto `banco` | **Natalia** |
 | 6 | producto `videoclip` | **Simón** |
 | 7 | producto `lookbook` + tamaño `mediana` o `grande` | **Tomás** |
@@ -60,7 +73,7 @@ de género manda sobre el producto. Tomás recibe menos por diseño: sus criteri
 
 ## Invariantes
 
-- **Sin `segmento` no se asigna.** Queda "por clasificar" — asignar a ciegas es
+- **Sin `rubro` no se asigna.** Queda "por clasificar" — asignar a ciegas es
   peor que dejarlo pendiente.
 - **El reparto automático nunca reasigna** un prospecto que ya tiene
   responsable. Sí existe una vía para cambiarlo, y es pedirlo (ver abajo).

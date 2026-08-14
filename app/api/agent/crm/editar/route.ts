@@ -20,7 +20,7 @@ export const runtime = 'nodejs'
 //
 // NO toca `etapa` (tiene hilvan_mover_etapa, con su vía de propuesta) ni
 // `responsable_id` (para eso está hilvan_solicitar_asignacion). Para clasificar
-// tamaño/segmento está hilvan_clasificar_prospecto.
+// tamaño/rubro/tipo de cliente está hilvan_clasificar_prospecto.
 //
 // Tampoco toca `notas`: ese campo se vació en ago-2026 y las notas viven en
 // crm_notas, una por tema. Se escriben con hilvan_nota_escribir.

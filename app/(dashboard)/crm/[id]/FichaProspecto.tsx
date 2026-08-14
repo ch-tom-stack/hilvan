@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Prospecto, CrmInteraccion, CrmHilo, CrmNota, CrmContacto, CrmBorrador, CrmLectura, CrmInsight, EtapaProspecto, ChecklistItem } from '@/types'
-import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO, TAMANOS_EMPRESA, TAMANO_LABELS, SEGMENTOS_PROSPECTO, SEGMENTO_LABELS } from '@/types'
+import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO, TAMANOS_EMPRESA, TAMANO_LABELS, RUBROS_PROSPECTO, RUBRO_LABELS, TIPOS_CLIENTE, TIPO_CLIENTE_LABELS } from '@/types'
 import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, asignarResponsable, asignarPrioridad, clasificarProspecto, solicitarAsignacion } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
@@ -58,9 +58,11 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
     })
   }
 
-  const clasificar = (tamano: string, segmento: string) => {
+  const clasificar = (tamano: string, rubro: string, tipoCliente: string) => {
     startTransition(async () => {
-      const res = await clasificarProspecto(p.id, { tamano: tamano || null, segmento: segmento || null })
+      const res = await clasificarProspecto(p.id, {
+        tamano: tamano || null, rubro: rubro || null, tipo_cliente: tipoCliente || null,
+      })
       if (res.error) { toastError(res.error); momento('error', { mensaje: res.error }); return }
       // Ambos, porque la clasificación es un solo dato en dos campos: marcar
       // sólo el que tocaste dejaría al otro sin acusar que también cambió.
@@ -196,7 +198,7 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
           <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Tamaño</p>
           <select
             value={p.tamano ?? ''}
-            onChange={e => clasificar(e.target.value, p.segmento ?? '')}
+            onChange={e => clasificar(e.target.value, p.rubro ?? '', p.tipo_cliente ?? '')}
             disabled={isPending}
             className="input-ch w-full text-sm py-1"
           >
@@ -204,16 +206,31 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
             {TAMANOS_EMPRESA.map(t => <option key={t} value={t}>{TAMANO_LABELS[t]}</option>)}
           </select>
         </div>
+        {/* Dos preguntas distintas: de qué es la marca y con quién se trabaja.
+            Antes era un solo eje que las mezclaba —y clasificaba el trabajo por
+            el género de quien aparece o compra—. */}
         <div ref={seg.ref}>
-          <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Segmento</p>
+          <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Rubro</p>
           <select
-            value={p.segmento ?? ''}
-            onChange={e => clasificar(p.tamano ?? '', e.target.value)}
+            value={p.rubro ?? ''}
+            onChange={e => clasificar(p.tamano ?? '', e.target.value, p.tipo_cliente ?? '')}
             disabled={isPending}
             className="input-ch w-full text-sm py-1"
           >
             <option value="">Sin clasificar</option>
-            {SEGMENTOS_PROSPECTO.map(s => <option key={s} value={s}>{SEGMENTO_LABELS[s]}</option>)}
+            {RUBROS_PROSPECTO.map(r => <option key={r} value={r}>{RUBRO_LABELS[r]}</option>)}
+          </select>
+        </div>
+        <div>
+          <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Tipo de cliente</p>
+          <select
+            value={p.tipo_cliente ?? ''}
+            onChange={e => clasificar(p.tamano ?? '', p.rubro ?? '', e.target.value)}
+            disabled={isPending}
+            className="input-ch w-full text-sm py-1"
+          >
+            <option value="">Sin definir</option>
+            {TIPOS_CLIENTE.map(c => <option key={c} value={c}>{TIPO_CLIENTE_LABELS[c]}</option>)}
           </select>
         </div>
         <Dato label="Producto objetivo" valor={p.producto_objetivo} capitalize />

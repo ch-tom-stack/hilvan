@@ -1118,14 +1118,44 @@ export const TAMANO_LABELS: Record<TamanoEmpresa, string> = {
   grande:  'Grande',
 }
 
-export const SEGMENTOS_PROSPECTO = ['general', 'estudiante', 'ropa_intima_fem', 'masculino_estereotipo', 'rental'] as const
-export type SegmentoProspecto = (typeof SEGMENTOS_PROSPECTO)[number]
-export const SEGMENTO_LABELS: Record<SegmentoProspecto, string> = {
-  general:               'General',
-  estudiante:            'Estudiante',
-  ropa_intima_fem:       'Ropa íntima fem.',
-  masculino_estereotipo: 'Masculino (deportes/herramientas)',
-  rental:                'Rental',
+/**
+ * De qué es la marca. Reemplazó a `segmento` (ago-2026), que clasificaba el
+ * trabajo por el género de quien aparece o compra y además no repartía: 45 de
+ * 66 prospectos caían en "general".
+ */
+export const RUBROS_PROSPECTO = [
+  'moda', 'moda_intima', 'belleza', 'deporte', 'herramientas', 'consumo',
+  'retail', 'servicios', 'educacion', 'inmobiliaria', 'turismo',
+  'entretenimiento', 'rental', 'otro',
+] as const
+export type RubroProspecto = (typeof RUBROS_PROSPECTO)[number]
+export const RUBRO_LABELS: Record<RubroProspecto, string> = {
+  moda:            'Moda',
+  moda_intima:     'Moda íntima',
+  belleza:         'Belleza',
+  deporte:         'Deporte',
+  herramientas:    'Herramientas e industria',
+  consumo:         'Alimentos y bebidas',
+  retail:          'Retail',
+  servicios:       'Servicios',
+  educacion:       'Educación',
+  inmobiliaria:    'Inmobiliaria',
+  turismo:         'Turismo',
+  entretenimiento: 'Entretenimiento',
+  rental:          'Rental',
+  otro:            'Otro',
+}
+
+/** Con quién se trabaja. Eje separado del rubro: una agencia de moda es las dos cosas. */
+export const TIPOS_CLIENTE = ['marca', 'agencia', 'institucion', 'emprendedor', 'estudiante', 'productora'] as const
+export type TipoCliente = (typeof TIPOS_CLIENTE)[number]
+export const TIPO_CLIENTE_LABELS: Record<TipoCliente, string> = {
+  marca:       'Marca directa',
+  agencia:     'Agencia',
+  institucion: 'Institución',
+  emprendedor: 'Emprendedor',
+  estudiante:  'Estudiante',
+  productora:  'Productora',
 }
 
 export const TIPOS_INTERACCION = ['correo', 'reunion', 'lectura', 'llamada', 'mensaje'] as const
@@ -1146,7 +1176,10 @@ export interface Prospecto {
   angulo?: string | null
   producto_objetivo?: string | null
   tamano?: string | null            // chica | mediana | grande (eje de asignación)
-  segmento?: string | null          // ver SEGMENTOS_PROSPECTO (eje de asignación)
+  rubro?: string | null             // ver RUBROS_PROSPECTO (eje de asignación)
+  tipo_cliente?: string | null      // ver TIPOS_CLIENTE (eje de asignación)
+  /** @deprecated Reemplazado por rubro + tipo_cliente (ago-2026). Sólo histórico. */
+  segmento?: string | null
   cliente_id?: string | null
   cliente?: Pick<Cliente, 'id' | 'nombre'> | null
   notas?: string | null

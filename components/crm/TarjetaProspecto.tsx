@@ -231,7 +231,7 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
       {/* Sin dueño no hay lista, y sin lista nadie lo contacta: es un estado que
           hay que resolver, no un dato más. Va en dorado —el color de "requiere
           acción" en toda la app— para que se vea de un vistazo en el tablero.
-          Los leads del sitio entran así a propósito: sin segmento las reglas de
+          Los leads del sitio entran así a propósito: sin rubro las reglas de
           reparto no asignan, y adivinar es peor que dejarlo a la vista. */}
       {p.responsable?.nombre ? (
         <p className="font-body text-[10px] tracking-[0.15em] uppercase text-ch-subtle">

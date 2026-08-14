@@ -41,10 +41,10 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
   const alternarTodos = () =>
     setSel(todos ? new Set() : new Set(huerfanos.map(h => h.id)))
 
-  // Las reglas se niegan a asignar sin tamaño y segmento —adivinar es peor que
+  // Las reglas se niegan a asignar sin tamaño y rubro —adivinar es peor que
   // esperar—, así que estos no los reparte nadie hasta clasificarlos. Decirlo
   // antes de apretar evita el botón que "no hace nada".
-  const sinClasificar = huerfanos.filter(h => !h.tamano || !h.segmento)
+  const sinClasificar = huerfanos.filter(h => !h.tamano || !h.rubro)
   const ningunoReparte = sinClasificar.length === huerfanos.length
 
   const porReglas = () => {
@@ -59,8 +59,8 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
       if (r.asignados === 0) {
         momento('error', {
           mensaje: r.porClasificar === 1
-            ? 'Sin repartir: al prospecto le falta tamaño y segmento. Clasifícalo primero.'
-            : `Sin repartir: a ${r.porClasificar} les falta tamaño y segmento. Clasifícalos primero.`,
+            ? 'Sin repartir: al prospecto le falta tamaño y rubro. Clasifícalo primero.'
+            : `Sin repartir: a ${r.porClasificar} les falta tamaño y rubro. Clasifícalos primero.`,
         })
         return
       }
@@ -100,7 +100,7 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
             onClick={porReglas}
             disabled={isPending || ningunoReparte}
             title={ningunoReparte
-              ? 'Las reglas necesitan tamaño y segmento para decidir. Clasifícalos primero, o asigna a mano.'
+              ? 'Las reglas necesitan tamaño y rubro para decidir. Clasifícalos primero, o asigna a mano.'
               : undefined}
             className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-gold hover:text-ch-gold-light transition-colors ch-press disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -119,7 +119,7 @@ export default function RepartirProspectos({ huerfanos, responsables }: Props) {
       {sinClasificar.length > 0 && (
         <p className="px-4 pb-3 -mt-1 font-body text-[11px] text-ch-muted leading-relaxed">
           {ningunoReparte ? 'Ninguno se puede repartir por reglas' : `${sinClasificar.length} no se pueden repartir por reglas`}:
-          les falta <span className="text-ch-cream">tamaño y segmento</span>, y sin eso las reglas no adivinan a quién le toca.
+          les falta <span className="text-ch-cream">tamaño y rubro</span>, y sin eso las reglas no adivinan a quién le toca.
           Clasifícalos —{' '}
           {sinClasificar.map((h, i) => (
             <span key={h.id}>

@@ -1686,14 +1686,14 @@ const baseHandler = createMcpHandler(
       'hilvan_editar_prospecto',
       {
         title: 'Editar prospecto (CRM)',
-        description: 'Corrige los datos de un prospecto. prospecto_id REQUERIDO; sólo se escriben los campos que mandes (los que omitas quedan intactos). Manda "" para vaciar uno. Úsalo sobre todo para arreglar `origen`: decide si el prospecto es frío o entrante y con eso la secuencia de correos. NO cambia etapa (usa hilvan_mover_etapa) ni responsable (usa hilvan_solicitar_asignacion); para tamaño/segmento usa hilvan_clasificar_prospecto; para notas usa hilvan_nota_escribir. Guarda el valor anterior en la auditoría para poder revertir.',
+        description: 'Corrige los datos de un prospecto. prospecto_id REQUERIDO; sólo se escriben los campos que mandes (los que omitas quedan intactos). Manda "" para vaciar uno. Úsalo sobre todo para arreglar `origen`: decide si el prospecto es frío o entrante y con eso la secuencia de correos. NO cambia etapa (usa hilvan_mover_etapa) ni responsable (usa hilvan_solicitar_asignacion); para tamaño/rubro/tipo de cliente usa hilvan_clasificar_prospecto; para notas usa hilvan_nota_escribir. Guarda el valor anterior en la auditoría para poder revertir.',
         inputSchema: {
           prospecto_id: z.string(),
           empresa: z.string().optional(),
           nombre_contacto: z.string().optional(),
           email: z.string().optional(),
           telefono: z.string().optional(),
-          origen: z.string().optional().describe('lectura|web|feria|referido|correo|linkedin|instagram|otro'),
+          origen: z.string().optional().describe('lectura|landing|brief|web|feria|referido|correo|linkedin|instagram|otro'),
           arquetipo: z.string().optional(),
           score: z.string().optional(),
           decisor: z.string().optional(),
@@ -1905,11 +1905,12 @@ const baseHandler = createMcpHandler(
       'hilvan_clasificar_prospecto',
       {
         title: 'Clasificar prospecto (CRM)',
-        description: 'Clasifica un prospecto por tamano (chica|mediana|grande) y segmento (general|estudiante|ropa_intima_fem|masculino_estereotipo|rental) — los ejes con que se asigna el responsable. Si el prospecto NO tiene responsable, lo asigna EN EL ACTO según las reglas (rental→Josué; estudiante/masculino/videoclip→Simón; ropa_intima/banco/lookbook-chica→Natalia; lookbook o empresa grande→Tomás; fallback→Simón). NO reasigna si ya tiene dueño. Fíjalo al investigar/enriquecer el lead. prospecto_id REQUERIDO.',
+        description: 'Clasifica un prospecto por tamano (chica|mediana|grande), RUBRO —de qué es la marca— y TIPO DE CLIENTE —con quién se trabaja—. Son los ejes con que se asigna el responsable, y reemplazaron al viejo `segmento` (ago-2026), que mezclaba las dos preguntas y clasificaba el trabajo por el género de quien aparece o compra. Sin RUBRO no se asigna: es el que decide. Si el prospecto NO tiene responsable, lo asigna EN EL ACTO según las reglas (rental→Josué; estudiante/deporte/herramientas/videoclip→Simón; moda_intima/banco/lookbook-chica→Natalia; lookbook mediana-grande o empresa grande→Tomás; fallback→Simón). NO reasigna si ya tiene dueño. Fíjalo al investigar el lead. prospecto_id REQUERIDO.',
         inputSchema: {
           prospecto_id: z.string(),
-          tamano: z.string().optional(),
-          segmento: z.string().optional(),
+          tamano: z.string().optional().describe('chica | mediana | grande'),
+          rubro: z.string().optional().describe('moda | moda_intima | belleza | deporte | herramientas | consumo | retail | servicios | educacion | inmobiliaria | turismo | entretenimiento | rental | otro'),
+          tipo_cliente: z.string().optional().describe('marca | agencia | institucion | emprendedor | estudiante | productora'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/clasificar', args)),

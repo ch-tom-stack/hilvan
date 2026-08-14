@@ -133,7 +133,7 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
   // contacto, y el reloj de cadencia no empieza a correr hasta que alguien
   // apruebe.
   //
-  // Entra sin responsable a propósito: sin `segmento` las reglas de reparto no
+  // Entra sin responsable a propósito: sin `rubro` las reglas de reparto no
   // asignan, y adivinar es peor. Queda marcado en el tablero como sin asignar.
   //
   // Se reutiliza `aplicarEfectoAprobacion` en vez de repetir el alta acá: es la

@@ -17,7 +17,7 @@ import type {
   EtapaProspecto,
   Profile,
 } from '@/types'
-import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION, MOTIVOS_CIERRE_HILO, TIPOS_NOTA } from '@/types'
+import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION, MOTIVOS_CIERRE_HILO, TIPOS_NOTA, RUBROS_PROSPECTO, TIPOS_CLIENTE } from '@/types'
 import { aplicarEfectoAprobacion, AplicarError, CAMPOS_CORREGIBLES, type AprobacionRow } from '@/lib/crm-aprobaciones'
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
@@ -220,7 +220,7 @@ export interface ResultadoReparto {
 }
 
 // Reparte los prospectos SIN responsable según las reglas deterministas. Los que
-// aún no tienen segmento quedan "por clasificar" (no se asignan a ciegas).
+// aún no tienen rubro quedan "por clasificar" (no se asignan a ciegas).
 export async function repartirPorReglas(): Promise<{ ok?: true; resultado?: ResultadoReparto; error?: string }> {
   const acceso = await verificarAccesoCrm()
   if (!acceso.ok) return { error: acceso.error }
@@ -228,14 +228,14 @@ export async function repartirPorReglas(): Promise<{ ok?: true; resultado?: Resu
   const emailId = await mapaOperadorId(acceso.supabase)
   const { data: huerfanos } = await acceso.supabase
     .from('prospectos')
-    .select('id, producto_objetivo, tamano, segmento')
+    .select('id, producto_objetivo, tamano, rubro, tipo_cliente')
     .is('responsable_id', null)
 
   let asignados = 0
   let porClasificar = 0
   const conteo = new Map<string, number>()
-  for (const h of (huerfanos ?? []) as { id: string; producto_objetivo: string | null; tamano: string | null; segmento: string | null }[]) {
-    const persona = personaSegunReglas({ producto: h.producto_objetivo, tamano: h.tamano, segmento: h.segmento })
+  for (const h of (huerfanos ?? []) as { id: string; producto_objetivo: string | null; tamano: string | null; rubro: string | null; tipo_cliente: string | null }[]) {
+    const persona = personaSegunReglas({ producto: h.producto_objetivo, tamano: h.tamano, rubro: h.rubro, tipo_cliente: h.tipo_cliente })
     if (!persona) { porClasificar++; continue }
     const rid = emailId.get(OPERADOR_EMAIL[persona])
     if (!rid) { porClasificar++; continue }
@@ -248,19 +248,20 @@ export async function repartirPorReglas(): Promise<{ ok?: true; resultado?: Resu
   return { ok: true, resultado: { asignados, porClasificar, detalle: [...conteo].map(([persona, n]) => ({ persona, n })) } }
 }
 
-// Fija tamaño/segmento (clasificación). Si el prospecto no tiene responsable, lo
+// Fija tamaño/rubro/tipo de cliente (clasificación). Si no tiene responsable, lo
 // asigna EN EL ACTO según las reglas — ese es el "automático".
 export async function clasificarProspecto(
   id: string,
-  input: { tamano?: string | null; segmento?: string | null },
+  input: { tamano?: string | null; rubro?: string | null; tipo_cliente?: string | null },
 ): Promise<{ ok?: true; error?: string }> {
   const acceso = await verificarAccesoCrm()
   if (!acceso.ok) return { error: acceso.error }
 
   const tamano = input.tamano && ['chica', 'mediana', 'grande'].includes(input.tamano) ? input.tamano : null
-  const segmento = input.segmento && ['general', 'estudiante', 'ropa_intima_fem', 'masculino_estereotipo', 'rental'].includes(input.segmento) ? input.segmento : null
+  const rubro = input.rubro && (RUBROS_PROSPECTO as readonly string[]).includes(input.rubro) ? input.rubro : null
+  const tipo_cliente = input.tipo_cliente && (TIPOS_CLIENTE as readonly string[]).includes(input.tipo_cliente) ? input.tipo_cliente : null
 
-  const patch: Record<string, unknown> = { tamano, segmento }
+  const patch: Record<string, unknown> = { tamano, rubro, tipo_cliente }
 
   const { data: p } = await acceso.supabase
     .from('prospectos')
@@ -269,7 +270,7 @@ export async function clasificarProspecto(
     .maybeSingle<{ responsable_id: string | null; producto_objetivo: string | null }>()
 
   if (p && !p.responsable_id) {
-    const persona = personaSegunReglas({ producto: p.producto_objetivo, tamano, segmento })
+    const persona = personaSegunReglas({ producto: p.producto_objetivo, tamano, rubro, tipo_cliente })
     if (persona) {
       const emailId = await mapaOperadorId(acceso.supabase)
       const rid = emailId.get(OPERADOR_EMAIL[persona])
