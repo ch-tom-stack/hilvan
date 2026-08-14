@@ -37,6 +37,12 @@ export function normalizarProspectoBody(body: any) {
     decisor: strA(body?.decisor),
     angulo: strA(body?.angulo),
     producto_objetivo: strA(body?.producto_objetivo),
+    // Ejes de asignación. Si el agente ya investigó la marca al descubrirla,
+    // puede clasificarla ahí mismo: sin esto el prospecto nacía sin rubro, sin
+    // dueño, y había que volver a pasar por él en una segunda vuelta.
+    tamano: strA(body?.tamano),
+    rubro: strA(body?.rubro),
+    tipo_cliente: strA(body?.tipo_cliente),
   }
 }
 

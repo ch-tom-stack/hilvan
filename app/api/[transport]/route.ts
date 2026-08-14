@@ -1314,7 +1314,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Crear prospecto (CRM)',
         description:
-          'Crea un prospecto en el CRM. empresa REQUERIDO; opcionales: nombre_contacto, email, telefono, origen (linkedin|instagram|referido|feria|web|correo|otro), score (alta|media|baja), decisor, angulo, producto_objetivo (banco|lookbook|spot|sin_definir), arquetipo (feed|temporadas|sin_definir), responsable_id (uuid de profiles), notas (se guarda como una nota suelta, no como campo del prospecto), etapa (default prospecto). como_propuesta=true NO crea: deja el lead en la Bandeja de Aprobación (úsalo para leads de correo entrante). CONFIRMA con el usuario antes de llamar.',
+          'Crea un prospecto en el CRM. empresa REQUERIDO; opcionales: nombre_contacto, email, telefono, origen (linkedin|instagram|referido|feria|web|correo|otro), score (alta|media|baja), decisor, angulo, producto_objetivo (banco|lookbook|spot|sin_definir), arquetipo (feed|temporadas|sin_definir), responsable_id (uuid de profiles), notas (se guarda como una nota suelta), etapa (default prospecto), y la CLASIFICACIÓN: tamano + rubro + tipo_cliente. Clasifícalo aquí mismo si ya investigaste la marca: con rubro, al aprobarse se asigna responsable solo según las reglas; sin rubro nace huérfano y hay que volver a pasar por él. como_propuesta=true NO crea: deja el lead en la Bandeja de Aprobación (úsalo para leads de correo entrante). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           empresa: z.string(),
           nombre_contacto: z.string().optional(),

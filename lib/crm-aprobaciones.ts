@@ -5,6 +5,8 @@
 // para que el comportamiento sea idéntico desde el chat y desde la UI.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
+import { RUBROS_PROSPECTO, TIPOS_CLIENTE, TAMANOS_EMPRESA, PRODUCTOS_OBJETIVO, ORIGENES_PROSPECTO } from '@/types'
 
 /**
  * Campos de texto del payload que se pueden corregir antes de aprobar.
@@ -17,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * saber qué acepta): una sola lista, imposible que se desincronicen.
  */
 export const CAMPOS_CORREGIBLES: Record<string, string[]> = {
-  prospecto_nuevo: ['empresa', 'nombre_contacto', 'email', 'telefono', 'producto_objetivo'],
+  prospecto_nuevo: ['empresa', 'nombre_contacto', 'email', 'telefono', 'producto_objetivo', 'tamano', 'rubro', 'tipo_cliente', 'origen'],
   interaccion: ['resumen', 'proximo_paso'],
   correo_borrador: ['asunto', 'cuerpo'],
   brief_cotizacion: ['decisor', 'angulo', 'producto_objetivo'],
@@ -28,6 +30,21 @@ export const LABEL_CAMPO: Record<string, string> = {
   empresa: 'Empresa', nombre_contacto: 'Contacto', email: 'Email', telefono: 'Teléfono',
   producto_objetivo: 'Producto', resumen: 'Resumen', proximo_paso: 'Próximo paso',
   asunto: 'Asunto', cuerpo: 'Cuerpo', decisor: 'Decisor', angulo: 'Ángulo',
+  tamano: 'Tamaño', rubro: 'Rubro', tipo_cliente: 'Tipo de cliente', origen: 'Origen',
+}
+
+/**
+ * Campos con vocabulario cerrado: la Bandeja los muestra como lista, no como
+ * texto. Escribir "Moda" a mano donde el valor es `moda` deja el prospecto sin
+ * clasificar y sin dueño, y nadie se entera hasta que no aparece en la lista de
+ * nadie.
+ */
+export const CAMPOS_OPCIONES: Record<string, readonly string[]> = {
+  rubro: RUBROS_PROSPECTO,
+  tipo_cliente: TIPOS_CLIENTE,
+  tamano: TAMANOS_EMPRESA,
+  producto_objetivo: PRODUCTOS_OBJETIVO,
+  origen: ORIGENES_PROSPECTO,
 }
 
 export interface AprobacionRow {
@@ -39,6 +56,30 @@ export interface AprobacionRow {
 }
 
 export class AplicarError extends Error {}
+
+/**
+ * A quién le toca, según las reglas, si la propuesta viene clasificada.
+ *
+ * Se resuelve al aprobar y no después porque aprobar es el momento en que el
+ * prospecto entra al pipeline: dejarlo sin dueño obliga a una segunda pasada
+ * que en la práctica no ocurre — así se juntaron 32 huérfanos.
+ *
+ * Devuelve null si falta el rubro: asignar a ciegas es peor que dejar
+ * pendiente, y el aviso de "sin asignar" ya está a la vista en el tablero.
+ */
+async function responsablePorReglas(client: SupabaseClient, payload: any): Promise<string | null> {
+  const persona = personaSegunReglas({
+    producto: payload.producto_objetivo ?? null,
+    tamano: payload.tamano ?? null,
+    rubro: payload.rubro ?? null,
+    tipo_cliente: payload.tipo_cliente ?? null,
+  })
+  if (!persona) return null
+
+  const { data } = await client
+    .from('profiles').select('id').ilike('email', OPERADOR_EMAIL[persona]).maybeSingle()
+  return (data as { id: string } | null)?.id ?? null
+}
 
 /**
  * Aplica el efecto de una aprobación según su tipo. Devuelve un objeto `aplicado`
@@ -76,12 +117,18 @@ export async function aplicarEfectoAprobacion(
         telefono: payload.telefono ?? null,
         origen: payload.origen ?? null,
         arquetipo: payload.arquetipo ?? null,
-        responsable_id: payload.responsable_id || null,
+        responsable_id: payload.responsable_id || (await responsablePorReglas(client, payload)),
         score: payload.score ?? null,
         decisor: payload.decisor ?? null,
         angulo: payload.angulo ?? null,
         producto_objetivo: payload.producto_objetivo ?? null,
         etapa: payload.etapa || 'prospecto',
+        // Clasificación. Sin esto el prospecto nacía sin rubro aunque el agente
+        // ya lo hubiera investigado, y con eso sin responsable: las reglas de
+        // reparto no asignan a ciegas.
+        tamano: payload.tamano ?? null,
+        rubro: payload.rubro ?? null,
+        tipo_cliente: payload.tipo_cliente ?? null,
         // Cómo llegó: qué hizo, dónde y de dónde venía.
         lead_accion: payload.lead_accion ?? null,
         lead_pagina: payload.lead_pagina ?? null,

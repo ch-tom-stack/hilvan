@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { resolverAprobacion, type AprobacionConProspecto } from '@/app/actions/crm'
 import { ETAPA_PROSPECTO_LABELS, type EtapaProspecto } from '@/types'
-import { CAMPOS_CORREGIBLES, LABEL_CAMPO } from '@/lib/crm-aprobaciones'
+import { CAMPOS_CORREGIBLES, LABEL_CAMPO, CAMPOS_OPCIONES } from '@/lib/crm-aprobaciones'
 import { toastOk, toastError } from '@/lib/toast'
 import { formatFecha } from '@/lib/fechas'
 
@@ -148,7 +148,19 @@ function ItemAprobacion({
               <label className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.2em] block mb-1">
                 {LABEL_CAMPO[c] ?? c}
               </label>
-              {c === 'cuerpo' ? (
+              {CAMPOS_OPCIONES[c] ? (
+                // Vocabulario cerrado: lista, no texto. Escribir "Moda" donde
+                // el valor es `moda` deja el prospecto sin clasificar y sin
+                // dueño, y no se nota hasta que no aparece en la lista de nadie.
+                <select
+                  value={borrador[c] ?? ''}
+                  onChange={e => setBorrador({ ...borrador, [c]: e.target.value })}
+                  className="w-full bg-ch-black border border-ch-border text-ch-cream font-body text-sm px-3 py-2 focus:border-ch-green outline-none rounded-[2px]"
+                >
+                  <option value="">—</option>
+                  {CAMPOS_OPCIONES[c].map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
+                </select>
+              ) : c === 'cuerpo' ? (
                 <textarea
                   value={borrador[c] ?? ''} rows={6}
                   onChange={e => setBorrador({ ...borrador, [c]: e.target.value })}
@@ -253,6 +265,9 @@ function PreviewPayload({ tipo, payload }: { tipo: string; payload: any }) {
       <Campo k="Email" v={payload.email} />
       <Campo k="Origen" v={payload.origen} />
       <Campo k="Producto" v={payload.producto_objetivo} />
+      <Campo k="Rubro" v={payload.rubro?.replace('_', ' ')} />
+      <Campo k="Tamaño" v={payload.tamano} />
+      <Campo k="Tipo de cliente" v={payload.tipo_cliente} />
     </dl>
   )
 }
