@@ -82,15 +82,16 @@ export async function aplicarEfectoAprobacion(
         angulo: payload.angulo ?? null,
         producto_objetivo: payload.producto_objetivo ?? null,
         etapa: payload.etapa || 'prospecto',
+        // Cómo llegó: qué hizo, dónde y de dónde venía.
+        lead_accion: payload.lead_accion ?? null,
+        lead_pagina: payload.lead_pagina ?? null,
+        lead_campana: payload.lead_campana ?? null,
+        lead_datos: payload.lead_datos ?? null,
       })
       .select('id')
       .single()
     if (error) throw new AplicarError(error.message)
 
-    // Archiva la lectura junto al prospecto recién creado. Antes el dossier
-    // solo vivía en el Supabase del sitio y en Hilván quedaba el resumen en
-    // texto plano; acá es el insumo del brief cuando el prospecto avanza.
-    // No bloquea la aprobación: el prospecto ya existe y es lo que importa.
     // La persona que llenó el formulario entra al árbol de contactos.
     //
     // Faltaba: el alta escribía `nombre_contacto` y `email` en la ficha pero no
@@ -145,6 +146,10 @@ export async function aplicarEfectoAprobacion(
       if (errNotas) console.error('[crm] no se pudieron guardar las notas:', errNotas.message)
     }
 
+    // Archiva la lectura junto al prospecto recién creado. Antes el dossier
+    // solo vivía en el Supabase del sitio y en Hilván quedaba el resumen en
+    // texto plano; acá es el insumo del brief cuando el prospecto avanza.
+    // No bloquea la aprobación: el prospecto ya existe y es lo que importa.
     if (hayLectura) {
       const { error: errLectura } = await client.from('crm_lecturas').insert({
         prospecto_id: data.id,

@@ -292,6 +292,32 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
         <Dato label="Origen" valor={p.origen} capitalize />
       </div>
 
+      {/* Cómo llegó. Responde las tres preguntas que el equipo no podía
+          contestar: qué hizo, dónde y de dónde venía. Sólo aparece si el dato
+          existe — los prospectos anteriores a ago-2026 no lo tienen porque el
+          sitio nunca lo mandó, y un bloque vacío sería peor que ninguno. */}
+      {(p.lead_accion || p.lead_pagina || p.lead_campana) && (
+        <div className="border border-ch-border bg-ch-surface/20 px-4 py-3 mb-8 flex flex-wrap gap-x-8 gap-y-2">
+          <span className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-subtle self-center">Cómo llegó</span>
+          {p.lead_accion && (
+            <span className="font-body text-xs text-ch-cream">
+              <span className="text-ch-subtle">Hizo: </span>{p.lead_accion.replace(/_/g, ' ')}
+            </span>
+          )}
+          {p.lead_campana && (
+            <span className="font-body text-xs text-ch-cream">
+              <span className="text-ch-subtle">Venía de: </span>{p.lead_campana}
+            </span>
+          )}
+          {p.lead_pagina && (
+            <a href={p.lead_pagina} target="_blank" rel="noopener noreferrer"
+              className="font-body text-xs text-ch-gold hover:text-ch-gold-light transition-colors truncate max-w-xs">
+              {p.lead_pagina.replace(/^https?:\/\//, '')}
+            </a>
+          )}
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Columna principal */}
         <div className="lg:col-span-2 space-y-8">

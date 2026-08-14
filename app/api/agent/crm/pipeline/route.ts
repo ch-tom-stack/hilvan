@@ -26,6 +26,7 @@ export async function GET(req: Request) {
     .from('prospectos')
     .select(
       'id, empresa, nombre_contacto, etapa, score, producto_objetivo, origen, tamano, rubro, tipo_cliente, snooze_hasta, ' +
+      'datos_dudosos, lead_accion, lead_campana, ' +
       'responsable:profiles!prospectos_responsable_id_fkey(id, nombre), ' +
       `crm_interacciones(${CAMPOS_TOQUE})`,
     )

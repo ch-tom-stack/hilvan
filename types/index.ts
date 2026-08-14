@@ -1181,6 +1181,15 @@ export interface Prospecto {
    * empeora si lo dejas quieto, este empeora cada vez que lo trabajas.
    * Ortogonal a la etapa — no es una fase del embudo.
    */
+  // ── Cómo llegó (ago-2026) ──
+  /** Qué hizo: dejó el correo, descargó precios, pidió brief, hizo la Lectura. */
+  lead_accion?: string | null
+  /** En qué página NUESTRA. Distinto de la web del prospecto. */
+  lead_pagina?: string | null
+  /** De dónde venía: campaña, fuente o medio. */
+  lead_campana?: string | null
+  lead_datos?: Record<string, unknown> | null
+
   datos_dudosos?: boolean | null
   duda?: string | null
   rubro?: string | null             // ver RUBROS_PROSPECTO (eje de asignación)

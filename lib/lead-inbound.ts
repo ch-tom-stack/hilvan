@@ -30,6 +30,15 @@ export interface LeadEntrante {
   angulo?: unknown
   /** Dossier completo de La Lectura, tal como lo produjo el sitio. */
   dossier?: unknown
+  // ── Cómo llegó (ago-2026). Tres preguntas distintas, tres campos. ──
+  /** Qué hizo: dejo_correo | descargo_precios | pidio_brief | hizo_lectura… */
+  accion?: unknown
+  /** En qué página NUESTRA. No confundir con `url`, que es el sitio del prospecto. */
+  pagina?: unknown
+  /** De dónde venía: campaña, fuente o medio. */
+  campana?: unknown
+  /** Crudo: utm_*, referrer, lo que el sitio quiera adjuntar. */
+  datos?: unknown
 }
 
 export type ResultadoLead =
@@ -116,7 +125,22 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
   // formulario— lo decide el dossier al aprobar, no el campo por el que llegó.
   const contenido = nota || lectura
 
+  // Cómo llegó. Sin esto nadie puede responder si el lead descargó el paquete
+  // de precios o sólo dejó el correo, ni si vino del video de Instagram — que
+  // es exactamente lo que el equipo no lograba explicarse.
+  const accion  = strA(body?.accion)
+  const pagina  = strA(body?.pagina)
+  const campana = strA(body?.campana)
+  const datos =
+    body?.datos && typeof body.datos === 'object' && !Array.isArray(body.datos)
+      ? (JSON.stringify(body.datos).length <= 20_000 ? body.datos : null)
+      : null
+
   const payload: Record<string, unknown> = { empresa, nombre_contacto: nombre, email, origen, notas }
+  if (accion) payload.lead_accion = accion
+  if (pagina) payload.lead_pagina = pagina
+  if (campana) payload.lead_campana = campana
+  if (datos) payload.lead_datos = datos
   if (contenido) payload.contenido = contenido
   if (producto) payload.producto_objetivo = producto
   if (arquetipo) payload.arquetipo = arquetipo
