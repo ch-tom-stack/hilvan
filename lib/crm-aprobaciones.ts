@@ -91,6 +91,26 @@ export async function aplicarEfectoAprobacion(
     // solo vivía en el Supabase del sitio y en Hilván quedaba el resumen en
     // texto plano; acá es el insumo del brief cuando el prospecto avanza.
     // No bloquea la aprobación: el prospecto ya existe y es lo que importa.
+    // La persona que llenó el formulario entra al árbol de contactos.
+    //
+    // Faltaba: el alta escribía `nombre_contacto` y `email` en la ficha pero no
+    // creaba la fila en `crm_contactos`, así que todos los leads del sitio
+    // nacían con el árbol vacío — y el árbol es de donde salen los
+    // `contacto_id` que piden los hilos, las respuestas y los borradores. El
+    // dato estaba, en el lugar equivocado. Se detectó con Soracci.
+    if (payload.email || payload.nombre_contacto) {
+      const { error: errContacto } = await client.from('crm_contactos').insert({
+        prospecto_id: data.id,
+        nombre: payload.nombre_contacto ?? null,
+        email: payload.email ?? null,
+        telefono: payload.telefono ?? null,
+        es_decisor: false,
+        fuente: payload.origen === 'lectura' ? 'Formulario de La Lectura' : 'Formulario del sitio',
+      })
+      // No aborta: el prospecto ya existe y es lo que importa.
+      if (errContacto) console.error('[crm] no se pudo crear el contacto:', errContacto.message)
+    }
+
     // Las notas del lead, cada una por separado. La de La Lectura nace
     // bloqueada: es un documento que llegó, no un apunte que se edita.
     const notas: { tipo: string; titulo: string; cuerpo: string; bloqueada: boolean }[] = []

@@ -42,14 +42,22 @@ export async function hiloVigente(
     .maybeSingle()
   if (abierto) return (abierto as { id: string }).id
 
-  const { data: p } = await client
-    .from('prospectos').select('responsable_id').eq('id', prospectoId).maybeSingle()
+  const [{ data: p }, { data: contactos }] = await Promise.all([
+    client.from('prospectos').select('responsable_id').eq('id', prospectoId).maybeSingle(),
+    client.from('crm_contactos').select('id').eq('prospecto_id', prospectoId),
+  ])
+
+  // Si la marca tiene UNA sola persona, la línea nace con ella. Con dos o más
+  // sería adivinar con quién se está hablando, que es justo lo que el hilo
+  // responde. Sin esto se acumulan líneas sin nadie asignado: llegaron a ser 29.
+  const solos = (contactos ?? []) as { id: string }[]
 
   const { data: nuevo } = await client
     .from('crm_hilos')
     .insert({
       prospecto_id: prospectoId,
       responsable_id: (p as any)?.responsable_id ?? responsableId ?? null,
+      contacto_id: solos.length === 1 ? solos[0].id : null,
     })
     .select('id')
     .maybeSingle()
