@@ -98,6 +98,24 @@ volumen es global. Ver `tools/sonido/README.md`.
 - **Export Santander** — falta validarlo con rendiciones aprobadas reales.
 - **OTT\* NT AT HOME** — cargo recurrente de ~$10.100/mes, servicio sin identificar.
 
+## Cómo abordarlo — revisar cómo funciona (13-ago-2026)
+
+El panel propone el próximo correo cruzando insights, interacciones y origen.
+**No está sirviendo**: Tomás lo bajó al final de la ficha porque encabezarla con
+una sugerencia floja le daba a eso el lugar de lo que sí es cierto —la
+conversación y lo que se sabe de la marca—. Estuvo a un paso de sacarlo.
+
+Antes de arreglarlo hay que decidir si el panel debe existir. Si se mantiene,
+tres cosas cambiaron bajo sus pies y probablemente expliquen parte del problema:
+
+- `origen` era mentira hasta hoy: todo lo del sitio se etiquetaba `lectura`, así
+  que el panel calculaba la temperatura (frío vs entrante) sobre un dato falso
+  en 16 prospectos.
+- Los insights tipo `lectura` nunca se usaron (100 filas, sólo `investigacion` y
+  `literatura`), y ahora La Lectura vive en `crm_lecturas` y en las notas.
+- La bitácora dejó de ser una lista de toques: tiene dirección y respuestas, que
+  es información que el panel todavía no mira.
+
 ---
 
 ## Resuelto (estaba en listas anteriores)

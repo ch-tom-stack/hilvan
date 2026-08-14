@@ -239,9 +239,6 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
             </div>
           </div>
 
-          {/* Cómo abordarlo: el porqué del próximo correo */}
-          <ComoAbordarlo insights={insights} interacciones={interacciones} origen={p.origen} />
-
           {/* Árbol de contactos */}
           <ContactosProspecto prospectoId={p.id} contactos={contactos} />
 
@@ -260,6 +257,13 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
           {/* Bitácora */}
           <Bitacora prospectoId={p.id} interacciones={interacciones} hilos={hilos} contactos={contactos}
             personas={Object.fromEntries(responsables.map(r => [r.id, r.nombre]))} />
+
+          {/* Cómo abordarlo, al final y no arriba: hoy propone el próximo
+              correo a partir de reglas que no están sirviendo, así que
+              encabezar la ficha con eso le daba a una sugerencia floja el lugar
+              de lo que sí es cierto —la conversación y lo que se sabe—.
+              PENDIENTE: revisar cómo funciona (docs/crm/pendientes.md). */}
+          <ComoAbordarlo insights={insights} interacciones={interacciones} origen={p.origen} />
         </div>
 
         {/* Columna lateral: acciones */}
