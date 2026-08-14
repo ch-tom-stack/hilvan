@@ -83,6 +83,7 @@ export const EMBLEMAS: Record<string, string> = {
   primera_reserva: 'M4 7h16v13H4zM4 11h16M8 4v4M16 4v4M10 15h4',
   reserva_aprobada: 'M4 7h16v13H4zM4 11h16M8 4v4M16 4v4M9 15l2 2 4-4',
   primera_rendicion: 'M7 3h10v18H7zM10 7h4M10 11h4M10 15h4M7 3v18',
+  cruzar_bastidor: 'M2 15h20M4 15V9M20 15V9M4 12a8 8 0 0 1 16 0M9 15v-2.6M15 15v-2.6',
   calendario_limpio: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 15l2 2 5-5',
   oficio_completo: 'M12 2l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6L3 9l6-1z',
 

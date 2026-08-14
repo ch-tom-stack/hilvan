@@ -31,6 +31,7 @@ const VACIO: DatosMedallas = {
   cierres: 0, cierresFrios: 0,
   cotizaciones: 0, cotizacionesAprobadas: 0, rodajes: 0, clientes: 0,
   reservas: 0, reservasAprobadas: 0, gastosMensuales: 0, eventosClasificados: 0,
+  cruzoBastidor: false,
 }
 
 interface Toque {
@@ -66,6 +67,7 @@ interface Taller {
   reservasAprobadas: number
   gastosMensuales: number
   eventosClasificados: number
+  cruzoBastidor: boolean
 }
 
 function agregar(
@@ -161,7 +163,7 @@ async function contarTaller(
     return q
   }
 
-  const [cot, cotAp, rod, cli, res, resAp, gas, eve] = await Promise.all([
+  const [cot, cotAp, rod, cli, res, resAp, gas, eve, puente] = await Promise.all([
     c('cotizaciones', 'created_by'),
     c('cotizaciones', 'created_by', q => q.eq('estado', 'aprobada')),
     c('rodajes', 'created_by'),
@@ -170,6 +172,11 @@ async function contarTaller(
     c('rental_reservas', 'aprobada_por'),
     c('rendicion_mensual_gastos', 'cargado_por_id'),
     c('eventos_calendario', 'clasificado_por'),
+    // El cruce a otra app no deja rastro en ninguna tabla de trabajo: se guarda
+    // cuando ocurre. Y no se acota por `desde` — cruzar es de una vez y para
+    // siempre, no algo que se rehaga cada mes.
+    supabase.from('puentes').select('*', { count: 'exact', head: true })
+      .eq('persona_id', uid).eq('destino', 'bastidor'),
   ])
 
   return {
@@ -181,6 +188,7 @@ async function contarTaller(
     reservasAprobadas: n(resAp),
     gastosMensuales: n(gas),
     eventosClasificados: n(eve),
+    cruzoBastidor: n(puente) > 0,
   }
 }
 

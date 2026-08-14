@@ -217,6 +217,9 @@ export const MEDALLAS: DefinicionMedalla[] = [
     criterio: 'Aprobar una reserva de rental.' },
   { clave: 'primera_rendicion', alcance: 'unica', titulo: 'Cuentas claras', capitulo: 'taller', rareza: 'comun',
     criterio: 'Cargar tu primer gasto en la rendición mensual.' },
+  { clave: 'cruzar_bastidor', alcance: 'unica', titulo: 'El puente', capitulo: 'taller', rareza: 'comun',
+    criterio: 'Cruzar a Bastidor desde Hilván.',
+    nota: 'Cuenta el cruce, no la vuelta: Bastidor vive en otra casa y Hilván sólo ve la puerta.' },
   { clave: 'calendario_limpio', alcance: 'mensual', titulo: 'Todo en su lugar', capitulo: 'taller', rareza: 'dificil',
     criterio: 'Clasificar 20 eventos del calendario.' },
   { clave: 'oficio_completo', alcance: 'unica', titulo: 'El oficio completo', capitulo: 'taller', rareza: 'legendaria',
@@ -300,6 +303,7 @@ export interface DatosMedallas {
   reservasAprobadas: number
   gastosMensuales: number
   eventosClasificados: number
+  cruzoBastidor: boolean
 }
 
 const CANALES_TOTALES = 4
@@ -347,6 +351,7 @@ export function medallasCumplidas(d: DatosMedallas): string[] {
   si(d.reservasAprobadas >= 1, 'reserva_aprobada')
   si(d.gastosMensuales >= 1, 'primera_rendicion')
   si(d.eventosClasificados >= 20, 'calendario_limpio')
+  si(d.cruzoBastidor, 'cruzar_bastidor')
   si(d.contactos >= 1 && d.cotizaciones >= 1 && d.rodajes >= 1 && d.reservas >= 1, 'oficio_completo')
 
   si(d.madrugo, 'madrugar')

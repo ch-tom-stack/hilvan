@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import PiePerfil from '@/components/layout/PiePerfil'
+import { registrarPuente } from '@/app/actions/puentes'
+import { revisarMedallasSuave } from '@/lib/medallas-cliente'
 
 const BASE_NAV_ITEMS = [
   { label: 'Dashboard',     href: '/dashboard',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },
@@ -99,6 +101,9 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
             href="https://bastidor-five.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              void registrarPuente('bastidor').then(revisarMedallasSuave)
+            }}
             className="flex items-center justify-between text-sm px-3 py-2 rounded-[2px] text-ch-muted hover:text-ch-cream hover:bg-ch-dark transition-colors"
           >
             Bastidor
@@ -218,6 +223,9 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
                   href="https://bastidor-five.vercel.app/"
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => {
+                    void registrarPuente('bastidor').then(revisarMedallasSuave)
+                  }}
                   className="flex items-center justify-between px-4 py-3 rounded-[2px] font-body text-sm text-ch-muted hover:text-ch-cream hover:bg-ch-dark transition-colors"
                 >
                   Bastidor
