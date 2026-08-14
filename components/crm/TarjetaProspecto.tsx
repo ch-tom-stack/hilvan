@@ -228,9 +228,21 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
         </div>
       )}
 
-      <p className="font-body text-[10px] tracking-[0.15em] uppercase text-ch-subtle">
-        {p.responsable?.nombre ?? 'Sin asignar'}
-      </p>
+      {/* Sin dueño no hay lista, y sin lista nadie lo contacta: es un estado que
+          hay que resolver, no un dato más. Va en dorado —el color de "requiere
+          acción" en toda la app— para que se vea de un vistazo en el tablero.
+          Los leads del sitio entran así a propósito: sin segmento las reglas de
+          reparto no asignan, y adivinar es peor que dejarlo a la vista. */}
+      {p.responsable?.nombre ? (
+        <p className="font-body text-[10px] tracking-[0.15em] uppercase text-ch-subtle">
+          {p.responsable.nombre}
+        </p>
+      ) : (
+        <p className="font-body text-[10px] tracking-[0.15em] uppercase text-ch-gold flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 bg-ch-gold shrink-0" aria-hidden />
+          Sin asignar
+        </p>
+      )}
 
       {/* Toque de un click. Visible siempre, no en hover: es LA acción que el
           módulo quiere fomentar; esconderla sería trabajar en contra. */}

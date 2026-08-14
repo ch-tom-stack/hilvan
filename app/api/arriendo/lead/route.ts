@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient()
   const codigo = await emitirCodigo(admin, { email, nombre, pct, origen: 'rental' })
 
-  // 2) Lead a la Bandeja (con el código en las notas, para que el humano lo vea).
+  // 2) Lead al Kanban (con el código en sus notas, para que el humano lo vea).
   const r = await crearPropuestaLead(
     {
       email: body?.email,

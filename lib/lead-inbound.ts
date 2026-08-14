@@ -1,13 +1,18 @@
 // lib/lead-inbound.ts
-// Núcleo COMPARTIDO de captación de leads entrantes → propuesta `prospecto_nuevo`
-// en la Bandeja de Aprobación del CRM. Un solo camino para todos los canales:
+// Núcleo COMPARTIDO de captación de leads entrantes → prospecto en el Kanban.
+// Un solo camino para todos los canales:
 //   - /api/lectura-lead   (con token, lo llama el SITIO: La Lectura y landings)
 //   - /api/arriendo/lead  (público, lo llama nuestro pop-up de Rental desde el navegador)
 // Así ningún canal abre su propia vía ni expone el token en el cliente.
+//
+// Desde ago-2026 NO pasan por la Bandeja de Aprobación. Ésa quedó para lo que
+// el agente PROPONE al descubrir marcas (Firecrawl + Brave), donde sí hay un
+// juicio que revisar. Quien llena un formulario ya levantó la mano.
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
 import { strA } from '@/lib/agent-crm'
+import { aplicarEfectoAprobacion } from '@/lib/crm-aprobaciones'
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PRODUCTOS = new Set(['banco', 'lookbook', 'spot'])
@@ -29,7 +34,7 @@ export interface LeadEntrante {
 
 export type ResultadoLead =
   | { ok: true; duplicado: true; mensaje: string }
-  | { ok: true; duplicado?: false; propuesta_id: string; estado: 'pendiente' }
+  | { ok: true; duplicado?: false; prospecto_id: string; estado: 'prospecto' }
   | { ok: false; status: number; error: string }
 
 export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string): Promise<ResultadoLead> {
@@ -119,30 +124,40 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
   if (url) payload.url = url
   if (dossier) payload.dossier = dossier
 
-  const { data, error } = await admin
-    .from('crm_aprobaciones')
-    .insert({
-      tipo: 'prospecto_nuevo',
-      prospecto_id: null,
-      estado: 'pendiente',
-      origen: 'agente',
-      nota_agente: notaAgente,
-      payload,
+  // Directo al Kanban, no a la Bandeja.
+  //
+  // La Bandeja es para lo que PROPONE el agente cuando sale a descubrir marcas
+  // (Firecrawl + Brave): ahí hay un juicio que revisar —¿esta marca nos sirve?—.
+  // Un lead del sitio no tiene nada que juzgar: la persona levantó la mano
+  // sola. Hacerlo esperar aprobación agrega un paso que sólo retrasa el
+  // contacto, y el reloj de cadencia no empieza a correr hasta que alguien
+  // apruebe.
+  //
+  // Entra sin responsable a propósito: sin `segmento` las reglas de reparto no
+  // asignan, y adivinar es peor. Queda marcado en el tablero como sin asignar.
+  //
+  // Se reutiliza `aplicarEfectoAprobacion` en vez de repetir el alta acá: es la
+  // misma operación —crear el prospecto, sus notas y archivar la Lectura— y dos
+  // copias divergirían.
+  let prospectoId: string
+  try {
+    const efecto = await aplicarEfectoAprobacion(admin, {
+      id: '', tipo: 'prospecto_nuevo', prospecto_id: null, payload, estado: 'pendiente',
     })
-    .select('id')
-    .single<{ id: string }>()
-
-  if (error || !data) {
-    await registrarAccion({ herramienta: 'lectura-lead', payload: { email, origen }, ok: false, error: error?.message })
-    return { ok: false, status: 500, error: error?.message ?? 'No se pudo crear la propuesta' }
+    prospectoId = String(efecto?.prospecto_id ?? '')
+    if (!prospectoId) throw new Error('No se obtuvo el id del prospecto')
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'No se pudo crear el prospecto'
+    await registrarAccion({ herramienta: 'lectura-lead', payload: { email, origen }, ok: false, error: msg })
+    return { ok: false, status: 500, error: msg }
   }
 
   await registrarAccion({
     herramienta: 'lectura-lead',
-    payload: { nombre, email, producto, origen },
-    resultado_tabla: 'crm_aprobaciones',
-    resultado_id: data.id,
+    payload: { nombre, email, producto, origen, nota_contexto: notaAgente },
+    resultado_tabla: 'prospectos',
+    resultado_id: prospectoId,
     ok: true,
   })
-  return { ok: true, propuesta_id: data.id, estado: 'pendiente' }
+  return { ok: true, prospecto_id: prospectoId, estado: 'prospecto' }
 }
