@@ -9,7 +9,12 @@ import {
 } from '@/components/ui/Pergamino'
 
 /**
- * Una mención que llega: el pergamino se abre solo, una vez.
+ * Una mención que llega: el pergamino se abre solo, una vez, PARA TODOS.
+ *
+ * Reconocer a alguien delante de los demás es la mitad del gesto: en privado
+ * sería un mensaje, no un reconocimiento. Así que el pergamino no se le abre
+ * sólo a quien la recibe — se le abre a todo el equipo, y cada uno lo marca
+ * visto por su cuenta.
  *
  * No se cierra sola, a diferencia de las medallas. Una medalla la concede un
  * umbral y se entiende de un vistazo; una mención hay que leerla, y cerrarla
@@ -116,7 +121,7 @@ export default function RevelacionReconocimiento() {
             {cola.map((r, i) => (
               <div key={r.id} className={i > 0 ? 'mt-9 pt-9 border-t border-ch-border' : ''}>
                 <p className="font-body text-[9px] tracking-[0.45em] uppercase text-ch-gold mb-4">
-                  Una mención
+                  Una mención {r.persona ? `para ${r.persona}` : ''}
                 </p>
                 <p className="font-display italic text-3xl text-ch-cream leading-tight">
                   {r.titulo}

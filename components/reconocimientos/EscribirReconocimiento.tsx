@@ -70,7 +70,7 @@ export default function EscribirReconocimiento({
         const res = await crearReconocimiento(persona, titulo, texto, url)
         if (res?.error) { toastError(res.error); return }
         momento('hito.alcanzado', { mensaje: 'Reconocimiento enviado' })
-        toastOk('Le va a llegar al entrar')
+        toastOk('Se le abre a todo el equipo al entrar')
         setPersona(''); setTitulo(''); setTexto(''); setImagen(null); setAbierto(false)
       } catch {
         toastError('No se pudo enviar')
@@ -155,7 +155,7 @@ export default function EscribirReconocimiento({
 
       <div className="flex items-center justify-between gap-4">
         <p className="font-body text-[10px] text-ch-subtle">
-          Lo va a ver todo el equipo. Es lo único que se comparte.
+          Se le abre a todo el equipo al entrar. Es lo único que se comparte.
         </p>
         <button
           onClick={enviar}

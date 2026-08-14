@@ -49,35 +49,53 @@ export async function getReconocimientos(limite = 12): Promise<Reconocimiento[]>
   }))
 }
 
-/** Los que le llegaron a quien está en sesión y todavía no ha visto. */
+/**
+ * Menciones que esta persona todavía no ha visto — sean de quien sean.
+ *
+ * Una mención es un reconocimiento PÚBLICO: el pergamino se le abre a todo el
+ * equipo, no sólo a quien la recibe. Reconocer a alguien delante de los demás
+ * es la mitad del gesto; en privado sería un mensaje, no un reconocimiento.
+ *
+ * Por eso "visto" es una relación entre la mención y cada persona, y no una
+ * columna de la mención: con `visto_en` en la fila, el primero en entrar la
+ * marcaba vista y los demás no la veían nunca.
+ */
 export async function getReconocimientosSinVer(): Promise<Reconocimiento[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
+  const { data: vistos } = await supabase
+    .from('reconocimientos_vistos')
+    .select('reconocimiento_id')
+    .eq('persona_id', user.id)
+
+  const yaVistos = new Set((vistos ?? []).map(v => v.reconocimiento_id))
+
   const { data, error } = await supabase
     .from('reconocimientos')
-    .select('*, autor:profiles!reconocimientos_otorgado_por_fkey(nombre, email)')
-    .eq('persona_id', user.id)
-    .is('visto_en', null)
+    .select('*, persona:profiles!reconocimientos_persona_id_fkey(nombre, email), autor:profiles!reconocimientos_otorgado_por_fkey(nombre, email)')
     .order('created_at')
+    .limit(20)
 
   if (error || !data) return []
 
-  return (data as any[]).map(r => ({
-    id: r.id,
-    persona_id: r.persona_id,
-    persona: '',
-    otorgado_por_nombre: r.autor?.nombre ?? r.autor?.email ?? '—',
-    titulo: r.titulo,
-    texto: r.texto,
-    imagen_url: r.imagen_url,
-    created_at: r.created_at,
-    visto_en: null,
-  }))
+  return (data as any[])
+    .filter(r => !yaVistos.has(r.id))
+    .map(r => ({
+      id: r.id,
+      persona_id: r.persona_id,
+      persona: r.persona?.nombre ?? r.persona?.email ?? '—',
+      otorgado_por_nombre: r.autor?.nombre ?? r.autor?.email ?? '—',
+      titulo: r.titulo,
+      texto: r.texto,
+      imagen_url: r.imagen_url,
+      created_at: r.created_at,
+      visto_en: null,
+    }))
 }
 
-/** Marca como visto. Solo el destinatario — nadie ve por otro. */
+/** Marca vistas para quien está en sesión. Cada uno marca las suyas. */
 export async function marcarVisto(ids: string[]) {
   if (ids.length === 0) return { ok: true }
   const supabase = await createClient()
@@ -85,10 +103,11 @@ export async function marcarVisto(ids: string[]) {
   if (!user) return { error: 'Sin sesión' }
 
   const { error } = await supabase
-    .from('reconocimientos')
-    .update({ visto_en: new Date().toISOString() })
-    .in('id', ids)
-    .eq('persona_id', user.id)
+    .from('reconocimientos_vistos')
+    .upsert(
+      ids.map(reconocimiento_id => ({ reconocimiento_id, persona_id: user.id })),
+      { onConflict: 'reconocimiento_id,persona_id', ignoreDuplicates: true },
+    )
 
   return error ? { error: 'No se pudo guardar' } : { ok: true }
 }
@@ -174,7 +193,9 @@ export async function subirImagenReconocimiento(dataUrl: string): Promise<{ url?
     .from('reconocimientos')
     .upload(nombre, buf, { contentType: 'image/png', upsert: false })
 
-  if (error) return { error: 'No se pudo subir' }
+  // El mensaje real, no uno genérico: la primera vez que esto falló fue por
+  // políticas de Storage y el error envuelto no dejaba verlo.
+  if (error) return { error: `No se pudo subir: ${error.message}` }
 
   const { data } = supabase.storage.from('reconocimientos').getPublicUrl(nombre)
   return { url: data.publicUrl }
