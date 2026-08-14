@@ -93,6 +93,19 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
           })}
         </nav>
 
+        {/* Otras apps de Casa Hiedra */}
+        <div className="mt-4 pt-3 border-t border-ch-border">
+          <a
+            href="https://bastidor-five.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between text-sm px-3 py-2 rounded-[2px] text-ch-muted hover:text-ch-cream hover:bg-ch-dark transition-colors"
+          >
+            Bastidor
+            <span className="text-xs text-ch-subtle">↗</span>
+          </a>
+        </div>
+
         {/* Quién eres y cómo vas, en un solo link: la puerta a la vitrina. */}
         <div className="mt-4">
           <PiePerfil nombre={nombre} email={email} rol={rol} />
@@ -198,6 +211,19 @@ export default function Sidebar({ email, nombre, rol }: SidebarProps) {
                   </span>
                 )
               })}
+
+              {/* Otras apps de Casa Hiedra */}
+              <div className="mt-3 pt-3 border-t border-ch-border">
+                <a
+                  href="https://bastidor-five.vercel.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between px-4 py-3 rounded-[2px] font-body text-sm text-ch-muted hover:text-ch-cream hover:bg-ch-dark transition-colors"
+                >
+                  Bastidor
+                  <span className="text-xs text-ch-subtle">↗</span>
+                </a>
+              </div>
             </div>
 
             {/* El mismo bloque, con más aire lateral y área de toque más alta. */}
