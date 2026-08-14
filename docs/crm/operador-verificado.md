@@ -124,6 +124,7 @@ barrido está completo.
 | `hilvan_registrar_interaccion` | Toques NUESTROS. Acepta fecha pasada (clave para backfill), tipo, resumen, `gmail_thread` (trazabilidad al hilo) y próximo paso. |
 | `hilvan_registrar_respuesta` | Mensajes RECIBIDOS. No corre la escalera; marca respondido el mensaje al que contesta. Guardar el cuerpo importa: ahí está la objeción. |
 | `hilvan_bitacora` | La conversación por líneas, con `direccion` y `quien`. Sin ella no se distingue "le escribimos 3 veces" de "nos escribieron 3 veces". |
+| `hilvan_datos_dudosos` | Fichas que no son de fiar (contacto de otra empresa, nombre mal capturado). Salen de la agenda hasta resolverse. Marcar exige decir qué está mal; resolver, qué se comprobó. |
 | `hilvan_contactos_listar` | El árbol de la marca con sus `contacto_id` + las líneas abiertas sin contacto. Llámala ANTES de crear, para no duplicar. |
 | `hilvan_contacto_crear` | Nombre o email mínimo. Rechaza correo repetido en la misma marca. `fuente` = de dónde salió el dato. Ancla solo si hay una línea abierta sin contacto. |
 | `hilvan_contacto_editar` | Corrige sin perder la conversación colgada del contacto. |

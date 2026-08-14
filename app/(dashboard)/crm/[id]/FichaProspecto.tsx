@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Prospecto, CrmInteraccion, CrmHilo, CrmNota, CrmContacto, CrmBorrador, CrmLectura, CrmInsight, EtapaProspecto, ChecklistItem } from '@/types'
 import { ETAPA_PROSPECTO_LABELS, ETAPAS_PIPELINE_ACTIVAS, ETAPAS_CAJON, CHECKLIST_PROSPECTO, CHECKLIST_LABELS, SCORES_PROSPECTO, TAMANOS_EMPRESA, TAMANO_LABELS, RUBROS_PROSPECTO, RUBRO_LABELS, TIPOS_CLIENTE, TIPO_CLIENTE_LABELS } from '@/types'
-import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, asignarResponsable, asignarPrioridad, clasificarProspecto, solicitarAsignacion } from '@/app/actions/crm'
+import { moverEtapa, eliminarProspecto, derivarBrief, toggleChecklist, asignarResponsable, asignarPrioridad, clasificarProspecto, solicitarAsignacion, marcarDatosDudosos, resolverDatosDudosos } from '@/app/actions/crm'
 import { toastOk, toastError } from '@/lib/toast'
 import Bitacora from '@/components/crm/Bitacora'
 import NotasProspecto from '@/components/crm/NotasProspecto'
@@ -55,6 +55,32 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
       } catch (e) {
         toastError(e instanceof Error ? e.message : 'Error al pedir el prospecto')
       }
+    })
+  }
+
+  const marcarDuda = () => {
+    const duda = window.prompt('¿Qué está mal en esta ficha? (ej: el contacto es de otra empresa)')
+    if (!duda?.trim()) return
+    startTransition(async () => {
+      try {
+        const res = await marcarDatosDudosos(p.id, duda)
+        if (res.error) { toastError(res.error); return }
+        momento('guardado', { mensaje: 'Marcado para verificar' })
+        router.refresh()
+      } catch (e) { toastError(e instanceof Error ? e.message : 'Error') }
+    })
+  }
+
+  const resolverDuda = () => {
+    const q = window.prompt('¿Qué verificaste? Queda registrado.')
+    if (!q?.trim()) return
+    startTransition(async () => {
+      try {
+        const res = await resolverDatosDudosos(p.id, q)
+        if (res.error) { toastError(res.error); return }
+        momento('guardado', { mensaje: 'Ficha verificada' })
+        router.refresh()
+      } catch (e) { toastError(e instanceof Error ? e.message : 'Error') }
     })
   }
 
@@ -156,6 +182,24 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
         </Link>
       </div>
 
+      {/* Antes que nada: si la ficha no es de fiar, todo lo que sigue hay que
+          leerlo sabiéndolo — y sobre todo, no hay que escribirle. */}
+      {p.datos_dudosos && (
+        <div className="border border-red-400/40 bg-red-400/5 px-4 py-3 mb-8 flex items-start gap-3">
+          <span className="w-2 h-2 bg-red-400 shrink-0 mt-1.5" aria-hidden />
+          <div className="flex-1">
+            <p className="font-body text-xs text-red-400 leading-relaxed">
+              Datos por verificar — está fuera de la agenda y no se le escribe hasta resolverlo.
+            </p>
+            {p.duda && <p className="font-body text-xs text-ch-muted mt-1 leading-relaxed">{p.duda}</p>}
+          </div>
+          <button onClick={resolverDuda} disabled={isPending}
+            className="font-body text-[9px] tracking-[0.2em] uppercase text-ch-muted hover:text-ch-cream transition-colors disabled:opacity-50 shrink-0">
+            Ya lo verifiqué
+          </button>
+        </div>
+      )}
+
       {/* Datos rápidos */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 mb-8 pb-8 border-b border-ch-border">
         <div ref={resp.ref}>
@@ -181,6 +225,16 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
           >
             Pedir este prospecto
           </button>
+          {!p.datos_dudosos && (
+            <button
+              type="button"
+              onClick={marcarDuda}
+              disabled={isPending}
+              className="mt-1 block font-body text-[9px] tracking-[0.2em] uppercase text-ch-subtle hover:text-red-400 transition-colors disabled:opacity-50"
+            >
+              Datos erróneos
+            </button>
+          )}
         </div>
         <div ref={prio.ref}>
           <p className="font-body text-[9px] text-ch-subtle uppercase tracking-[0.3em] mb-1">Prioridad</p>

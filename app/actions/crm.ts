@@ -413,7 +413,7 @@ export async function procesarDigestMatinal(
   ) as { id: string; nombre: string; email: string | null }[]
 
   const [{ data: prospectos }, { data: borradores }, cotejo] = await Promise.all([
-    admin.from('prospectos').select(`id, empresa, etapa, responsable_id, snooze_hasta, crm_interacciones(${CAMPOS_TOQUE}, enviado_por_id, enviado_por)`),
+    admin.from('prospectos').select(`id, empresa, etapa, responsable_id, snooze_hasta, datos_dudosos, crm_interacciones(${CAMPOS_TOQUE}, enviado_por_id, enviado_por)`),
     admin.from('crm_borradores').select('prospecto_id').eq('estado', 'listo'),
     getEstadoCotejo(),
   ])
@@ -428,7 +428,9 @@ export async function procesarDigestMatinal(
 
   for (const p of (prospectos ?? []) as any[]) {
     respDe.set(p.id, p.responsable_id)
-    if (!p.responsable_id || fueraDeAgenda(p.etapa)) continue
+    // Con la ficha en duda no se contacta: escribirle a la persona equivocada
+    // de la empresa equivocada es peor que no escribir.
+    if (!p.responsable_id || fueraDeAgenda(p.etapa) || p.datos_dudosos) continue
 
     const a = activos.get(p.responsable_id) ?? { total: 0, porContactar: 0 }
     a.total++
@@ -1171,6 +1173,60 @@ export async function eliminarNota(
   const { error } = await acceso.supabase.from('crm_notas').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath(`/crm/${prospectoId}`)
+  return { ok: true }
+}
+
+/**
+ * Marca la ficha como no confiable, o levanta la marca.
+ *
+ * Sale de la agenda mientras dure: un prospecto en frío no empeora si lo dejas
+ * quieto, pero uno con la ficha equivocada empeora cada vez que lo trabajas.
+ * Resolver EXIGE decir qué se verificó — si no, la marca se levanta sola con el
+ * tiempo y nadie sabe si alguien miró de verdad.
+ */
+export async function marcarDatosDudosos(
+  id: string,
+  duda: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const texto = duda.trim()
+  if (!texto) return { error: 'Escribe qué es lo que está mal: una marca sin motivo no le dice nada a quien la encuentre' }
+
+  const { error } = await acceso.supabase
+    .from('prospectos').update({ datos_dudosos: true, duda: texto }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${id}`)
+  return { ok: true }
+}
+
+export async function resolverDatosDudosos(
+  id: string,
+  queSeVerifico: string,
+): Promise<{ ok?: true; error?: string }> {
+  const acceso = await verificarAccesoCrm()
+  if (!acceso.ok) return { error: acceso.error }
+
+  const texto = queSeVerifico.trim()
+  if (!texto) return { error: 'Di qué verificaste: sin eso no se sabe si alguien miró de verdad' }
+
+  const { data: antes } = await acceso.supabase
+    .from('prospectos').select('duda').eq('id', id).maybeSingle<{ duda: string | null }>()
+
+  // La duda no se borra: queda como historia de qué estuvo mal y cómo se
+  // resolvió. Borrarla dejaría la ficha igual a una que nunca tuvo problema.
+  const { error } = await acceso.supabase
+    .from('prospectos')
+    .update({
+      datos_dudosos: false,
+      duda: `[Resuelto ${hoyChileISO()}] ${texto}${antes?.duda ? `\n\nDecía: ${antes.duda}` : ''}`,
+    })
+    .eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/crm')
+  revalidatePath(`/crm/${id}`)
   return { ok: true }
 }
 

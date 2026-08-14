@@ -34,14 +34,18 @@ export async function GET(req: Request) {
   const { data, error } = await admin
     .from('prospectos')
     .select(
-      'id, empresa, etapa, snooze_hasta, ' +
+      'id, empresa, etapa, snooze_hasta, datos_dudosos, duda, ' +
       'responsable:profiles!prospectos_responsable_id_fkey(nombre), ' +
       `crm_interacciones(${CAMPOS_TOQUE}, proximo_paso, fecha_proximo)`,
     )
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // Los de datos dudosos NO entran en la agenda: contactar con la ficha
+  // equivocada es peor que no contactar. Se devuelven aparte para que se vean.
+  const dudosos = (data ?? []).filter((p: any) => p.datos_dudosos)
+
   const items = (data ?? [])
-    .filter((p: any) => !fueraDeAgenda(p.etapa))
+    .filter((p: any) => !fueraDeAgenda(p.etapa) && !p.datos_dudosos)
     .map((p: any) => {
       const toques = p.crm_interacciones ?? []
       const cad = calcularCadencia(aToques(toques), hoy, p.snooze_hasta)
@@ -78,6 +82,12 @@ export async function GET(req: Request) {
   return NextResponse.json({
     hoy,
     dias,
+    // Fuera de la agenda por datos poco fiables. Van acá y no escondidos:
+    // resolverlos es trabajo, y sin verlos nadie lo hace.
+    por_verificar: dudosos.map((p: any) => ({
+      prospecto_id: p.id, empresa: p.empresa, duda: p.duda,
+      responsable: p.responsable?.nombre ?? null,
+    })),
     total: items.length,
     pendientes_hoy: items.filter((i) => i.pendiente).length,
     items,

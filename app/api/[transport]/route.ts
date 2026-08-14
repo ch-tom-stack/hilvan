@@ -1556,7 +1556,7 @@ const baseHandler = createMcpHandler(
       'hilvan_proximos_seguimientos',
       {
         title: 'Próximos seguimientos (CRM)',
-        description: 'LA AGENDA DE CONTACTO: a quién le toca hoy y a quién dentro de `dias` (default 7). Corre sobre el mismo motor de cadencia que el digest matinal y la pantalla del CRM, así que sus números coinciden — úsala para planificar el día en vez de hilvan_digest_matinal {dry:true}. Ordenada por prioridad: primero quien respondió, después el más atrasado. Devuelve estado, ultimo_toque, dias_atraso y sin_respuesta. Excluye confirmado/descartado/nurture/en_frio y a los agotados (16 toques sin respuesta).',
+        description: 'LA AGENDA DE CONTACTO: a quién le toca hoy y a quién dentro de `dias` (default 7). Corre sobre el mismo motor de cadencia que el digest matinal y la pantalla del CRM, así que sus números coinciden — úsala para planificar el día en vez de hilvan_digest_matinal {dry:true}. Ordenada por prioridad: primero quien respondió, después el más atrasado. Devuelve aparte `por_verificar`: los que están fuera de la agenda porque su ficha no es de fiar — resolverlos es trabajo, no se esconden. Devuelve estado, ultimo_toque, dias_atraso y sin_respuesta. Excluye confirmado/descartado/nurture/en_frio y a los agotados (16 toques sin respuesta).',
         inputSchema: { dias: z.number().optional().describe('ventana en días (default 7)') },
       },
       async ({ dias }, extra) =>
@@ -1722,6 +1722,23 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/interaccion/editar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_datos_dudosos',
+      {
+        title: 'Fichas por verificar (CRM)',
+        description: 'Marca o levanta la marca de "datos por verificar", y sin argumentos lista los marcados. Es para cuando la FICHA no es de fiar: el contacto es de otra empresa, el nombre se capturó de un menú del sitio, el dato vino de una corrida que trajo basura. NO es lo mismo que En frío — un prospecto frío no empeora si lo dejas quieto, uno con la ficha equivocada empeora cada vez que lo trabajas, así que éste SALE DE LA AGENDA hasta resolverse y no se le escribe. Marcar exige `duda` (qué está mal); resolver exige `verificado` (qué comprobaste), y la duda anterior se conserva como historia.',
+        inputSchema: {
+          prospecto_id: z.string().optional().describe('sin él, lista los marcados'),
+          duda: z.string().optional().describe('qué está mal — para MARCAR'),
+          verificado: z.string().optional().describe('qué comprobaste — para RESOLVER'),
+        },
+      },
+      async (args, extra) =>
+        args?.prospecto_id
+          ? ok(await callAgent(extra as ToolExtra, 'POST', '/crm/datos-dudosos', args))
+          : ok(await callAgent(extra as ToolExtra, 'GET', '/crm/datos-dudosos')),
     )
 
     server.registerTool(

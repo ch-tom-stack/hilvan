@@ -228,6 +228,16 @@ export default function TarjetaProspecto({ prospecto, draggable, onDragStart, pe
         </div>
       )}
 
+      {/* Ficha en duda: lo primero que hay que saber antes de escribirle, así
+          que va arriba del responsable y en rojo — no es un pendiente más, es
+          "no lo trabajes todavía". */}
+      {p.datos_dudosos && (
+        <p className="font-body text-[10px] tracking-[0.15em] uppercase text-red-400 flex items-center gap-1.5 mb-1.5">
+          <span className="w-1.5 h-1.5 bg-red-400 shrink-0" aria-hidden />
+          Datos por verificar
+        </p>
+      )}
+
       {/* Sin dueño no hay lista, y sin lista nadie lo contacta: es un estado que
           hay que resolver, no un dato más. Va en dorado —el color de "requiere
           acción" en toda la app— para que se vea de un vistazo en el tablero.

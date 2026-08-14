@@ -1176,6 +1176,13 @@ export interface Prospecto {
   angulo?: string | null
   producto_objetivo?: string | null
   tamano?: string | null            // chica | mediana | grande (eje de asignación)
+  /**
+   * La ficha tiene datos que no son de fiar. Distinto de "En frío": el frío no
+   * empeora si lo dejas quieto, este empeora cada vez que lo trabajas.
+   * Ortogonal a la etapa — no es una fase del embudo.
+   */
+  datos_dudosos?: boolean | null
+  duda?: string | null
   rubro?: string | null             // ver RUBROS_PROSPECTO (eje de asignación)
   tipo_cliente?: string | null      // ver TIPOS_CLIENTE (eje de asignación)
   /** @deprecated Reemplazado por rubro + tipo_cliente (ago-2026). Sólo histórico. */
