@@ -15,7 +15,19 @@ import { strA } from '@/lib/agent-crm'
 import { aplicarEfectoAprobacion } from '@/lib/crm-aprobaciones'
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PRODUCTOS = new Set(['banco', 'lookbook', 'spot'])
+// Los slugs que usa el SITIO en sus landings, traducidos a los productos de
+// Hilván. Sin este mapa, `banco-audiovisual` y `produccion-estudiantes` no
+// calzaban con nada y el producto se descartaba en silencio: 8 leads de landing
+// quedaron sin producto, y con eso sin la regla de reparto que dependía de él.
+const PRODUCTO_DESDE_SITIO: Record<string, string> = {
+  'lookbook': 'lookbook',
+  'banco': 'banco',
+  'banco-audiovisual': 'banco',
+  'spot': 'spot',
+  'videoclip': 'videoclip',
+  'produccion-estudiantes': 'estudiantes',
+  'estudiantes': 'estudiantes',
+}
 const ARQUETIPO_POR_PRODUCTO: Record<string, string> = { banco: 'feed', lookbook: 'temporadas' }
 
 export interface LeadEntrante {
@@ -64,7 +76,7 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
   const nota = strA(body?.nota)
   const empresa = strA(body?.empresa) || nombre
   const prodRaw = strA(body?.producto)?.toLowerCase() ?? null
-  const producto = prodRaw && PRODUCTOS.has(prodRaw) ? prodRaw : null
+  const producto = prodRaw ? (PRODUCTO_DESDE_SITIO[prodRaw] ?? null) : null
   const arquetipo = producto ? (ARQUETIPO_POR_PRODUCTO[producto] ?? 'sin_definir') : null
   const lectura = strA(body?.lectura)
   const url = strA(body?.url)
@@ -131,10 +143,17 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
   const accion  = strA(body?.accion)
   const pagina  = strA(body?.pagina)
   const campana = strA(body?.campana)
-  const datos =
+  const datosRaw =
     body?.datos && typeof body.datos === 'object' && !Array.isArray(body.datos)
-      ? (JSON.stringify(body.datos).length <= 20_000 ? body.datos : null)
+      ? (JSON.stringify(body.datos).length <= 20_000 ? (body.datos as Record<string, unknown>) : null)
       : null
+
+  // El slug original se conserva aunque no calce con ningún producto: es la
+  // única pista de en qué landing estaba la persona, y descartarlo es cómo se
+  // perdió el dato la primera vez.
+  const datos = prodRaw && prodRaw !== producto
+    ? { ...(datosRaw ?? {}), producto_slug: prodRaw }
+    : datosRaw
 
   const payload: Record<string, unknown> = { empresa, nombre_contacto: nombre, email, origen, notas }
   if (accion) payload.lead_accion = accion

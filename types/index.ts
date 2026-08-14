@@ -1107,7 +1107,7 @@ export const SCORES_PROSPECTO = ['alta', 'media', 'baja'] as const
 
 export const ARQUETIPOS = ['feed', 'temporadas', 'sin_definir'] as const
 
-export const PRODUCTOS_OBJETIVO = ['banco', 'lookbook', 'spot', 'videoclip', 'sin_definir'] as const
+export const PRODUCTOS_OBJETIVO = ['banco', 'lookbook', 'spot', 'videoclip', 'estudiantes', 'sin_definir'] as const
 
 // ── Ejes de asignación de responsable (los clasifica el operador/agente) ─────
 export const TAMANOS_EMPRESA = ['chica', 'mediana', 'grande'] as const
