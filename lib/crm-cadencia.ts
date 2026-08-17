@@ -26,6 +26,28 @@ export function fueraDeAgenda(etapa: string): boolean {
   return (ETAPAS_FUERA_DE_AGENDA as readonly string[]).includes(etapa)
 }
 
+/**
+ * Si este prospecto NO debe aparecer en la agenda del día.
+ *
+ * Existe porque `fueraDeAgenda(etapa)` no alcanzaba: hay dos motivos para no
+ * contactar y estaban en lugares distintos. La pantalla "Lo de hoy" tenía su
+ * propio filtro escrito a mano —excluía `descartado` y `confirmado`, pero no
+ * `en_frio` ni `nurture`— y mostraba como "VENCE HOY" prospectos que el motor
+ * del correo ya había descartado. Las dos superficies decían cosas distintas
+ * sobre el mismo día.
+ *
+ * Los tres consumidores (la pantalla, el digest y la herramienta del operador)
+ * llaman a esta función. Una sola condición, imposible de divergir.
+ */
+export function excluidoDeAgenda(p: { etapa: string; datos_dudosos?: boolean | null }): boolean {
+  // La etapa dice que ya no se persigue.
+  if (fueraDeAgenda(p.etapa)) return true
+  // La ficha no es de fiar: contactar con datos equivocados es peor que no
+  // contactar. Sale hasta que alguien verifique.
+  if (p.datos_dudosos === true) return true
+  return false
+}
+
 /** Días de espera según cuántos toques seguidos van sin respuesta. */
 export function intervaloPara(sinRespuesta: number): number {
   if (sinRespuesta <= 1) return 2

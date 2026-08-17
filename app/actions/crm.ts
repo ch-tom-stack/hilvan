@@ -21,7 +21,7 @@ import { ETAPA_PROSPECTO_LABELS, CHECKLIST_PROSPECTO, TIPOS_INTERACCION, MOTIVOS
 import { aplicarEfectoAprobacion, AplicarError, CAMPOS_CORREGIBLES, type AprobacionRow } from '@/lib/crm-aprobaciones'
 import { agregarBiblioteca, type BibliotecaContactos } from '@/lib/crm-biblioteca'
 import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
-import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, fueraDeAgenda, aToques, CAMPOS_TOQUE, type Cadencia } from '@/lib/crm-cadencia'
+import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, fueraDeAgenda, excluidoDeAgenda, aToques, CAMPOS_TOQUE, type Cadencia } from '@/lib/crm-cadencia'
 import { HERRAMIENTA_DIGEST } from '@/lib/agent-crm'
 import { evaluarCotejo, HERRAMIENTAS_COTEJO, type EstadoCotejo } from '@/lib/crm-reconciliacion'
 import { hiloVigente, insertarRespuesta, abrirHiloEn, cerrarHiloEn, reabrirHiloEn, type RespuestaInput } from '@/lib/crm-conversacion'
@@ -430,7 +430,7 @@ export async function procesarDigestMatinal(
     respDe.set(p.id, p.responsable_id)
     // Con la ficha en duda no se contacta: escribirle a la persona equivocada
     // de la empresa equivocada es peor que no escribir.
-    if (!p.responsable_id || fueraDeAgenda(p.etapa) || p.datos_dudosos) continue
+    if (!p.responsable_id || excluidoDeAgenda(p)) continue
 
     const a = activos.get(p.responsable_id) ?? { total: 0, porContactar: 0 }
     a.total++
@@ -1747,12 +1747,11 @@ export async function procesarSeguimientosCrm(
   const diasEstancado = opts.diasEstancado ?? DIAS_ESTANCADO_DEFAULT
   const admin = createAdminClient()
   const hoy = hoyChileISO()
-  const INACTIVAS = ['confirmado', 'descartado', 'nurture', 'en_frio']
 
   // Prospectos activos con responsable e interacciones (para vencidos y estancados).
   const { data: prospectos } = await admin
     .from('prospectos')
-    .select('id, empresa, etapa, created_at, responsable:profiles!prospectos_responsable_id_fkey(id, nombre, email), crm_interacciones(proximo_paso, fecha_proximo, fecha, created_at)')
+    .select('id, empresa, etapa, created_at, datos_dudosos, responsable:profiles!prospectos_responsable_id_fkey(id, nombre, email), crm_interacciones(proximo_paso, fecha_proximo, fecha, created_at)')
 
   const porResponsable = new Map<string, DigestResponsable>()
   const keyDe = (r: any) => (r?.id ?? 'sin_responsable')
@@ -1768,7 +1767,9 @@ export async function procesarSeguimientosCrm(
   let totalEstancados = 0
 
   for (const p of (prospectos ?? []) as any[]) {
-    if (INACTIVAS.includes(p.etapa)) continue
+    // Cuarta copia de la misma lista, encontrada al arreglar "Lo de hoy":
+    // ahora también pregunta a la función compartida.
+    if (excluidoDeAgenda(p)) continue
     const r = p.responsable
 
     // Vencidos: la interacción con fecha_proximo más próxima ya pasada.

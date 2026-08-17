@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hoyChile } from '@/lib/agent-crm'
-import { calcularCadencia, prioridadCadencia, fueraDeAgenda, sumarDias, aToques, CAMPOS_TOQUE } from '@/lib/crm-cadencia'
+import { calcularCadencia, prioridadCadencia, excluidoDeAgenda, sumarDias, aToques, CAMPOS_TOQUE } from '@/lib/crm-cadencia'
 
 export const runtime = 'nodejs'
 
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
   const dudosos = (data ?? []).filter((p: any) => p.datos_dudosos)
 
   const items = (data ?? [])
-    .filter((p: any) => !fueraDeAgenda(p.etapa) && !p.datos_dudosos)
+    .filter((p: any) => !excluidoDeAgenda(p))
     .map((p: any) => {
       const toques = p.crm_interacciones ?? []
       const cad = calcularCadencia(aToques(toques), hoy, p.snooze_hasta)

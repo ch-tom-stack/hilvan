@@ -7,6 +7,8 @@ import {
   sumarDias,
   LIMITE_SIN_RESPUESTA,
   fueraDeAgenda,
+  excluidoDeAgenda,
+  ETAPAS_FUERA_DE_AGENDA,
   aToques,
   esToqueContable,
   type ToqueCadencia,
@@ -204,5 +206,35 @@ describe('aToques', () => {
     const [t] = aToques([{ fecha: '2026-08-05', respondido: true, direccion: 'recibido', cuenta_cadencia: false }])
     expect(t).toEqual({ fecha: '2026-08-05', respondido: true, direccion: 'recibido', cuentaCadencia: false })
     expect(esToqueContable(t)).toBe(false)
+  })
+})
+
+describe('excluidoDeAgenda', () => {
+  // Bug real (13-ago-2026): la pantalla "Lo de hoy" tenía su propio filtro y
+  // excluía sólo `descartado` y `confirmado`. OH!Creativo y Aramco, ambos en
+  // `en_frio`, aparecían con badge "VENCE HOY" mientras el motor del correo ya
+  // los había descartado. Las dos superficies decían cosas distintas.
+  it('excluye las cuatro etapas que no se persiguen', () => {
+    for (const etapa of ETAPAS_FUERA_DE_AGENDA) {
+      expect(excluidoDeAgenda({ etapa })).toBe(true)
+    }
+  })
+
+  it('en_frio y nurture también quedan fuera, no sólo descartado y confirmado', () => {
+    expect(excluidoDeAgenda({ etapa: 'en_frio' })).toBe(true)
+    expect(excluidoDeAgenda({ etapa: 'nurture' })).toBe(true)
+  })
+
+  it('deja pasar las etapas activas', () => {
+    for (const etapa of ['prospecto', 'contacto', 'conversacion']) {
+      expect(excluidoDeAgenda({ etapa })).toBe(false)
+    }
+  })
+
+  it('excluye al que tiene la ficha en duda, aunque su etapa esté activa', () => {
+    expect(excluidoDeAgenda({ etapa: 'contacto', datos_dudosos: true })).toBe(true)
+    expect(excluidoDeAgenda({ etapa: 'contacto', datos_dudosos: false })).toBe(false)
+    // Ausente = no hay duda: las filas viejas no traen el campo.
+    expect(excluidoDeAgenda({ etapa: 'contacto' })).toBe(false)
   })
 })

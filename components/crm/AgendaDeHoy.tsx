@@ -6,7 +6,7 @@ import type { Prospecto } from '@/types'
 import { registrarToque, snoozeProspecto } from '@/app/actions/crm'
 import { momento } from '@/lib/momentos'
 import { revisarMedallasSuave } from '@/lib/medallas-cliente'
-import { prioridadCadencia } from '@/lib/crm-cadencia'
+import { prioridadCadencia, excluidoDeAgenda } from '@/lib/crm-cadencia'
 import { formatFecha } from '@/lib/fechas'
 
 const CANALES: { tipo: string; label: string }[] = [
@@ -45,7 +45,9 @@ export default function AgendaDeHoy({ prospectos, usuarioId }: Props) {
   const pendientes = useMemo(() => (
     prospectos
       .filter(p => p.responsable?.id === usuarioId)
-      .filter(p => p.etapa !== 'descartado' && p.etapa !== 'confirmado')
+      // Mismo criterio que el digest y que la herramienta del operador: las
+      // tres superficies no pueden contradecirse sobre el mismo día.
+      .filter(p => !excluidoDeAgenda(p))
       .filter(p => p.cadencia?.pendiente)
       .sort((a, b) => prioridadCadencia(b.cadencia!) - prioridadCadencia(a.cadencia!))
   ), [prospectos, usuarioId])
