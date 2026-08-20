@@ -13,11 +13,12 @@ interface Props {
   /** Para poner los destinatarios sobre el borrador, listos para copiar. */
   contactos: CrmContacto[]
   /**
-   * El hilo de Gmail vivo, si lo hay. Cuando existe, el correo NO se compone
-   * nuevo: se contesta dentro de la cadena, o se parte la conversación en dos
-   * y el cliente ve dos hilos sueltos del mismo tema.
+   * Si ya hay cadena de correo con este prospecto. Cuando la hay, el correo NO
+   * se compone nuevo: se contesta dentro de la cadena, o se parte la
+   * conversación en dos y el cliente ve dos hilos sueltos del mismo tema.
+   * Lo decide `hayCadenaDeCorreo` (lib/crm-conversacion.ts).
    */
-  gmailThread?: string | null
+  enCadena?: boolean
 }
 
 type FormState = { id?: string; asunto: string; cuerpo: string; linksText: string; adjuntosText: string; estado: string }
@@ -85,7 +86,7 @@ function Copiar({ texto, label = 'Copiar', className = '' }: { texto: string; la
   )
 }
 
-export default function BorradorRespuesta({ prospectoId, borradores, contactos, gmailThread }: Props) {
+export default function BorradorRespuesta({ prospectoId, borradores, contactos, enCadena }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [abierto, setAbierto] = useState<boolean>(false)
@@ -211,7 +212,7 @@ export default function BorradorRespuesta({ prospectoId, borradores, contactos, 
         <Vigente
           b={vigente}
           contactos={contactos}
-          gmailThread={gmailThread}
+          enCadena={enCadena}
           ocupado={isPending}
           confirmandoBorrar={borrar === vigente.id}
           onEditar={() => abrirEditar(vigente)}
@@ -259,12 +260,12 @@ export default function BorradorRespuesta({ prospectoId, borradores, contactos, 
 // ── El borrador vigente ──────────────────────────────────────────────────────
 
 function Vigente({
-  b, contactos, gmailThread, ocupado, confirmandoBorrar,
+  b, contactos, enCadena, ocupado, confirmandoBorrar,
   onEditar, onPedirBorrar, onCancelarBorrar, onBorrar,
 }: {
   b: CrmBorrador
   contactos: CrmContacto[]
-  gmailThread?: string | null
+  enCadena?: boolean
   ocupado: boolean
   confirmandoBorrar: boolean
   onEditar: () => void
@@ -278,8 +279,6 @@ function Vigente({
     ? contactos.filter(c => c.id === b.contacto_id && c.email)
     : contactos.filter(c => c.email)
   const correos = destino.map(c => c.email!).join(', ')
-
-  const enCadena = Boolean(gmailThread)
 
   return (
     <div className="border border-ch-border bg-ch-black/20">

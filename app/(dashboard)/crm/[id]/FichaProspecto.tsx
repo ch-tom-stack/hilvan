@@ -15,6 +15,7 @@ import ComoAbordarlo from '@/components/crm/ComoAbordarlo'
 import { Tag } from '@/components/crm/TarjetaProspecto'
 import { momento } from '@/lib/momentos'
 import { useCambiado } from '@/components/ui/useCambiado'
+import { hayCadenaDeCorreo } from '@/lib/crm-conversacion'
 
 interface Props {
   prospecto: Prospecto
@@ -161,12 +162,9 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
 
   const lectura = lecturas[0]
 
-  // ¿Hay una cadena de correo viva con este prospecto? `interacciones` viene
-  // ordenada de la más nueva a la más vieja, y se ignoran las de hilos cerrados
-  // (cuenta_cadencia false): ésa es una conversación que ya se dio por
-  // terminada, y contestar ahí sería revivir un hilo muerto.
-  const cadenaViva =
-    interacciones.find(i => i.gmail_thread && i.cuenta_cadencia !== false)?.gmail_thread ?? null
+  // ¿Hay cadena de correo? Basta un toque de correo previo — ver
+  // hayCadenaDeCorreo, que explica por qué NO se usa `gmail_thread`.
+  const enCadena = hayCadenaDeCorreo(interacciones)
 
   return (
     <div className="p-6 lg:p-10 max-w-4xl">
@@ -351,7 +349,7 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
             prospectoId={p.id}
             borradores={borradores}
             contactos={contactos}
-            gmailThread={cadenaViva}
+            enCadena={enCadena}
           />
 
           {/* Notas sueltas, con vista maximizada. La Lectura con dossier se

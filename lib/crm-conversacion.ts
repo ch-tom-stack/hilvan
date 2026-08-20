@@ -199,3 +199,30 @@ export async function abrirHiloEn(
   if (error) return { error: error.message }
   return { hilo_id: (data as { id: string } | null)?.id }
 }
+
+/**
+ * Si probablemente ya existe una cadena de correo con este prospecto.
+ *
+ * La heurística es simple a propósito: **si hubo un toque anterior por correo,
+ * probablemente es cadena.** El primer intento usaba `gmail_thread`, que parece
+ * más preciso pero sólo lo llena el cotejo diario — todo lo registrado a mano
+ * queda sin él. De 105 toques de correo, 49 no lo tenían: 20 prospectos con
+ * historial quedaban marcados como "sin cadena", justo donde importa no
+ * equivocarse.
+ *
+ * Se ignoran los hilos cerrados (`cuenta_cadencia === false`): esa conversación
+ * ya se dio por terminada y contestar ahí sería revivir un correo muerto.
+ *
+ * Es una probabilidad, no un hecho, y aun así conviene bloquear el copiado. El
+ * error no es simétrico: si no había cadena, abrir Gmail y comprobarlo cuesta
+ * nada —el correo está igual en el árbol de contactos—; si la había y se compone
+ * uno nuevo, el cliente ve dos hilos sueltos del mismo tema y no hay vuelta
+ * atrás.
+ */
+export function hayCadenaDeCorreo(
+  interacciones: { tipo?: string | null; gmail_thread?: string | null; cuenta_cadencia?: boolean | null }[],
+): boolean {
+  return interacciones.some(i =>
+    i.cuenta_cadencia !== false && (i.tipo === 'correo' || Boolean(i.gmail_thread)),
+  )
+}
