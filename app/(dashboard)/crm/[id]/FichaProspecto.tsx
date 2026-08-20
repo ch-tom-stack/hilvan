@@ -161,6 +161,13 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
 
   const lectura = lecturas[0]
 
+  // ¿Hay una cadena de correo viva con este prospecto? `interacciones` viene
+  // ordenada de la más nueva a la más vieja, y se ignoran las de hilos cerrados
+  // (cuenta_cadencia false): ésa es una conversación que ya se dio por
+  // terminada, y contestar ahí sería revivir un hilo muerto.
+  const cadenaViva =
+    interacciones.find(i => i.gmail_thread && i.cuenta_cadencia !== false)?.gmail_thread ?? null
+
   return (
     <div className="p-6 lg:p-10 max-w-4xl">
       {/* Header */}
@@ -340,7 +347,12 @@ export default function FichaProspecto({ prospecto, interacciones, hilos, notasP
           <ContactosProspecto prospectoId={p.id} contactos={contactos} />
 
           {/* Casilla de borrador de respuesta */}
-          <BorradorRespuesta prospectoId={p.id} borradores={borradores} />
+          <BorradorRespuesta
+            prospectoId={p.id}
+            borradores={borradores}
+            contactos={contactos}
+            gmailThread={cadenaViva}
+          />
 
           {/* Notas sueltas, con vista maximizada. La Lectura con dossier se
               muestra acá pero se lee de crm_lecturas: no es una nota. */}
