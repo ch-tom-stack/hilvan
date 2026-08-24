@@ -310,56 +310,57 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
           <Text style={S.sectionBarText}>Detalle Base</Text>
         </View>
 
-        {(cotizacion.departamentos ?? []).map(dep => {
-          const depBundle = dep.precio_manual != null
-          const tieneContenido =
-            depBundle ||
-            (dep.subgrupos?.some(sg => (sg.items?.length ?? 0) > 0) ?? false) ||
-            (dep.items?.length ?? 0) > 0
-          if (!tieneContenido) return null
+        {(() => {
+          // Categorías con contenido real (las vacías no se dibujan).
+          const depsVisibles = (cotizacion.departamentos ?? []).filter(dep => {
+            const depBundle = dep.precio_manual != null
+            return (
+              depBundle ||
+              (dep.subgrupos?.some(sg => (sg.items?.length ?? 0) > 0) ?? false) ||
+              (dep.items?.length ?? 0) > 0
+            )
+          })
 
-          return (
-            // wrap={false}: la categoría (header + ítems) no se parte entre páginas,
-            // así el título nunca queda huérfano al pie de una hoja.
-            <View key={dep.id} wrap={false}>
-              <View style={S.depRow}>
-                <Text style={S.depNombre}>{dep.nombre}</Text>
-                <Text style={S.depTotal}>{formatCLP(subtotalDepartamento(dep))}</Text>
+          const bloqueTotales = (
+            <View style={S.totalesContainer}>
+              <View style={S.totalSeparator} />
+              <View style={S.totalRow}>
+                <Text style={S.totalLabel}>Valor (antes de Impuestos)</Text>
+                <Text style={S.totalValue}>{formatCLP(totales.neto_con_descuento)}</Text>
               </View>
-
-              {(dep.subgrupos ?? []).filter(sg => (sg.items?.length ?? 0) > 0 || sg.precio_manual != null).map(sg => (
-                <View key={sg.id}>
-                  <View style={S.sgRow}>
-                    <Text style={S.sgNombre}>{sg.nombre}</Text>
-                    <Text style={S.sgTotal}>{formatCLP(subtotalSubgrupo(sg))}</Text>
-                  </View>
-                  {(sg.items ?? []).map(item => <ItemPDF key={item.id} item={item} simple={depBundle || sg.precio_manual != null} />)}
+              {cotizacion.con_iva && (
+                <View style={S.totalRow}>
+                  <Text style={S.totalLabel}>Valor IVA Incl.</Text>
+                  <Text style={S.totalValue}>{formatCLP(totales.total)}</Text>
                 </View>
-              ))}
-
-              {(dep.items ?? []).map(item => <ItemPDF key={item.id} item={item} simple={depBundle} />)}
+              )}
+              <View style={S.totalFinalSeparator} />
+              <View style={S.totalFinalRow}>
+                <Text style={S.totalFinalLabel}>TOTAL</Text>
+                <Text style={S.totalFinalValue}>{formatCLP(totales.total)}</Text>
+              </View>
             </View>
           )
-        })}
 
-        <View style={S.totalesContainer}>
-          <View style={S.totalSeparator} />
-          <View style={S.totalRow}>
-            <Text style={S.totalLabel}>Valor (antes de Impuestos)</Text>
-            <Text style={S.totalValue}>{formatCLP(totales.neto_con_descuento)}</Text>
-          </View>
-          {cotizacion.con_iva && (
-            <View style={S.totalRow}>
-              <Text style={S.totalLabel}>Valor IVA Incl.</Text>
-              <Text style={S.totalValue}>{formatCLP(totales.total)}</Text>
-            </View>
-          )}
-          <View style={S.totalFinalSeparator} />
-          <View style={S.totalFinalRow}>
-            <Text style={S.totalFinalLabel}>TOTAL</Text>
-            <Text style={S.totalFinalValue}>{formatCLP(totales.total)}</Text>
-          </View>
-        </View>
+          // Principio de paginación: los totales NUNCA quedan huérfanos en una
+          // página propia. La última categoría y los totales viajan juntos
+          // (wrap={false}): si no caben al pie de la página 1, se pasan JUNTOS
+          // a la 2 — que así arranca con líneas de glosa y queda equilibrada,
+          // en vez de mostrar solo el total flotando.
+          return (
+            <>
+              {depsVisibles.slice(0, -1).map(dep => (
+                <DepPDF key={dep.id} dep={dep} />
+              ))}
+              <View wrap={false}>
+                {depsVisibles.length > 0 && (
+                  <DepPDF dep={depsVisibles[depsVisibles.length - 1]} />
+                )}
+                {bloqueTotales}
+              </View>
+            </>
+          )
+        })()}
 
         {cotizacion.notas_cliente && (
           <View style={S.notasContainer}>
@@ -379,6 +380,32 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
 
       </Page>
     </Document>
+  )
+}
+
+// Una categoría completa (header + subgrupos + ítems). wrap={false}: no se
+// parte entre páginas, así el título nunca queda huérfano al pie de una hoja.
+function DepPDF({ dep }: { dep: any }) {
+  const depBundle = dep.precio_manual != null
+  return (
+    <View wrap={false}>
+      <View style={S.depRow}>
+        <Text style={S.depNombre}>{dep.nombre}</Text>
+        <Text style={S.depTotal}>{formatCLP(subtotalDepartamento(dep))}</Text>
+      </View>
+
+      {(dep.subgrupos ?? []).filter((sg: any) => (sg.items?.length ?? 0) > 0 || sg.precio_manual != null).map((sg: any) => (
+        <View key={sg.id}>
+          <View style={S.sgRow}>
+            <Text style={S.sgNombre}>{sg.nombre}</Text>
+            <Text style={S.sgTotal}>{formatCLP(subtotalSubgrupo(sg))}</Text>
+          </View>
+          {(sg.items ?? []).map((item: any) => <ItemPDF key={item.id} item={item} simple={depBundle || sg.precio_manual != null} />)}
+        </View>
+      ))}
+
+      {(dep.items ?? []).map((item: any) => <ItemPDF key={item.id} item={item} simple={depBundle} />)}
+    </View>
   )
 }
 
