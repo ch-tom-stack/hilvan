@@ -74,10 +74,31 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── 2) Número de grupo (RPC) ──────────────────────────────────────────────
-  const { data: numeroData, error: numeroError } = await admin.rpc('siguiente_numero_grupo')
-  if (numeroError) {
-    return NextResponse.json({ error: numeroError.message }, { status: 500 })
+  // ── 2) Número de grupo ────────────────────────────────────────────────────
+  // Serie activa (default): RPC siguiente_numero_grupo (CH-{año}-NNN, contador
+  // continuo). Serie alternativa (import histórico, ej. 'ARCH'): contador propio
+  // calculado acá — max de los CH-{SERIE}-NNN existentes + 1, desde 001. La RPC
+  // ignora estas series (ver sql/cotizaciones_archivo.sql), así que no se
+  // contaminan mutuamente.
+  let numeroData: string
+  if (cabecera.serie) {
+    const prefijo = `CH-${cabecera.serie}-`
+    const { data: existentes, error: eSerie } = await admin
+      .from('cotizacion_grupos')
+      .select('numero_base')
+      .like('numero_base', `${prefijo}%`)
+    if (eSerie) return NextResponse.json({ error: eSerie.message }, { status: 500 })
+    const max = (existentes ?? []).reduce((m, g: any) => {
+      const n = parseInt(String(g.numero_base).slice(prefijo.length), 10)
+      return Number.isFinite(n) && n > m ? n : m
+    }, 0)
+    numeroData = `${prefijo}${String(max + 1).padStart(3, '0')}`
+  } else {
+    const { data, error: numeroError } = await admin.rpc('siguiente_numero_grupo')
+    if (numeroError) {
+      return NextResponse.json({ error: numeroError.message }, { status: 500 })
+    }
+    numeroData = data
   }
 
   // ── 3) Crear grupo ────────────────────────────────────────────────────────
@@ -136,6 +157,7 @@ export async function POST(req: Request) {
       notas_cliente: cabecera.notas_cliente,
       fecha_factura_emitida: cabecera.fecha_factura_emitida,
       numero_factura: cabecera.numero_factura,
+      es_archivo: cabecera.historica,
       created_by: createdBy,
     })
     .select('id')
@@ -243,5 +265,6 @@ export async function POST(req: Request) {
     cotizacion_id: cotizacionId,
     numero: grupo.numero_base,
     url: `/cotizaciones/${cotizacionId}`,
+    ...(cabecera.historica ? { es_archivo: true } : {}),
   })
 }

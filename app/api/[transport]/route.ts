@@ -263,7 +263,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Crear cotización',
         description:
-          'Crea una cotización COMPLETA, idéntica a la de un usuario y 100% editable en la app después. Define nombre (requerido) y, opcionalmente, cliente (cliente_id o cliente_nombre_libre), proyecto, IVA, descuento global, notas y la estructura de departamentos → subgrupos → ítems. Si no entregas departamentos, crea los 8 por defecto (como "Nueva cotización"). Devuelve {cotizacion_id, numero, url}. Reversible con hilvan_deshacer (borra todo en cascada). CONFIRMA con el usuario antes de llamar; crea una cotización editable en la app.',
+          'Crea una cotización COMPLETA, idéntica a la de un usuario y 100% editable en la app después. Define nombre (requerido) y, opcionalmente, cliente (cliente_id o cliente_nombre_libre), proyecto, IVA, descuento global, notas y la estructura de departamentos → subgrupos → ítems. Si no entregas departamentos, crea los 8 por defecto (como "Nueva cotización"). Para importar cotizaciones HISTÓRICAS (pre-Hilván): pasa serie="ARCH" (numeración propia CH-ARCH-001… que no toca el contador activo) + historica=true (flag es_archivo, queda fuera de métricas). Devuelve {cotizacion_id, numero, url}. Reversible con hilvan_deshacer (borra todo en cascada). CONFIRMA con el usuario antes de llamar; crea una cotización editable en la app.',
         inputSchema: {
           nombre: z.string(),
           cliente_id: z.string().optional(),
@@ -279,6 +279,8 @@ const baseHandler = createMcpHandler(
           notas_cliente: z.string().optional(),
           fecha_factura_emitida: z.string().optional().describe('YYYY-MM-DD'),
           numero_factura: z.string().optional(),
+          serie: z.string().optional().describe('serie alternativa de numeración, solo letras 2-8 (ej. "ARCH" → CH-ARCH-001); default: serie activa CH-{año}-NNN'),
+          historica: z.boolean().optional().describe('true = cotización de archivo (es_archivo): fuera de métricas/pipeline. default false'),
           departamentos: z
             .array(
               z.object({

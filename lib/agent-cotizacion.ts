@@ -99,6 +99,13 @@ export interface CabeceraNormalizada {
   notas_cliente: string | null
   fecha_factura_emitida: string | null
   numero_factura: string | null
+  // Serie alternativa de numeración (ej. 'ARCH' → CH-ARCH-001). null = serie
+  // activa normal (CH-{año}-NNN vía RPC). Solo letras, para que nunca colisione
+  // con el formato de año ni contamine su contador.
+  serie: string | null
+  // true → cotización de archivo (importada, pre-Hilván): se marca es_archivo
+  // en la DB para excluirla de métricas/pipeline.
+  historica: boolean
 }
 
 export interface CotizacionNormalizada {
@@ -276,6 +283,19 @@ export function validarCotizacion(body: any): ResultadoValidacion {
   }
   const numero_factura = strOpcional(body.numero_factura)
 
+  // Serie alternativa (import histórico): solo letras A-Z, 2-8 caracteres.
+  // Letras-solo garantiza que jamás matchee el formato de la serie activa
+  // (CH-{año}-NNN) ni su contador. Se normaliza a mayúsculas.
+  let serie: string | null = null
+  if (body.serie !== undefined && body.serie !== null && body.serie !== '') {
+    const s = String(body.serie).trim().toUpperCase()
+    if (!/^[A-Z]{2,8}$/.test(s)) {
+      return { ok: false, error: 'serie inválida: solo letras A-Z, entre 2 y 8 (ej. "ARCH")' }
+    }
+    serie = s
+  }
+  const historica = boolConDefault(body.historica, false)
+
   const cabecera: CabeceraNormalizada = {
     nombre,
     cliente_id,
@@ -291,6 +311,8 @@ export function validarCotizacion(body: any): ResultadoValidacion {
     notas_cliente: strOpcional(body.notas_cliente),
     fecha_factura_emitida,
     numero_factura,
+    serie,
+    historica,
   }
 
   // Departamentos: opcionales. Si no vienen → usar los 8 por defecto.

@@ -267,6 +267,8 @@ export interface Cotizacion {
   fecha_factura_emitida?: string | null
   fecha_pago_recibido?: string | null
   numero_factura?: string | null
+  /** Cotización de archivo (importada, pre-Hilván): excluir de métricas/pipeline. */
+  es_archivo?: boolean
 
   con_iva: boolean
   formato_pdf: FormatoPDF
