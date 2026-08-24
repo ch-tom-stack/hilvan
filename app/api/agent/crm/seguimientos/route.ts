@@ -3,6 +3,7 @@ import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hoyChile } from '@/lib/agent-crm'
 import { calcularCadencia, prioridadCadencia, excluidoDeAgenda, sumarDias, aToques, CAMPOS_TOQUE } from '@/lib/crm-cadencia'
+import { evaluarCotejo, HERRAMIENTAS_COTEJO } from '@/lib/crm-reconciliacion'
 
 export const runtime = 'nodejs'
 
@@ -31,6 +32,30 @@ export async function GET(req: Request) {
   const limite = sumarDias(hoy, dias)
 
   const admin = createAdminClient()
+
+  // Cuándo se cotejaron los correos por última vez.
+  //
+  // Va acá, en la herramienta con la que se planifica el día, porque es donde
+  // el operador tropieza con el dato antes de decidir a quién escribir. Hasta
+  // ahora el aviso vivía sólo en la pantalla y en el correo del digest: el
+  // 20-ago se escribieron 85 borradores con siete días sin cotejar, o sea sobre
+  // una foto en la que nadie había contestado nunca.
+  const { data: ultimoCotejo } = await admin
+    .from('agente_acciones')
+    .select('created_at')
+    .in('herramienta', HERRAMIENTAS_COTEJO as unknown as string[])
+    .eq('ok', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<{ created_at: string }>()
+
+  const cotejo = evaluarCotejo(
+    ultimoCotejo
+      ? new Date(ultimoCotejo.created_at).toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
+      : null,
+    hoy,
+  )
+
   const { data, error } = await admin
     .from('prospectos')
     .select(
@@ -82,6 +107,10 @@ export async function GET(req: Request) {
   return NextResponse.json({
     hoy,
     dias,
+    // Si esto viene con avisar=true, la agenda de abajo está calculada sobre
+    // respuestas que no se registraron: puede haber gente esperando contestación
+    // marcada como si nunca hubiera hablado. Cotejar ANTES de escribir.
+    cotejo,
     // Fuera de la agenda por datos poco fiables. Van acá y no escondidos:
     // resolverlos es trabajo, y sin verlos nadie lo hace.
     por_verificar: dudosos.map((p: any) => ({
