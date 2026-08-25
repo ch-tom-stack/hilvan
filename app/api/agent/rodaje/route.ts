@@ -77,6 +77,9 @@ export async function GET(req: Request) {
       tipo: b.tipo as string,
       scenes_label: (b.scenes_label as string | null) ?? null,
       duracion_min: (b.duracion_min as number | null) ?? null,
+      // `notas` = columna descripcion (mismo nombre que usa rodaje-bloques al
+      // escribir, para que el agente lea lo mismo que escribió).
+      notas: (b.descripcion as string | null) ?? null,
       hora_inicio: c?.inicio_min !== undefined ? minutosAHora(c.inicio_min) : null,
       hora_fin: c?.fin_min !== undefined ? minutosAHora(c.fin_min) : null,
     }
