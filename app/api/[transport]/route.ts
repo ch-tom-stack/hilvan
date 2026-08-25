@@ -570,6 +570,118 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_crear_rodaje',
+      {
+        title: 'Crear rodaje',
+        description:
+          'Crea un rodaje SIN depender de una cotización. Sin cotizacion_id nace VACÍO (sin departamentos ni bloques — el plan se carga después con hilvan_rodaje_bloques); con cotizacion_id hereda departamentos y equipo (como sembrar), pero tampoco crea bloques. hora_call es la base del cálculo de horas del plan (default 08:00). Devuelve {rodaje_id, url}. NO envía nada. Reversible con hilvan_deshacer (borra el rodaje completo). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          nombre: z.string(),
+          fecha: z.string().describe('YYYY-MM-DD'),
+          locacion: z.string().optional().describe('texto libre'),
+          proyecto_id: z.string().optional(),
+          cotizacion_id: z.string().optional().describe('si viene, hereda departamentos y equipo'),
+          hora_call: z.string().optional().describe('HH:MM, base del cálculo de horas. Default 08:00'),
+          notas: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crear-rodaje', args)),
+    )
+
+    server.registerTool(
+      'hilvan_rodaje_bloques',
+      {
+        title: 'Plan de jornada (bloques)',
+        description:
+          'Escribe el plan de jornada de un rodaje. accion="reemplazar" pisa el plan completo (lo natural para cargar una jornada entera de una vez); agregar/editar/mover/eliminar son correcciones puntuales. La HORA de cada bloque NUNCA se escribe: se calcula en cascada desde la hora de call, así mover o eliminar un bloque reacomoda el resto solo. Bloque: {nombre, duracion_min, notas?, departamentos?, personas?} — duracion_min inválida cae a 30, departamentos/personas se anotan como texto en el bloque. Devuelve el plan resultante con horas calculadas. NO envía nada. Reversible con hilvan_deshacer (restaura el plan anterior COMPLETO). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          rodaje_id: z.string(),
+          accion: z.enum(['reemplazar', 'agregar', 'editar', 'mover', 'eliminar']),
+          bloques: z
+            .array(
+              z.object({
+                nombre: z.string(),
+                duracion_min: z.number().optional().describe('minutos; inválido/ausente cae a 30'),
+                notas: z.string().optional(),
+                departamentos: z.array(z.string()).optional().describe('nombres o ids'),
+                personas: z.array(z.string()).optional().describe('ids o nombres del equipo'),
+              }),
+            )
+            .optional()
+            .describe('para reemplazar y agregar'),
+          bloque_id: z.string().optional().describe('para editar, mover y eliminar'),
+          campos: z
+            .object({
+              nombre: z.string().optional(),
+              duracion_min: z.number().optional(),
+              notas: z.string().optional(),
+            })
+            .optional()
+            .describe('para editar'),
+          orden: z.number().optional().describe('para mover: posición destino (0-based)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/rodaje-bloques', args)),
+    )
+
+    server.registerTool(
+      'hilvan_rodaje_equipo',
+      {
+        title: 'Equipo técnico del rodaje',
+        description:
+          'Gestiona el equipo técnico de un rodaje (sin equipo no hay citaciones). accion="agregar" recibe personas [{colaborador_id?, nombre?, rol, departamento?, llamado?, salida?}]: colaborador_id (de hilvan_buscar_colaborador) trae los datos de la ficha; si la persona no existe como colaborador basta el nombre suelto. llamado/salida en HH:MM — en un rodaje real casi nadie entra y sale a la misma hora. departamento por nombre o id (se crea si no existe en el rodaje). editar/quitar usan persona_id. NO envía nada. Reversible con hilvan_deshacer (restaura el equipo anterior completo). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          rodaje_id: z.string(),
+          accion: z.enum(['agregar', 'editar', 'quitar']),
+          personas: z
+            .array(
+              z.object({
+                colaborador_id: z.string().optional(),
+                nombre: z.string().optional().describe('obligatorio si no hay colaborador_id'),
+                rol: z.string().optional(),
+                departamento: z.string().optional().describe('nombre o id; se crea si no existe'),
+                llamado: z.string().optional().describe('HH:MM'),
+                salida: z.string().optional().describe('HH:MM'),
+              }),
+            )
+            .optional()
+            .describe('para agregar'),
+          persona_id: z.string().optional().describe('para editar y quitar'),
+          campos: z
+            .object({
+              nombre: z.string().optional(),
+              rol: z.string().optional(),
+              departamento: z.string().optional(),
+              llamado: z.string().optional(),
+              salida: z.string().optional(),
+            })
+            .optional()
+            .describe('para editar'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/rodaje-equipo', args)),
+    )
+
+    server.registerTool(
+      'hilvan_editar_rodaje',
+      {
+        title: 'Editar rodaje',
+        description:
+          'Edita la metadata de un rodaje ya creado: nombre, fecha, locacion, hora_call, estado (borrador|confirmado|completado) y notas. Solo cambia los campos presentes. NO envía nada. Reversible con hilvan_deshacer (restaura los valores previos). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          rodaje_id: z.string(),
+          nombre: z.string().optional(),
+          fecha: z.string().optional().describe('YYYY-MM-DD'),
+          locacion: z.string().optional(),
+          hora_call: z.string().optional().describe('HH:MM'),
+          estado: z.enum(['borrador', 'confirmado', 'completado']).optional(),
+          notas: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/editar-rodaje', args)),
+    )
+
+    server.registerTool(
       'hilvan_generar_citaciones',
       {
         title: 'Generar citaciones (links)',

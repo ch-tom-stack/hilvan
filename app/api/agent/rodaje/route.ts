@@ -47,7 +47,7 @@ export async function GET(req: Request) {
       .order('orden'),
     admin
       .from('rodaje_equipo_tecnico')
-      .select('id, nombre, rol, departamento_id, es_jefe_departamento')
+      .select('id, nombre, rol, departamento_id, es_jefe_departamento, hora_llamado_individual, hora_salida_individual')
       .eq('rodaje_id', id),
     admin
       .from('rodaje_bloques')
@@ -104,6 +104,8 @@ export async function GET(req: Request) {
       rol: p.rol ?? null,
       departamento: p.departamento_id ? deptoNombre.get(p.departamento_id) ?? null : null,
       es_jefe_departamento: p.es_jefe_departamento ?? false,
+      llamado: (p.hora_llamado_individual as string | null)?.slice(0, 5) ?? null,
+      salida: (p.hora_salida_individual as string | null)?.slice(0, 5) ?? null,
     })),
     bloques,
     citaciones: citaciones ?? 0,

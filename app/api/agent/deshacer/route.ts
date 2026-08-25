@@ -337,7 +337,61 @@ export async function POST(req: Request) {
     // Borrar la fila de clientes creada por esta acción.
     const { error } = await admin.from('clientes').delete().eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  } else if (accion.herramienta === 'sembrar-rodaje') {
+  } else if (accion.herramienta === 'rodaje-bloques') {
+    // Restaurar el plan anterior COMPLETO (snapshot en payload.previo): borra
+    // los bloques actuales del rodaje y reinserta los del snapshot con sus
+    // mismos ids/anclas — un "reemplazar" se revierte al plan entero, no
+    // bloque por bloque.
+    const payload = accion.payload as { rodaje_id?: string; previo?: any[] } | null
+    const rodajeId = payload?.rodaje_id
+    if (!rodajeId) return NextResponse.json({ error: 'Acción sin rodaje_id' }, { status: 400 })
+    const { error: eDel } = await admin.from('rodaje_bloques').delete().eq('rodaje_id', rodajeId)
+    if (eDel) return NextResponse.json({ error: eDel.message }, { status: 500 })
+    const previo = Array.isArray(payload?.previo) ? payload!.previo! : []
+    if (previo.length > 0) {
+      const { error: eIns } = await admin.from('rodaje_bloques').insert(previo)
+      if (eIns) return NextResponse.json({ error: eIns.message }, { status: 500 })
+    }
+  } else if (accion.herramienta === 'rodaje-equipo') {
+    // Restaurar el equipo anterior completo (snapshot). Las citaciones de
+    // personas que se re-crean con el mismo id siguen válidas.
+    const payload = accion.payload as { rodaje_id?: string; previo?: any[] } | null
+    const rodajeId = payload?.rodaje_id
+    if (!rodajeId) return NextResponse.json({ error: 'Acción sin rodaje_id' }, { status: 400 })
+    // Citaciones de personas que van a desaparecer (no están en el snapshot).
+    const previo = Array.isArray(payload?.previo) ? payload!.previo! : []
+    const idsPrevios = new Set(previo.map((p: any) => p.id))
+    const { data: actuales } = await admin
+      .from('rodaje_equipo_tecnico').select('id').eq('rodaje_id', rodajeId)
+    const huerfanas = (actuales ?? []).map((a: any) => a.id).filter((id: string) => !idsPrevios.has(id))
+    if (huerfanas.length > 0) {
+      await admin.from('rodaje_citaciones').delete().in('persona_id', huerfanas)
+    }
+    const { error: eDel } = await admin.from('rodaje_equipo_tecnico').delete().eq('rodaje_id', rodajeId)
+    if (eDel) return NextResponse.json({ error: eDel.message }, { status: 500 })
+    if (previo.length > 0) {
+      const { error: eIns } = await admin.from('rodaje_equipo_tecnico').insert(previo)
+      if (eIns) return NextResponse.json({ error: eIns.message }, { status: 500 })
+    }
+  } else if (accion.herramienta === 'editar-rodaje') {
+    // Restaurar los valores previos de los campos editados (y el ancla del
+    // primer bloque si el edit cambió la hora de call).
+    const payload = accion.payload as {
+      previo?: Record<string, unknown>
+      bloque_ancla?: { id: string; hora_inicio_fija: string | null }
+    } | null
+    if (!payload?.previo || Object.keys(payload.previo).length === 0) {
+      return NextResponse.json({ error: 'Acción sin valores previos guardados' }, { status: 400 })
+    }
+    const { error } = await admin.from('rodajes').update(payload.previo).eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (payload.bloque_ancla) {
+      await admin
+        .from('rodaje_bloques')
+        .update({ hora_inicio_fija: payload.bloque_ancla.hora_inicio_fija })
+        .eq('id', payload.bloque_ancla.id)
+    }
+  } else if (accion.herramienta === 'sembrar-rodaje' || accion.herramienta === 'crear-rodaje') {
     // Borrar el rodaje COMPLETO. Primero los hijos (por las FKs), luego el rodaje.
     // Orden: citaciones → equipo → bloques → escenas → departamentos → locaciones → rodaje.
     const rodajeId = accion.resultado_id
