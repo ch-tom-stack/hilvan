@@ -362,16 +362,26 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
           )
         })()}
 
-        {cotizacion.notas_cliente && (
-          <View style={S.notasContainer}>
-            <View style={S.sectionBar}>
-              <Text style={S.sectionBarText}>Notas</Text>
+        {cotizacion.notas_cliente && (() => {
+          const lineas = cotizacion.notas_cliente!.split('\n')
+          return (
+            <View style={S.notasContainer}>
+              {/* La barra "Notas" viaja amarrada a su primera línea (wrap={false}):
+                  si no caben juntas al pie de la página, pasan juntas a la
+                  siguiente — el título nunca queda huérfano. El resto de las
+                  líneas fluye normal (notas largas no desbordan la hoja). */}
+              <View wrap={false}>
+                <View style={S.sectionBar}>
+                  <Text style={S.sectionBarText}>Notas</Text>
+                </View>
+                {lineas[0] !== undefined && <Text style={S.notaText}>{lineas[0]}</Text>}
+              </View>
+              {lineas.slice(1).map((l, i) => (
+                <Text key={i} style={S.notaText}>{l}</Text>
+              ))}
             </View>
-            {cotizacion.notas_cliente.split('\n').map((l, i) => (
-              <Text key={i} style={S.notaText}>{l}</Text>
-            ))}
-          </View>
-        )}
+          )
+        })()}
 
         <View style={S.footer} fixed>
           <Text style={S.footerText}>Casa Hiedra · Producción Audiovisual</Text>
