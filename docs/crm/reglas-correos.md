@@ -111,6 +111,12 @@ lo que cambia es el peso:
 "cualquier cosa, quedo atenta" · "espero que estés muy bien" · "quería
 contarte" · entusiasmo fabricado.
 
+**Cierres prohibidos** (retro 31-ago-2026: aparecieron idénticos en correos a
+marcas distintas — plantilla detectada en producción):
+"¿Funciona conversar de esto en [mes]?" · "Quedo atenta." / "Quedo atento."
+como cierre seco. El cierre es parte del correo específico: si sirve igual
+para otra marca, está mal.
+
 ### Registro
 - Nunca **pedante ni sermoneador**. Nunca agresivo ni impaciente ("de una vez").
 - Tiene que **sonar a Nati o a Simón, no a una IA**.
@@ -193,3 +199,49 @@ saberlo.
 **No tratar el 16 como verdad establecida.** Cuando la Biblioteca de contactos
 (`/crm/biblioteca`) tenga volumen real, su promedio empírico manda sobre
 cualquier consultoría y sobre cualquier blog.
+
+## 9. Borradores — producción y ciclo de vida (retro 31-ago-2026)
+
+Estas reglas salen de datos reales: en jun–ago se escribieron 149 borradores y
+se enviaron 32 (21%). Quedaron 117 muertos con más de una semana, 11 prospectos
+acumularon 3+ borradores cada uno, y hubo borradores escritos para prospectos
+descartados y para un correo que rebotaba. El cuello de botella NO es escribir:
+es enviar. Un borrador que nadie envía no es trabajo hecho — es ruido que tapa
+al que sí había que enviar.
+
+1. **Un borrador vivo por prospecto.** Antes de escribir, revisar si ya existe
+   uno sin enviar (`hilvan_borrador_leer`): se ACTUALIZA ese, jamás se escribe
+   otro. Dos borradores para el mismo prospecto = un error de proceso.
+2. **Caducidad a 7 días.** Un borrador no enviado en una semana está vencido:
+   si el contexto sigue vigente se refresca (fecha, gancho, gatillo); si no,
+   se borra. La bandeja de "listos" nunca supera los 10.
+3. **Prioridad de escritura:** (1º) respuestas entrantes — borrador el mismo
+   día, es lo único que los datos premian; (2º) seguimientos de conversación
+   viva; (3º) fríos nuevos, solo con lo anterior al día.
+4. **Cero borradores a canal muerto.** Prospecto descartado, correo que rebotó
+   o casilla que nunca fue de una persona (bot/formulario) no recibe
+   borradores. Si el canal falló, la tarea es "conseguir canal" (nota en el
+   prospecto), no escribir otro correo. Ver §10.
+5. **Cierres prohibidos** — ver la lista de §4: el cierre también es específico.
+6. **Tope de producción: 5 borradores al día.** El equipo envía ~30 al mes;
+   producir sobre esa capacidad baja la probabilidad de que CUALQUIERA salga.
+7. **Cada borrador declara su gatillo.** La primera línea del insight que lo
+   acompaña dice POR QUÉ hoy: "respondió el [fecha]", "3er toque de cadencia",
+   "lead web de ayer". El humano decide enviar en 5 segundos o no envía nunca.
+
+## 10. Descarte real de canales muertos
+
+Un prospecto cuyo correo REBOTA (mailer-daemon) o que resultó ser un bot /
+casilla no atendida no es un prospecto: es una fila que ensucia la cadencia y
+los vencidos. El operador no descarta (regla de oro), pero SÍ debe:
+
+1. Dejar **nota bloqueada** en el prospecto con la evidencia (fechas de los
+   rebotes, o por qué se concluye que es bot).
+2. **Proponer el descarte** con `hilvan_mover_etapa { etapa: 'descartado',
+   como_propuesta: true, evidencia: '...' }` — el humano aprueba en la Bandeja.
+3. Si hay un canal alternativo con fuente real (IG visible en el sitio,
+   teléfono publicado), anotarlo en la nota como siguiente paso ANTES de
+   proponer descartar. Sin fuente no se inventa canal.
+
+Caso que originó la regla: Cándida y Narcisa — 3 rebotes (18–20 ago) y el
+sistema siguió proponiendo "insistir" al mismo correo muerto.

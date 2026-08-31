@@ -1757,7 +1757,7 @@ const baseHandler = createMcpHandler(
       'hilvan_reglas_crm',
       {
         title: 'Reglas del CRM',
-        description: 'Las reglas vigentes del CRM de Casa Hiedra, tal como están en el repo: correos (qué y cómo se escribe), cadencia (cuándo toca el próximo contacto), reparto (de quién es cada prospecto) y misiones (cómo se proponen las misiones diarias y semanales del equipo — es una GUÍA, no un reglamento: si tu criterio la contradice, manda tu criterio y dilo en el reporte). LÉELAS AL EMPEZAR cada rutina — son la fuente de verdad y cambian. Sin parámetros trae las cuatro; doc=correos|cadencia|reparto|misiones trae una.',
+        description: 'Las reglas vigentes del CRM de Casa Hiedra, tal como están en el repo: correos (qué y cómo se escribe, incl. ciclo de vida de borradores y descarte de canales muertos), cadencia (cuándo toca el próximo contacto), reparto (de quién es cada prospecto), misiones (cómo se proponen las misiones del equipo — GUÍA, no reglamento) y negociacion (técnicas de Never Split the Difference adaptadas: etiquetas, preguntas calibradas, protocolo de objeción de precio). LÉELAS AL EMPEZAR cada rutina — son la fuente de verdad y cambian. Sin parámetros trae las cinco; doc=correos|cadencia|reparto|misiones|negociacion trae una.',
         inputSchema: { doc: z.string().optional() },
       },
       async ({ doc }, extra) =>

@@ -14,10 +14,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 export const DOCS_REGLAS = {
-  correos:  'reglas-correos.md',
-  cadencia: 'reglas-cadencia.md',
-  reparto:  'reglas-reparto.md',
-  misiones: 'reglas-misiones.md',
+  correos:     'reglas-correos.md',
+  cadencia:    'reglas-cadencia.md',
+  reparto:     'reglas-reparto.md',
+  misiones:    'reglas-misiones.md',
+  negociacion: 'reglas-negociacion.md',
 } as const
 
 export type ClaveRegla = keyof typeof DOCS_REGLAS
