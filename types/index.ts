@@ -1367,3 +1367,110 @@ export interface CrmAprobacion {
   resuelto_por?: string | null
   resuelto_at?: string | null
 }
+
+// ============================================================
+// CH-11 CRONOS — el cronograma de proyecto (sql/cronos.sql)
+// La lógica (fechas, etapas, zoom, normalización) vive en lib/crono.ts.
+// ============================================================
+export type EtapaCrono = 'desarrollo' | 'pre' | 'produccion' | 'post'
+export type TipoHitoCrono = 'devolucion' | 'pre_equipo' | 'rodaje' | 'entrega' | 'pago' | 'reunion' | 'otro'
+export type EstadoCrono = 'borrador' | 'vigente' | 'cerrado'
+
+/** Las 4 etapas, en el orden del proyecto (y de las filas del Gantt). */
+export const ETAPAS_CRONO: { id: EtapaCrono; nombre: string; corto: string }[] = [
+  { id: 'desarrollo', nombre: 'Desarrollo',     corto: 'Des'  },
+  { id: 'pre',        nombre: 'Preproducción',  corto: 'Pre'  },
+  { id: 'produccion', nombre: 'Producción',     corto: 'Prod' },
+  { id: 'post',       nombre: 'Postproducción', corto: 'Post' },
+]
+
+/**
+ * Tipos de hito. `clave: true` = los cuatro que forman el ZOOM del crono (pedido de
+ * Tomás: "siempre tiene un zoom importante calendarizado de devolución, pre de equipo,
+ * producción y entregas de postproducción") — se destacan en el Gantt y el calendario.
+ */
+export const TIPOS_HITO_CRONO: { id: TipoHitoCrono; nombre: string; clave: boolean; etapaSugerida: EtapaCrono | null }[] = [
+  { id: 'devolucion', nombre: 'Devolución',    clave: true,  etapaSugerida: 'desarrollo' },
+  { id: 'pre_equipo', nombre: 'Pre de equipo', clave: true,  etapaSugerida: 'pre' },
+  { id: 'rodaje',     nombre: 'Rodaje',        clave: true,  etapaSugerida: 'produccion' },
+  { id: 'entrega',    nombre: 'Entrega',       clave: true,  etapaSugerida: 'post' },
+  { id: 'pago',       nombre: 'Pago',          clave: false, etapaSugerida: null },
+  { id: 'reunion',    nombre: 'Reunión',       clave: false, etapaSugerida: null },
+  { id: 'otro',       nombre: 'Otro',          clave: false, etapaSugerida: null },
+]
+
+export const ESTADO_CRONO_LABELS: Record<EstadoCrono, string> = {
+  borrador: 'Borrador',
+  vigente:  'Vigente',
+  cerrado:  'Cerrado',
+}
+
+export interface CronoHito {
+  id: string
+  crono_id: string
+  orden: number
+  tipo: TipoHitoCrono
+  titulo: string
+  fecha: string | null       // YYYY-MM-DD
+  fecha_fin: string | null   // YYYY-MM-DD, rango opcional
+  etapa: EtapaCrono | null   // null = se deduce de la fecha
+  monto: number | null       // CLP, solo `pago`
+  notas: string | null       // el detalle que se muestra bajo el título
+  responsable: string | null // texto libre (v2)
+  hecho: boolean
+  rodaje_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Destino de una compuerta: la etapa a la que se quiere pasar (o el cierre). */
+export type DestinoCompuerta = 'pre' | 'produccion' | 'post' | 'cierre'
+export const DESTINOS_COMPUERTA: { id: DestinoCompuerta; nombre: string }[] = [
+  { id: 'pre',        nombre: 'Pasar a Preproducción' },
+  { id: 'produccion', nombre: 'Pasar a Producción' },
+  { id: 'post',       nombre: 'Pasar a Postproducción' },
+  { id: 'cierre',     nombre: 'Cerrar el proyecto' },
+]
+
+/** Un check para avanzar de etapa. Con `hito_id` es automático (se marca cuando ese hito está hecho). */
+export interface CronoCompuerta {
+  id: string
+  crono_id: string
+  destino: DestinoCompuerta
+  orden: number
+  texto: string
+  hito_id: string | null
+  responsable: string | null
+  hecho: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Feriado {
+  fecha: string   // YYYY-MM-DD
+  nombre: string
+}
+
+export interface Crono {
+  id: string
+  nombre: string
+  proyecto_id: string | null
+  proyecto?: { id: string; nombre: string; cliente?: { id: string; nombre: string; empresa?: string | null } | null } | null
+  cliente: string | null
+  responsable: string | null
+  notas: string | null
+  estado: EstadoCrono
+  desarrollo_desde: string | null
+  desarrollo_hasta: string | null
+  pre_desde: string | null
+  pre_hasta: string | null
+  produccion_desde: string | null
+  produccion_hasta: string | null
+  post_desde: string | null
+  post_hasta: string | null
+  created_by?: string | null
+  created_at: string
+  updated_at: string
+  hitos?: CronoHito[]
+  compuertas?: CronoCompuerta[]
+}

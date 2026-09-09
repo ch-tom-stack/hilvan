@@ -74,6 +74,7 @@ en local y falla en Vercel**. Se verifica en
 | 7 | Clientes | ✓ Activo | `/clientes` |
 | 8 | Calendario | ✓ Activo | `/calendario` |
 | 9 | Rental | ✓ Activo | `/rental` |
+| 11 | Cronos | ✓ Activo | `/cronos` — cronograma de proyecto en una página |
 | — | Perfil | ✓ Activo | `/perfil` |
 | — | Usuarios | ✓ Activo | `/usuarios` — solo admin |
 
@@ -85,6 +86,7 @@ en local y falla en Vercel**. Se verifica en
 { label: 'Dashboard',     href: '/dashboard',     disponible: true,  rolesPermitidos: null,              ocultarPara: null }
 { label: 'Cotizaciones',  href: '/cotizaciones',  disponible: true,  rolesPermitidos: null,              ocultarPara: null }
 { label: 'Rodajes',       href: '/rodaje',         disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
+{ label: 'Cronos',        href: '/cronos',         disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
 { label: 'Rendiciones',   href: '/rendiciones',   disponible: true,  rolesPermitidos: null,              ocultarPara: null }
 { label: 'Financiero',    href: '/financiero',    disponible: false, rolesPermitidos: ['admin', 'contabilidad'], ocultarPara: null }
 { label: 'Equipos',       href: '/equipos',       disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] }
@@ -203,6 +205,16 @@ APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl/a
 - Equipos marcados como rentables desde `/equipos` (toggle inline)
 
 ---
+
+### CH-11 Cronos — el cronograma de proyecto (sep-2026)
+- Tablas: `cronos` (ficha + 8 columnas `<etapa>_desde/_hasta`), `crono_hitos` (tipo, fecha, fecha_fin, etapa, monto CLP, notas = detalle, responsable, hecho, rodaje_id), `crono_compuertas` (checks por `destino` pre|produccion|post|cierre; con `hito_id` = automático) y `feriados` (Chile, editable, precargada 2026–2027). Schema: `sql/cronos.sql` + `sql/cronos_v2.sql`.
+- **Reglas de diseño (Tomás):** TODO cabe en una página; minimalismo. La pantalla (`components/cronos/EditorCrono.tsx`) son dos mundos: **LA HOJA** (izquierda, blanca, paleta Casa Hiedra — negro, blanco, tintes lila con motivo de líneas diagonales por etapa; NO tokens ch-*) que es lo que se imprime, y **EL PANEL** (derecha, chrome Hilván) que informa y no se imprime. Sin íconos: cada hito es una etiqueta con título, detalle y responsable, siempre texto completo. Calendario semanal continuo (lun→dom), semanas sin hitos delgadas, fin de semana y feriados angostos y tramados, el mes va en el primer día donde aparece. Vistas puras en `components/cronos/CronoVistas.tsx`.
+- Panel: **Lectura** (días corridos/hábiles/peso por etapa descontando feriados; post disponible hasta cada entrega; próximo hito clave; **avisos** como "hito clave cae en feriado" con botón para moverlo al hábil anterior), **Compuertas** (checks para pasar de etapa; automáticos cuando tienen `hito_id` — se marcan solos con el hito hecho o el rodaje confirmado en Hilván; manuales con responsable), esta semana y la próxima, pagos, feriados en el rango.
+- Tipos de hito: `devolucion`, `pre_equipo`, `rodaje`, `entrega` son clave; `pago` (con `monto`), `reunion`, `otro`. La etapa se deduce de la fecha. Proyecto opcional. "Importar rodajes del proyecto" crea hitos `rodaje` vinculados por `rodaje_id`.
+- Lógica pura: `lib/crono.ts` (+ `tests/crono.test.ts`): fechas sin `Date` local, etapas, semanas, hábiles, lectura, avisos, compuertas (`evaluarCompuertas`, `compuertasPorDefecto`).
+- Capa en `/calendario`: hitos con fecha de cronos no cerrados (`tipo: 'crono'` en `EventoFC`).
+- Agente: `hilvan_listar_cronos`, `hilvan_crono` (con lectura, avisos y compuertas), `hilvan_crear_crono` (siembra compuertas enganchadas a los hitos), `hilvan_crono_editar`, `hilvan_crono_hitos`, `hilvan_crono_compuertas` → `/api/agent/*` (`lib/agent-crono.ts`). Deshacer: crear borra en cascada; editar restaura `previo`; hitos y compuertas restauran el conjunto completo.
+- Pendiente (fase 2): export PDF de la hoja en una A4 horizontal (`/api/cronos/[id]/pdf`) y link por token para el cliente.
 
 ## Logos
 

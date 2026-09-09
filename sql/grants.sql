@@ -142,3 +142,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.repertorio        TO service_role
 -- Medallas personales del CRM (schema en sql/crm_medallas.sql)
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_medallas      TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crm_medallas      TO service_role;
+-- CH-11 Cronos — el cronograma de proyecto (schema en sql/cronos.sql)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cronos           TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crono_hitos      TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cronos           TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crono_hitos      TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.feriados         TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crono_compuertas TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.feriados         TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.crono_compuertas TO service_role;

@@ -92,6 +92,21 @@ export default function EventoDetalle({ evento, eventosGCal, onClose }: Props) {
         </div>
       )}
 
+      {/* Link al crono (CH-11) */}
+      {evento.extendedProps.tipo === 'crono' && evento.extendedProps.cronoId && (
+        <div className="mb-4 border-t border-ch-border pt-4">
+          {evento.extendedProps.cronoNombre && (
+            <p className="text-xs text-ch-muted mb-1">{evento.extendedProps.cronoNombre}</p>
+          )}
+          <Link
+            href={`/cronos/${evento.extendedProps.cronoId}`}
+            className="text-xs text-ch-green hover:text-ch-green-light transition-colors"
+          >
+            Ver crono →
+          </Link>
+        </div>
+      )}
+
       {/* Estado del rodaje */}
       {evento.extendedProps.estado && (
         <div className="mb-4">

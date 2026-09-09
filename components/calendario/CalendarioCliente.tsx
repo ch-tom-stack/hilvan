@@ -23,12 +23,15 @@ export interface EventoFC {
   allDay: boolean
   backgroundColor: string
   borderColor: string
+  textColor?: string
   extendedProps: {
-    tipo: 'rodaje' | 'gcal'
+    tipo: 'rodaje' | 'gcal' | 'crono'
     descripcion?: string | null
     clasificacion?: string
     rodajeId?: string | null
     estado?: string
+    cronoId?: string | null
+    cronoNombre?: string | null
   }
 }
 

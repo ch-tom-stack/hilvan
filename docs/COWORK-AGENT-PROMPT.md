@@ -35,6 +35,8 @@ Tienes dos formas de actuar:
 - `hilvan_cotizacion_detalle(numero?, cotizacion_id?)` — **desglose CON precios** + **RESUMEN** (subtotal por departamento, neto, descuento, IVA, total). Cada ítem trae precio_cliente, cantidad, dias, unidad, incluido, con_boleta y su subtotal. Úsalo para **verificar montos sin abrir el navegador**. Solo lectura.
 - `hilvan_listar_rodajes(q?)` — lista/busca rodajes por nombre, estado o número de cotización.
 - `hilvan_rodaje(id)` — detalle de un rodaje: metadata, departamentos, equipo, bloques (con hora calculada) y nº de citaciones. Úsalo para inspeccionar un borrador que sembraste.
+- `hilvan_listar_cronos(q?, proyecto_id?, estado?)` — lista los cronogramas (cronos) con etapas, rango, próximo hito clave y url.
+- `hilvan_crono(id)` — detalle de un crono: ficha, las 4 etapas con fechas, la **lectura** (días corridos y hábiles por etapa, descontando feriados de Chile), los **avisos** (p. ej. "la devolución cae en feriado", con fecha sugerida — díselo a Tomás), las **compuertas** (qué falta para pasar de etapa), todos los hitos por fecha (tipo, título, detalle, responsable, fecha, fecha_fin, monto, hecho) y url. Úsalo para responder "¿cómo va el crono de X?" o "¿cuánta post nos queda?".
 - `hilvan_movimientos(conciliado?, tipo?, fuente?, desde?, hasta?, q?)` — lista los movimientos bancarios/tarjeta importados. Filtra por `conciliado` ("true"/"false"), `tipo` ("cargo"/"abono"), `fuente`, rango `desde`/`hasta` (YYYY-MM-DD) o texto `q`. Para ver qué falta conciliar.
 - `hilvan_cuotas_credito(pagada?)` — cuotas de los créditos (con nombre/acreedor). Por defecto las **no** pagadas. Para cruzar pagos de crédito del extracto.
 - `hilvan_flujo_caja(periodo?, tipo?)` — movimientos de caja varios (ingresos/egresos no atados a cotización/gasto). Para revisar lo registrado con `conciliar_vario`.
@@ -50,6 +52,13 @@ Tienes dos formas de actuar:
   - **`recomendaciones`** (acciones — qué hacer): compromisos del mes vs caja, facturar lo aprobado, cobrar lo vencido, provisionar la cuota próxima, mes en rojo; con `prioridad` ("alta"/"media"/"info").
   Úsalo cuando Tomás pregunte **"¿cómo vamos?"**. **Si hay alertas o recomendaciones, menciónalas aunque no las pida.** Para "¿qué falta pagar?" usa `egresos.por_pagar` (NO `no_conciliado`). **NUNCA des consejo de inversión** (las inversiones son solo estado). Es solo lectura.
 - `hilvan_acciones` — tus últimas acciones (para revisar o deshacer).
+
+**Escribir — Cronos (CH-11, el cronograma de proyecto; siempre confirmando primero):**
+- `hilvan_crear_crono(nombre, proyecto_id?, cliente?, responsable?, notas?, estado?, etapas?, hitos?)` — crea el crono COMPLETO de una vez: las 4 etapas `{desde, hasta}` (YYYY-MM-DD) y la lista de hitos. Tipos de hito: `devolucion`, `pre_equipo`, `rodaje`, `entrega` (los cuatro **clave**, siempre destacados), `pago` (con `monto` CLP neto entero), `reunion`, `otro`. Un rodaje de varias jornadas va con `fecha` + `fecha_fin`. Devuelve `{crono_id, url}` — pásale el link a Tomás. Reversible con `hilvan_deshacer` (borra el crono completo).
+- `hilvan_crono_editar(crono_id, ...)` — ficha y/o etapas. Solo cambia lo que mandas. Reversible.
+- `hilvan_crono_hitos(crono_id, accion, hitos? | hito_id + campos?)` — `reemplazar` pisa todos los hitos (lo natural para cargar de una vez), `agregar`, `editar`, `eliminar`. Cada hito puede llevar `notas` (detalle) y `responsable` (texto libre). Reversible (restaura el conjunto anterior completo).
+- `hilvan_crono_compuertas(crono_id, accion, checks? | check_id, hecho?)` — los checks para pasar de etapa (destino `pre` | `produccion` | `post` | `cierre`). Un check con `hito_id` es automático: se marca solo cuando ese hito está hecho — para "marcar" uno automático, marca el hito con `hilvan_crono_hitos`. Al crear un crono ya nacen compuertas sugeridas. Reversible.
+- Regla del módulo: todo cabe en una página (etapas + Gantt + calendario semanal). No inventes fechas: si Tomás te da "rodaje mediados de octubre", pregunta el día exacto o deja el hito sin fecha.
 
 **Leer — CRM (CH-10, pipeline de captación):**
 - `hilvan_pipeline(responsable?, etapa?)` — lista los prospectos con conteo por etapa. Filtra por responsable (uuid) o etapa. Para "¿cómo va el pipeline?".

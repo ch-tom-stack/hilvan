@@ -46,6 +46,9 @@ const TABLAS_DELETE = ['rendicion_mensual_gastos', 'rendicion_gastos', 'misiones
 //    'crm-lectura' / 'crm-brief' borran la fila creada (prospectos arrastra hijos
 //    por CASCADE; crm-lectura NO revierte el patch E7). 'crm-mover-etapa' restaura
 //    payload.etapa_anterior. 'crm-resolver-aprobacion' NO es reversible (400).
+//  - CRONOS (CH-11): 'crear-crono' borra el crono (hitos por CASCADE);
+//    'crono-editar' restaura payload.previo; 'crono-hitos' y 'crono-compuertas'
+//    restauran el conjunto COMPLETO previo (payload.previo).
 //  - Otras herramientas de gastos (insert): DELETE de la fila.
 //  - Pago de cotización (update): set fecha_pago_recibido = null.
 // Marca la acción como deshecha.
@@ -587,6 +590,43 @@ export async function POST(req: Request) {
       },
       { status: 400 },
     )
+  } else if (accion.herramienta === 'crear-crono') {
+    // Borrar el crono completo: crono_hitos cae por ON DELETE CASCADE.
+    const { error } = await admin.from('cronos').delete().eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'crono-editar') {
+    // Restaurar la ficha/etapas previas (payload.previo). No borra el crono.
+    const payload = accion.payload as { previo?: Record<string, unknown> } | null
+    if (!payload?.previo || Object.keys(payload.previo).length === 0) {
+      return NextResponse.json({ error: 'Acción sin valores previos guardados' }, { status: 400 })
+    }
+    const { error } = await admin.from('cronos').update(payload.previo).eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else if (accion.herramienta === 'crono-hitos') {
+    // Restaurar el conjunto COMPLETO de hitos anterior (payload.previo): borra los
+    // actuales del crono y vuelve a insertar los previos con sus mismos ids.
+    const payload = accion.payload as { previo?: Record<string, unknown>[] } | null
+    if (!payload || !Array.isArray(payload.previo)) {
+      return NextResponse.json({ error: 'Acción sin hitos previos guardados' }, { status: 400 })
+    }
+    const { error: eDel } = await admin.from('crono_hitos').delete().eq('crono_id', accion.resultado_id)
+    if (eDel) return NextResponse.json({ error: eDel.message }, { status: 500 })
+    if (payload.previo.length > 0) {
+      const { error: eIns } = await admin.from('crono_hitos').insert(payload.previo)
+      if (eIns) return NextResponse.json({ error: eIns.message }, { status: 500 })
+    }
+  } else if (accion.herramienta === 'crono-compuertas') {
+    // Restaurar el conjunto COMPLETO de compuertas anterior (payload.previo).
+    const payload = accion.payload as { previo?: Record<string, unknown>[] } | null
+    if (!payload || !Array.isArray(payload.previo)) {
+      return NextResponse.json({ error: 'Acción sin compuertas previas guardadas' }, { status: 400 })
+    }
+    const { error: eDel } = await admin.from('crono_compuertas').delete().eq('crono_id', accion.resultado_id)
+    if (eDel) return NextResponse.json({ error: eDel.message }, { status: 500 })
+    if (payload.previo.length > 0) {
+      const { error: eIns } = await admin.from('crono_compuertas').insert(payload.previo)
+      if (eIns) return NextResponse.json({ error: eIns.message }, { status: 500 })
+    }
   } else if (TABLAS_DELETE.includes(accion.resultado_tabla)) {
     // Creación de gasto: eliminar la fila insertada.
     const { error } = await admin

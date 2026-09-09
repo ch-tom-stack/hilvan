@@ -70,6 +70,8 @@ function Seccion({ titulo, count, children, defaultOpen = true }: {
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   proyecto: Proyecto
+  /** Cronos del proyecto (CH-11) — opcional para no romper otros montajes de la ficha. */
+  cronos?: { id: string; nombre: string; estado: string; updated_at: string }[]
   metricas: MetricasProyecto
   tareas: ProyectoTarea[]
   contactosProyecto: ProyectoContacto[]
@@ -79,6 +81,7 @@ interface Props {
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function FichaProyecto({
   proyecto: proyectoInicial,
+  cronos = [],
   metricas,
   tareas: tareasIniciales,
   contactosProyecto: contactosProyectoIniciales,
@@ -376,6 +379,26 @@ export default function FichaProyecto({
         </Seccion>
 
         {/* TAREAS */}
+        <Seccion titulo="Cronograma" count={cronos.length} defaultOpen={cronos.length > 0}>
+          {cronos.length === 0 ? (
+            <p className="text-ch-muted text-xs mb-3">Este proyecto todavía no tiene crono.</p>
+          ) : (
+            <ul className="space-y-1.5 mb-3">
+              {cronos.map(c => (
+                <li key={c.id}>
+                  <Link href={`/cronos/${c.id}`} className="flex items-center justify-between gap-3 border border-ch-border px-3 py-2 hover:border-ch-cream/30 transition-colors">
+                    <span className="font-body text-sm text-ch-cream truncate">{c.nombre}</span>
+                    <span className="font-body text-[9px] tracking-[0.15em] uppercase text-ch-muted shrink-0">{c.estado}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link href={`/cronos/nuevo?proyecto_id=${proyecto.id}`} className="font-body text-[10px] tracking-[0.3em] uppercase text-ch-green hover:text-ch-green-light transition-colors">
+            + Nuevo crono →
+          </Link>
+        </Seccion>
+
         <Seccion titulo="Tareas" count={tareasPendientes.length}>
           <div className="space-y-1 mb-4">
             {tareasPendientes.length === 0 && tareasCompletadas.length === 0 && (

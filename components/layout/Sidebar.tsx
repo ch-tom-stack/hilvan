@@ -13,6 +13,7 @@ const BASE_NAV_ITEMS = [
   { label: 'CRM',           href: '/crm',           disponible: true,  rolesPermitidos: ['admin', 'productor'], ocultarPara: null },
   { label: 'Cotizaciones',  href: '/cotizaciones',  disponible: true,  rolesPermitidos: null,              ocultarPara: null },
   { label: 'Rodajes',       href: '/rodaje',        disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
+  { label: 'Cronos',        href: '/cronos',        disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },
   { label: 'Centro de costos', href: '/costos',     disponible: true,  rolesPermitidos: null,              ocultarPara: null },
   { label: 'Financiero',    href: '/financiero',    disponible: false, rolesPermitidos: ['admin', 'contabilidad'], ocultarPara: null },
   { label: 'Equipos',       href: '/equipos',       disponible: true,  rolesPermitidos: null,              ocultarPara: ['contabilidad'] },

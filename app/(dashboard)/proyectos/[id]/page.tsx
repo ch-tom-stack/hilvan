@@ -7,6 +7,7 @@ import {
   getContactosCliente,
 } from '@/app/actions/clientes'
 import FichaProyecto from '@/components/clientes/FichaProyecto'
+import { getCronosProyecto } from '@/app/actions/cronos'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -18,17 +19,19 @@ export default async function ProyectoPage({ params }: Props) {
   const proyecto = await getProyecto(id)
   if (!proyecto) notFound()
 
-  const [metricas, tareas, contactosProyecto, contactosCliente] = await Promise.all([
+  const [metricas, tareas, contactosProyecto, contactosCliente, cronos] = await Promise.all([
     getMetricasProyecto(id),
     getTareasProyecto(id),
     getContactosProyecto(id),
     proyecto.cliente_id ? getContactosCliente(proyecto.cliente_id) : Promise.resolve([]),
+    getCronosProyecto(id),
   ])
 
   return (
     <div className="p-6 lg:p-10">
       <FichaProyecto
         proyecto={proyecto}
+        cronos={cronos}
         metricas={metricas}
         tareas={tareas}
         contactosProyecto={contactosProyecto}

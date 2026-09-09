@@ -2110,6 +2110,147 @@ const baseHandler = createMcpHandler(
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/descubrir-marcas', args)),
     )
+
+    // ── CH-11 Cronos — el cronograma de proyecto ──────────────────────────────
+    server.registerTool(
+      'hilvan_listar_cronos',
+      {
+        title: 'Listar cronos',
+        description:
+          'Lista/busca cronogramas (cronos) por nombre, proyecto o cliente. Cada fila trae etapas {desde, hasta}, rango total, próximo hito clave y url. Filtra por proyecto_id o estado (borrador|vigente|cerrado).',
+        inputSchema: {
+          q: z.string().optional().describe('texto de búsqueda'),
+          proyecto_id: z.string().optional(),
+          estado: z.enum(['borrador', 'vigente', 'cerrado']).optional(),
+        },
+      },
+      async ({ q, proyecto_id, estado }, extra) => {
+        const p = new URLSearchParams()
+        if (q) p.set('q', q)
+        if (proyecto_id) p.set('proyecto_id', proyecto_id)
+        if (estado) p.set('estado', estado)
+        const qs = p.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/cronos${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_crono',
+      {
+        title: 'Detalle de crono',
+        description:
+          'Detalle de un crono: ficha, las 4 etapas como {desde, hasta}, la LECTURA (días corridos y hábiles por etapa, descontando los feriados de Chile), los AVISOS (p. ej. un hito clave que cae en feriado, con fecha sugerida), las COMPUERTAS por etapa (checks para avanzar, con cuántos faltan), todos los hitos por fecha (tipo, titulo, fecha, fecha_fin, monto, responsable, hecho) y url. Los tipos clave son devolucion, pre_equipo, rodaje y entrega.',
+        inputSchema: { id: z.string().describe('UUID del crono') },
+      },
+      async ({ id }, extra) => ok(await callAgent(extra as ToolExtra, 'GET', `/crono?id=${encodeURIComponent(id)}`)),
+    )
+
+    const hitoSchema = z.object({
+      tipo: z.enum(['devolucion', 'pre_equipo', 'rodaje', 'entrega', 'pago', 'reunion', 'otro']),
+      titulo: z.string().optional(),
+      fecha: z.string().optional().describe('YYYY-MM-DD; sin fecha queda pendiente de calendarizar'),
+      fecha_fin: z.string().optional().describe('YYYY-MM-DD, para rangos (un rodaje de 3 jornadas)'),
+      etapa: z.enum(['desarrollo', 'pre', 'produccion', 'post']).optional().describe('si no viene se deduce de la fecha'),
+      monto: z.number().optional().describe('CLP neto entero, solo para tipo pago'),
+      notas: z.string().optional().describe('detalle, se muestra bajo el título en el calendario'),
+      responsable: z.string().optional().describe('texto libre'),
+      hecho: z.boolean().optional(),
+      rodaje_id: z.string().optional().describe('UUID de un rodaje real, para hitos tipo rodaje'),
+    })
+    const etapasSchema = z
+      .object({
+        desarrollo: z.object({ desde: z.string().nullable().optional(), hasta: z.string().nullable().optional() }).optional(),
+        pre: z.object({ desde: z.string().nullable().optional(), hasta: z.string().nullable().optional() }).optional(),
+        produccion: z.object({ desde: z.string().nullable().optional(), hasta: z.string().nullable().optional() }).optional(),
+        post: z.object({ desde: z.string().nullable().optional(), hasta: z.string().nullable().optional() }).optional(),
+      })
+      .optional()
+      .describe('fechas YYYY-MM-DD; una etapa sin hasta queda abierta hasta el desde de la siguiente')
+
+    server.registerTool(
+      'hilvan_crear_crono',
+      {
+        title: 'Crear crono',
+        description:
+          'Crea un cronograma completo en una llamada: nombre, proyecto opcional, las 4 etapas con fechas y la lista de hitos (devolución, pre de equipo, rodaje, entregas, pagos con monto, reuniones). El crono cabe siempre en una pantalla: etapas + Gantt + calendario semanal. Devuelve {crono_id, url, crono}. Reversible con hilvan_deshacer (borra el crono completo). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          nombre: z.string(),
+          proyecto_id: z.string().optional(),
+          cliente: z.string().optional().describe('texto libre; si hay proyecto con cliente no hace falta'),
+          responsable: z.string().optional(),
+          notas: z.string().optional(),
+          estado: z.enum(['borrador', 'vigente', 'cerrado']).optional().describe('default borrador'),
+          etapas: etapasSchema,
+          hitos: z.array(hitoSchema).optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crear-crono', args)),
+    )
+
+    server.registerTool(
+      'hilvan_crono_editar',
+      {
+        title: 'Editar crono (ficha y etapas)',
+        description:
+          'Edita la ficha (nombre, proyecto, cliente, responsable, notas, estado) y/o las fechas de las etapas de un crono. Solo cambia lo que viene. Para los hitos usa hilvan_crono_hitos. Reversible con hilvan_deshacer (restaura los valores previos). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          crono_id: z.string(),
+          nombre: z.string().optional(),
+          proyecto_id: z.string().nullable().optional().describe('null desvincula'),
+          cliente: z.string().nullable().optional(),
+          responsable: z.string().nullable().optional(),
+          notas: z.string().nullable().optional(),
+          estado: z.enum(['borrador', 'vigente', 'cerrado']).optional(),
+          etapas: etapasSchema,
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crono-editar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_crono_hitos',
+      {
+        title: 'Hitos del crono',
+        description:
+          'Escribe los hitos del calendario de un crono. accion="reemplazar" pisa el conjunto completo (lo natural para cargar un crono de una vez); "agregar" suma; "editar"/"eliminar" usan hito_id (de hilvan_crono) y, para editar, `campos` con lo que cambia. Reversible con hilvan_deshacer (restaura el conjunto anterior COMPLETO). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          crono_id: z.string(),
+          accion: z.enum(['reemplazar', 'agregar', 'editar', 'eliminar']),
+          hitos: z.array(hitoSchema).optional().describe('para reemplazar y agregar'),
+          hito_id: z.string().optional().describe('para editar y eliminar'),
+          campos: hitoSchema.partial().optional().describe('para editar'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crono-hitos', args)),
+    )
+
+    server.registerTool(
+      'hilvan_crono_compuertas',
+      {
+        title: 'Compuertas del crono',
+        description:
+          'Los checks que deben estar ok para pasar a la siguiente etapa (destino: pre | produccion | post | cierre). Un check con hito_id es AUTOMÁTICO: se marca solo cuando ese hito está hecho (pago cobrado, entrega hecha, rodaje confirmado). accion="reemplazar" pisa todos; "agregar" suma; "marcar" (check_id, hecho) solo para checks manuales; "eliminar" (check_id). Reversible con hilvan_deshacer (restaura el conjunto anterior COMPLETO). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          crono_id: z.string(),
+          accion: z.enum(['reemplazar', 'agregar', 'marcar', 'eliminar']),
+          checks: z
+            .array(
+              z.object({
+                destino: z.enum(['pre', 'produccion', 'post', 'cierre']),
+                texto: z.string(),
+                hito_id: z.string().optional().describe('id de un hito del crono: vuelve el check automático'),
+                responsable: z.string().optional(),
+                hecho: z.boolean().optional(),
+              }),
+            )
+            .optional()
+            .describe('para reemplazar y agregar'),
+          check_id: z.string().optional().describe('para marcar y eliminar'),
+          hecho: z.boolean().optional().describe('para marcar; default true'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crono-compuertas', args)),
+    )
   },
   {},
   {
