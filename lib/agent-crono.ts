@@ -37,6 +37,7 @@ export function serializarHito(h: CronoHito) {
     monto: h.monto,
     notas: h.notas,
     responsable: h.responsable ?? null,
+    destacado: !!h.destacado,
     hecho: h.hecho,
     rodaje_id: h.rodaje_id,
   }

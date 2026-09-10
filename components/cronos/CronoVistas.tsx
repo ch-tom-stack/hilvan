@@ -17,6 +17,7 @@ import {
   diaNum,
   diaSemana,
   diasDeSemana,
+  esDestacado,
   esFinde,
   esHitoClave,
   etapaDeFecha,
@@ -38,7 +39,7 @@ import {
 } from '@/lib/crono'
 import { ETAPAS_CRONO, formatCLP, type CronoHito, type EtapaCrono } from '@/types'
 
-export type HitoVista = Pick<CronoHito, 'id' | 'tipo' | 'titulo' | 'fecha' | 'fecha_fin' | 'etapa' | 'monto' | 'notas' | 'responsable' | 'hecho' | 'orden'>
+export type HitoVista = Pick<CronoHito, 'id' | 'tipo' | 'titulo' | 'fecha' | 'fecha_fin' | 'etapa' | 'monto' | 'notas' | 'responsable' | 'destacado' | 'hecho' | 'orden'>
 
 // Paleta Casa Hiedra (la hoja). Literal a propósito: la hoja es un documento de la
 // casa, no una pantalla de Hilván.
@@ -173,7 +174,7 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
         </g>
       ))}
       {hitos.filter((h) => esHitoClave(h.tipo) && fechaValida(h.fecha)).map((h) => (
-        <line key={h.id} x1={x(diaNum(h.fecha!)) + dayW / 2} x2={x(diaNum(h.fecha!)) + dayW / 2} y1={4} y2={32} stroke={CH.negro} strokeWidth={1.5} opacity={h.hecho ? 0.35 : 1}>
+        <line key={h.id} x1={x(diaNum(h.fecha!)) + dayW / 2} x2={x(diaNum(h.fecha!)) + dayW / 2} y1={esDestacado(h) ? 2 : 6} y2={esDestacado(h) ? 34 : 30} stroke={CH.negro} strokeWidth={esDestacado(h) ? 3 : 1.25} opacity={h.hecho ? 0.35 : 1}>
           <title>{`${h.titulo || nombreTipoHito(h.tipo)} · ${formatoDia(h.fecha)}`}</title>
         </line>
       ))}
@@ -195,15 +196,18 @@ export interface CalendarioHojaProps {
   onMoverHito?: (id: string, isoDestino: string) => void
 }
 
+// Destacado (rodaje, entrega final): negro con el título en lila y más grande.
+// Clave (devolución, pre de equipo, otras entregas): negro con blanco. El resto: blanco con línea fina.
 function estiloEtiqueta(h: HitoVista, cont: boolean, sel: boolean): React.CSSProperties {
   const clave = esHitoClave(h.tipo)
+  const dest = esDestacado(h)
   return {
     display: 'block',
-    padding: '3px 5px',
+    padding: dest ? '5px 6px' : '3px 5px',
     marginTop: 3,
     lineHeight: 1.25,
     background: clave ? CH.negro : CH.blanco,
-    color: clave ? CH.blanco : CH.negro,
+    color: dest ? CH.lila : clave ? CH.blanco : CH.negro,
     border: clave ? 'none' : `1px solid ${CH.linea}`,
     opacity: h.hecho ? 0.45 : cont ? 0.6 : 1,
     textDecoration: h.hecho ? 'line-through' : 'none',
@@ -277,13 +281,13 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
                       <span style={{ fontSize: 8 }}>↳ {titulo} · día {diaNum(iso) - diaNum(h.fecha!) + 1}</span>
                     ) : (
                       <>
-                        <span style={{ display: 'block', fontSize: 10, fontWeight: 500 }}>
+                        <span style={{ display: 'block', fontSize: esDestacado(h) ? 12 : 10, fontWeight: 500, letterSpacing: esDestacado(h) ? '0.04em' : undefined }}>
                           {h.tipo === 'pago' && <span style={{ display: 'inline-block', width: 6, height: 6, background: CH.amarillo, marginRight: 4, verticalAlign: 'middle' }} />}
                           {titulo}
                           {h.tipo === 'pago' && h.monto != null && <span style={{ fontWeight: 400 }}> · {formatCLP(h.monto)}</span>}
                           {h.fecha_fin && fechaValida(h.fecha_fin) && <span style={{ fontWeight: 400, opacity: 0.7 }}> · hasta {formatoCorto(h.fecha_fin)}</span>}
                         </span>
-                        {pie && <span style={{ display: 'block', fontSize: 8.5, opacity: 0.8, whiteSpace: 'pre-wrap' }}>{pie}</span>}
+                        {pie && <span style={{ display: 'block', fontSize: 8.5, opacity: 0.8, whiteSpace: 'pre-wrap', color: esDestacado(h) ? CH.blanco : undefined }}>{pie}</span>}
                       </>
                     )}
                   </span>
@@ -304,6 +308,7 @@ export function LeyendaHoja() {
       {ETAPAS_CRONO.map((e) => <span key={e.id}>{box(ETAPA_FONDO[e.id])}{e.nombre}</span>)}
       <span>{box(FERIADO_FONDO, { border: `1px solid ${CH.linea}` })}feriado</span>
       <span>{box(CH.negro)}hito clave</span>
+      <span><span style={{ display: 'inline-block', width: 12, height: 8, background: CH.negro, verticalAlign: 'middle', marginRight: 4, boxShadow: `inset 0 0 0 2px ${CH.negro}, inset 0 0 0 4px ${CH.lila}` }} />rodaje · entrega final</span>
       <span><span style={{ display: 'inline-block', width: 6, height: 6, background: CH.amarillo, verticalAlign: 'middle', marginRight: 4 }} />pago</span>
     </div>
   )

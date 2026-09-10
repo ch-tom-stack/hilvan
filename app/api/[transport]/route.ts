@@ -2154,6 +2154,7 @@ const baseHandler = createMcpHandler(
       monto: z.number().optional().describe('CLP neto entero, solo para tipo pago'),
       notas: z.string().optional().describe('detalle, se muestra bajo el título en el calendario'),
       responsable: z.string().optional().describe('texto libre'),
+      destacado: z.boolean().optional().describe('solo entregas: true = entrega FINAL (va destacada en la hoja; un OFF o corte intermedio no)'),
       hecho: z.boolean().optional(),
       rodaje_id: z.string().optional().describe('UUID de un rodaje real, para hitos tipo rodaje'),
     })

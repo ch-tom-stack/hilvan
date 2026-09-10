@@ -249,6 +249,7 @@ export async function guardarCrono(id: string, payload: GuardarCronoPayload): Pr
       monto: h.monto,
       notas: h.notas,
       responsable: h.responsable,
+      destacado: h.destacado,
       hecho: h.hecho,
       rodaje_id: h.rodaje_id,
     }))

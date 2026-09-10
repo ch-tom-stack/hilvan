@@ -1417,6 +1417,7 @@ export interface CronoHito {
   monto: number | null       // CLP, solo `pago`
   notas: string | null       // el detalle que se muestra bajo el título
   responsable: string | null // texto libre (v2)
+  destacado: boolean         // v3: entrega FINAL (el rodaje va destacado siempre)
   hecho: boolean
   rodaje_id: string | null
   created_at: string

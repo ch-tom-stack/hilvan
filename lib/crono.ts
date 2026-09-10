@@ -177,6 +177,11 @@ export function rangoInvertido(desde: string | null | undefined, hasta: string |
 
 // ─── hitos ──────────────────────────────────────────────────────────────────
 
+/** Destacado en la hoja: el rodaje siempre; una entrega solo si es final (`destacado`). */
+export function esDestacado(h: Pick<CronoHito, 'tipo' | 'destacado'>): boolean {
+  return h.tipo === 'rodaje' || (h.tipo === 'entrega' && !!h.destacado)
+}
+
 export function esHitoClave(tipo: TipoHitoCrono): boolean {
   return TIPOS_HITO_CRONO.find((t) => t.id === tipo)?.clave ?? false
 }
@@ -301,6 +306,7 @@ export interface HitoEntrada {
   monto: number | null
   notas: string | null
   responsable: string | null
+  destacado: boolean
   hecho: boolean
   rodaje_id: string | null
 }
@@ -328,6 +334,7 @@ export function normalizarHito(v: unknown): HitoEntrada {
     monto: tipo === 'pago' ? montoONull(o.monto) : null,
     notas: typeof o.notas === 'string' && o.notas.trim() ? o.notas.trim() : null,
     responsable: typeof o.responsable === 'string' && o.responsable.trim() ? o.responsable.trim() : null,
+    destacado: tipo === 'entrega' && o.destacado === true,
     hecho: o.hecho === true,
     rodaje_id: typeof o.rodaje_id === 'string' && o.rodaje_id ? o.rodaje_id : null,
   }

@@ -80,6 +80,7 @@ export async function POST(req: Request) {
         monto: h.monto,
         notas: h.notas,
         responsable: h.responsable,
+        destacado: h.destacado,
         hecho: h.hecho,
         rodaje_id: h.rodaje_id,
       })),

@@ -23,6 +23,7 @@ function filaDe(cronoId: string, h: HitoEntrada, orden: number) {
     monto: h.monto,
     notas: h.notas,
     responsable: h.responsable,
+    destacado: h.destacado,
     hecho: h.hecho,
     rodaje_id: h.rodaje_id,
   }

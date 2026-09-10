@@ -77,7 +77,7 @@ interface Props {
 
 interface Ficha { nombre: string; proyecto_id: string; cliente: string; responsable: string; notas: string; estado: EstadoCrono }
 type EtapasForm = Record<EtapaCrono, { desde: string; hasta: string }>
-interface Draft { tipo: TipoHitoCrono; titulo: string; fecha: string; fecha_fin: string; monto: string; notas: string; responsable: string; hecho: boolean }
+interface Draft { tipo: TipoHitoCrono; titulo: string; fecha: string; fecha_fin: string; monto: string; notas: string; responsable: string; destacado: boolean; hecho: boolean }
 interface Popover { hitoId: string | null; x: number; y: number; draft: Draft }
 
 const ESTADOS: EstadoCrono[] = ['borrador', 'vigente', 'cerrado']
@@ -98,8 +98,8 @@ function aRangos(e: EtapasForm): Record<EtapaCrono, RangoEtapa> {
   for (const k of ETAPAS_CRONO) r[k.id] = { desde: e[k.id].desde || null, hasta: e[k.id].hasta || null }
   return r
 }
-const draftVacio = (fecha: string): Draft => ({ tipo: 'otro', titulo: '', fecha, fecha_fin: '', monto: '', notas: '', responsable: '', hecho: false })
-const draftDe = (h: HitoLocal): Draft => ({ tipo: h.tipo, titulo: h.titulo, fecha: h.fecha ?? '', fecha_fin: h.fecha_fin ?? '', monto: h.monto != null ? String(h.monto) : '', notas: h.notas ?? '', responsable: h.responsable ?? '', hecho: h.hecho })
+const draftVacio = (fecha: string): Draft => ({ tipo: 'otro', titulo: '', fecha, fecha_fin: '', monto: '', notas: '', responsable: '', destacado: false, hecho: false })
+const draftDe = (h: HitoLocal): Draft => ({ tipo: h.tipo, titulo: h.titulo, fecha: h.fecha ?? '', fecha_fin: h.fecha_fin ?? '', monto: h.monto != null ? String(h.monto) : '', notas: h.notas ?? '', responsable: h.responsable ?? '', destacado: !!h.destacado, hecho: h.hecho })
 const snap = (f: Ficha, e: EtapasForm, h: HitoLocal[], c: CompuertaLocal[]) => JSON.stringify({ f, e, h, c })
 
 export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto, feriados: feriadosIniciales }: Props) {
@@ -261,7 +261,7 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
       fecha_fin: d.fecha_fin && fechaValida(d.fecha_fin) ? d.fecha_fin : null,
       etapa: etapaSugeridaParaTipo(d.tipo),
       monto: d.tipo === 'pago' ? montoONull(d.monto) : null,
-      notas: d.notas.trim() || null, responsable: d.responsable.trim() || null, hecho: d.hecho,
+      notas: d.notas.trim() || null, responsable: d.responsable.trim() || null, destacado: d.tipo === 'entrega' && d.destacado, hecho: d.hecho,
     }
     if (popover.hitoId) {
       setHitos((hs) => hs.map((h) => (h.id === popover.hitoId ? { ...h, ...base } : h)))
@@ -437,10 +437,18 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
               )}
             </div>
             <div className="flex items-center justify-between gap-2 pt-1">
-              <label className="flex items-center gap-2 font-body text-[11px] text-ch-muted cursor-pointer">
-                <input type="checkbox" checked={popover.draft.hecho} onChange={(e) => setDraft({ hecho: e.target.checked })} className="accent-[#e6e2ed]" />
-                {popover.draft.tipo === 'pago' ? 'Cobrado' : 'Hecho'}
-              </label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 font-body text-[11px] text-ch-muted cursor-pointer">
+                  <input type="checkbox" checked={popover.draft.hecho} onChange={(e) => setDraft({ hecho: e.target.checked })} className="accent-[#e6e2ed]" />
+                  {popover.draft.tipo === 'pago' ? 'Cobrado' : 'Hecho'}
+                </label>
+                {popover.draft.tipo === 'entrega' && (
+                  <label className="flex items-center gap-2 font-body text-[11px] text-ch-muted cursor-pointer" title="Una entrega final va destacada en la hoja, como el rodaje. Un OFF o corte intermedio, no.">
+                    <input type="checkbox" checked={popover.draft.destacado} onChange={(e) => setDraft({ destacado: e.target.checked })} className="accent-[#e6e2ed]" />
+                    Entrega final
+                  </label>
+                )}
+              </div>
               <div className="flex gap-2">
                 {popover.hitoId && <button type="button" onClick={eliminarHito} className="font-body text-[9px] tracking-[0.2em] uppercase px-3 py-2 border border-ch-border text-ch-muted hover:text-red-400 hover:border-red-400/40 transition-colors">Quitar</button>}
                 <button type="button" onClick={confirmarPopover} className="font-body text-[9px] tracking-[0.2em] uppercase px-3 py-2 text-ch-black transition-colors" style={{ background: CH.lila }}>{popover.hitoId ? 'Listo' : 'Agregar'}</button>

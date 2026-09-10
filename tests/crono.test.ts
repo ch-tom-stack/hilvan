@@ -38,7 +38,7 @@ const etapas: Record<EtapaCrono, RangoEtapa> = {
 function hito(o: Partial<CronoHito> & { fecha: string | null }): CronoHito {
   return {
     id: crypto.randomUUID(), crono_id: 'c', orden: 0, tipo: 'otro', titulo: '', fecha_fin: null,
-    etapa: null, monto: null, notas: null, responsable: null, hecho: false, rodaje_id: null, created_at: '', updated_at: '',
+    etapa: null, monto: null, notas: null, responsable: null, destacado: false, hecho: false, rodaje_id: null, created_at: '', updated_at: '',
     ...o,
   }
 }
@@ -177,6 +177,10 @@ describe('normalizarHito (entradas del agente)', () => {
     const h = normalizarHito({ tipo: 'pago', fecha: '2026-09-10', monto: '3.500.000', titulo: '  50% inicio ' })
     expect(h.monto).toBe(3_500_000)
     expect(h.titulo).toBe('50% inicio')
+  })
+  it('destacado solo vale en entregas', () => {
+    expect(normalizarHito({ tipo: 'entrega', fecha: '2026-11-06', destacado: true }).destacado).toBe(true)
+    expect(normalizarHito({ tipo: 'pago', fecha: '2026-11-06', destacado: true }).destacado).toBe(false)
   })
   it('montoONull', () => {
     expect(montoONull(1200000.4)).toBe(1200000)
