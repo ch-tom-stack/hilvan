@@ -51,6 +51,13 @@ describe('fechas', () => {
     expect(fechaValida('07-09-2026')).toBe(false)
     expect(fechaValida(null)).toBe(false)
   })
+  it('rechaza los años intermedios que emite un input de fecha al teclear (0002, 0020, 0202)', () => {
+    expect(fechaValida('0002-09-23')).toBe(false)
+    expect(fechaValida('0020-09-23')).toBe(false)
+    expect(fechaValida('0202-09-23')).toBe(false)
+    expect(fechaValida('2026-09-23')).toBe(true)
+    expect(fechaValida('2101-01-01')).toBe(false)
+  })
   it('fechaONull acepta timestamps y descarta basura', () => {
     expect(fechaONull('2026-09-07T12:00:00Z')).toBe('2026-09-07')
     expect(fechaONull(' 2026-09-07 ')).toBe('2026-09-07')
@@ -144,6 +151,11 @@ describe('semanas (la grilla de una página)', () => {
     expect(s[0]).toBe('2026-09-07')
     expect(s[s.length - 1]).toBe('2026-11-09')
     expect(s).toHaveLength(10)
+  })
+  it('nunca dibuja más de MAX_SEMANAS ni revienta con un rango absurdo', () => {
+    expect(semanasDelCrono({ desde: '2000-01-03', hasta: '2026-09-10' }, '2026-09-10').length).toBeLessThanOrEqual(60)
+    expect(semanasDelCrono({ desde: '0202-09-23', hasta: '2026-09-10' }, '2026-09-10')[0]).toBe('2026-09-07')
+    expect(semanasDelCrono(null, 'basura')).toEqual([])
   })
   it('sin rango muestra las semanas alrededor de hoy, mínimo 4', () => {
     const s = semanasDelCrono(null, '2026-09-10')

@@ -27,12 +27,19 @@ export const MESES_CORTOS_CRONO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'ju
 // La semana parte el LUNES (índice 0) — así se lee un calendario de rodaje en Chile.
 export const DIAS_CORTOS_CRONO = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
 
-/** "YYYY-MM-DD" válido de verdad (rechaza 2026-02-30: el roundtrip por Date.UTC lo delata). */
+// Años que un crono puede tener. Un <input type="date"> escrito a mano emite valores
+// intermedios como "0202-09-23" mientras se teclea el año: sin este rango eran fechas
+// "válidas" y el calendario intentaba dibujar todas las semanas desde el año 202.
+export const ANIO_MIN = 2000
+export const ANIO_MAX = 2100
+
+/** "YYYY-MM-DD" válido de verdad (rechaza 2026-02-30 y años fuera de 2000–2100). */
 export function fechaValida(s: unknown): s is string {
   if (typeof s !== 'string') return false
   const m = RE_FECHA.exec(s)
   if (!m) return false
   const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3])
+  if (y < ANIO_MIN || y > ANIO_MAX) return false
   if (mo < 1 || mo > 12 || d < 1 || d > 31) return false
   const dt = new Date(Date.UTC(y, mo - 1, d))
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d
@@ -354,12 +361,15 @@ export function lunesDe(iso: string): string {
  * Sin rango: las semanas alrededor de `hoy`. Siempre empieza en lunes y termina
  * en domingo — es la grilla "todo en una página" del crono.
  */
+export const MAX_SEMANAS = 60
+
 export function semanasDelCrono(
   rango: { desde: string; hasta: string } | null,
   hoy: string,
   minSemanas = 4,
 ): string[] {
-  const base = rango ?? { desde: hoy, hasta: hoy }
+  const base = rango && fechaValida(rango.desde) && fechaValida(rango.hasta) ? rango : { desde: hoy, hasta: hoy }
+  if (!fechaValida(base.desde)) return []
   const ini = lunesDe(base.desde)
   let fin = lunesDe(base.hasta)
   let n = Math.round((diaNum(fin) - diaNum(ini)) / 7) + 1
@@ -367,8 +377,9 @@ export function semanasDelCrono(
     fin = sumarDias(fin, 7)
     n++
   }
+  // Tope duro (regla de una página): más de esto no se dibuja aunque el rango lo pida.
   const out: string[] = []
-  for (let w = ini; diaNum(w) <= diaNum(fin); w = sumarDias(w, 7)) out.push(w)
+  for (let w = ini; diaNum(w) <= diaNum(fin) && out.length < MAX_SEMANAS; w = sumarDias(w, 7)) out.push(w)
   return out
 }
 
