@@ -211,8 +211,10 @@ describe('v2: feriados, lectura, compuertas', () => {
     const pago = hito({ tipo: 'pago', fecha: '2026-09-10', hecho: true })
     const dev = hito({ tipo: 'devolucion', fecha: '2026-09-18' })
     const rod = hito({ tipo: 'rodaje', fecha: '2026-10-13', rodaje_id: 'r1' })
-    const cs = compuertasPorDefecto([pago, dev, rod]).map((c, i) => ({ ...c, id: `c${i}` }))
-    const g = evaluarCompuertas(cs, [pago, dev, rod], new Set(['r1']))
+    const ent = hito({ tipo: 'entrega', titulo: 'Máster', fecha: '2026-11-06' })
+    const cs = compuertasPorDefecto([pago, dev, rod, ent]).map((c, i) => ({ ...c, id: `c${i}` }))
+    expect(cs.filter((c) => c.destino === 'cierre').map((c) => c.texto)).toEqual(['Entrega hecha: Máster', 'Pago final cobrado'])
+    const g = evaluarCompuertas(cs, [pago, dev, rod, ent], new Set(['r1']))
     const pre = g.find((x) => x.destino === 'pre')!
     expect(pre.checks.map((c) => c.ok)).toEqual([true, false, false])
     expect(pre.faltan).toBe(2)

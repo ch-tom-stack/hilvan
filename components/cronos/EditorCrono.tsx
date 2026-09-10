@@ -35,6 +35,7 @@ import {
   rangoInvertido,
   semanasDelCrono,
   sumarDias,
+  textoCheckEntrega,
   totalPagos,
   type RangoEtapa,
 } from '@/lib/crono'
@@ -252,18 +253,46 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
   function confirmarPopover() {
     if (!popover) return
     const d = popover.draft
-    if (!fechaValida(d.fecha)) { toastError('El hito necesita una fecha'); return }
+    if (d.fecha && !fechaValida(d.fecha)) { toastError('Fecha inválida'); return }
+    if (!d.fecha && !popover.hitoId) { toastError('El hito necesita una fecha'); return }
     if (d.fecha_fin && fechaValida(d.fecha_fin) && diaNum(d.fecha_fin) <= diaNum(d.fecha)) { toastError('"Hasta" debe ser posterior a la fecha'); return }
     const base = {
-      tipo: d.tipo, titulo: d.titulo.trim(), fecha: d.fecha,
+      tipo: d.tipo, titulo: d.titulo.trim(), fecha: d.fecha || null,
       fecha_fin: d.fecha_fin && fechaValida(d.fecha_fin) ? d.fecha_fin : null,
       etapa: etapaSugeridaParaTipo(d.tipo),
       monto: d.tipo === 'pago' ? montoONull(d.monto) : null,
       notas: d.notas.trim() || null, responsable: d.responsable.trim() || null, hecho: d.hecho,
     }
-    if (popover.hitoId) setHitos((hs) => hs.map((h) => (h.id === popover.hitoId ? { ...h, ...base } : h)))
-    else { setHitos((hs) => [...hs, { id: crypto.randomUUID(), orden: hs.length, rodaje_id: null, ...base }]); momento('item.agregado') }
+    if (popover.hitoId) {
+      setHitos((hs) => hs.map((h) => (h.id === popover.hitoId ? { ...h, ...base } : h)))
+      asegurarCheckEntrega(popover.hitoId, base.tipo, base.titulo)
+    } else {
+      const id = crypto.randomUUID()
+      setHitos((hs) => [...hs, { id, orden: hs.length, rodaje_id: null, ...base }])
+      asegurarCheckEntrega(id, base.tipo, base.titulo)
+      momento('item.agregado')
+    }
     setPopover(null)
+  }
+  // Cada entrega tiene su check automático en "Cerrar el proyecto" (pedido de Tomás).
+  function asegurarCheckEntrega(hitoId: string, tipo: TipoHitoCrono, titulo: string) {
+    if (tipo !== 'entrega') return
+    setCompuertas((cs) => {
+      if (cs.some((c) => c.hito_id === hitoId)) return cs
+      const enCierre = cs.filter((c) => c.destino === 'cierre')
+      const pagoFinal = enCierre.findIndex((c) => c.hito_id == null && /pago final/i.test(c.texto))
+      const nueva: CompuertaLocal = { id: crypto.randomUUID(), destino: 'cierre', orden: 0, texto: textoCheckEntrega({ titulo }), hito_id: hitoId, responsable: null, hecho: false }
+      // antes del "Pago final cobrado" si existe, si no al final del grupo
+      const idxPago = pagoFinal >= 0 ? cs.indexOf(enCierre[pagoFinal]) : -1
+      const out = idxPago >= 0 ? [...cs.slice(0, idxPago), nueva, ...cs.slice(idxPago)] : [...cs, nueva]
+      return out.map((c, i) => ({ ...c, orden: i }))
+    })
+  }
+  function abrirHitoPorId(id: string, e: React.MouseEvent<HTMLElement>) { abrirEditar(id, e) }
+  function quitarHitoPorId(id: string) {
+    setHitos((hs) => hs.filter((h) => h.id !== id)); setEliminados((xs) => [...xs, id])
+    setCompuertas((cs) => cs.map((c) => (c.hito_id === id ? { ...c, hito_id: null } : c)))
+    momento('item.eliminado')
   }
   function eliminarHito() {
     if (!popover?.hitoId) return
@@ -279,6 +308,24 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
   const editarCompuerta = (id: string, campos: { texto?: string; responsable?: string | null; hito_id?: string | null }) => setCompuertas((cs) => cs.map((c) => (c.id === id ? { ...c, ...campos } : c)))
   const agregarCompuerta = (destino: DestinoCompuerta) => setCompuertas((cs) => [...cs, { id: crypto.randomUUID(), destino, orden: cs.length, texto: 'Nuevo check', hito_id: null, responsable: null, hecho: false }])
   const quitarCompuerta = (id: string) => { setCompuertas((cs) => cs.filter((c) => c.id !== id)); setEliminadasC((xs) => [...xs, id]) }
+  const moverCompuerta = (id: string, destino: DestinoCompuerta, antesDe: string | null) =>
+    setCompuertas((cs) => {
+      const item = cs.find((c) => c.id === id)
+      if (!item || id === antesDe) return cs
+      const sin = cs.filter((c) => c.id !== id)
+      const movido = { ...item, destino }
+      let out: CompuertaLocal[]
+      if (antesDe) {
+        const i = sin.findIndex((c) => c.id === antesDe)
+        out = i >= 0 ? [...sin.slice(0, i), movido, ...sin.slice(i)] : [...sin, movido]
+      } else {
+        // al final del grupo destino
+        let last = -1
+        sin.forEach((c, i) => { if (c.destino === destino) last = i })
+        out = [...sin.slice(0, last + 1), movido, ...sin.slice(last + 1)]
+      }
+      return out.map((c, i) => ({ ...c, orden: i }))
+    })
 
   const cliente = ficha.cliente || clienteProyecto || null
 
@@ -330,8 +377,8 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
 
         {/* EL PANEL */}
         <aside className="w-full xl:w-[360px] shrink-0 flex flex-col gap-6">
-          <PanelLectura lectura={lectura} frases={frases} proximo={proximo} avisos={avisos} onMoverA={(id, iso) => moverHito(id, iso)} />
-          <PanelCompuertas grupos={grupos} hitos={hitos} onToggle={toggleCompuerta} onEditar={editarCompuerta} onAgregar={agregarCompuerta} onQuitar={quitarCompuerta} />
+          <PanelLectura lectura={lectura} frases={frases} proximo={proximo} avisos={avisos} onMoverA={(id, iso) => moverHito(id, iso)} onAbrirHito={abrirHitoPorId} onQuitarHito={quitarHitoPorId} />
+          <PanelCompuertas grupos={grupos} hitos={hitos} onToggle={toggleCompuerta} onEditar={editarCompuerta} onAgregar={agregarCompuerta} onQuitar={quitarCompuerta} onMover={moverCompuerta} />
           <PanelSemana hitos={quincena} titulo="Esta semana y la próxima" />
           <PanelPagos total={pagos.total} cobrado={pagos.cobrado} pendiente={pagos.pendiente} />
           {rodajesSinImportar.length > 0 && (

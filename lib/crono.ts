@@ -531,10 +531,11 @@ export function evaluarCompuertas(
  * primer hito de cada tipo que exista; si no existe, el check nace manual con el
  * mismo texto (se vuelve automático al asociarle un hito).
  */
-export function compuertasPorDefecto(hitos: Pick<CronoHito, 'id' | 'tipo' | 'fecha' | 'orden'>[]): Omit<CronoCompuerta, 'id' | 'crono_id' | 'created_at' | 'updated_at'>[] {
+export function compuertasPorDefecto(hitos: Pick<CronoHito, 'id' | 'tipo' | 'fecha' | 'orden' | 'titulo'>[]): Omit<CronoCompuerta, 'id' | 'crono_id' | 'created_at' | 'updated_at'>[] {
   const ordenados = hitosOrdenados(hitos)
   const primero = (tipo: TipoHitoCrono) => ordenados.find((h) => h.tipo === tipo)?.id ?? null
   const ultimo = (tipo: TipoHitoCrono) => [...ordenados].reverse().find((h) => h.tipo === tipo)?.id ?? null
+  const entregas = ordenados.filter((h) => h.tipo === 'entrega')
   const mk = (destino: DestinoCompuerta, orden: number, texto: string, hito_id: string | null = null): Omit<CronoCompuerta, 'id' | 'crono_id' | 'created_at' | 'updated_at'> =>
     ({ destino, orden, texto, hito_id, responsable: null, hecho: false })
   return [
@@ -547,9 +548,17 @@ export function compuertasPorDefecto(hitos: Pick<CronoHito, 'id' | 'tipo' | 'fec
     mk('produccion', 3, 'Rodaje confirmado en Hilván', primero('rodaje')),
     mk('post', 0, 'Rodaje terminado', ultimo('rodaje')),
     mk('post', 1, 'Material respaldado en dos discos'),
-    mk('cierre', 0, 'Entrega final hecha', ultimo('entrega')),
-    mk('cierre', 1, 'Pago final cobrado', ultimo('pago')),
+    // Una compuerta de cierre por CADA entrega (automática); si no hay ninguna, una manual.
+    ...(entregas.length > 0
+      ? entregas.map((h, i) => mk('cierre', i, textoCheckEntrega(h), h.id))
+      : [mk('cierre', 0, 'Entrega final hecha')]),
+    mk('cierre', entregas.length || 1, 'Pago final cobrado', ultimo('pago')),
   ]
+}
+
+/** Texto del check automático que representa una entrega. */
+export function textoCheckEntrega(h: Pick<CronoHito, 'titulo'>): string {
+  return h.titulo ? `Entrega hecha: ${h.titulo}` : 'Entrega hecha'
 }
 
 /** Hitos entre dos fechas (inclusive), ordenados — "esta semana y la próxima". */

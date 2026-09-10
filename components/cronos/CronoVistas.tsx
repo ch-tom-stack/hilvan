@@ -232,7 +232,8 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
           const { d, m } = partesFecha(iso)
           const del = hitosDelDia(hitos, iso)
           const mesLabel = d === 1 || (wi === 0 && di === 0)
-          const fondo = feriado ? FERIADO_FONDO : esFinde(iso) ? FINDE_FONDO : etapa ? ETAPA_FONDO[etapa] : CH.blanco
+          // El fin de semana hereda el color de la etapa (angosto ya lo distingue); solo el feriado lleva el motivo gris.
+          const fondo = feriado ? FERIADO_FONDO : etapa ? ETAPA_FONDO[etapa] : esFinde(iso) ? FINDE_FONDO : CH.blanco
           return (
             <div
               key={iso}
@@ -301,7 +302,6 @@ export function LeyendaHoja() {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, ...LBL, fontSize: 7.5, letterSpacing: '0.15em' }}>
       {ETAPAS_CRONO.map((e) => <span key={e.id}>{box(ETAPA_FONDO[e.id])}{e.nombre}</span>)}
-      <span>{box(FINDE_FONDO, { border: `1px solid ${CH.linea}` })}fin de semana</span>
       <span>{box(FERIADO_FONDO, { border: `1px solid ${CH.linea}` })}feriado</span>
       <span>{box(CH.negro)}hito clave</span>
       <span><span style={{ display: 'inline-block', width: 6, height: 6, background: CH.amarillo, verticalAlign: 'middle', marginRight: 4 }} />pago</span>
@@ -319,17 +319,22 @@ export function PanelLectura({
   proximo,
   avisos,
   onMoverA,
+  onAbrirHito,
+  onQuitarHito,
 }: {
   lectura: LecturaEtapa[]
   frases: { texto: string; valor: string }[]
   proximo: { titulo: string; fecha: string; dias: number } | null
   avisos: AvisoCrono[]
   onMoverA?: (hitoId: string, iso: string) => void
+  /** Abre la ventana del hito del aviso (los hitos sin fecha no están en el calendario). */
+  onAbrirHito?: (hitoId: string, e: React.MouseEvent<HTMLElement>) => void
+  onQuitarHito?: (hitoId: string) => void
 }) {
   return (
     <div className="flex flex-col gap-2">
       <span className={lbl}>Lectura</span>
-      <div className="grid gap-x-2 gap-y-1 font-body text-xs text-ch-muted" style={{ gridTemplateColumns: '1fr 40px 48px 36px' }}>
+      <div className="grid gap-x-3 gap-y-1 font-body text-xs text-ch-muted" style={{ gridTemplateColumns: '1fr 40px 60px 44px' }}>
         <span className={`${lbl} tracking-[0.2em]`}>Etapa</span><span className={`${lbl} tracking-[0.2em] text-right`}>Días</span><span className={`${lbl} tracking-[0.2em] text-right`}>Hábiles</span><span className={`${lbl} tracking-[0.2em] text-right`}>Peso</span>
         {lectura.map((l) => (
           <div key={l.id} className="contents">
@@ -358,6 +363,16 @@ export function PanelLectura({
               Mover al {formatoCorto(a.sugerido)}
             </button>
           )}
+          {a.tipo === 'sin_fecha' && a.hito_id && onAbrirHito && (
+            <button type="button" onClick={(e) => onAbrirHito(a.hito_id!, e)} className="font-body text-[9px] tracking-[0.15em] uppercase border border-ch-border px-2 py-0.5 text-ch-muted hover:text-ch-cream transition-colors">
+              Ponerle fecha
+            </button>
+          )}
+          {a.tipo === 'sin_fecha' && a.hito_id && onQuitarHito && (
+            <button type="button" onClick={() => onQuitarHito(a.hito_id!)} className="font-body text-[9px] tracking-[0.15em] uppercase border border-ch-border px-2 py-0.5 text-ch-muted hover:text-red-400 transition-colors">
+              Quitar
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -371,6 +386,7 @@ export function PanelCompuertas({
   onEditar,
   onAgregar,
   onQuitar,
+  onMover,
 }: {
   grupos: GrupoCompuertas[]
   hitos: HitoVista[]
@@ -378,13 +394,23 @@ export function PanelCompuertas({
   onEditar?: (id: string, campos: { texto?: string; responsable?: string | null; hito_id?: string | null }) => void
   onAgregar?: (destino: GrupoCompuertas['destino']) => void
   onQuitar?: (id: string) => void
+  /** Arrastrar un check y soltarlo sobre otro (antes de él) o sobre un grupo (al final). */
+  onMover?: (id: string, destino: GrupoCompuertas['destino'], antesDe: string | null) => void
 }) {
   const editable = !!onEditar
+  const dnd = (id: string) => (onMover ? {
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => { e.dataTransfer.setData('text/crono-check', id); e.dataTransfer.effectAllowed = 'move' },
+  } : {})
+  const soltar = (destino: GrupoCompuertas['destino'], antesDe: string | null) => (onMover ? {
+    onDragOver: (e: React.DragEvent) => { if (e.dataTransfer.types.includes('text/crono-check')) e.preventDefault() },
+    onDrop: (e: React.DragEvent) => { const id = e.dataTransfer.getData('text/crono-check'); if (id) { e.preventDefault(); e.stopPropagation(); onMover(id, destino, antesDe) } },
+  } : {})
   return (
     <div className="flex flex-col gap-2">
       <span className={lbl}>Compuertas · qué falta para avanzar</span>
       {grupos.map((g) => (
-        <details key={g.destino} open={g.checks.some((c) => !c.ok)} className="border border-ch-border group">
+        <details key={g.destino} open={g.checks.some((c) => !c.ok)} className="border border-ch-border group" {...soltar(g.destino, null)}>
           <summary className="flex items-center justify-between px-3 py-2 cursor-pointer list-none select-none">
             <span className="font-body text-[9px] tracking-[0.25em] uppercase text-ch-cream">→ {g.nombre}</span>
             <span className="font-body text-[9px] tracking-[0.15em] uppercase" style={{ color: g.lista ? CH.verde : g.faltan > 0 ? CH.amarillo : undefined }}>
@@ -393,7 +419,7 @@ export function PanelCompuertas({
           </summary>
           <div className="px-3 pb-3 flex flex-col gap-1.5">
             {g.checks.map((c) => (
-              <div key={c.id} className="flex items-start gap-2 font-body text-xs">
+              <div key={c.id} className={`flex items-start gap-2 font-body text-xs ${onMover ? 'cursor-grab active:cursor-grabbing' : ''}`} {...dnd(c.id)} {...soltar(g.destino, c.id)} title={onMover ? 'Arrastra para reordenar o mover a otra compuerta' : undefined}>
                 <input
                   type="checkbox"
                   checked={c.ok}
