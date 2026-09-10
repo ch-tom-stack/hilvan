@@ -1373,7 +1373,7 @@ export interface CrmAprobacion {
 // La lógica (fechas, etapas, zoom, normalización) vive en lib/crono.ts.
 // ============================================================
 export type EtapaCrono = 'desarrollo' | 'pre' | 'produccion' | 'post'
-export type TipoHitoCrono = 'devolucion' | 'pre_equipo' | 'rodaje' | 'entrega' | 'pago' | 'reunion' | 'otro'
+export type TipoHitoCrono = 'devolucion' | 'pre_equipo' | 'rodaje' | 'off' | 'entrega' | 'emision' | 'pago' | 'reunion' | 'otro'
 export type EstadoCrono = 'borrador' | 'vigente' | 'cerrado'
 
 /** Las 4 etapas, en el orden del proyecto (y de las filas del Gantt). */
@@ -1393,7 +1393,9 @@ export const TIPOS_HITO_CRONO: { id: TipoHitoCrono; nombre: string; clave: boole
   { id: 'devolucion', nombre: 'Devolución',    clave: true,  etapaSugerida: 'desarrollo' },
   { id: 'pre_equipo', nombre: 'Pre de equipo', clave: true,  etapaSugerida: 'pre' },
   { id: 'rodaje',     nombre: 'Rodaje',        clave: true,  etapaSugerida: 'produccion' },
+  { id: 'off',        nombre: 'OFF',           clave: true,  etapaSugerida: 'post' },   // corte offline para revisión
   { id: 'entrega',    nombre: 'Entrega',       clave: true,  etapaSugerida: 'post' },
+  { id: 'emision',    nombre: 'Emisión',       clave: true,  etapaSugerida: 'post' },   // sale al aire / se publica
   { id: 'pago',       nombre: 'Pago',          clave: false, etapaSugerida: null },
   { id: 'reunion',    nombre: 'Reunión',       clave: false, etapaSugerida: null },
   { id: 'otro',       nombre: 'Otro',          clave: false, etapaSugerida: null },
@@ -1417,7 +1419,7 @@ export interface CronoHito {
   monto: number | null       // CLP, solo `pago`
   notas: string | null       // el detalle que se muestra bajo el título
   responsable: string | null // texto libre (v2)
-  destacado: boolean         // v3: entrega FINAL (el rodaje va destacado siempre)
+  destacado: boolean         // v3: destacar en la hoja (entrega final, OFF, emisión); el rodaje lo es siempre
   hecho: boolean
   rodaje_id: string | null
   created_at: string

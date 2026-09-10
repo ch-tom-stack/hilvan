@@ -308,7 +308,7 @@ export function LeyendaHoja() {
       {ETAPAS_CRONO.map((e) => <span key={e.id}>{box(ETAPA_FONDO[e.id])}{e.nombre}</span>)}
       <span>{box(FERIADO_FONDO, { border: `1px solid ${CH.linea}` })}feriado</span>
       <span>{box(CH.negro)}hito clave</span>
-      <span><span style={{ display: 'inline-block', width: 12, height: 8, background: CH.negro, verticalAlign: 'middle', marginRight: 4, boxShadow: `inset 0 0 0 2px ${CH.negro}, inset 0 0 0 4px ${CH.lila}` }} />rodaje · entrega final</span>
+      <span><span style={{ display: 'inline-block', width: 12, height: 8, background: CH.negro, verticalAlign: 'middle', marginRight: 4, boxShadow: `inset 0 0 0 2px ${CH.negro}, inset 0 0 0 4px ${CH.lila}` }} />rodaje · destacado</span>
       <span><span style={{ display: 'inline-block', width: 6, height: 6, background: CH.amarillo, verticalAlign: 'middle', marginRight: 4 }} />pago</span>
     </div>
   )

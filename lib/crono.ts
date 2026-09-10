@@ -177,9 +177,12 @@ export function rangoInvertido(desde: string | null | undefined, hasta: string |
 
 // ─── hitos ──────────────────────────────────────────────────────────────────
 
-/** Destacado en la hoja: el rodaje siempre; una entrega solo si es final (`destacado`). */
+/** Tipos que admiten la marca `destacado` (entrega final, OFF, emisión). */
+export const DESTACABLES: Set<TipoHitoCrono> = new Set(['entrega', 'off', 'emision'])
+
+/** Destacado en la hoja: el rodaje siempre; entrega, OFF o emisión solo con `destacado`. */
 export function esDestacado(h: Pick<CronoHito, 'tipo' | 'destacado'>): boolean {
-  return h.tipo === 'rodaje' || (h.tipo === 'entrega' && !!h.destacado)
+  return h.tipo === 'rodaje' || (DESTACABLES.has(h.tipo) && !!h.destacado)
 }
 
 export function esHitoClave(tipo: TipoHitoCrono): boolean {
@@ -334,7 +337,7 @@ export function normalizarHito(v: unknown): HitoEntrada {
     monto: tipo === 'pago' ? montoONull(o.monto) : null,
     notas: typeof o.notas === 'string' && o.notas.trim() ? o.notas.trim() : null,
     responsable: typeof o.responsable === 'string' && o.responsable.trim() ? o.responsable.trim() : null,
-    destacado: tipo === 'entrega' && o.destacado === true,
+    destacado: DESTACABLES.has(tipo) && o.destacado === true,
     hecho: o.hecho === true,
     rodaje_id: typeof o.rodaje_id === 'string' && o.rodaje_id ? o.rodaje_id : null,
   }

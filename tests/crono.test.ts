@@ -128,9 +128,9 @@ describe('hitos', () => {
   })
   it('el zoom agrupa los 4 tipos clave en orden', () => {
     const z = zoomClave(hs)
-    expect(z.map((g) => g.tipo)).toEqual(['devolucion', 'pre_equipo', 'rodaje', 'entrega'])
+    expect(z.map((g) => g.tipo)).toEqual(['devolucion', 'pre_equipo', 'rodaje', 'off', 'entrega', 'emision'])
     expect(z[1].hitos).toHaveLength(0)
-    expect(z[3].hitos[0].fecha).toBeNull()
+    expect(z[4].hitos[0].fecha).toBeNull()
   })
   it('suma pagos y separa lo cobrado', () => {
     expect(totalPagos(hs)).toEqual({ total: 7_000_000, cobrado: 3_500_000, pendiente: 3_500_000 })
@@ -181,6 +181,8 @@ describe('normalizarHito (entradas del agente)', () => {
   it('destacado solo vale en entregas', () => {
     expect(normalizarHito({ tipo: 'entrega', fecha: '2026-11-06', destacado: true }).destacado).toBe(true)
     expect(normalizarHito({ tipo: 'pago', fecha: '2026-11-06', destacado: true }).destacado).toBe(false)
+    expect(normalizarHito({ tipo: 'off', fecha: '2026-10-02' }).tipo).toBe('off')
+    expect(normalizarHito({ tipo: 'emision', fecha: '2026-10-20', destacado: true })).toMatchObject({ tipo: 'emision', destacado: true, etapa: null })
   })
   it('montoONull', () => {
     expect(montoONull(1200000.4)).toBe(1200000)

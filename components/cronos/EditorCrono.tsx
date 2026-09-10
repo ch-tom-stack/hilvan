@@ -33,6 +33,7 @@ import {
   proximoHitoClave,
   rangoCrono,
   rangoInvertido,
+  DESTACABLES,
   semanasDelCrono,
   sumarDias,
   textoCheckEntrega,
@@ -261,7 +262,7 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
       fecha_fin: d.fecha_fin && fechaValida(d.fecha_fin) ? d.fecha_fin : null,
       etapa: etapaSugeridaParaTipo(d.tipo),
       monto: d.tipo === 'pago' ? montoONull(d.monto) : null,
-      notas: d.notas.trim() || null, responsable: d.responsable.trim() || null, destacado: d.tipo === 'entrega' && d.destacado, hecho: d.hecho,
+      notas: d.notas.trim() || null, responsable: d.responsable.trim() || null, destacado: DESTACABLES.has(d.tipo) && d.destacado, hecho: d.hecho,
     }
     if (popover.hitoId) {
       setHitos((hs) => hs.map((h) => (h.id === popover.hitoId ? { ...h, ...base } : h)))
@@ -442,10 +443,10 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
                   <input type="checkbox" checked={popover.draft.hecho} onChange={(e) => setDraft({ hecho: e.target.checked })} className="accent-[#e6e2ed]" />
                   {popover.draft.tipo === 'pago' ? 'Cobrado' : 'Hecho'}
                 </label>
-                {popover.draft.tipo === 'entrega' && (
-                  <label className="flex items-center gap-2 font-body text-[11px] text-ch-muted cursor-pointer" title="Una entrega final va destacada en la hoja, como el rodaje. Un OFF o corte intermedio, no.">
+                {DESTACABLES.has(popover.draft.tipo) && (
+                  <label className="flex items-center gap-2 font-body text-[11px] text-ch-muted cursor-pointer" title="Va destacado en la hoja, como el rodaje (p. ej. la entrega final).">
                     <input type="checkbox" checked={popover.draft.destacado} onChange={(e) => setDraft({ destacado: e.target.checked })} className="accent-[#e6e2ed]" />
-                    Entrega final
+                    Destacar
                   </label>
                 )}
               </div>

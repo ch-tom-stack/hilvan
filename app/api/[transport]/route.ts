@@ -2139,14 +2139,14 @@ const baseHandler = createMcpHandler(
       {
         title: 'Detalle de crono',
         description:
-          'Detalle de un crono: ficha, las 4 etapas como {desde, hasta}, la LECTURA (días corridos y hábiles por etapa, descontando los feriados de Chile), los AVISOS (p. ej. un hito clave que cae en feriado, con fecha sugerida), las COMPUERTAS por etapa (checks para avanzar, con cuántos faltan), todos los hitos por fecha (tipo, titulo, fecha, fecha_fin, monto, responsable, hecho) y url. Los tipos clave son devolucion, pre_equipo, rodaje y entrega.',
+          'Detalle de un crono: ficha, las 4 etapas como {desde, hasta}, la LECTURA (días corridos y hábiles por etapa, descontando los feriados de Chile), los AVISOS (p. ej. un hito clave que cae en feriado, con fecha sugerida), las COMPUERTAS por etapa (checks para avanzar, con cuántos faltan), todos los hitos por fecha (tipo, titulo, fecha, fecha_fin, monto, responsable, hecho) y url. Los tipos clave son devolucion, pre_equipo, rodaje, off, entrega y emision.',
         inputSchema: { id: z.string().describe('UUID del crono') },
       },
       async ({ id }, extra) => ok(await callAgent(extra as ToolExtra, 'GET', `/crono?id=${encodeURIComponent(id)}`)),
     )
 
     const hitoSchema = z.object({
-      tipo: z.enum(['devolucion', 'pre_equipo', 'rodaje', 'entrega', 'pago', 'reunion', 'otro']),
+      tipo: z.enum(['devolucion', 'pre_equipo', 'rodaje', 'off', 'entrega', 'emision', 'pago', 'reunion', 'otro']).describe('off = corte offline para revisión; emision = sale al aire / se publica'),
       titulo: z.string().optional(),
       fecha: z.string().optional().describe('YYYY-MM-DD; sin fecha queda pendiente de calendarizar'),
       fecha_fin: z.string().optional().describe('YYYY-MM-DD, para rangos (un rodaje de 3 jornadas)'),
@@ -2154,7 +2154,7 @@ const baseHandler = createMcpHandler(
       monto: z.number().optional().describe('CLP neto entero, solo para tipo pago'),
       notas: z.string().optional().describe('detalle, se muestra bajo el título en el calendario'),
       responsable: z.string().optional().describe('texto libre'),
-      destacado: z.boolean().optional().describe('solo entregas: true = entrega FINAL (va destacada en la hoja; un OFF o corte intermedio no)'),
+      destacado: z.boolean().optional().describe('entrega, off o emision: true = va destacado en la hoja como el rodaje (p. ej. la entrega FINAL)'),
       hecho: z.boolean().optional(),
       rodaje_id: z.string().optional().describe('UUID de un rodaje real, para hitos tipo rodaje'),
     })
