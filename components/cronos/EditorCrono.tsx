@@ -234,7 +234,7 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
 
   // ─── hitos ─────────────────────────────────────────────────────────────────
   function posicion(e: React.MouseEvent<HTMLElement>) {
-    const W = 288, H = 400
+    const W = 340, H = 470
     return { x: Math.max(8, Math.min(e.clientX + 8, window.innerWidth - W - 12)), y: Math.max(8, Math.min(e.clientY + 8, window.innerHeight - H - 12)) }
   }
   const abrirNuevo = (iso: string, e: React.MouseEvent<HTMLElement>) => setPopover({ hitoId: null, ...posicion(e), draft: draftVacio(iso) })
@@ -361,7 +361,7 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
       {popover && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setPopover(null)} />
-          <div className="fixed z-50 w-[288px] bg-ch-black border border-ch-border p-4 flex flex-col gap-3 ch-modal-panel" style={{ left: popover.x, top: popover.y }}>
+          <div className="fixed z-50 w-[340px] bg-ch-black border border-ch-border p-4 flex flex-col gap-3 ch-modal-panel" style={{ left: popover.x, top: popover.y }}>
             <div className="flex items-baseline justify-between">
               <span className={lblCls}>{popover.hitoId ? 'Hito' : 'Nuevo hito'} · {formatoDia(popover.draft.fecha)}</span>
               <button type="button" onClick={() => setPopover(null)} className="text-ch-muted hover:text-ch-cream text-sm leading-none">✕</button>
@@ -376,8 +376,8 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
                 )
               })}
             </div>
-            <input autoFocus value={popover.draft.titulo} onChange={(e) => setDraft({ titulo: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') confirmarPopover() }} placeholder={`${nombreTipoHito(popover.draft.tipo)} — título`} className={`${inputCls} w-full`} />
-            <input value={popover.draft.notas} onChange={(e) => setDraft({ notas: e.target.value })} placeholder="Detalle (se muestra bajo el título)" className={`${inputCls} w-full`} />
+            <textarea autoFocus rows={2} value={popover.draft.titulo} onChange={(e) => setDraft({ titulo: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmarPopover() } }} placeholder={`${nombreTipoHito(popover.draft.tipo)} — título (Enter guarda)`} className={`${inputCls} w-full resize-y leading-snug`} />
+            <textarea rows={3} value={popover.draft.notas} onChange={(e) => setDraft({ notas: e.target.value })} placeholder="Detalle — se muestra bajo el título en el calendario" className={`${inputCls} w-full resize-y leading-snug`} />
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1"><span className={lblCls}>Fecha</span><input type="date" value={popover.draft.fecha} onChange={(e) => setDraft({ fecha: e.target.value })} className={`${inputCls} w-full`} /></label>
               <label className="flex flex-col gap-1"><span className={lblCls}>Hasta</span><input type="date" value={popover.draft.fecha_fin} onChange={(e) => setDraft({ fecha_fin: e.target.value })} className={`${inputCls} w-full`} /></label>

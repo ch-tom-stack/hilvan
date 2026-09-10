@@ -277,7 +277,7 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
                           {h.tipo === 'pago' && h.monto != null && <span style={{ fontWeight: 400 }}> · {formatCLP(h.monto)}</span>}
                           {h.fecha_fin && fechaValida(h.fecha_fin) && <span style={{ fontWeight: 400, opacity: 0.7 }}> · hasta {formatoCorto(h.fecha_fin)}</span>}
                         </span>
-                        {pie && <span style={{ display: 'block', fontSize: 8.5, opacity: 0.8 }}>{pie}</span>}
+                        {pie && <span style={{ display: 'block', fontSize: 8.5, opacity: 0.8, whiteSpace: 'pre-wrap' }}>{pie}</span>}
                       </>
                     )}
                   </span>
