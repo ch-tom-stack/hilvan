@@ -214,7 +214,7 @@ APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl/a
 - Lógica pura: `lib/crono.ts` (+ `tests/crono.test.ts`): fechas sin `Date` local, etapas, semanas, hábiles, lectura, avisos, compuertas (`evaluarCompuertas`, `compuertasPorDefecto`).
 - Capa en `/calendario`: hitos con fecha de cronos no cerrados (`tipo: 'crono'` en `EventoFC`).
 - Agente: `hilvan_listar_cronos`, `hilvan_crono` (con lectura, avisos y compuertas), `hilvan_crear_crono` (siembra compuertas enganchadas a los hitos), `hilvan_crono_editar`, `hilvan_crono_hitos`, `hilvan_crono_compuertas` → `/api/agent/*` (`lib/agent-crono.ts`). Deshacer: crear borra en cascada; editar restaura `previo`; hitos y compuertas restauran el conjunto completo.
-- Pendiente (fase 2): export PDF de la hoja en una A4 horizontal (`/api/cronos/[id]/pdf`) y link por token para el cliente.
+- **Export PDF** (`/api/cronos/[id]/pdf`, `components/cronos/HojaCronoPDF.tsx`, react-pdf como el resto de la casa): LA HOJA en una A4 horizontal, siempre una página — el motivo de líneas se dibuja línea a línea en Svg (react-pdf no tiene patrones CSS); si el crono es largo las filas y letras se achican, si sobra hoja las filas crecen. Solo con sesión (botón "Exportar PDF" del editor; exige guardar antes). Pendiente: link por token para el cliente.
 
 ## Logos
 

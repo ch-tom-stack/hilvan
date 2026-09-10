@@ -350,6 +350,16 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
         </div>
         <div className="flex items-center gap-3">
           <span className={`font-body text-[11px] ${sucio ? 'text-ch-gold' : 'text-ch-subtle'}`}>{sucio ? '● Sin guardar' : '✓ Guardado'}</span>
+          <a
+            href={`/api/cronos/${cronoId}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => { if (sucio) { e.preventDefault(); toastError('Guarda antes de exportar: el PDF sale de lo guardado') } }}
+            className={`font-body text-[10px] tracking-[0.3em] uppercase px-3 py-2.5 border border-ch-border transition-colors ch-press ${sucio ? 'text-ch-subtle' : 'text-ch-muted hover:text-ch-cream'}`}
+            title={sucio ? 'Guarda primero: el PDF sale de lo guardado' : 'La hoja en una A4 horizontal'}
+          >
+            Exportar PDF
+          </a>
           <button type="button" onClick={borrarCrono} disabled={isPending} className="font-body text-[10px] tracking-[0.3em] uppercase px-3 py-2.5 border border-ch-border text-ch-muted hover:text-red-400 hover:border-red-400/40 transition-colors disabled:opacity-50 ch-press">Eliminar</button>
           <button type="button" onClick={guardar} disabled={isPending || !sucio} className="font-body text-[10px] tracking-[0.3em] uppercase px-5 py-2.5 text-ch-black transition-colors disabled:opacity-40 ch-press" style={{ background: CH.lila }}>{isPending ? 'Guardando…' : 'Guardar'}</button>
         </div>
