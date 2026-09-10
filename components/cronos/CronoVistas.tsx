@@ -55,16 +55,22 @@ export const CH = {
   verde: '#7a9e7e',
 }
 
-// El motivo de líneas diagonales, en lila, distingue las etapas por densidad y
-// ángulo; producción es la única sólida (es la que mueve al equipo).
+// El motivo de líneas diagonales, en lila, distingue las etapas: desarrollo y pre
+// suben hacia la derecha (135deg) con distinta densidad; producción es la única
+// sólida (es la que mueve al equipo); post va en la dirección CONTRARIA (45deg),
+// para que "antes" y "después" del rodaje se lean de un vistazo.
 export const ETAPA_FONDO: Record<EtapaCrono, string> = {
   desarrollo: `repeating-linear-gradient(135deg, ${CH.lila} 0 3px, ${CH.blanco} 3px 12px)`,
   pre:        `repeating-linear-gradient(135deg, ${CH.lila} 0 7px, ${CH.blanco} 7px 12px)`,
   produccion: CH.lilaFuerte,
-  post:       `repeating-linear-gradient(45deg, ${CH.lila} 0 3px, ${CH.blanco} 3px 12px)`,
+  post:       `repeating-linear-gradient(45deg, ${CH.lila} 0 5px, ${CH.blanco} 5px 12px)`,
 }
-// Fin de semana y feriado: el mismo motivo, fino y gris — no es día de trabajo.
-export const NO_HABIL_FONDO = `repeating-linear-gradient(135deg, ${CH.linea} 0 1.5px, ${CH.blanco} 1.5px 6px)`
+// Feriado: el mismo motivo, fino y gris — es lo que informa. Fin de semana: gris
+// plano, sin líneas (angosto ya dice lo suyo; el motivo se reserva al feriado).
+export const FERIADO_FONDO = `repeating-linear-gradient(135deg, ${CH.linea} 0 1.5px, ${CH.blanco} 1.5px 6px)`
+export const FINDE_FONDO = '#f4f3f6'
+/** @deprecated usa FERIADO_FONDO / FINDE_FONDO */
+export const NO_HABIL_FONDO = FERIADO_FONDO
 
 const LBL: React.CSSProperties = { fontSize: 8, letterSpacing: '0.35em', textTransform: 'uppercase', color: CH.gris }
 
@@ -144,7 +150,7 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
         {ETAPAS_CRONO.map((e) => (
           <pattern key={e.id} id={`crono-p-${e.id}`} patternUnits="userSpaceOnUse" width="12" height="12" patternTransform={`rotate(${e.id === 'post' ? 45 : 135})`}>
             <rect width="12" height="12" fill={CH.blanco} />
-            <rect width={e.id === 'pre' ? 7 : e.id === 'produccion' ? 12 : 3} height="12" fill={e.id === 'produccion' ? CH.lilaFuerte : CH.lila} />
+            <rect width={e.id === 'pre' ? 7 : e.id === 'produccion' ? 12 : e.id === 'post' ? 5 : 3} height="12" fill={e.id === 'produccion' ? CH.lilaFuerte : CH.lila} />
           </pattern>
         ))}
       </defs>
@@ -221,13 +227,12 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
           const n = diaNum(iso)
           const etapa = etapaDeFecha(etapas, iso)
           const feriado = feriados.get(iso)
-          const noHabil = esFinde(iso) || !!feriado
           const fuera = rIni != null && rFin != null && (n < rIni || n > rFin)
           const esHoy = hoy === iso
           const { d, m } = partesFecha(iso)
           const del = hitosDelDia(hitos, iso)
           const mesLabel = d === 1 || (wi === 0 && di === 0)
-          const fondo = noHabil ? NO_HABIL_FONDO : etapa ? ETAPA_FONDO[etapa] : CH.blanco
+          const fondo = feriado ? FERIADO_FONDO : esFinde(iso) ? FINDE_FONDO : etapa ? ETAPA_FONDO[etapa] : CH.blanco
           return (
             <div
               key={iso}
@@ -253,7 +258,7 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
               <span data-dia="1" style={{ display: 'block' }}>
                 {d}
                 {mesLabel && <span data-dia="1" style={{ marginLeft: 3, letterSpacing: '0.15em', textTransform: 'uppercase', fontSize: 7 }}>{MESES_CORTOS_CRONO[m - 1]}</span>}
-                {feriado && !noHabil ? null : feriado && del.length > 0 ? <span data-dia="1" style={{ display: 'block', fontSize: 7, color: CH.grisClaro, lineHeight: 1.1 }}>{feriado}</span> : null}
+                {feriado && <span data-dia="1" style={{ display: 'block', fontSize: 7, color: CH.grisClaro, lineHeight: 1.1 }}>{feriado}</span>}
               </span>
               {del.map((h) => {
                 const cont = h.fecha !== iso
@@ -296,7 +301,8 @@ export function LeyendaHoja() {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, ...LBL, fontSize: 7.5, letterSpacing: '0.15em' }}>
       {ETAPAS_CRONO.map((e) => <span key={e.id}>{box(ETAPA_FONDO[e.id])}{e.nombre}</span>)}
-      <span>{box(NO_HABIL_FONDO, { border: `1px solid ${CH.linea}` })}fin de semana / feriado</span>
+      <span>{box(FINDE_FONDO, { border: `1px solid ${CH.linea}` })}fin de semana</span>
+      <span>{box(FERIADO_FONDO, { border: `1px solid ${CH.linea}` })}feriado</span>
       <span>{box(CH.negro)}hito clave</span>
       <span><span style={{ display: 'inline-block', width: 6, height: 6, background: CH.amarillo, verticalAlign: 'middle', marginRight: 4 }} />pago</span>
     </div>
