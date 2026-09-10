@@ -146,7 +146,13 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
     const maxDia = Math.max(0, ...dias.map((iso) => hitosDelDia(hitos, iso).reduce((s, h) => s + altoEtiqueta(h, iso), 0)))
     return maxDia > 0 ? 12 + maxDia : 16
   })
-  const altoDisponible = PAGE_H - M * 2 - 34 /*encabezado*/ - 42 /*etapas*/ - 36 /*tira*/ - 12 /*dow*/ - 22 /*leyenda+pie*/
+  // Alto que de verdad queda para las semanas: la hoja menos todo lo demás, medido
+  // con los altos FIJOS de cada bloque (encabezado 36, etapas 40, tira 42, fila de
+  // días 13, leyenda 17, pie 22) más los bordes de las filas y un colchón. Antes
+  // este cálculo era optimista y el estirado de filas empujaba una segunda hoja
+  // vacía; `wrap={false}` en la Page es la segunda cerradura.
+  const FIJO = 36 + 40 + 42 + 13 + 17 + 22
+  const altoDisponible = PAGE_H - M * 2 - FIJO - semanas.length * 0.5 - 10
   const natural = altos.reduce((s, a) => s + a, 0)
   const k = natural > altoDisponible ? Math.max(0.55, altoDisponible / natural) : 1
   // Si sobra hoja, las filas crecen (solo el alto, no la letra) hasta llenarla — tope 2x.
@@ -157,9 +163,9 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
 
   return (
     <Document title={`Crono · ${crono.nombre}`} author="Casa Hiedra">
-      <Page size="A4" orientation="landscape" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={styles.page} wrap={false}>
         {/* Encabezado: una línea */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderBottomWidth: 1.2, borderBottomColor: CH.negro, paddingBottom: 5, marginBottom: 6 }}>
+        <View style={{ height: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderBottomWidth: 1.2, borderBottomColor: CH.negro, paddingBottom: 5, marginBottom: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
             {logoBase64 ? <Image src={logoBase64} style={{ width: 54, height: 15, objectFit: 'contain', marginRight: 10, marginBottom: 1 }} /> : null}
             <Text style={{ fontSize: 15, fontFamily: 'Helvetica-Bold' }}>{crono.nombre}</Text>
@@ -190,7 +196,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
 
         {/* Calendario */}
         <View style={{ borderTopWidth: 0.9, borderTopColor: CH.negro, marginTop: 6 }}>
-          <View style={{ flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: CH.linea }}>
+          <View style={{ height: 13, flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: CH.linea }}>
             {DIAS_CORTOS_CRONO.map((d, i) => (
               <Text key={d} style={{ ...styles.lbl, width: colW[i], textAlign: 'center', paddingVertical: 2.5, letterSpacing: 1.2 }}>{d}</Text>
             ))}
@@ -229,7 +235,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
         </View>
 
         {/* Leyenda + pie */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }}>
+        <View style={{ height: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 11, height: 7, borderWidth: 0.6, borderColor: CH.negro, padding: 0.8, marginRight: 3 }}><View style={{ flex: 1, borderWidth: 0.6, borderColor: CH.negro }} /></View>
             <Text style={styles.lbl}>rodaje · emisión · entrega final   </Text>
