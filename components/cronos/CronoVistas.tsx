@@ -196,22 +196,25 @@ export interface CalendarioHojaProps {
   onMoverHito?: (id: string, isoDestino: string) => void
 }
 
-// Destacado (rodaje, entrega final): negro con el título en lila y más grande.
-// Clave (devolución, pre de equipo, otras entregas): negro con blanco. El resto: blanco con línea fina.
+// Tres familias de etiqueta (decisión de Tomás, sep-2026), misma letra siempre:
+//   destacado (rodaje, emisión, entrega final): BLANCO, doble borde negro, letra más grande;
+//   clave (devolución, pre de equipo, OFF, entrega): NEGRO con texto blanco;
+//   el resto (pago, reunión, otro): LILA con texto negro (el pago lleva su cuadrito amarillo).
 function estiloEtiqueta(h: HitoVista, cont: boolean, sel: boolean): React.CSSProperties {
-  const clave = esHitoClave(h.tipo)
   const dest = esDestacado(h)
+  const clave = esHitoClave(h.tipo)
   return {
     display: 'block',
-    padding: dest ? '5px 6px' : '3px 5px',
+    padding: dest ? '5px 7px' : '3px 5px',
     marginTop: 3,
     lineHeight: 1.25,
-    background: clave ? CH.negro : CH.blanco,
-    color: dest ? CH.lila : clave ? CH.blanco : CH.negro,
-    border: clave ? 'none' : `1px solid ${CH.linea}`,
+    background: dest ? CH.blanco : clave ? CH.negro : CH.lila,
+    color: dest || !clave ? CH.negro : CH.blanco,
+    border: dest ? `3px double ${CH.negro}` : 'none',
     opacity: h.hecho ? 0.45 : cont ? 0.6 : 1,
     textDecoration: h.hecho ? 'line-through' : 'none',
     outline: sel ? `1.5px solid ${CH.rojo}` : 'none',
+    outlineOffset: sel ? 1 : 0,
     userSelect: 'none',
   }
 }
@@ -281,13 +284,13 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
                       <span style={{ fontSize: 8 }}>↳ {titulo} · día {diaNum(iso) - diaNum(h.fecha!) + 1}</span>
                     ) : (
                       <>
-                        <span style={{ display: 'block', fontSize: esDestacado(h) ? 12 : 10, fontWeight: 500, letterSpacing: esDestacado(h) ? '0.04em' : undefined }}>
+                        <span style={{ display: 'block', fontSize: esDestacado(h) ? 13 : 10, fontWeight: 500 }}>
                           {h.tipo === 'pago' && <span style={{ display: 'inline-block', width: 6, height: 6, background: CH.amarillo, marginRight: 4, verticalAlign: 'middle' }} />}
                           {titulo}
                           {h.tipo === 'pago' && h.monto != null && <span style={{ fontWeight: 400 }}> · {formatCLP(h.monto)}</span>}
                           {h.fecha_fin && fechaValida(h.fecha_fin) && <span style={{ fontWeight: 400, opacity: 0.7 }}> · hasta {formatoCorto(h.fecha_fin)}</span>}
                         </span>
-                        {pie && <span style={{ display: 'block', fontSize: 8.5, opacity: 0.8, whiteSpace: 'pre-wrap', color: esDestacado(h) ? CH.blanco : undefined }}>{pie}</span>}
+                        {pie && <span style={{ display: 'block', fontSize: esDestacado(h) ? 9.5 : 8.5, opacity: 0.8, whiteSpace: 'pre-wrap' }}>{pie}</span>}
                       </>
                     )}
                   </span>
@@ -307,8 +310,9 @@ export function LeyendaHoja() {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, ...LBL, fontSize: 7.5, letterSpacing: '0.15em' }}>
       {ETAPAS_CRONO.map((e) => <span key={e.id}>{box(ETAPA_FONDO[e.id])}{e.nombre}</span>)}
       <span>{box(FERIADO_FONDO, { border: `1px solid ${CH.linea}` })}feriado</span>
+      <span>{box(CH.blanco, { border: `3px double ${CH.negro}`, width: 14, height: 10, boxSizing: 'border-box' })}rodaje · emisión · entrega final</span>
       <span>{box(CH.negro)}hito clave</span>
-      <span><span style={{ display: 'inline-block', width: 12, height: 8, background: CH.negro, verticalAlign: 'middle', marginRight: 4, boxShadow: `inset 0 0 0 2px ${CH.negro}, inset 0 0 0 4px ${CH.lila}` }} />rodaje · destacado</span>
+      <span>{box(CH.lila)}otro · reunión · pago</span>
       <span><span style={{ display: 'inline-block', width: 6, height: 6, background: CH.amarillo, verticalAlign: 'middle', marginRight: 4 }} />pago</span>
     </div>
   )
