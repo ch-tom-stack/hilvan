@@ -210,7 +210,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
                   const etapa = etapaDeFecha(etapas, iso)
                   const feriado = fer.get(iso)
                   const fuera = rango ? diaNum(iso) < diaNum(rango.desde) || diaNum(iso) > diaNum(rango.hasta) : false
-                  const esHoy = iso === hoy
+                  const esHoy = false // hoy no se exporta: es una marca de trabajo, no del documento
                   const { d, m } = partesFecha(iso)
                   const mesLabel = d === 1 || (wi === 0 && di === 0)
                   const del = hitosDelDia(hitos, iso)
@@ -272,7 +272,8 @@ function TiraGeneralPDF({ etapas, hitos, hoy, rango }: { etapas: Record<EtapaCro
       if (++m > 12) { m = 1; y++ }
     }
   }
-  const hoyN = fechaValida(hoy) ? diaNum(hoy) : null
+  const hoyN: number | null = null // hoy no se exporta (ver calendario)
+  void hoy
   return (
     <View style={{ height: H + 6, position: 'relative' }}>
       {ETAPAS_CRONO.map((e) => {
