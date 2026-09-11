@@ -27,6 +27,7 @@ import {
   type RangoEtapa,
 } from '@/lib/crono'
 import { ETAPAS_CRONO, formatCLP, type Crono, type CronoHito, type EtapaCrono, type Feriado } from '@/types'
+import { geometriaTira } from './CronoVistas'
 
 // CH-11 CRONOS — LA HOJA en PDF (una A4 horizontal, siempre una página).
 // Misma geometría y paleta que CronoVistas.tsx (blanco, negro, tintes lila con
@@ -151,7 +152,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
   // días 13, leyenda 17, pie 22) más los bordes de las filas y un colchón. Antes
   // este cálculo era optimista y el estirado de filas empujaba una segunda hoja
   // vacía; `wrap={false}` en la Page es la segunda cerradura.
-  const FIJO = 36 + 40 + 42 + 13 + 17 + 22
+  const FIJO = 36 + 40 + 50 + 13 + 17 + 22
   const altoDisponible = PAGE_H - M * 2 - FIJO - semanas.length * 0.5 - 10
   const natural = altos.reduce((s, a) => s + a, 0)
   const k = natural > altoDisponible ? Math.max(0.55, altoDisponible / natural) : 1
@@ -184,7 +185,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
                 <View style={{ padding: '5 7' }}>
                   <Text style={styles.lbl}>{l.nombre}</Text>
                   <Text style={{ fontSize: 9.5, marginTop: 1 }}>{l.desde ? formatoRango(l.desde, l.hasta) + (etapas[l.id].hasta ? '' : ' →') : '—'}</Text>
-                  <Text style={{ fontSize: 6.5, color: CH.gris }}>{l.corridos > 0 ? `${l.corridos} días · ${l.habiles} hábiles` : 'sin fechas'}</Text>
+                  <Text style={{ fontSize: 6.5, color: CH.gris }}>{l.corridos > 0 ? `${l.corridos} ${l.corridos === 1 ? 'día' : 'días'} · ${l.habiles} ${l.habiles === 1 ? 'hábil' : 'hábiles'}` : 'sin fechas'}</Text>
                 </View>
               </View>
             )
@@ -192,7 +193,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
         </View>
 
         {/* Tira general */}
-        {rango ? <TiraGeneralPDF etapas={etapas} hitos={hitos} hoy={hoy} rango={rango} /> : null}
+        {rango ? <View style={{ marginBottom: 2 }}><TiraGeneralPDF etapas={etapas} hitos={hitos} hoy={hoy} rango={rango} /></View> : null}
 
         {/* Calendario */}
         <View style={{ borderTopWidth: 0.9, borderTopColor: CH.negro, marginTop: 6 }}>
@@ -254,28 +255,18 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
   )
 }
 
-function TiraGeneralPDF({ etapas, hitos, hoy, rango }: { etapas: Record<EtapaCrono, RangoEtapa>; hitos: CronoHito[]; hoy: string; rango: { desde: string; hasta: string } }) {
-  const H = 30
+function TiraGeneralPDF({ etapas, hitos, rango }: { etapas: Record<EtapaCrono, RangoEtapa>; hitos: CronoHito[]; hoy: string; rango: { desde: string; hasta: string } }) {
+  const H = 44
+  const Y_LBL = 7, Y_BAND = 10, H_BAND = 14, Y_AXIS = Y_BAND + H_BAND, Y_TICK = Y_AXIS + 9
   let d0 = diaNum(rango.desde) - 3
   let d1 = diaNum(rango.hasta) + 3
   if (d1 - d0 < 21) { const c = Math.round((d0 + d1) / 2); d0 = c - 10; d1 = c + 10 }
   const span = d1 - d0 + 1
   const dayW = W / span
   const x = (n: number) => (n - d0) * dayW
-  const meses: { n: number; label: string }[] = []
-  {
-    let { y, m } = partesFecha(isoDeDia(d0))
-    for (let i = 0; i < 40; i++) {
-      const n = diaNum(`${y}-${String(m).padStart(2, '0')}-01`)
-      if (n > d1) break
-      if (n >= d0) meses.push({ n, label: MESES_CORTOS_CRONO[m - 1].toUpperCase() })
-      if (++m > 12) { m = 1; y++ }
-    }
-  }
-  const hoyN: number | null = null // hoy no se exporta (ver calendario)
-  void hoy
+  const g = geometriaTira(d0, d1, hitos)
   return (
-    <View style={{ height: H + 6, position: 'relative' }}>
+    <View style={{ height: H, position: 'relative' }}>
       {ETAPAS_CRONO.map((e) => {
         const et = etapas[e.id]
         const fin = finEfectivoEtapa(etapas, e.id, diaNum(rango.hasta))
@@ -283,22 +274,24 @@ function TiraGeneralPDF({ etapas, hitos, hoy, rango }: { etapas: Record<EtapaCro
         const x1 = x(diaNum(et.desde)), x2 = x(fin) + dayW
         const bw = Math.max(2, x2 - x1)
         return (
-          <View key={e.id} style={{ position: 'absolute', left: x1, top: 4, width: bw, height: 16, overflow: 'hidden' }}>
-            <FondoEtapa etapa={e.id} w={bw} h={16} />
-            {bw > 60 ? <Text style={{ ...styles.lbl, color: CH.negro, paddingLeft: 4, paddingTop: 4.5 }}>{e.nombre}</Text> : null}
+          <View key={e.id} style={{ position: 'absolute', left: x1, top: Y_BAND, width: bw, height: H_BAND, overflow: 'hidden' }}>
+            <FondoEtapa etapa={e.id} w={bw} h={H_BAND} />
+            {bw > 60 ? <Text style={{ ...styles.lbl, color: CH.negro, paddingLeft: 4, paddingTop: 3.5 }}>{e.nombre}</Text> : null}
           </View>
         )
       })}
-      <Svg width={W} height={H + 6} viewBox={`0 0 ${W} ${H + 6}`} style={{ position: 'absolute', top: 0, left: 0 }}>
-        {meses.map((mm) => <Line key={mm.n} x1={x(mm.n)} y1={2} x2={x(mm.n)} y2={24} stroke={CH.linea} strokeWidth={0.6} />)}
-        {hitos.filter((h) => esHitoClave(h.tipo) && fechaValida(h.fecha)).map((h) => {
-          const cx = x(diaNum(h.fecha!)) + dayW / 2
-          const dest = esDestacado(h)
-          return <Line key={h.id} x1={cx} y1={dest ? 1 : 4} x2={cx} y2={dest ? 25 : 22} stroke={CH.negro} strokeWidth={dest ? 2.2 : 0.9} opacity={h.hecho ? 0.35 : 1} />
+      <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+        <Line x1={0} y1={Y_AXIS} x2={W} y2={Y_AXIS} stroke={CH.linea} strokeWidth={0.6} />
+        {g.ticks.map((t) => <Line key={t.n} x1={x(t.n)} y1={Y_AXIS} x2={x(t.n)} y2={Y_AXIS + (t.mes ? 5 : 2.5)} stroke={t.mes ? CH.gris : CH.linea} strokeWidth={0.6} />)}
+        {g.marcas.map((m) => {
+          const cx = x(m.n) + dayW / 2
+          return <Line key={m.id} x1={cx} y1={Y_BAND - 1.5} x2={cx} y2={Y_AXIS} stroke={CH.negro} strokeWidth={m.dest ? 2.2 : 0.9} opacity={m.hecho ? 0.35 : 1} />
         })}
-        {hoyN != null && hoyN >= d0 && hoyN <= d1 ? <Line x1={x(hoyN) + dayW / 2} y1={0} x2={x(hoyN) + dayW / 2} y2={25} stroke={CH.rojo} strokeWidth={0.8} strokeDasharray="2 1.5" /> : null}
       </Svg>
-      {meses.map((mm) => <Text key={mm.n} style={{ ...styles.lbl, position: 'absolute', left: x(mm.n) + 2, top: 26, fontSize: 5.5 }}>{mm.label}</Text>)}
+      {g.ticks.map((t) => <Text key={t.n} style={{ position: 'absolute', left: x(t.n) + 1.5, top: Y_TICK - 5, fontSize: t.mes ? 5.5 : 5, color: t.mes ? CH.negro : CH.grisClaro, letterSpacing: t.mes ? 0.8 : 0 }}>{t.label.toUpperCase()}</Text>)}
+      {g.marcas.map((m) => (
+        <Text key={m.id} style={{ position: 'absolute', left: x(m.n) + dayW / 2 - 8, width: 16, textAlign: 'center', top: m.fila === 0 ? Y_LBL - 6.5 : Y_LBL - 12.5, fontSize: m.dest ? 6.5 : 5.5, fontFamily: m.dest ? 'Helvetica-Bold' : 'Helvetica', color: CH.negro, opacity: m.hecho ? 0.35 : 1 }}>{m.label}</Text>
+      ))}
     </View>
   )
 }

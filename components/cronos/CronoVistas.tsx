@@ -27,6 +27,7 @@ import {
   formatoDia,
   formatoRango,
   hitosDelDia,
+  hitosOrdenados,
   isoDeDia,
   nombreTipoHito,
   partesFecha,
@@ -115,7 +116,7 @@ export function EtapasHoja({
             ) : (
               <span style={{ fontSize: 13, color: CH.negro }}>{l.desde ? formatoRango(l.desde, l.hasta) + (et.hasta ? '' : ' →') : '—'}</span>
             )}
-            <span style={{ fontSize: 9, color: CH.gris }}>{l.corridos > 0 ? `${l.corridos} días · ${l.habiles} hábiles` : 'sin fechas'}</span>
+            <span style={{ fontSize: 9, color: CH.gris }}>{l.corridos > 0 ? `${l.corridos} ${l.corridos === 1 ? 'día' : 'días'} · ${l.habiles} ${l.habiles === 1 ? 'hábil' : 'hábiles'}` : 'sin fechas'}</span>
           </div>
         )
       })}
@@ -123,7 +124,9 @@ export function EtapasHoja({
   )
 }
 
-/** La tira general: las etapas como bandas, los hitos clave como líneas finas, hoy en rojo. */
+/** La tira general: eje con los lunes numerados y el mes donde cambia; las etapas
+ *  como bandas; los hitos clave como líneas con su día encima (en dos alturas
+ *  cuando caen pegados); hoy en rojo. */
 export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono, RangoEtapa>; hitos: HitoVista[]; hoy?: string }) {
   const rango = rangoCrono(etapas, hitos)
   if (!rango) return null
@@ -131,22 +134,14 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
   let d1 = diaNum(rango.hasta) + 3
   if (d1 - d0 < 21) { const c = Math.round((d0 + d1) / 2); d0 = c - 10; d1 = c + 10 }
   const span = d1 - d0 + 1
-  const W = 1000, H = 44
+  const W = 1000, H = 62
+  const Y_LBL = 10, Y_BAND = 16, H_BAND = 20, Y_AXIS = Y_BAND + H_BAND, Y_TICK = Y_AXIS + 13
   const dayW = W / span
   const x = (n: number) => (n - d0) * dayW
-  const meses: { n: number; label: string }[] = []
-  {
-    let { y, m } = partesFecha(isoDeDia(d0))
-    for (let i = 0; i < 40; i++) {
-      const n = diaNum(`${y}-${String(m).padStart(2, '0')}-01`)
-      if (n > d1) break
-      if (n >= d0) meses.push({ n, label: MESES_CORTOS_CRONO[m - 1] })
-      if (++m > 12) { m = 1; y++ }
-    }
-  }
+  const g = geometriaTira(d0, d1, hitos)
   const hoyN = hoy && fechaValida(hoy) ? diaNum(hoy) : null
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 44, display: 'block' }} role="img" aria-label="Vista general">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: H, display: 'block' }} role="img" aria-label="Vista general">
       <defs>
         {ETAPAS_CRONO.map((e) => (
           <pattern key={e.id} id={`crono-p-${e.id}`} patternUnits="userSpaceOnUse" width="12" height="12" patternTransform={`rotate(${e.id === 'post' ? 45 : 135})`}>
@@ -162,25 +157,55 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
         const x1 = x(diaNum(et.desde)), x2 = x(fin) + dayW
         return (
           <g key={e.id}>
-            <rect x={x1} y={8} width={Math.max(2, x2 - x1)} height={20} fill={`url(#crono-p-${e.id})`} />
-            {x2 - x1 > 70 && <text x={x1 + 5} y={21} fill={CH.negro} fontSize={9} letterSpacing={1.5} style={{ fontFamily: 'inherit' }}>{e.nombre.toUpperCase()}</text>}
+            <rect x={x1} y={Y_BAND} width={Math.max(2, x2 - x1)} height={H_BAND} fill={`url(#crono-p-${e.id})`} />
+            {x2 - x1 > 70 && <text x={x1 + 5} y={Y_BAND + 13} fill={CH.negro} fontSize={9} letterSpacing={1.5} style={{ fontFamily: 'inherit' }}>{e.nombre.toUpperCase()}</text>}
           </g>
         )
       })}
-      {meses.map((m) => (
-        <g key={m.n}>
-          <line x1={x(m.n)} x2={x(m.n)} y1={4} y2={34} stroke={CH.linea} />
-          <text x={x(m.n) + 3} y={42} fill={CH.gris} fontSize={8} letterSpacing={1.5}>{m.label.toUpperCase()}</text>
+      {/* eje: lunes numerados, mes donde cambia */}
+      <line x1={0} x2={W} y1={Y_AXIS} y2={Y_AXIS} stroke={CH.linea} />
+      {g.ticks.map((t) => (
+        <g key={t.n}>
+          <line x1={x(t.n)} x2={x(t.n)} y1={Y_AXIS} y2={Y_AXIS + (t.mes ? 6 : 3)} stroke={t.mes ? CH.gris : CH.linea} />
+          <text x={x(t.n) + 2} y={Y_TICK} fill={t.mes ? CH.negro : CH.grisClaro} fontSize={8} letterSpacing={t.mes ? 1 : 0}>{t.label}</text>
         </g>
       ))}
-      {hitos.filter((h) => esHitoClave(h.tipo) && fechaValida(h.fecha)).map((h) => (
-        <line key={h.id} x1={x(diaNum(h.fecha!)) + dayW / 2} x2={x(diaNum(h.fecha!)) + dayW / 2} y1={esDestacado(h) ? 2 : 6} y2={esDestacado(h) ? 34 : 30} stroke={CH.negro} strokeWidth={esDestacado(h) ? 3 : 1.25} opacity={h.hecho ? 0.35 : 1}>
-          <title>{`${h.titulo || nombreTipoHito(h.tipo)} · ${formatoDia(h.fecha)}`}</title>
-        </line>
-      ))}
-      {hoyN != null && hoyN >= d0 && hoyN <= d1 && <line x1={x(hoyN) + dayW / 2} x2={x(hoyN) + dayW / 2} y1={2} y2={34} stroke={CH.rojo} strokeDasharray="3 2" />}
+      {/* hitos clave: línea + día encima, en dos alturas si están pegados */}
+      {g.marcas.map((m) => {
+        const cx = x(m.n) + dayW / 2
+        return (
+          <g key={m.id} opacity={m.hecho ? 0.35 : 1}>
+            <line x1={cx} x2={cx} y1={Y_BAND - 2} y2={Y_AXIS} stroke={CH.negro} strokeWidth={m.dest ? 3 : 1.25} />
+            <text x={cx} y={m.fila === 0 ? Y_LBL : Y_LBL - 9} textAnchor="middle" fill={CH.negro} fontSize={m.dest ? 9 : 8} fontWeight={m.dest ? 600 : 400}>{m.label}</text>
+          </g>
+        )
+      })}
+      {hoyN != null && hoyN >= d0 && hoyN <= d1 && <line x1={x(hoyN) + dayW / 2} x2={x(hoyN) + dayW / 2} y1={Y_BAND - 4} y2={Y_AXIS} stroke={CH.rojo} strokeDasharray="3 2" />}
     </svg>
   )
+}
+
+/** Geometría compartida de la tira (pantalla y PDF): ticks del eje y marcas de hitos con su fila. */
+export function geometriaTira(d0: number, d1: number, hitos: HitoVista[]) {
+  const ticks: { n: number; label: string; mes: boolean }[] = []
+  for (let n = d0; n <= d1; n++) {
+    const iso = isoDeDia(n)
+    const { d, m } = partesFecha(iso)
+    if (d === 1) ticks.push({ n, label: `1 ${MESES_CORTOS_CRONO[m - 1]}`, mes: true })
+    else if (diaSemana(iso) === 0) ticks.push({ n, label: String(d), mes: false })
+  }
+  // Marcas: solo hitos clave con fecha; etiqueta = día; si dos quedan a menos de
+  // 2,5 días, la segunda sube de fila para no pisarse.
+  const clave = hitosOrdenados(hitos).filter((h) => esHitoClave(h.tipo) && fechaValida(h.fecha))
+  const marcas: { id: string; n: number; label: string; dest: boolean; hecho: boolean; fila: 0 | 1 }[] = []
+  let ultimoN = -Infinity, ultimaFila: 0 | 1 = 1
+  for (const h of clave) {
+    const n = diaNum(h.fecha!)
+    const fila: 0 | 1 = n - ultimoN < 2.5 ? (ultimaFila === 0 ? 1 : 0) : 0
+    marcas.push({ id: h.id, n, label: String(partesFecha(h.fecha!).d), dest: esDestacado(h), hecho: h.hecho, fila })
+    ultimoN = n; ultimaFila = fila
+  }
+  return { ticks, marcas }
 }
 
 export interface CalendarioHojaProps {
