@@ -2117,7 +2117,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Listar cronos',
         description:
-          'Lista/busca cronogramas (cronos) por nombre, proyecto o cliente. Cada fila trae etapas {desde, hasta}, rango total, próximo hito clave y url. Filtra por proyecto_id o estado (borrador|vigente|cerrado).',
+          'Lista/busca cronogramas (cronos) por nombre, proyecto o cliente. Cada fila trae etapas {desde, hasta}, rango total, próximo hito clave, variante_de/variante (v5: las variantes son cronos hermanos del original) y url. Filtra por proyecto_id o estado (borrador|vigente|cerrado).',
         inputSchema: {
           q: z.string().optional().describe('texto de búsqueda'),
           proyecto_id: z.string().optional(),
@@ -2251,6 +2251,20 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crono-compuertas', args)),
+    )
+
+    server.registerTool(
+      'hilvan_crono_variante',
+      {
+        title: 'Crear variante de un crono',
+        description:
+          'Duplica un crono como VARIANTE del mismo grupo (p. ej. "rodaje 23" vs "rodaje 24"): copia ficha, etapas, hitos y compuertas; la copia nace en borrador. Después ajusta lo que difiere con hilvan_crono_editar / hilvan_crono_hitos. Solo la variante VIGENTE del grupo se pinta en el Calendario general: para elegirla, hilvan_crono_editar(crono_id, estado="vigente") deja a las hermanas en borrador. Devuelve {crono_id, url}. Reversible con hilvan_deshacer (borra la variante). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          crono_id: z.string().describe('el crono a duplicar (original o una variante)'),
+          nombre: z.string().describe('nombre corto de la variante, p. ej. "rodaje 24"'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crono-variante', args)),
     )
   },
   {},

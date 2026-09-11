@@ -63,12 +63,23 @@ export async function POST(req: Request) {
   const previo: Record<string, unknown> = {}
   for (const k of Object.keys(update)) previo[k] = actual[k] ?? null
 
+  // Variantes (v5): pasar a vigente deja a las hermanas del grupo en borrador.
+  let hermanasPrevias: string[] = []
+  if (update.estado === 'vigente') {
+    const raiz = (actual.variante_de as string | null) ?? crono_id
+    const { data: hs } = await admin.from('cronos').select('id').or(`id.eq.${raiz},variante_de.eq.${raiz}`).neq('id', crono_id).eq('estado', 'vigente')
+    hermanasPrevias = (hs ?? []).map((h: { id: string }) => h.id)
+    if (hermanasPrevias.length > 0) {
+      const { error: eH } = await admin.from('cronos').update({ estado: 'borrador' }).in('id', hermanasPrevias)
+      if (eH) return NextResponse.json({ error: eH.message }, { status: 500 })
+    }
+  }
   const { error } = await admin.from('cronos').update(update).eq('id', crono_id)
   if (error) {
     await registrarAccion({ herramienta: 'crono-editar', payload: body, resultado_tabla: 'cronos', resultado_id: crono_id, ok: false, error: error.message })
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  const accionId = await registrarAccion({ herramienta: 'crono-editar', payload: { ...body, previo }, resultado_tabla: 'cronos', resultado_id: crono_id, ok: true })
+  const accionId = await registrarAccion({ herramienta: 'crono-editar', payload: { ...body, previo, hermanas_previas: hermanasPrevias }, resultado_tabla: 'cronos', resultado_id: crono_id, ok: true })
   const [crono, feriados] = await Promise.all([cargarCrono(admin, crono_id), cargarFeriados(admin)])
   return NextResponse.json({ ok: true, accion_id: accionId, cambiados: Object.keys(update), crono: crono ? serializarCrono(crono, feriados) : null })
 }

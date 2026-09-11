@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { crearFeriado, eliminarCrono, eliminarFeriado, guardarCrono, importarRodajesAlCrono } from '@/app/actions/cronos'
+import { crearFeriado, duplicarComoVariante, eliminarCrono, eliminarFeriado, guardarCrono, hacerVigente, importarRodajesAlCrono, type VarianteResumen } from '@/app/actions/cronos'
 import { toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
 import { useConfirm } from '@/components/ui/useConfirm'
@@ -74,9 +74,11 @@ interface Props {
   proyectos: { id: string; nombre: string }[]
   rodajesProyecto: { id: string; nombre: string; fecha: string | null; estado: string }[]
   feriados: Feriado[]
+  /** v5: el grupo de variantes al que pertenece (incluido el original). */
+  variantes?: VarianteResumen[]
 }
 
-interface Ficha { nombre: string; proyecto_id: string; cliente: string; responsable: string; notas: string; estado: EstadoCrono }
+interface Ficha { nombre: string; proyecto_id: string; cliente: string; responsable: string; notas: string; estado: EstadoCrono; variante: string }
 type EtapasForm = Record<EtapaCrono, { desde: string; hasta: string }>
 interface Draft { tipo: TipoHitoCrono; titulo: string; fecha: string; fecha_fin: string; monto: string; notas: string; responsable: string; destacado: boolean; hecho: boolean }
 interface Popover { hitoId: string | null; x: number; y: number; draft: Draft }
@@ -85,7 +87,7 @@ const ESTADOS: EstadoCrono[] = ['borrador', 'vigente', 'cerrado']
 const inputCls = 'bg-ch-surface border border-ch-border text-ch-cream font-body text-xs px-2 py-1.5 focus:outline-none focus:border-ch-cream/40 transition-colors placeholder:text-ch-subtle [color-scheme:dark]'
 const lblCls = 'font-body text-[9px] tracking-[0.4em] uppercase text-ch-muted'
 
-const fichaDe = (c: Crono): Ficha => ({ nombre: c.nombre, proyecto_id: c.proyecto_id ?? '', cliente: c.cliente ?? '', responsable: c.responsable ?? '', notas: c.notas ?? '', estado: c.estado })
+const fichaDe = (c: Crono): Ficha => ({ nombre: c.nombre, proyecto_id: c.proyecto_id ?? '', cliente: c.cliente ?? '', responsable: c.responsable ?? '', notas: c.notas ?? '', estado: c.estado, variante: c.variante ?? '' })
 const etapasDe = (c: Crono): EtapasForm => ({
   desarrollo: { desde: c.desarrollo_desde ?? '', hasta: c.desarrollo_hasta ?? '' },
   pre:        { desde: c.pre_desde ?? '',        hasta: c.pre_hasta ?? '' },
@@ -103,7 +105,7 @@ const draftVacio = (fecha: string): Draft => ({ tipo: 'otro', titulo: '', fecha,
 const draftDe = (h: HitoLocal): Draft => ({ tipo: h.tipo, titulo: h.titulo, fecha: h.fecha ?? '', fecha_fin: h.fecha_fin ?? '', monto: h.monto != null ? String(h.monto) : '', notas: h.notas ?? '', responsable: h.responsable ?? '', destacado: !!h.destacado, hecho: h.hecho })
 const snap = (f: Ficha, e: EtapasForm, h: HitoLocal[], c: CompuertaLocal[]) => JSON.stringify({ f, e, h, c })
 
-export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto, feriados: feriadosIniciales }: Props) {
+export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto, feriados: feriadosIniciales, variantes = [] }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { confirm, ConfirmDialog } = useConfirm()
@@ -119,6 +121,8 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
   const [popover, setPopover] = useState<Popover | null>(null)
   const [hoy, setHoy] = useState<string | undefined>(undefined)
   const [nuevoFeriado, setNuevoFeriado] = useState({ fecha: '', nombre: '' })
+  const [nuevaVariante, setNuevaVariante] = useState<string | null>(null) // null = cerrado; string = nombre en edición
+  const esVariante = !!inicial.variante_de
 
   const [guardadoSnap, setGuardadoSnap] = useState(() => snap(fichaDe(inicial), etapasDe(inicial), hitosDe(inicial), compuertasDe(inicial)))
   const sucio = snap(ficha, etapas, hitos, compuertas) !== guardadoSnap || eliminados.length > 0 || eliminadasC.length > 0
@@ -179,6 +183,7 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
       try {
         const r = await guardarCrono(cronoId, {
           nombre: ficha.nombre.trim(), proyecto_id: ficha.proyecto_id || null, cliente: ficha.cliente, responsable: ficha.responsable, notas: ficha.notas, estado: ficha.estado,
+          ...(esVariante ? { variante: ficha.variante } : {}),
           etapas, hitos, eliminar: eliminados, compuertas, eliminar_compuertas: eliminadasC,
         })
         if (r.error || !r.crono) { toastError(r.error ?? 'No se pudo guardar'); momento('error', { mensaje: 'No se pudo guardar el crono' }); return }
@@ -207,6 +212,34 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
         setHitos(hitosDe(r.crono)); setGuardadoSnap(snap(ficha, etapas, hitosDe(r.crono), compuertas))
         momento('item.agregado', { mensaje: `${r.creados ?? 0} rodaje${r.creados === 1 ? '' : 's'} importado${r.creados === 1 ? '' : 's'}` })
       } catch (e) { toastError(e instanceof Error ? e.message : 'No se pudo importar') }
+    })
+  }
+
+  // ─── variantes (v5) ────────────────────────────────────────────────────────
+  function crearVariante() {
+    const nombre = (nuevaVariante ?? '').trim()
+    if (!nombre) { toastError('Ponle un nombre corto a la variante, p. ej. "rodaje 24"'); return }
+    if (sucio) { toastError('Guarda los cambios antes de crear la variante: se duplica lo guardado'); return }
+    startTransition(async () => {
+      try {
+        const r = await duplicarComoVariante(cronoId, nombre)
+        if (r.error || !r.id) { toastError(r.error ?? 'No se pudo crear la variante'); return }
+        momento('item.agregado', { mensaje: `Variante "${nombre}" creada` })
+        setNuevaVariante(null)
+        router.push(`/cronos/${r.id}`)
+      } catch (e) { toastError(e instanceof Error ? e.message : 'No se pudo crear la variante') }
+    })
+  }
+  function marcarVigente() {
+    startTransition(async () => {
+      try {
+        const r = await hacerVigente(cronoId)
+        if (r.error) { toastError(r.error); return }
+        setFicha((f) => ({ ...f, estado: 'vigente' }))
+        setGuardadoSnap((g) => { try { const o = JSON.parse(g); o.f.estado = 'vigente'; return JSON.stringify(o) } catch { return g } })
+        momento('guardado', { mensaje: 'Esta variante es ahora la vigente' })
+        router.refresh()
+      } catch (e) { toastError(e instanceof Error ? e.message : 'No se pudo marcar como vigente') }
     })
   }
 
@@ -347,6 +380,30 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
           </select>
           <input value={ficha.cliente} onChange={(e) => setFicha({ ...ficha, cliente: e.target.value })} placeholder={clienteProyecto ? `Cliente: ${clienteProyecto}` : 'Cliente'} className={`${inputCls} w-40`} />
           <input value={ficha.responsable} onChange={(e) => setFicha({ ...ficha, responsable: e.target.value })} placeholder="Responsable" className={`${inputCls} w-32`} />
+          {esVariante && <input value={ficha.variante} onChange={(e) => setFicha({ ...ficha, variante: e.target.value })} placeholder="Nombre de la variante" className={`${inputCls} w-36`} title="Nombre corto de esta variante" />}
+        </div>
+        {/* Variantes (v5): el grupo, con la actual marcada; crear otra; hacer vigente */}
+        <div className="flex flex-wrap items-center gap-2 basis-full">
+          <span className={lblCls}>Variantes</span>
+          {variantes.map((v) => (
+            v.id === cronoId ? (
+              <span key={v.id} className="font-body text-[10px] tracking-[0.15em] uppercase px-2 py-1 border text-ch-cream" style={{ borderColor: CH.lila }}>{v.es_original ? 'original' : v.variante || 'variante'}{v.estado === 'vigente' ? ' · vigente' : ''}</span>
+            ) : (
+              <Link key={v.id} href={`/cronos/${v.id}`} className="font-body text-[10px] tracking-[0.15em] uppercase px-2 py-1 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors">{v.es_original ? 'original' : v.variante || 'variante'}{v.estado === 'vigente' ? ' · vigente' : ''}</Link>
+            )
+          ))}
+          {nuevaVariante === null ? (
+            <button type="button" onClick={() => setNuevaVariante('')} className="font-body text-[10px] tracking-[0.15em] uppercase px-2 py-1 border border-dashed border-ch-border text-ch-muted hover:text-ch-cream transition-colors" title="Duplica este crono como variante (lo guardado)">+ variante</button>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <input autoFocus value={nuevaVariante} onChange={(e) => setNuevaVariante(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') crearVariante(); if (e.key === 'Escape') setNuevaVariante(null) }} placeholder="nombre corto, p. ej. rodaje 24" className={`${inputCls} w-48`} />
+              <button type="button" onClick={crearVariante} disabled={isPending} className="font-body text-[9px] tracking-[0.2em] uppercase px-2.5 py-1.5 text-ch-black" style={{ background: CH.lila }}>Crear</button>
+              <button type="button" onClick={() => setNuevaVariante(null)} className="font-body text-[9px] tracking-[0.2em] uppercase px-2 py-1.5 text-ch-muted hover:text-ch-cream">Cancelar</button>
+            </span>
+          )}
+          {ficha.estado !== 'vigente' && variantes.length > 1 && (
+            <button type="button" onClick={marcarVigente} disabled={isPending} className="font-body text-[10px] tracking-[0.15em] uppercase px-2 py-1 border border-ch-border text-ch-muted hover:text-ch-cream transition-colors ml-2" title="Deja esta variante como vigente y las demás en borrador. Solo la vigente se pinta en el Calendario general.">Hacer vigente</button>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <span className={`font-body text-[11px] ${sucio ? 'text-ch-gold' : 'text-ch-subtle'}`}>{sucio ? '● Sin guardar' : '✓ Guardado'}</span>
@@ -371,7 +428,7 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, borderBottom: `1.5px solid ${CH.negro}`, paddingBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, minWidth: 0, flex: 1 }}>
               <input value={ficha.nombre} onChange={(e) => setFicha({ ...ficha, nombre: e.target.value })} placeholder="Nombre del crono" aria-label="Nombre del crono" className="font-display italic bg-transparent focus:outline-none min-w-0 flex-1" style={{ fontSize: 26, lineHeight: 1, color: CH.negro, border: 'none', borderBottom: '1px solid transparent', maxWidth: 560 }} />
-              <span style={{ fontSize: 11, color: CH.gris, whiteSpace: 'nowrap' }}>Cronograma{cliente ? ` · ${cliente}` : ''}</span>
+              <span style={{ fontSize: 11, color: CH.gris, whiteSpace: 'nowrap' }}>Cronograma{cliente ? ` · ${cliente}` : ''}{esVariante && ficha.variante ? ` · variante ${ficha.variante}` : ''}</span>
             </div>
             <input value={ficha.notas} onChange={(e) => setFicha({ ...ficha, notas: e.target.value })} placeholder="Nota al pie (condiciones, supuestos)" className="bg-transparent focus:outline-none text-right" style={{ fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', color: CH.gris, border: 'none', width: 320 }} />
           </div>

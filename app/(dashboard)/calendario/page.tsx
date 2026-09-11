@@ -5,7 +5,7 @@ import { CLASIFICACION_COLORES } from '@/types'
 import CalendarioCliente from '@/components/calendario/CalendarioCliente'
 import InboxGCal from '@/components/calendario/InboxGCal'
 import type { EventoFC } from '@/components/calendario/CalendarioCliente'
-import { esHitoClave, nombreTipoHito, sumarDias } from '@/lib/crono'
+import { cronosVisibles, esHitoClave, nombreTipoHito, sumarDias } from '@/lib/crono'
 import type { CronoHito, TipoHitoCrono } from '@/types'
 
 export const metadata = { title: 'Calendario — Hilván' }
@@ -47,7 +47,7 @@ export default async function CalendarioPage() {
   // Cargar hitos de cronos con fecha (CH-11) — una capa más, junto a rodajes y GCal.
   const { data: hitosCrono } = await supabase
     .from('crono_hitos')
-    .select('id, tipo, titulo, fecha, fecha_fin, hecho, crono:cronos(id, nombre, estado)')
+    .select('id, tipo, titulo, fecha, fecha_fin, hecho, crono:cronos(id, nombre, estado, variante_de, variante)')
     .not('fecha', 'is', null)
     .order('fecha', { ascending: true })
 
@@ -100,15 +100,19 @@ export default async function CalendarioPage() {
 
   // Mapear hitos de crono a FullCalendar. `end` es exclusivo en FullCalendar, por
   // eso un rango suma un día al fin. Los cronos cerrados no se pintan.
-  const eventosCrono: EventoFC[] = ((hitosCrono ?? []) as unknown as (Pick<CronoHito, 'id' | 'tipo' | 'titulo' | 'fecha' | 'fecha_fin' | 'hecho'> & { crono: { id: string; nombre: string; estado: string } | null })[])
-    .filter(h => h.fecha && h.crono && h.crono.estado !== 'cerrado')
+  type HitoCal = Pick<CronoHito, 'id' | 'tipo' | 'titulo' | 'fecha' | 'fecha_fin' | 'hecho'> & { crono: { id: string; nombre: string; estado: 'borrador' | 'vigente' | 'cerrado'; variante_de: string | null; variante: string | null } | null }
+  const hitosCal = (hitosCrono ?? []) as unknown as HitoCal[]
+  // Variantes (v5): un solo crono por grupo — la vigente, o el original si ninguna lo es.
+  const visibles = new Set(cronosVisibles(Array.from(new Map(hitosCal.filter(h => h.crono).map(h => [h.crono!.id, h.crono!])).values())).map(c => c.id))
+  const eventosCrono: EventoFC[] = hitosCal
+    .filter(h => h.fecha && h.crono && visibles.has(h.crono.id))
     .map(h => {
       const tipo = h.tipo as TipoHitoCrono
       const clave = esHitoClave(tipo)
       const color = clave ? '#d9d2c4' : tipo === 'pago' ? '#c9a84c' : '#5a5a55'
       return {
         id:              `crono-${h.id}`,
-        title:           `${h.titulo || nombreTipoHito(tipo)} · ${h.crono!.nombre}`,
+        title:           `${h.titulo || nombreTipoHito(tipo)} · ${h.crono!.nombre}${h.crono!.variante ? ` (${h.crono!.variante})` : ''}`,
         start:           h.fecha!,
         end:             sumarDias(h.fecha_fin ?? h.fecha!, 1),
         allDay:          true,

@@ -169,7 +169,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
           <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
             {logoBase64 ? <Image src={logoBase64} style={{ width: 54, height: 15, objectFit: 'contain', marginRight: 10, marginBottom: 1 }} /> : null}
             <Text style={{ fontSize: 15, fontFamily: 'Helvetica-Bold' }}>{crono.nombre}</Text>
-            <Text style={{ fontSize: 8, color: CH.gris, marginLeft: 8, marginBottom: 1 }}>Cronograma{cliente ? ` · ${cliente}` : ''}</Text>
+            <Text style={{ fontSize: 8, color: CH.gris, marginLeft: 8, marginBottom: 1 }}>Cronograma{cliente ? ` · ${cliente}` : ''}{crono.variante ? ` · variante ${crono.variante}` : ''}</Text>
           </View>
           <Text style={styles.lbl}>{[cliente, 'Casa Hiedra', `emitido ${fechaEmision}`].filter(Boolean).join(' · ')}</Text>
         </View>

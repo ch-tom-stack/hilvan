@@ -152,6 +152,8 @@ export interface GuardarCronoPayload {
   responsable: string
   notas: string
   estado: EstadoCrono
+  /** v5: nombre corto de la variante (solo si el crono es variante). */
+  variante?: string
   etapas: Record<EtapaCrono, { desde: string; hasta: string }>
   /** Estado COMPLETO de los hitos (los nuevos traen id generado en el cliente). El orden del array es `orden`. */
   hitos: unknown[]
@@ -231,6 +233,7 @@ export async function guardarCrono(id: string, payload: GuardarCronoPayload): Pr
       responsable: payload.responsable?.trim() || null,
       notas: payload.notas?.trim() || null,
       estado,
+      ...(payload.variante !== undefined ? { variante: payload.variante.trim() || null } : {}),
       ...cols,
     })
     .eq('id', id)
@@ -287,6 +290,100 @@ export async function guardarCrono(id: string, payload: GuardarCronoPayload): Pr
   if (proyecto_id) revalidatePath(`/proyectos/${proyecto_id}`)
   const crono = await getCrono(id)
   return crono ? { crono } : { error: 'Guardado, pero no se pudo releer el crono' }
+}
+
+// ─── variantes (v5) ─────────────────────────────────────────────────────────
+
+/** El id del original de un grupo (el mismo crono si no es variante). */
+function raizDe(c: Pick<Crono, 'id' | 'variante_de'>): string {
+  return c.variante_de ?? c.id
+}
+
+export interface VarianteResumen { id: string; nombre: string; variante: string | null; estado: EstadoCrono; es_original: boolean }
+
+/** Todas las variantes del grupo al que pertenece `id` (incluido el original), en orden de creación. */
+export async function getVariantes(id: string): Promise<VarianteResumen[]> {
+  const supabase = await createClient()
+  const { data: yo } = await supabase.from('cronos').select('id, variante_de').eq('id', id).maybeSingle()
+  if (!yo) return []
+  const raiz = raizDe(yo as Pick<Crono, 'id' | 'variante_de'>)
+  const { data } = await supabase
+    .from('cronos')
+    .select('id, nombre, variante, estado, variante_de, created_at')
+    .or(`id.eq.${raiz},variante_de.eq.${raiz}`)
+    .order('created_at')
+  return ((data ?? []) as Pick<Crono, 'id' | 'nombre' | 'variante' | 'estado' | 'variante_de'>[])
+    .map((c) => ({ id: c.id, nombre: c.nombre, variante: c.variante ?? null, estado: c.estado, es_original: c.id === raiz }))
+}
+
+/**
+ * Duplica un crono como variante del mismo grupo: copia ficha, etapas, hitos y
+ * compuertas (re-enganchando los checks automáticos a los hitos copiados). La
+ * copia nace en borrador. Valida y copia TODO antes de escribir; si falla a mitad,
+ * borra la copia para no dejar un crono a medias.
+ */
+export async function duplicarComoVariante(id: string, nombreVariante: string): Promise<{ id?: string; error?: string }> {
+  await requireSesion()
+  if (!UUID_RE.test(id)) return { error: 'id inválido' }
+  const variante = nombreVariante?.trim()
+  if (!variante) return { error: 'Ponle un nombre corto a la variante (p. ej. "rodaje 24")' }
+  const origen = await getCrono(id)
+  if (!origen) return { error: 'Crono no encontrado' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { id: _id, created_at: _c, updated_at: _u, hitos, compuertas, proyecto: _p, ...ficha } = origen
+  const { data: nuevo, error: e1 } = await supabase
+    .from('cronos')
+    .insert({ ...ficha, variante_de: raizDe(origen), variante, estado: 'borrador', created_by: user?.id ?? null })
+    .select('id')
+    .single()
+  if (e1 || !nuevo) return { error: e1?.message ?? 'No se pudo crear la variante' }
+  const nuevoId = nuevo.id as string
+
+  const mapa = new Map<string, string>()
+  const filasH = (hitos ?? []).map((h) => {
+    const nid = crypto.randomUUID()
+    mapa.set(h.id, nid)
+    const { id: _hid, crono_id: _cid, created_at: _hc, updated_at: _hu, ...resto } = h
+    return { ...resto, id: nid, crono_id: nuevoId }
+  })
+  const filasC = (compuertas ?? []).map((c) => {
+    const { id: _cid2, crono_id: _cc, created_at: _cc2, updated_at: _cu, ...resto } = c
+    return { ...resto, crono_id: nuevoId, hito_id: c.hito_id ? mapa.get(c.hito_id) ?? null : null }
+  })
+  const abortar = async (msg: string) => {
+    await supabase.from('cronos').delete().eq('id', nuevoId)
+    return { error: msg }
+  }
+  if (filasH.length > 0) {
+    const { error: e2 } = await supabase.from('crono_hitos').insert(filasH)
+    if (e2) return abortar(e2.message)
+  }
+  if (filasC.length > 0) {
+    const { error: e3 } = await supabase.from('crono_compuertas').insert(filasC)
+    if (e3) return abortar(e3.message)
+  }
+  revalidatePath('/cronos')
+  if (origen.proyecto_id) revalidatePath(`/proyectos/${origen.proyecto_id}`)
+  return { id: nuevoId }
+}
+
+/** Deja este crono como vigente y a sus hermanas (y al original) en borrador. Cerrados no se tocan. */
+export async function hacerVigente(id: string): Promise<{ error?: string }> {
+  await requireSesion()
+  if (!UUID_RE.test(id)) return { error: 'id inválido' }
+  const supabase = await createClient()
+  const { data: yo } = await supabase.from('cronos').select('id, variante_de, proyecto_id').eq('id', id).maybeSingle()
+  if (!yo) return { error: 'Crono no encontrado' }
+  const raiz = raizDe(yo as Pick<Crono, 'id' | 'variante_de'>)
+  const { error: e1 } = await supabase.from('cronos').update({ estado: 'borrador' }).or(`id.eq.${raiz},variante_de.eq.${raiz}`).neq('id', id).eq('estado', 'vigente')
+  if (e1) return { error: e1.message }
+  const { error: e2 } = await supabase.from('cronos').update({ estado: 'vigente' }).eq('id', id)
+  if (e2) return { error: e2.message }
+  revalidatePath('/cronos'); revalidatePath(`/cronos/${id}`); revalidatePath('/calendario')
+  if (yo.proyecto_id) revalidatePath(`/proyectos/${yo.proyecto_id}`)
+  return {}
 }
 
 export async function eliminarCrono(id: string): Promise<{ error?: string }> {

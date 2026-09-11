@@ -590,18 +590,27 @@ export async function POST(req: Request) {
       },
       { status: 400 },
     )
+  } else if (accion.herramienta === 'crono-variante') {
+    // Borrar la variante creada (hitos y compuertas caen por CASCADE).
+    const { error } = await admin.from('cronos').delete().eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'crear-crono') {
     // Borrar el crono completo: crono_hitos cae por ON DELETE CASCADE.
     const { error } = await admin.from('cronos').delete().eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else if (accion.herramienta === 'crono-editar') {
     // Restaurar la ficha/etapas previas (payload.previo). No borra el crono.
-    const payload = accion.payload as { previo?: Record<string, unknown> } | null
+    const payload = accion.payload as { previo?: Record<string, unknown>; hermanas_previas?: string[] } | null
     if (!payload?.previo || Object.keys(payload.previo).length === 0) {
       return NextResponse.json({ error: 'Acción sin valores previos guardados' }, { status: 400 })
     }
     const { error } = await admin.from('cronos').update(payload.previo).eq('id', accion.resultado_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    // v5: si al pasar a vigente se bajaron hermanas a borrador, volverlas a vigente.
+    if (Array.isArray(payload.hermanas_previas) && payload.hermanas_previas.length > 0) {
+      const { error: eH } = await admin.from('cronos').update({ estado: 'vigente' }).in('id', payload.hermanas_previas)
+      if (eH) return NextResponse.json({ error: eH.message }, { status: 500 })
+    }
   } else if (accion.herramienta === 'crono-hitos') {
     // Restaurar el conjunto COMPLETO de hitos anterior (payload.previo): borra los
     // actuales del crono y vuelve a insertar los previos con sus mismos ids.

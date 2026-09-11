@@ -1471,6 +1471,10 @@ export interface Crono {
   produccion_hasta: string | null
   post_desde: string | null
   post_hasta: string | null
+  /** v5: variantes — id del crono original (null = es el original o no tiene variantes). */
+  variante_de?: string | null
+  /** v5: nombre corto de la variante ("rodaje 24"). */
+  variante?: string | null
   created_by?: string | null
   created_at: string
   updated_at: string

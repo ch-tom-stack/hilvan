@@ -234,3 +234,15 @@ describe('v2: feriados, lectura, compuertas', () => {
     expect(hitosEntre([rod], '2026-10-16', '2026-10-20')).toHaveLength(0)
   })
 })
+
+import { cronosVisibles } from '@/lib/crono'
+
+describe('v5: variantes', () => {
+  const c = (id: string, estado: 'borrador' | 'vigente' | 'cerrado', variante_de: string | null = null) => ({ id, estado, variante_de })
+  it('pinta la vigente del grupo, o el original si ninguna lo es, y nunca un cerrado', () => {
+    expect(cronosVisibles([c('a', 'borrador'), c('b', 'vigente', 'a'), c('c', 'borrador', 'a')]).map((x) => x.id)).toEqual(['b'])
+    expect(cronosVisibles([c('a', 'borrador'), c('b', 'borrador', 'a')]).map((x) => x.id)).toEqual(['a'])
+    expect(cronosVisibles([c('a', 'cerrado'), c('b', 'borrador', 'a')]).map((x) => x.id)).toEqual([])
+    expect(cronosVisibles([c('x', 'vigente'), c('y', 'borrador')]).map((x) => x.id)).toEqual(['x', 'y'])
+  })
+})

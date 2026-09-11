@@ -580,3 +580,26 @@ export function hitosEntre<T extends Pick<CronoHito, 'fecha' | 'fecha_fin' | 'or
     return y >= a && x <= b
   })
 }
+
+// ─── v5: variantes ────────────────────────────────────────────────────────────
+
+/**
+ * De una lista de cronos, los que se PINTAN afuera (Calendario general, ficha):
+ * uno por grupo de variantes — la vigente si la hay, si no el original — y nunca
+ * un cerrado.
+ */
+export function cronosVisibles<T extends Pick<Crono, 'id' | 'estado' | 'variante_de'>>(cronos: T[]): T[] {
+  const grupos = new Map<string, T[]>()
+  for (const c of cronos) {
+    const raiz = c.variante_de ?? c.id
+    grupos.set(raiz, [...(grupos.get(raiz) ?? []), c])
+  }
+  const out: T[] = []
+  for (const [raiz, lista] of grupos) {
+    const vivos = lista.filter((c) => c.estado !== 'cerrado')
+    const vigente = vivos.find((c) => c.estado === 'vigente')
+    const elegido = vigente ?? vivos.find((c) => c.id === raiz) ?? null
+    if (elegido) out.push(elegido)
+  }
+  return out
+}

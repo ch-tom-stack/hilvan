@@ -69,7 +69,17 @@ export default async function CronosPage({ searchParams }: { searchParams: Promi
           <div className="hidden md:grid px-4" style={{ gridTemplateColumns: '1.6fr 1fr 1.4fr 110px', gap: 16 }}>
             {['Crono', 'Rango', 'Próximo hito clave', 'Estado'].map((t) => <span key={t} className="font-body text-[9px] tracking-[0.3em] uppercase text-ch-muted">{t}</span>)}
           </div>
-          {cronos.map((c) => {
+          {(() => {
+            // Variantes (v5): el original primero y sus variantes debajo, con sangría.
+            const ids = new Set(cronos.map((c) => c.id))
+            const orden: { c: (typeof cronos)[number]; nivel: number }[] = []
+            for (const c of cronos) {
+              if (c.variante_de && ids.has(c.variante_de)) continue
+              orden.push({ c, nivel: 0 })
+              for (const v of cronos) if (v.variante_de === c.id) orden.push({ c: v, nivel: 1 })
+            }
+            return orden
+          })().map(({ c, nivel }) => {
             const etapas = rangosEtapas(c)
             const hitos = c.hitos ?? []
             const rango = rangoCrono(etapas, hitos)
@@ -77,9 +87,9 @@ export default async function CronosPage({ searchParams }: { searchParams: Promi
             const dias = prox && prox.fecha ? diaNum(prox.fecha) - diaNum(hoy) : null
             const cliente = c.cliente || c.proyecto?.cliente?.nombre || null
             return (
-              <Link key={c.id} href={`/cronos/${c.id}`} className={`border border-ch-border bg-ch-surface px-4 py-3 grid gap-4 items-center hover:border-ch-cream/30 transition-colors ch-nudge-host ${c.estado === 'cerrado' ? 'opacity-60' : ''}`} style={{ gridTemplateColumns: '1.6fr 1fr 1.4fr 110px' }}>
+              <Link key={c.id} href={`/cronos/${c.id}`} className={`border border-ch-border bg-ch-surface px-4 py-3 grid gap-4 items-center hover:border-ch-cream/30 transition-colors ch-nudge-host ${c.estado === 'cerrado' ? 'opacity-60' : ''} ${nivel ? 'ml-6 border-l-2 border-l-[#e6e2ed]/60' : ''}`} style={{ gridTemplateColumns: '1.6fr 1fr 1.4fr 110px' }}>
                 <div className="min-w-0">
-                  <p className="font-body text-sm text-ch-cream truncate ch-nudge">{c.nombre}</p>
+                  <p className="font-body text-sm text-ch-cream truncate ch-nudge">{c.variante ? <><span className="text-ch-muted">variante · </span>{c.variante}</> : c.nombre}</p>
                   <p className="font-body text-[11px] text-ch-muted truncate">{c.proyecto ? `Proyecto: ${c.proyecto.nombre}` : 'Sin proyecto'}{cliente ? ` · ${cliente}` : ''}</p>
                   <div className="mt-2"><BarraEtapasMini etapas={etapas} /></div>
                 </div>

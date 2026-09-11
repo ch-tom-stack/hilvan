@@ -67,6 +67,8 @@ export function serializarCrono(c: Crono, feriados: Feriado[] = []) {
     cliente: c.cliente,
     responsable: c.responsable,
     notas: c.notas,
+    variante_de: c.variante_de ?? null,
+    variante: c.variante ?? null,
     etapas,
     rango,
     proximo_hito_clave: prox ? serializarHito(prox) : null,
