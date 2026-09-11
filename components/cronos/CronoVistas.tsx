@@ -134,11 +134,11 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
   let d1 = diaNum(rango.hasta) + 3
   if (d1 - d0 < 21) { const c = Math.round((d0 + d1) / 2); d0 = c - 10; d1 = c + 10 }
   const span = d1 - d0 + 1
-  const W = 1000, H = 62
-  const Y_LBL = 10, Y_BAND = 16, H_BAND = 20, Y_AXIS = Y_BAND + H_BAND, Y_TICK = Y_AXIS + 13
+  const W = 1000, H = 74
+  const Y_LBL = 22, Y_BAND = 28, H_BAND = 20, Y_AXIS = Y_BAND + H_BAND, Y_TICK = Y_AXIS + 14
   const dayW = W / span
   const x = (n: number) => (n - d0) * dayW
-  const g = geometriaTira(d0, d1, hitos)
+  const g = geometriaTira(d0, d1, hitos, (22 / W) * span)
   const hoyN = hoy && fechaValida(hoy) ? diaNum(hoy) : null
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: H, display: 'block' }} role="img" aria-label="Vista general">
@@ -167,7 +167,7 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
       {g.ticks.map((t) => (
         <g key={t.n}>
           <line x1={x(t.n)} x2={x(t.n)} y1={Y_AXIS} y2={Y_AXIS + (t.mes ? 6 : 3)} stroke={t.mes ? CH.gris : CH.linea} />
-          <text x={x(t.n) + 2} y={Y_TICK} fill={t.mes ? CH.negro : CH.grisClaro} fontSize={8} letterSpacing={t.mes ? 1 : 0}>{t.label}</text>
+          {t.label && <text x={x(t.n) + 2} y={Y_TICK} fill={t.mes ? CH.negro : CH.grisClaro} fontSize={8} letterSpacing={t.mes ? 1 : 0}>{t.label}</text>}
         </g>
       ))}
       {/* hitos clave: línea + día encima, en dos alturas si están pegados */}
@@ -176,7 +176,7 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
         return (
           <g key={m.id} opacity={m.hecho ? 0.35 : 1}>
             <line x1={cx} x2={cx} y1={Y_BAND - 2} y2={Y_AXIS} stroke={CH.negro} strokeWidth={m.dest ? 3 : 1.25} />
-            <text x={cx} y={m.fila === 0 ? Y_LBL : Y_LBL - 9} textAnchor="middle" fill={CH.negro} fontSize={m.dest ? 9 : 8} fontWeight={m.dest ? 600 : 400}>{m.label}</text>
+            {m.label && <text x={cx} y={m.fila === 0 ? Y_LBL : Y_LBL - 10} textAnchor="middle" fill={CH.negro} fontSize={m.dest ? 9 : 8} fontWeight={m.dest ? 600 : 400}>{m.label}</text>}
           </g>
         )
       })}
@@ -185,25 +185,36 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
   )
 }
 
-/** Geometría compartida de la tira (pantalla y PDF): ticks del eje y marcas de hitos con su fila. */
-export function geometriaTira(d0: number, d1: number, hitos: HitoVista[]) {
+/** Geometría compartida de la tira (pantalla y PDF): ticks del eje y marcas de hitos.
+ *  `minDias` = separación mínima entre dos etiquetas para que no se pisen (en días,
+ *  según el ancho real de la tira). En el eje, un lunes demasiado cerca de un "1 oct"
+ *  pierde su número (conserva la rayita). En las marcas, cada etiqueta busca la fila
+ *  0, si no la 1, y si tampoco cabe se queda sin número (la línea igual se dibuja). */
+export function geometriaTira(d0: number, d1: number, hitos: HitoVista[], minDias = 3) {
+  const meses: number[] = []
   const ticks: { n: number; label: string; mes: boolean }[] = []
   for (let n = d0; n <= d1; n++) {
-    const iso = isoDeDia(n)
-    const { d, m } = partesFecha(iso)
-    if (d === 1) ticks.push({ n, label: `1 ${MESES_CORTOS_CRONO[m - 1]}`, mes: true })
-    else if (diaSemana(iso) === 0) ticks.push({ n, label: String(d), mes: false })
+    const { d, m } = partesFecha(isoDeDia(n))
+    if (d === 1) { meses.push(n); ticks.push({ n, label: `1 ${MESES_CORTOS_CRONO[m - 1]}`, mes: true }) }
   }
-  // Marcas: solo hitos clave con fecha; etiqueta = día; si dos quedan a menos de
-  // 2,5 días, la segunda sube de fila para no pisarse.
+  for (let n = d0; n <= d1; n++) {
+    const iso = isoDeDia(n)
+    if (partesFecha(iso).d === 1 || diaSemana(iso) !== 0) continue
+    const cerca = meses.some((mn) => Math.abs(mn - n) < minDias)
+    ticks.push({ n, label: cerca ? '' : String(partesFecha(iso).d), mes: false })
+  }
+  ticks.sort((x, y) => x.n - y.n)
   const clave = hitosOrdenados(hitos).filter((h) => esHitoClave(h.tipo) && fechaValida(h.fecha))
-  const marcas: { id: string; n: number; label: string; dest: boolean; hecho: boolean; fila: 0 | 1 }[] = []
-  let ultimoN = -Infinity, ultimaFila: 0 | 1 = 1
+  const marcas: { id: string; n: number; label: string; dest: boolean; hecho: boolean; fila: 0 | 1 | -1 }[] = []
+  const ultimo: [number, number] = [-Infinity, -Infinity]
   for (const h of clave) {
     const n = diaNum(h.fecha!)
-    const fila: 0 | 1 = n - ultimoN < 2.5 ? (ultimaFila === 0 ? 1 : 0) : 0
-    marcas.push({ id: h.id, n, label: String(partesFecha(h.fecha!).d), dest: esDestacado(h), hecho: h.hecho, fila })
-    ultimoN = n; ultimaFila = fila
+    let fila: 0 | 1 | -1 = -1
+    if (n - ultimo[0] >= minDias) fila = 0
+    else if (n - ultimo[1] >= minDias) fila = 1
+    if (fila === 0) ultimo[0] = n
+    else if (fila === 1) ultimo[1] = n
+    marcas.push({ id: h.id, n, label: fila >= 0 ? String(partesFecha(h.fecha!).d) : '', dest: esDestacado(h), hecho: h.hecho, fila })
   }
   return { ticks, marcas }
 }

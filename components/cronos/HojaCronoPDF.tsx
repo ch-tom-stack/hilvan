@@ -152,7 +152,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
   // días 13, leyenda 17, pie 22) más los bordes de las filas y un colchón. Antes
   // este cálculo era optimista y el estirado de filas empujaba una segunda hoja
   // vacía; `wrap={false}` en la Page es la segunda cerradura.
-  const FIJO = 36 + 40 + 50 + 13 + 17 + 22
+  const FIJO = 36 + 40 + 58 + 13 + 17 + 22
   const altoDisponible = PAGE_H - M * 2 - FIJO - semanas.length * 0.5 - 10
   const natural = altos.reduce((s, a) => s + a, 0)
   const k = natural > altoDisponible ? Math.max(0.55, altoDisponible / natural) : 1
@@ -256,15 +256,15 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
 }
 
 function TiraGeneralPDF({ etapas, hitos, rango }: { etapas: Record<EtapaCrono, RangoEtapa>; hitos: CronoHito[]; hoy: string; rango: { desde: string; hasta: string } }) {
-  const H = 44
-  const Y_LBL = 7, Y_BAND = 10, H_BAND = 14, Y_AXIS = Y_BAND + H_BAND, Y_TICK = Y_AXIS + 9
+  const H = 52
+  const Y_LBL = 15, Y_BAND = 18, H_BAND = 14, Y_AXIS = Y_BAND + H_BAND, Y_TICK = Y_AXIS + 9
   let d0 = diaNum(rango.desde) - 3
   let d1 = diaNum(rango.hasta) + 3
   if (d1 - d0 < 21) { const c = Math.round((d0 + d1) / 2); d0 = c - 10; d1 = c + 10 }
   const span = d1 - d0 + 1
   const dayW = W / span
   const x = (n: number) => (n - d0) * dayW
-  const g = geometriaTira(d0, d1, hitos)
+  const g = geometriaTira(d0, d1, hitos, (16 / W) * span)
   return (
     <View style={{ height: H, position: 'relative' }}>
       {ETAPAS_CRONO.map((e) => {
@@ -288,9 +288,9 @@ function TiraGeneralPDF({ etapas, hitos, rango }: { etapas: Record<EtapaCrono, R
           return <Line key={m.id} x1={cx} y1={Y_BAND - 1.5} x2={cx} y2={Y_AXIS} stroke={CH.negro} strokeWidth={m.dest ? 2.2 : 0.9} opacity={m.hecho ? 0.35 : 1} />
         })}
       </Svg>
-      {g.ticks.map((t) => <Text key={t.n} style={{ position: 'absolute', left: x(t.n) + 1.5, top: Y_TICK - 5, fontSize: t.mes ? 5.5 : 5, color: t.mes ? CH.negro : CH.grisClaro, letterSpacing: t.mes ? 0.8 : 0 }}>{t.label.toUpperCase()}</Text>)}
-      {g.marcas.map((m) => (
-        <Text key={m.id} style={{ position: 'absolute', left: x(m.n) + dayW / 2 - 8, width: 16, textAlign: 'center', top: m.fila === 0 ? Y_LBL - 6.5 : Y_LBL - 12.5, fontSize: m.dest ? 6.5 : 5.5, fontFamily: m.dest ? 'Helvetica-Bold' : 'Helvetica', color: CH.negro, opacity: m.hecho ? 0.35 : 1 }}>{m.label}</Text>
+      {g.ticks.filter((t) => t.label).map((t) => <Text key={t.n} style={{ position: 'absolute', left: x(t.n) + 1.5, top: Y_TICK - 5, fontSize: t.mes ? 5.5 : 5, color: t.mes ? CH.negro : CH.grisClaro, letterSpacing: t.mes ? 0.8 : 0 }}>{t.label.toUpperCase()}</Text>)}
+      {g.marcas.filter((m) => m.label).map((m) => (
+        <Text key={m.id} style={{ position: 'absolute', left: x(m.n) + dayW / 2 - 8, width: 16, textAlign: 'center', top: m.fila === 0 ? Y_LBL - 6.5 : Y_LBL - 13.5, fontSize: m.dest ? 6.5 : 5.5, fontFamily: m.dest ? 'Helvetica-Bold' : 'Helvetica', color: CH.negro, opacity: m.hecho ? 0.35 : 1 }}>{m.label}</Text>
       ))}
     </View>
   )
