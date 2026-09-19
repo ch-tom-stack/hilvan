@@ -1,9 +1,14 @@
-# Reglas de WhatsApp — CRM (CH-10)
+# Reglas de WhatsApp y otros canales — CRM (CH-10)
 
-El WhatsApp de la empresa está conectado a Hilván: cada mensaje que llega al
+Hilván puede escuchar el WhatsApp de la empresa: cada mensaje que llega al
 número y cada mensaje que el equipo manda desde el celular queda guardado, y el
 operador lo pasa al CRM en su rutina. Hilván solo ESCUCHA — nunca envía por
 WhatsApp.
+
+> **Estado al 19-sep-2026: el número todavía NO está conectado** (se decidió no
+> contratar el alta por ahora: casi ninguna venta pasa por ese número). Mientras
+> `hilvan_whatsapp_pendientes` venga vacío, las secciones 1 a 5 no aplican y lo
+> que manda es la sección 6.
 
 Por qué existe (brief de calidad de leads, 19-sep-2026): Magnolia novias dejó
 plantado al equipo tres veces y Atelier Paola Castro postergó el proyecto por
@@ -90,3 +95,25 @@ contacto: es lo que hace que su WhatsApp entre completo.
 - No se envía nada por WhatsApp. Ni el operador ni Hilván.
 - No se copia la conversación al campo `cuerpo`, a notas ni a insights.
 - No se crean prospectos desde la cuarentena sin que una persona lo confirme.
+
+## 6. "¿En qué quedó?" — lo que el equipo contesta desde su correo
+
+La mayor parte de la venta NO pasa por el WhatsApp de la empresa (verificado el
+19-sep-2026: de 15 prospectos en conversación o confirmados, solo 2 estaban
+ahí). Para lo que pasa por teléfono, en persona o en un WhatsApp personal, el
+digest de la mañana le pregunta a cada responsable por sus prospectos con
+**reunión hace 2+ días sin nada después** o **en conversación con 10+ días sin
+registro**. Contestan con un toque: *hablamos por otro canal / postergó / dijo
+que no / me plantó / nada nuevo*.
+
+`hilvan_preguntas_equipo` muestra las abiertas y las contestadas.
+
+- **Pregunta abierta = el CRM está ciego ahí.** No se redacta insistencia, no se
+  propone `en_frio` por "falta de respuesta" y no se asume abandono. Va al
+  reporte como pendiente humano.
+- **Pregunta contestada = ya está en la ficha.** "Hablamos" y "me plantó" crean
+  una interacción; "postergó" aplaza al prospecto hasta la fecha indicada; "dijo
+  que no" lo pasa a descartado. No se registra de nuevo.
+- **"Nada nuevo"** es información: una persona confirmó que no pasó nada. Ahí sí
+  corre la cadencia normal.
+- Tres "me plantó" del mismo prospecto son evidencia para proponer `en_frio`.

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { expandirOcupacion } from '@/lib/rental-kits'
+import { contextoOcupacion } from '@/lib/rental-ocupacion'
 
 // Público (rewrite desde rental.casahiedra.com). Devuelve, para un rango de
 // fechas, la ocupación por equipo considerando reservas CONFIRMADAS
@@ -19,33 +20,11 @@ export async function GET(request: NextRequest) {
   try {
     const admin = createAdminClient()
 
-    const [{ data: reservas, error }, { data: equipos }] = await Promise.all([
-      admin
-        .from('rental_reservas')
-        .select('equipo_id')
-        .in('estado', ['aprobada', 'entregada'])
-        .not('equipo_id', 'is', null)
-        .lte('fecha_inicio', hasta)
-        .gte('fecha_fin', desde),
-      admin.from('equipos').select('id, codigo, cantidad'),
-    ])
-
-    if (error) return NextResponse.json({ bloqueos: {} })
-
-    // Mapas id↔codigo↔stock
-    const idToCodigo: Record<string, string> = {}
-    const codigoToId: Record<string, string> = {}
-    const stockPorCodigo: Record<string, number> = {}
-    for (const e of (equipos ?? []) as { id: string; codigo: string; cantidad: number | null }[]) {
-      idToCodigo[e.id] = e.codigo
-      codigoToId[e.codigo] = e.id
-      stockPorCodigo[e.codigo] = e.cantidad ?? 1
-    }
-
-    // Códigos con reserva confirmada solapada
-    const reservados = ((reservas ?? []) as { equipo_id: string | null }[])
-      .map((r) => (r.equipo_id ? idToCodigo[r.equipo_id] : null))
-      .filter((c): c is string => Boolean(c))
+    // Reservas confirmadas de equipos Y de maletas: una maleta reservada ocupa
+    // lo que lleva adentro, así que su contenido se ve bloqueado en el catálogo.
+    const ctx = await contextoOcupacion(admin, desde, hasta)
+    if ('error' in ctx) return NextResponse.json({ bloqueos: {} })
+    const { reservados, stockPorCodigo, codigoToId } = ctx
 
     // Expandir kits↔componentes → ocupación por código → bloqueos por id
     const load = expandirOcupacion(reservados, stockPorCodigo)

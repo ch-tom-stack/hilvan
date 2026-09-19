@@ -21,7 +21,17 @@ export default async function ReservasPage() {
   const [reservas, equiposData, maletasData, clientesData] = await Promise.all([
     listarRentalReservas().catch(() => []),
     supabase.from('equipos').select('id, codigo, nombre').eq('rentable', true).order('codigo').then(r => r.data ?? []),
-    supabase.from('maletas').select('id, codigo, nombre').order('codigo').then(r => r.data ?? []),
+    supabase
+      .from('maletas')
+      .select('id, codigo, nombre, maleta_items(cantidad, equipo:equipos(codigo, nombre))')
+      .order('codigo')
+      .then(r => ((r.data ?? []) as any[]).map(m => ({
+        id: m.id as string, codigo: m.codigo as string, nombre: m.nombre as string,
+        // Lo que lleva adentro: reservar la maleta lo reserva todo.
+        contenido: ((m.maleta_items ?? []) as any[])
+          .filter(i => i.equipo)
+          .map(i => ({ codigo: i.equipo.codigo as string, nombre: i.equipo.nombre as string, cantidad: (i.cantidad ?? 1) as number })),
+      }))),
     supabase.from('clientes').select('id, nombre').order('nombre').then(r => r.data ?? []),
   ])
 
@@ -30,7 +40,7 @@ export default async function ReservasPage() {
       <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
         <div>
           <p className="text-ch-muted font-body text-[10px] tracking-[0.45em] uppercase mb-1">Equipos · Reservas</p>
-          <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Bundles</h1>
+          <h1 className="font-display italic text-4xl lg:text-5xl text-ch-cream leading-none">Reservas</h1>
         </div>
         <Link
           href="/equipos"

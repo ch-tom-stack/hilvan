@@ -25,6 +25,7 @@ interface Disponibilidad {
   conflictos: { fecha_inicio: string; fecha_fin: string }[]
   stockTotal?: number
   stockDisponible?: number
+  chocaCon?: string[]
 }
 
 export default function FormularioReserva({
@@ -258,6 +259,11 @@ export default function FormularioReserva({
                       ? `Sin stock disponible (${disponibilidad.stockDisponible} de ${disponibilidad.stockTotal} libres)`
                       : 'Hay reservas activas en esas fechas'}
                   </p>
+                  {disponibilidad.chocaCon && disponibilidad.chocaCon.length > 0 && (
+                    <p className="text-red-400/80 text-[11px] font-body mb-1">
+                      Ya comprometido: {disponibilidad.chocaCon.join(', ')}
+                    </p>
+                  )}
                   {disponibilidad.conflictos.length > 0 && (
                     <ul className="text-red-400/70 text-[10px] font-body space-y-0.5">
                       {disponibilidad.conflictos.map((c, i) => (

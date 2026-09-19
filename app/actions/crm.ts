@@ -24,6 +24,8 @@ import { personaSegunReglas, OPERADOR_EMAIL } from '@/lib/crm-asignacion'
 import { calcularCadencia, snoozeMaximo, prioridadCadencia, sumarDias, fueraDeAgenda, excluidoDeAgenda, aToques, CAMPOS_TOQUE, type Cadencia } from '@/lib/crm-cadencia'
 import { HERRAMIENTA_DIGEST } from '@/lib/agent-crm'
 import { evaluarCotejo, HERRAMIENTAS_COTEJO, type EstadoCotejo } from '@/lib/crm-reconciliacion'
+import { motivoPregunta, elegirPreguntas, textoMotivo, RESPUESTAS, ETIQUETA_RESPUESTA, type CandidatoPregunta } from '@/lib/crm-preguntas'
+import { asegurarPreguntas, prospectosRecienContestados } from '@/lib/crm-preguntas-io'
 import { hiloVigente, insertarRespuesta, abrirHiloEn, cerrarHiloEn, reabrirHiloEn, type RespuestaInput } from '@/lib/crm-conversacion'
 
 // ── Acceso ───────────────────────────────────────────────────────────────────
@@ -328,6 +330,8 @@ export interface FilaDigestMatinal {
   borradoresListos: number
   agenda: ItemAgenda[]
   enviado: boolean
+  /** "¿En qué quedó?": por quiénes se le preguntó hoy. */
+  preguntas?: { empresa: string; motivo: string }[]
 }
 
 export interface ResultadoDigestMatinal {
@@ -360,7 +364,22 @@ function htmlDigestMatinal(
   agenda: ItemAgenda[],
   equipo?: FilaDigestMatinal[],
   avisoCotejo?: string | null,
+  preguntas?: { empresa: string; motivo: string; token: string }[],
 ): string {
+  // "¿En qué quedó?": lo que el CRM no ve porque no pasa por correo. Cada link
+  // abre una página con la respuesta ya elegida; nada se guarda sin confirmar.
+  const preguntasHtml = preguntas && preguntas.length
+    ? `
+      <h3 style="font-size:14px;margin:26px 0 4px;border-top:1px solid #ddd;padding-top:14px;">¿En qué quedó?</h3>
+      <p style="margin:0 0 10px;font-size:12px;color:#777;">Si pasó algo por WhatsApp, por teléfono o en persona, el CRM no lo sabe. Un toque y queda anotado.</p>
+      ${preguntas.map(q => `
+        <div style="margin:0 0 14px;">
+          <p style="margin:0 0 6px;font-size:13px;"><strong>${q.empresa}</strong> <span style="color:#777;">— ${q.motivo}</span></p>
+          <p style="margin:0;font-size:12px;line-height:2.1;">
+            ${RESPUESTAS.map(r => `<a href="https://app.casahiedra.com/q/${q.token}?r=${r}" style="display:inline-block;border:1px solid #bbb;padding:1px 9px;margin:0 4px 0 0;color:#111;text-decoration:none;white-space:nowrap;">${ETIQUETA_RESPUESTA[r]}</a>`).join('')}
+          </p>
+        </div>`).join('')}`
+    : ''
   // Va ARRIBA de la lista, no al pie: si las respuestas no están registradas,
   // la lista de abajo puede estar equivocada y hay que leerla sabiéndolo.
   const cotejoHtml = avisoCotejo
@@ -393,6 +412,7 @@ function htmlDigestMatinal(
 
       <h3 style="font-size:14px;margin:22px 0 0;">Contactar hoy (${agenda.length})</h3>
       ${listaAgendaHtml(agenda)}
+      ${preguntasHtml}
       ${equipoHtml}
       <p style="margin-top:22px;"><a href="https://app.casahiedra.com/crm" style="color:#7a9e7e;">Abrir el CRM →</a></p>
     </div>`
@@ -413,10 +433,11 @@ export async function procesarDigestMatinal(
   ) as { id: string; nombre: string; email: string | null }[]
 
   const [{ data: prospectos }, { data: borradores }, cotejo] = await Promise.all([
-    admin.from('prospectos').select(`id, empresa, etapa, responsable_id, snooze_hasta, datos_dudosos, crm_interacciones(${CAMPOS_TOQUE}, enviado_por_id, enviado_por)`),
+    admin.from('prospectos').select(`id, empresa, etapa, responsable_id, snooze_hasta, datos_dudosos, crm_interacciones(${CAMPOS_TOQUE}, tipo, enviado_por_id, enviado_por)`),
     admin.from('crm_borradores').select('prospecto_id').eq('estado', 'listo'),
     getEstadoCotejo(),
   ])
+  const recienContestados = await prospectosRecienContestados(admin)
 
   // Todos los perfiles, no sólo los operadores: un toque viejo puede ser de
   // alguien que ya no está en el equipo de captación, y su nombre igual importa.
@@ -425,6 +446,7 @@ export async function procesarDigestMatinal(
   const respDe = new Map<string, string | null>()
   const activos = new Map<string, { total: number; porContactar: number }>()
   const agendaDe = new Map<string, (ItemAgenda & { _prio: number })[]>()
+  const candidatosDe = new Map<string, CandidatoPregunta[]>()
 
   for (const p of (prospectos ?? []) as any[]) {
     respDe.set(p.id, p.responsable_id)
@@ -436,6 +458,19 @@ export async function procesarDigestMatinal(
     a.total++
     if (p.etapa === 'prospecto') a.porContactar++
     activos.set(p.responsable_id, a)
+
+    // Va ANTES del corte por cadencia: justo los que no aparecen en la lista de
+    // hoy (reunión reciente, conversación callada) son los que el CRM no ve.
+    // Aplazado a propósito (p. ej. "postergó hasta marzo"): ya se sabe en qué quedó.
+    const aplazado = !!p.snooze_hasta && p.snooze_hasta > hoy
+    if (!aplazado && !recienContestados.has(p.id)) {
+      const m = motivoPregunta(p.crm_interacciones ?? [], p.etapa, hoy)
+      if (m) {
+        const lista = candidatosDe.get(p.responsable_id) ?? []
+        lista.push({ prospecto_id: p.id, empresa: p.empresa, ...m })
+        candidatosDe.set(p.responsable_id, lista)
+      }
+    }
 
     // La lista del día sale del mismo motor que la agenda de la app: una sola
     // fuente de verdad, para que el correo y la pantalla nunca se contradigan.
@@ -466,7 +501,8 @@ export async function procesarDigestMatinal(
     const agenda = (agendaDe.get(op.id) ?? [])
       .sort((x, y) => y._prio - x._prio)
       .map(({ _prio, ...item }) => item)
-    return { op, total: a.total, porContactar: a.porContactar, borr: borradoresPorResp.get(op.id) ?? 0, agenda }
+    const preguntas = elegirPreguntas(candidatosDe.get(op.id) ?? [])
+    return { op, total: a.total, porContactar: a.porContactar, borr: borradoresPorResp.get(op.id) ?? 0, agenda, preguntas }
   })
 
   const equipo: FilaDigestMatinal[] = numeros.map(n => ({
@@ -485,6 +521,11 @@ export async function procesarDigestMatinal(
     let enviado = false
     if (!dryRun && destino) {
       try {
+        // Las preguntas se crean recién acá: un dry-run no deja links vivos.
+        const tokens = await asegurarPreguntas(admin, op.id, n.preguntas)
+        const preguntasCorreo = n.preguntas
+          .filter(q => tokens.has(q.prospecto_id))
+          .map(q => ({ empresa: q.empresa, motivo: textoMotivo(q), token: tokens.get(q.prospecto_id)! }))
         await sendEmail({
           to: destino,
           subject: `CRM · ${n.agenda.length} por contactar hoy${n.borr ? ` · ${n.borr} borrador${n.borr === 1 ? '' : 'es'} listo${n.borr === 1 ? '' : 's'}` : ''}`,
@@ -492,6 +533,7 @@ export async function procesarDigestMatinal(
             op.nombre, n.total, n.porContactar, n.borr, hoy, n.agenda,
             esManager ? equipo.filter(e => e.nombre !== op.nombre) : undefined,
             cotejo.mensaje,
+            preguntasCorreo,
           ),
           contexto: 'crm:digest-matinal',
         })
@@ -504,6 +546,7 @@ export async function procesarDigestMatinal(
     filas.push({
       nombre: op.nombre, email: destino, prospectos: n.total, porContactar: n.porContactar,
       borradoresListos: n.borr, agenda: n.agenda, enviado,
+      preguntas: n.preguntas.map(q => ({ empresa: q.empresa, motivo: textoMotivo(q) })),
     })
   }
   return { hoy, filas, enviados, cotejo }

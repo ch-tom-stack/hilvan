@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { cruceOrigenTamano } from '@/lib/crm-cruce'
 
 export const runtime = 'nodejs'
 
@@ -12,10 +13,16 @@ export async function GET(req: Request) {
   const unauthorized = requireAgentToken(req)
   if (unauthorized) return unauthorized
 
+  const desdeRaw = new URL(req.url).searchParams.get('desde')?.trim() ?? ''
+  if (desdeRaw && !/^\d{4}-\d{2}-\d{2}$/.test(desdeRaw)) {
+    return NextResponse.json({ error: 'desde inválido (YYYY-MM-DD)' }, { status: 400 })
+  }
+  const desde = desdeRaw || null
+
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('prospectos')
-    .select('etapa, empresa, cliente:clientes(nombre), responsable:profiles!prospectos_responsable_id_fkey(nombre)')
+    .select('etapa, empresa, origen, tamano, created_at, datos_dudosos, cliente:clientes(nombre), responsable:profiles!prospectos_responsable_id_fkey(nombre)')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const rows = data ?? []
@@ -46,5 +53,8 @@ export async function GET(req: Request) {
     },
     por_etapa,
     por_responsable,
+    // Qué tamaño de cliente trae cada canal. ?desde=YYYY-MM-DD lo acota a los
+    // prospectos creados desde esa fecha (para medir el efecto de un cambio).
+    cruce_origen_tamano: cruceOrigenTamano(rows as any[], desde),
   })
 }

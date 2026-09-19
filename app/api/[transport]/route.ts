@@ -1707,10 +1707,10 @@ const baseHandler = createMcpHandler(
       'hilvan_metricas_crm',
       {
         title: 'Métricas CRM',
-        description: 'Métricas del CRM: concentración Falabella (KPI norte de diversificación: % no-Falabella en pipeline y en ganados) + conteo por etapa y por responsable.',
-        inputSchema: {},
+        description: 'Métricas del CRM: concentración Falabella (KPI norte de diversificación: % no-Falabella en pipeline y en ganados), conteo por etapa y por responsable, y `cruce_origen_tamano`: qué tamaño de cliente trae cada canal (entrante vs frío: cuántos chica/mediana/grande, % chica, confirmados y descartados; excluye fichas dudosas). Con `desde` el cruce se acota a los prospectos creados desde esa fecha — sirve para medir si un cambio en el sitio movió la calidad de los leads. La línea base del 19-sep-2026 está en docs/crm/linea-base-leads-2026-09-19.md.',
+        inputSchema: { desde: z.string().optional().describe('YYYY-MM-DD: solo prospectos creados desde esa fecha') },
       },
-      async (_args, extra) => ok(await callAgent(extra as ToolExtra, 'GET', '/crm/metricas')),
+      async ({ desde }, extra) => ok(await callAgent(extra as ToolExtra, 'GET', `/crm/metricas${desde ? `?desde=${encodeURIComponent(desde)}` : ''}`)),
     )
 
     server.registerTool(
@@ -1842,7 +1842,7 @@ const baseHandler = createMcpHandler(
       'hilvan_datos_dudosos',
       {
         title: 'Fichas por verificar (CRM)',
-        description: 'Marca o levanta la marca de "datos por verificar", y sin argumentos lista los marcados. Es para cuando la FICHA no es de fiar: el contacto es de otra empresa, el nombre se capturó de un menú del sitio, el dato vino de una corrida que trajo basura. NO es lo mismo que En frío — un prospecto frío no empeora si lo dejas quieto, uno con la ficha equivocada empeora cada vez que lo trabajas, así que éste SALE DE LA AGENDA hasta resolverse y no se le escribe. Marcar exige `duda` (qué está mal); resolver exige `verificado` (qué comprobaste), y la duda anterior se conserva como historia.',
+        description: 'Marca o levanta la marca de "datos por verificar", y sin argumentos lista los marcados. Es para cuando la FICHA no es de fiar: el contacto es de otra empresa, el nombre se capturó de un menú del sitio, el dato vino de una corrida que trajo basura. NO es lo mismo que En frío — un prospecto frío no empeora si lo dejas quieto, uno con la ficha equivocada empeora cada vez que lo trabajas, así que éste SALE DE LA AGENDA hasta resolverse y no se le escribe. Marcar exige `duda` (qué está mal); resolver exige `verificado` (qué comprobaste), y la duda anterior se conserva como historia. El listado trae además `etapas_inconsistentes`: prospectos cuya ETAPA no calza con lo registrado (en conversación sin ninguna respuesta, confirmado sin historial, un rechazo como último registro y sin mover). Eso se calcula al leer y NO marca ni mueve nada: cada uno trae su `sugerencia`. La causa más común es que la conversación pasó por un canal que el CRM no ve, así que antes de proponer un cambio de etapa revisa hilvan_preguntas_equipo y, si no hay respuesta, repórtalo como pendiente humano.',
         inputSchema: {
           prospecto_id: z.string().optional().describe('sin él, lista los marcados'),
           duda: z.string().optional().describe('qué está mal — para MARCAR'),
@@ -1996,6 +1996,17 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/respuesta', args)),
+    )
+
+    server.registerTool(
+      'hilvan_preguntas_equipo',
+      {
+        title: '¿En qué quedó? — preguntas al equipo (CRM)',
+        description: 'Lo que el digest de la mañana le preguntó al equipo sobre prospectos con reunión reciente o conversación callada, y lo que contestaron. SOLO LECTURA (contestar es de personas, desde su correo). El CRM solo ve lo que pasa por correo; esto es lo que pasó por WhatsApp, teléfono o en persona. Úsalo ANTES de redactar: una pregunta ABIERTA sobre un prospecto significa "acá el CRM probablemente está ciego" — NO le redactes una insistencia ni propongas enfriarlo por falta de respuesta; repórtalo como pendiente humano. Una CONTESTADA ya dejó su efecto en la ficha (una interacción, un aplazamiento o el paso a descartado): léela para entender el contexto, no la vuelvas a registrar.',
+        inputSchema: { prospecto_id: z.string().optional() },
+      },
+      async ({ prospecto_id }, extra) =>
+        ok(await callAgent(extra as ToolExtra, 'GET', `/crm/preguntas${prospecto_id ? `?prospecto_id=${encodeURIComponent(prospecto_id)}` : ''}`)),
     )
 
     // ── WhatsApp → CRM (número de empresa en coexistencia con la Cloud API) ──

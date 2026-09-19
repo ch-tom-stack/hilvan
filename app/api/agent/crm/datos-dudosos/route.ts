@@ -3,10 +3,12 @@ import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
 import { strA, hoyChile } from '@/lib/agent-crm'
+import { inconsistenciasDeEtapa } from '@/lib/crm-consistencia'
 
 export const runtime = 'nodejs'
 
-// GET  /api/agent/crm/datos-dudosos            → los marcados, con su motivo
+// GET  /api/agent/crm/datos-dudosos            → los marcados, con su motivo,
+//                                                + etapas que no calzan con el historial
 // POST /api/agent/crm/datos-dudosos { prospecto_id, duda }        → marcar
 // POST /api/agent/crm/datos-dudosos { prospecto_id, verificado }  → resolver
 //
@@ -28,6 +30,19 @@ export async function GET(req: Request) {
     .order('updated_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // Etapas que no calzan con el historial: se CALCULAN, no se marcan. Si esta
+  // consulta falla, lo marcado a mano igual se entrega.
+  const { data: activos, error: eA } = await admin
+    .from('prospectos')
+    .select('id, empresa, etapa, responsable:profiles!prospectos_responsable_id_fkey(nombre), crm_interacciones(fecha, tipo, direccion, respondido, resumen)')
+    .not('etapa', 'in', '(descartado,en_frio)')
+  const etapasInconsistentes = (activos ?? []).flatMap((p: any) =>
+    inconsistenciasDeEtapa(p.etapa, p.crm_interacciones ?? []).map(i => ({
+      prospecto_id: p.id, empresa: p.empresa, etapa: p.etapa,
+      responsable: p.responsable?.nombre ?? null, ...i,
+    })),
+  )
+
   return NextResponse.json({
     total: (data ?? []).length,
     prospectos: (data ?? []).map((p: any) => ({
@@ -35,6 +50,8 @@ export async function GET(req: Request) {
       email: p.email, nombre_contacto: p.nombre_contacto,
       duda: p.duda, responsable: p.responsable?.nombre ?? null,
     })),
+    etapas_inconsistentes: etapasInconsistentes,
+    ...(eA ? { aviso: `No se pudieron calcular las etapas inconsistentes: ${eA.message}` } : {}),
   })
 }
 

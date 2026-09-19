@@ -14,6 +14,7 @@ import { registrarAccion } from '@/lib/agent-audit'
 import { strA } from '@/lib/agent-crm'
 import { aplicarEfectoAprobacion } from '@/lib/crm-aprobaciones'
 
+import { avisarLeadNuevo } from '@/lib/crm-aviso-lead'
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // Los slugs que usa el SITIO en sus landings, traducidos a los productos de
 // Hilván. Sin este mapa, `banco-audiovisual` y `produccion-estudiantes` no
@@ -202,5 +203,16 @@ export async function crearPropuestaLead(body: LeadEntrante, notaAgente: string)
     resultado_id: prospectoId,
     ok: true,
   })
+
+  // Se espera el envío (no fire-and-forget): en serverless la función muere al
+  // responder y el correo se perdería. avisarLeadNuevo nunca lanza.
+  const avisado = await avisarLeadNuevo({
+    prospecto_id: prospectoId, empresa, nombre, email, origen, producto,
+    accion, pagina, campana, url, contenido, hayLectura,
+  })
+  if (!avisado) {
+    await registrarAccion({ herramienta: 'lead-aviso', payload: { prospecto_id: prospectoId, email }, ok: false, error: 'No se pudo enviar el aviso de lead nuevo' })
+  }
+
   return { ok: true, prospecto_id: prospectoId, estado: 'prospecto' }
 }

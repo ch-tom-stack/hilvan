@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import {
   crearRentalReserva,
   actualizarEstadoReserva,
   eliminarReserva,
+  verificarDisponibilidad,
 } from '@/app/actions/rental'
 import type { EstadoRental, RentalReserva } from '@/types'
 import EstadoVacio from '@/components/ui/EstadoVacio'
@@ -35,7 +36,7 @@ const ESTADO_COLORS: Record<EstadoRental, string> = {
 interface Props {
   reservas: ReservaConJoins[]
   equipos: { id: string; codigo: string; nombre: string }[]
-  maletas: { id: string; codigo: string; nombre: string }[]
+  maletas: { id: string; codigo: string; nombre: string; contenido?: { codigo: string; nombre: string; cantidad: number }[] }[]
   clientes: { id: string; nombre: string }[]
   puedeGestionar: boolean
 }
@@ -62,6 +63,26 @@ export default function TablaReservas({ reservas: inicial, equipos, maletas, cli
     fecha_fin: '',
     notas: '',
   })
+
+  // Disponibilidad en vivo: una maleta ocupa lo que lleva adentro, así que el
+  // choque puede venir de un equipo suelto ya reservado (y al revés).
+  const [dispo, setDispo] = useState<{ disponible: boolean; chocaCon: string[] } | null>(null)
+  const itemId = form.tipo === 'equipo' ? form.equipo_id : form.maleta_id
+  useEffect(() => {
+    setDispo(null)
+    if (!itemId || !form.fecha_inicio || !form.fecha_fin || form.fecha_fin < form.fecha_inicio) return
+    let vigente = true
+    verificarDisponibilidad(
+      form.tipo === 'equipo' ? itemId : null,
+      form.tipo === 'maleta' ? itemId : null,
+      form.fecha_inicio, form.fecha_fin,
+    )
+      .then(r => { if (vigente) setDispo({ disponible: r.disponible, chocaCon: r.chocaCon ?? [] }) })
+      .catch(() => { /* sin dato de disponibilidad no se bloquea: la aprobación vuelve a verificar */ })
+    return () => { vigente = false }
+  }, [form.tipo, itemId, form.fecha_inicio, form.fecha_fin])
+
+  const maletaElegida = form.tipo === 'maleta' ? maletas.find(m => m.id === form.maleta_id) : undefined
 
   function nombreItem(r: ReservaConJoins) {
     if (r.equipo) return `${r.equipo.codigo} · ${r.equipo.nombre}`
@@ -153,20 +174,22 @@ export default function TablaReservas({ reservas: inicial, equipos, maletas, cli
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Tipo */}
             <div>
-              <label className={labelClass}>Tipo de ítem</label>
-              <div className="flex gap-2">
+              <label className={labelClass}>¿Qué se reserva?</label>
+              <div className="flex gap-2" role="radiogroup" aria-label="Qué se reserva">
                 {(['equipo', 'maleta'] as const).map(t => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, tipo: t, equipo_id: '', maleta_id: '' }))}
-                    className={`font-body text-[9px] tracking-widest uppercase px-4 py-2 border transition-colors rounded-[2px] ${
+                    role="radio"
+                    aria-checked={form.tipo === t}
+                    className={`flex-1 sm:flex-none sm:min-w-40 font-body text-sm px-5 py-3 border transition-colors rounded-[2px] ${
                       form.tipo === t
-                        ? 'border-ch-cream text-ch-cream'
-                        : 'border-ch-border text-ch-muted hover:text-ch-cream'
+                        ? 'border-ch-green bg-ch-green/10 text-ch-cream'
+                        : 'border-ch-border bg-ch-surface text-ch-muted hover:text-ch-cream hover:border-ch-muted'
                     } ch-press`}
                   >
-                    {t === 'equipo' ? 'Equipo' : 'Maleta'}
+                    {t === 'equipo' ? 'Un equipo' : 'Una maleta completa'}
                   </button>
                 ))}
               </div>
@@ -214,6 +237,32 @@ export default function TablaReservas({ reservas: inicial, equipos, maletas, cli
                 <input type="date" value={form.fecha_fin} onChange={e => setForm(f => ({ ...f, fecha_fin: e.target.value }))} className={inputClass} />
               </div>
             </div>
+
+            {maletaElegida && (
+              <div className="border border-ch-border bg-ch-surface/40 px-4 py-3 rounded-[2px]">
+                <p className="font-body text-xs text-ch-cream">Se reserva la maleta con todo lo que lleva adentro</p>
+                {maletaElegida.contenido && maletaElegida.contenido.length > 0 ? (
+                  <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                    {maletaElegida.contenido.map(c => (
+                      <li key={c.codigo} className="font-body text-[11px] text-ch-muted truncate">
+                        {c.cantidad > 1 ? `${c.cantidad}× ` : ''}{c.nombre} <span className="text-ch-subtle">· {c.codigo}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="font-body text-[11px] text-ch-gold mt-1">Esta maleta no tiene equipos cargados: solo se bloqueará la maleta.</p>
+                )}
+              </div>
+            )}
+
+            {dispo && !dispo.disponible && (
+              <p className="font-body text-xs text-ch-gold">
+                En esas fechas ya está comprometido: {dispo.chocaCon.join(', ') || 'este ítem'}. Se puede pedir igual, pero no se podrá aprobar mientras se cruce.
+              </p>
+            )}
+            {dispo && dispo.disponible && (
+              <p className="font-body text-xs text-ch-green">Disponible en esas fechas.</p>
+            )}
 
             {/* Notas */}
             <div>

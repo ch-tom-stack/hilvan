@@ -64,6 +64,7 @@ export async function proxy(request: NextRequest) {
     pathname === '/api/sse' ||
     pathname.startsWith('/m/') ||
     pathname.startsWith('/r/') ||
+    pathname.startsWith('/q/') ||
     pathname.startsWith('/cotizacion/') ||
     pathname.startsWith('/citacion/') ||
     pathname.startsWith('/col/') ||

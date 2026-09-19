@@ -18,7 +18,11 @@ export type Temperatura = 'frio' | 'entrante' | 'sin_clasificar'
  * el sitio, se acercó en una feria, o alguien lo refirió. En todos hay un
  * gesto previo de su parte.
  */
-const ORIGENES_ENTRANTES = new Set(['lectura', 'web', 'feria', 'referido'])
+// `landing` y `brief` son los valores que el SITIO manda desde ago-2026 (ver
+// lib/lead-inbound.ts). Faltaban acá, así que 33 leads de landing caían en
+// 'sin_clasificar' y recibían la secuencia fría: un correo de valor a alguien
+// que ya había pedido precios (detectado el 19-sep-2026).
+const ORIGENES_ENTRANTES = new Set(['lectura', 'web', 'landing', 'brief', 'feria', 'referido'])
 
 /**
  * Orígenes donde golpeamos nosotros primero, sin gesto previo. `otro` cae acá

@@ -130,7 +130,7 @@ para otra marca, está mal.
 El CRM deriva la temperatura del `origen` y la muestra en la tarjeta y en "Cómo
 abordarlo". No es un matiz de tono: es otra secuencia.
 
-| Toque | **Frío** (correo, linkedin, instagram, otro) | **Entrante** (lectura, web, feria, referido) |
+| Toque | **Frío** (correo, linkedin, instagram, otro) | **Entrante** (lectura, web, landing, brief, feria, referido) |
 |---|---|---|
 | 1 | Valor, sin pedir nada | **Responder lo que preguntaron.** Corto y rápido |
 | 2 | Valor otra vez (cabe el video de Tomás) | **Pedir un avance** — el interés ya está declarado |

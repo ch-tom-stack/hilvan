@@ -97,3 +97,49 @@ export function sobrecupo(reservados: string[], stockPorCodigo: Record<string, n
     .filter(([codigo, n]) => n > (stockPorCodigo[codigo] ?? 1))
     .map(([codigo]) => codigo)
 }
+
+// ── Maletas ──────────────────────────────────────────────────────────────────
+// Una maleta es un contenedor físico con equipos adentro (tabla maleta_items).
+// Reservarla tiene que ocupar su CONTENIDO: si la maleta de cámara sale el
+// viernes, la A7S III que va adentro no está disponible el viernes. Antes las
+// maletas quedaban fuera del modelo y reservar una no bloqueaba nada.
+
+/** Código sintético de la maleta misma: hay una sola, así que su stock es 1. */
+export const codigoMaleta = (maletaId: string) => `MALETA:${maletaId}`
+
+export interface ReservaOcupacion {
+  equipoCodigo?: string | null
+  maletaId?: string | null
+}
+
+/**
+ * Los códigos que una reserva ocupa DIRECTAMENTE (los kits se expanden después,
+ * en expandirOcupacion). Una maleta ocupa su propio código + cada equipo que
+ * lleva adentro, repetido según su cantidad.
+ */
+export function codigosDeReserva(
+  r: ReservaOcupacion,
+  itemsPorMaleta: Record<string, Componente[]>,
+): string[] {
+  if (r.equipoCodigo) return [r.equipoCodigo]
+  if (!r.maletaId) return []
+  const out = [codigoMaleta(r.maletaId)]
+  for (const item of itemsPorMaleta[r.maletaId] ?? []) {
+    for (let i = 0; i < Math.max(1, item.cantidad); i++) out.push(item.codigo)
+  }
+  return out
+}
+
+/**
+ * ¿Con qué choca una reserva NUEVA? Devuelve los códigos que quedarían sobre su
+ * stock, pero SOLO los que la reserva nueva toca: si ya había un sobrecupo en
+ * otro equipo que nada tiene que ver, no es motivo para rechazar esta.
+ */
+export function conflictosDeNueva(
+  nueva: string[],
+  existentes: string[],
+  stockPorCodigo: Record<string, number>,
+): string[] {
+  const tocados = new Set(Object.keys(expandirOcupacion(nueva, stockPorCodigo)))
+  return sobrecupo([...existentes, ...nueva], stockPorCodigo).filter((c) => tocados.has(c))
+}

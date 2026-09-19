@@ -5,7 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/email'
 import { crearEventoGCal } from '@/lib/google-calendar'
-import { sobrecupo } from '@/lib/rental-kits'
+import { codigosDeReserva, conflictosDeNueva, expandirOcupacion } from '@/lib/rental-kits'
+import { contextoOcupacion } from '@/lib/rental-ocupacion'
 import type {
   RentalReserva,
   EstadoRental,
@@ -38,43 +39,26 @@ async function verificarSobrecupoReserva(
 ): Promise<string | null> {
   const { data: r } = await admin
     .from('rental_reservas')
-    .select('equipo_id, fecha_inicio, fecha_fin')
+    .select('equipo_id, maleta_id, fecha_inicio, fecha_fin')
     .eq('id', reservaId)
-    .single<{ equipo_id: string | null; fecha_inicio: string; fecha_fin: string }>()
-  if (!r?.equipo_id) return null // las maletas no usan el modelo de kits
+    .single<{ equipo_id: string | null; maleta_id: string | null; fecha_inicio: string; fecha_fin: string }>()
+  if (!r || (!r.equipo_id && !r.maleta_id)) return null
 
-  const [{ data: equipos }, { data: overlap }] = await Promise.all([
-    admin.from('equipos').select('id, codigo, cantidad, nombre'),
-    admin
-      .from('rental_reservas')
-      .select('equipo_id')
-      .in('estado', ['aprobada', 'entregada'])
-      .not('equipo_id', 'is', null)
-      .neq('id', reservaId)
-      .lte('fecha_inicio', r.fecha_fin)
-      .gte('fecha_fin', r.fecha_inicio),
-  ])
+  const ctx = await contextoOcupacion(admin, r.fecha_inicio, r.fecha_fin, reservaId)
+  if ('error' in ctx) return null
 
-  const idToCodigo: Record<string, string> = {}
-  const stock: Record<string, number> = {}
-  const nombrePorCodigo: Record<string, string> = {}
-  for (const e of (equipos ?? []) as { id: string; codigo: string; cantidad: number | null; nombre: string }[]) {
-    idToCodigo[e.id] = e.codigo
-    stock[e.codigo] = e.cantidad ?? 1
-    nombrePorCodigo[e.codigo] = e.nombre
-  }
+  // Una maleta ocupa su contenido: aprobarla choca con quien ya tenga reservado
+  // algo de lo que lleva adentro, y al revés.
+  const nueva = codigosDeReserva(
+    { equipoCodigo: r.equipo_id ? ctx.idToCodigo[r.equipo_id] : null, maletaId: r.maleta_id },
+    ctx.itemsPorMaleta,
+  )
+  if (nueva.length === 0) return null
 
-  const esteCodigo = idToCodigo[r.equipo_id]
-  if (!esteCodigo) return null
-
-  const reservados = [
-    ...((overlap ?? []) as { equipo_id: string }[]).map((x) => idToCodigo[x.equipo_id]).filter(Boolean),
-    esteCodigo,
-  ]
-  const conflictos = sobrecupo(reservados, stock)
+  const conflictos = conflictosDeNueva(nueva, ctx.reservados, ctx.stockPorCodigo)
   if (!conflictos.length) return null
 
-  const nombres = conflictos.map((c) => nombrePorCodigo[c] ?? c).slice(0, 6)
+  const nombres = conflictos.map((c) => ctx.nombrePorCodigo[c] ?? c).slice(0, 6)
   return `No se puede aprobar: se cruza con otra reserva confirmada en estas fechas — ${nombres.join(', ')}. Revisa en /rental/reservas.`
 }
 
@@ -169,46 +153,49 @@ export async function verificarDisponibilidad(
   fechaInicio: string,
   fechaFin: string,
   reservaIdExcluir?: string,
-): Promise<{ disponible: boolean; conflictos: { fecha_inicio: string; fecha_fin: string }[]; stockTotal?: number; stockDisponible?: number }> {
+): Promise<{
+  disponible: boolean
+  conflictos: { fecha_inicio: string; fecha_fin: string }[]
+  stockTotal?: number
+  stockDisponible?: number
+  /** Con qué choca, en palabras: puede ser el contenido de una maleta o un kit. */
+  chocaCon?: string[]
+}> {
+  if (!equipoId && !maletaId) return { disponible: false, conflictos: [] }
   const admin = createAdminClient()
 
-  let query = admin
-    .from('rental_reservas')
-    .select('fecha_inicio, fecha_fin')
-    .in('estado', ['aprobada', 'entregada'])
-    .lte('fecha_inicio', fechaFin)
-    .gte('fecha_fin', fechaInicio)
+  const ctx = await contextoOcupacion(admin, fechaInicio, fechaFin, reservaIdExcluir)
+  // Si no se puede calcular no se bloquea la solicitud: la aprobación vuelve a
+  // verificar antes de confirmar nada.
+  if ('error' in ctx) return { disponible: true, conflictos: [] }
 
-  if (equipoId) query = query.eq('equipo_id', equipoId)
-  else if (maletaId) query = query.eq('maleta_id', maletaId)
-  else return { disponible: false, conflictos: [] }
+  const nueva = codigosDeReserva(
+    { equipoCodigo: equipoId ? ctx.idToCodigo[equipoId] : null, maletaId },
+    ctx.itemsPorMaleta,
+  )
+  if (nueva.length === 0) return { disponible: false, conflictos: [] }
 
-  if (reservaIdExcluir) query = query.neq('id', reservaIdExcluir)
+  const saturados = conflictosDeNueva(nueva, ctx.reservados, ctx.stockPorCodigo)
+  const saturadosSet = new Set(saturados)
+  // Las reservas que causan el choque: las que ocupan alguno de los códigos saturados
+  // (directo, o porque su kit/maleta lo trae adentro).
+  const conflictos = ctx.reservas
+    .filter((r) => Object.keys(expandirOcupacion(r.codigos, ctx.stockPorCodigo)).some((c) => saturadosSet.has(c)))
+    .map((r) => ({ fecha_inicio: r.fecha_inicio, fecha_fin: r.fecha_fin }))
 
-  const { data: conflictos, error } = await query
-  if (error) return { disponible: true, conflictos: [] }
-
-  const lista = (conflictos ?? []) as { fecha_inicio: string; fecha_fin: string }[]
-
-  // Si es equipo con cantidad > 1, verificar stock
-  if (equipoId) {
-    const { data: equipo } = await admin
-      .from('equipos')
-      .select('cantidad')
-      .eq('id', equipoId)
-      .single<{ cantidad: number }>()
-
-    const stockTotal = equipo?.cantidad ?? 1
-    const stockDisponible = stockTotal - lista.length
-    return {
-      disponible: stockDisponible > 0,
-      conflictos: lista,
-      stockTotal,
-      stockDisponible: Math.max(0, stockDisponible),
-    }
+  const base = {
+    disponible: saturados.length === 0,
+    conflictos,
+    chocaCon: saturados.map((c) => ctx.nombrePorCodigo[c] ?? c).slice(0, 6),
   }
 
-  return { disponible: lista.length === 0, conflictos: lista }
+  if (equipoId) {
+    const codigo = ctx.idToCodigo[equipoId]
+    const stockTotal = ctx.stockPorCodigo[codigo] ?? 1
+    const ocupado = expandirOcupacion(ctx.reservados, ctx.stockPorCodigo)[codigo] ?? 0
+    return { ...base, stockTotal, stockDisponible: Math.max(0, stockTotal - ocupado) }
+  }
+  return base
 }
 
 // ─── Crear reserva ────────────────────────────────────────────────────────────
