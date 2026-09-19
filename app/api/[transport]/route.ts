@@ -1757,7 +1757,7 @@ const baseHandler = createMcpHandler(
       'hilvan_reglas_crm',
       {
         title: 'Reglas del CRM',
-        description: 'Las reglas vigentes del CRM de Casa Hiedra, tal como están en el repo: correos (qué y cómo se escribe, incl. ciclo de vida de borradores y descarte de canales muertos), cadencia (cuándo toca el próximo contacto), reparto (de quién es cada prospecto), misiones (cómo se proponen las misiones del equipo — GUÍA, no reglamento) y negociacion (técnicas de Never Split the Difference adaptadas: etiquetas, preguntas calibradas, protocolo de objeción de precio). LÉELAS AL EMPEZAR cada rutina — son la fuente de verdad y cambian. Sin parámetros trae las cinco; doc=correos|cadencia|reparto|misiones|negociacion trae una.',
+        description: 'Las reglas vigentes del CRM de Casa Hiedra, tal como están en el repo: correos (qué y cómo se escribe, incl. ciclo de vida de borradores y descarte de canales muertos), cadencia (cuándo toca el próximo contacto), reparto (de quién es cada prospecto), misiones (cómo se proponen las misiones del equipo — GUÍA, no reglamento) negociacion (técnicas de Never Split the Difference adaptadas: etiquetas, preguntas calibradas, protocolo de objeción de precio) y whatsapp (cómo se cotejan y registran las conversaciones del WhatsApp de la empresa). LÉELAS AL EMPEZAR cada rutina — son la fuente de verdad y cambian. Sin parámetros trae las seis; doc=correos|cadencia|reparto|misiones|negociacion|whatsapp trae una.',
         inputSchema: { doc: z.string().optional() },
       },
       async ({ doc }, extra) =>
@@ -1996,6 +1996,62 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/crm/respuesta', args)),
+    )
+
+    // ── WhatsApp → CRM (número de empresa en coexistencia con la Cloud API) ──
+    server.registerTool(
+      'hilvan_whatsapp_pendientes',
+      {
+        title: 'WhatsApp: conversaciones sin registrar (CRM)',
+        description: 'Las conversaciones de WhatsApp del número de empresa que todavía NO están en el CRM, agrupadas por prospecto y día, de la más antigua a la más nueva. Trae los dos lados: lo que escribieron ellos y lo que mandamos desde el celular. SOLO LECTURA. Es el cotejo de WhatsApp, hermano del cotejo de correos: sin esto la ficha muestra abandono donde hubo conversación, y se le termina insistiendo a alguien que ya dijo que no. Por cada conversación: léela, resúmela y regístrala con hilvan_whatsapp_registrar. `sin_texto` cuenta audios/fotos que no puedes leer: dilo en el resumen ("incluye 2 audios sin transcribir") en vez de adivinar. `desconocidos_pendientes` avisa que hay números en cuarentena (hilvan_whatsapp_desconocidos). Lee la regla `whatsapp` de hilvan_reglas_crm antes.',
+        inputSchema: {
+          prospecto_id: z.string().optional().describe('solo las de un prospecto'),
+          limite: z.number().optional().describe('conversaciones por llamada, default 20, máx 50'),
+        },
+      },
+      async ({ prospecto_id, limite }, extra) => {
+        const q = new URLSearchParams()
+        if (prospecto_id) q.set('prospecto_id', prospecto_id)
+        if (limite) q.set('limite', String(limite))
+        const qs = q.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/whatsapp/pendientes${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_whatsapp_registrar',
+      {
+        title: 'WhatsApp: registrar conversación en el CRM',
+        description: 'Pasa al CRM la conversación de WhatsApp de UN prospecto en UN día (los datos salen de hilvan_whatsapp_pendientes). Toma sola todos los mensajes pendientes de ese día: crea un toque enviado (tipo mensaje) si nosotros escribimos y una respuesta recibida si ellos escribieron, y marca como respondido el mensaje nuestro al que contestan. Al CRM va tu RESUMEN, no la transcripción: escribe qué se habló y en qué quedó ("postergó el proyecto sin fecha", "pidió precio de media jornada", "no llegó a la reunión, tercera vez"). Si de la conversación sale un compromiso, ponlo en proximo_paso/fecha_proximo. Para ruido sin contenido comercial (un "gracias!", un sticker) usa sin_registro:true con motivo: los marca como vistos sin ensuciar la ficha. NO mueve etapas: si la conversación muestra que avanzó o que se cayó, propónlo aparte con hilvan_mover_etapa como_propuesta. Reversible con hilvan_deshacer (borra lo creado y devuelve los mensajes a pendientes).',
+        inputSchema: {
+          prospecto_id: z.string(),
+          fecha: z.string().describe('YYYY-MM-DD, el día de la conversación tal como viene en pendientes'),
+          resumen: z.string().optional().describe('qué se habló y en qué quedó; obligatorio salvo sin_registro'),
+          proximo_paso: z.string().optional(),
+          fecha_proximo: z.string().optional().describe('YYYY-MM-DD'),
+          sin_registro: z.boolean().optional().describe('true = ruido: marcar como visto sin crear interacción'),
+          motivo: z.string().optional().describe('obligatorio con sin_registro'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/whatsapp/registrar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_whatsapp_desconocidos',
+      {
+        title: 'WhatsApp: números en cuarentena',
+        description: 'Números que hablaron con el WhatsApp de la empresa y no calzan con ningún prospecto ni contacto. De ellos NO se guarda contenido: solo número, nombre de perfil, fechas y cantidad de mensajes; se purgan solos a los 30 días. Sin `accion` los lista. accion="vincular" + prospecto_id: el número es de ese prospecto — se le pone como teléfono (o se crea un contacto si ya tenía otro) y desde ahí sus mensajes SÍ se guardan; lo anterior no se recupera. accion="ignorar": no es venta, no volver a preguntar. REGLA: vincula SOLO con fuente (el número aparece en una firma de correo, en el sitio, en la ficha de otro contacto). Un nombre de perfil parecido NO es fuente. Sin fuente, déjalo y repórtalo para que lo decida una persona. Reversible con hilvan_deshacer.',
+        inputSchema: {
+          accion: z.string().optional().describe('vincular | ignorar; omitir para listar'),
+          telefono: z.string().optional(),
+          prospecto_id: z.string().optional().describe('para vincular'),
+          nombre: z.string().optional().describe('nombre del contacto si el prospecto ya tiene otro teléfono y el perfil no trae nombre'),
+        },
+      },
+      async (args, extra) =>
+        args.accion
+          ? ok(await callAgent(extra as ToolExtra, 'POST', '/whatsapp/desconocidos', args))
+          : ok(await callAgent(extra as ToolExtra, 'GET', '/whatsapp/desconocidos')),
     )
 
     server.registerTool(

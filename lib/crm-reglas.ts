@@ -19,6 +19,7 @@ export const DOCS_REGLAS = {
   reparto:     'reglas-reparto.md',
   misiones:    'reglas-misiones.md',
   negociacion: 'reglas-negociacion.md',
+  whatsapp:    'reglas-whatsapp.md',
 } as const
 
 export type ClaveRegla = keyof typeof DOCS_REGLAS

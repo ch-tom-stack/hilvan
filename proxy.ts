@@ -51,6 +51,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/arriendo/') ||
     pathname.startsWith('/api/agent/') ||
     pathname === '/api/lectura-lead' ||
+    // Webhook de Meta (WhatsApp en coexistencia): se autentica con la firma
+    // X-Hub-Signature-256 o con su propia llave, no con sesión.
+    pathname === '/api/whatsapp/webhook' ||
     // /.well-known/* debe caer en 404 LIMPIO, nunca redirigir al login: ante un 401
     // de /api/mcp los clientes MCP sondean aquí el descubrimiento OAuth. Si les
     // devolvemos el HTML del login, creen que hay OAuth, intentan registrarse y

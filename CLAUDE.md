@@ -133,6 +133,9 @@ APIGATEWAY_API_TOKEN           ← token de API Gateway (apigateway.cl) para tra
 SII_RUT                        ← RUT del contribuyente (77151117-1, marca Casa Hiedra) para consultar el SII
 SII_CLAVE                      ← clave tributaria del contribuyente (pendiente: evaluar certificado vía API Gateway para no usar la clave admin)
 APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl/api/v2
+WHATSAPP_VERIFY_TOKEN          ← saludo de verificación del webhook de Meta (GET hub.challenge)
+WHATSAPP_APP_SECRET            ← App Secret de Meta: valida X-Hub-Signature-256 (alta directa)
+WHATSAPP_WEBHOOK_KEY           ← llave propia (header x-webhook-key o ?key=) si el alta es vía intermediario
 ```
 
 > **Email:** se usa Gmail SMTP vía nodemailer (reemplazó a Resend). No hay `RESEND_API_KEY`.
@@ -205,6 +208,15 @@ APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl/a
 - Equipos marcados como rentables desde `/equipos` (toggle inline)
 
 ---
+
+### WhatsApp → CRM (sep-2026)
+- El número de empresa se conecta a la Cloud API de Meta en **coexistencia** (la app del celular sigue igual). Hilván solo ESCUCHA: nunca envía por WhatsApp.
+- `POST /api/whatsapp/webhook` recibe `messages` (nos escriben), `smb_message_echoes` (lo que mandamos desde el celular) y `history` (180 días previos, una vez, dentro de las 24 h del alta). Basta UNA de `WHATSAPP_APP_SECRET` / `WHATSAPP_WEBHOOK_KEY`; sin ninguna responde 503.
+- Tablas (`sql/whatsapp.sql`, solo service role): `whatsapp_mensajes` guarda contenido SOLO de números que calzan con `prospectos.telefono` o `crm_contactos.telefono`; `whatsapp_desconocidos` es la cuarentena (número, nombre de perfil, fechas — nunca texto). Los teléfonos de `colaboradores` se descartan en silencio.
+- Cron `/api/cron/whatsapp-purga` (diario): cuarentena pendiente >30 días y texto de mensajes procesados >90 días.
+- Lógica pura y testeada en `lib/whatsapp.ts` (formatos de Meta, `normalizarTelefono`, firma, agrupar por día de Chile); la base en `lib/whatsapp-io.ts`.
+- Agente: `hilvan_whatsapp_pendientes`, `hilvan_whatsapp_registrar` (una conversación = prospecto + día → toque enviado y/o respuesta recibida, con RESUMEN, nunca transcripción), `hilvan_whatsapp_desconocidos`. Regla del operador: `docs/crm/reglas-whatsapp.md` (sexta de `hilvan_reglas_crm`). Deshacer: `whatsapp-registrar` y `whatsapp-desconocido` trabajan desde el payload.
+- Personas: `components/crm/WhatsappSinVincular.tsx` arriba del tablero `/crm` (vincular un número a un prospecto o marcarlo "no es venta").
 
 ### CH-11 Cronos — el cronograma de proyecto (sep-2026)
 - Tablas: `cronos` (ficha + 8 columnas `<etapa>_desde/_hasta`), `crono_hitos` (tipo, fecha, fecha_fin, etapa, monto CLP, notas = detalle, responsable, hecho, rodaje_id), `crono_compuertas` (checks por `destino` pre|produccion|post|cierre; con `hito_id` = automático) y `feriados` (Chile, editable, precargada 2026–2027). Schema: `sql/cronos.sql` + `sql/cronos_v2.sql`.

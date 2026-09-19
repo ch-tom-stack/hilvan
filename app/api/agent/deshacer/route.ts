@@ -77,6 +77,52 @@ export async function POST(req: Request) {
   // ── Bulk: no usa resultado_tabla/_id; revierte por payload.creados ─────────
   // Se trata ANTES del guard de resultado_tabla/_id porque la carga masiva es
   // multi-fila y no tiene una única fila/tabla de resultado.
+  // ── WhatsApp: ambas trabajan desde el payload, no desde resultado_id ───────
+  if (accion.herramienta === 'whatsapp-registrar') {
+    const payload = accion.payload as { creadas?: string[]; respondido_marcado?: string | null; mensaje_ids?: string[] } | null
+    const creadas = payload?.creadas ?? []
+    const mensajeIds = payload?.mensaje_ids ?? []
+    if (mensajeIds.length === 0) return NextResponse.json({ error: 'La acción no guardó qué mensajes procesó' }, { status: 400 })
+    if (creadas.length > 0) {
+      const { error } = await admin.from('crm_interacciones').delete().in('id', creadas)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    // Solo se desmarca lo que ESTA acción marcó (si ya estaba respondido, no se guardó).
+    if (payload?.respondido_marcado) {
+      const { error } = await admin.from('crm_interacciones').update({ respondido: false }).eq('id', payload.respondido_marcado)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    // Los mensajes vuelven a la cola de pendientes.
+    const { error: eM } = await admin.from('whatsapp_mensajes')
+      .update({ procesado_at: null, accion_id: null }).in('id', mensajeIds)
+    if (eM) return NextResponse.json({ error: eM.message }, { status: 500 })
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, deshecha: accion.id, interacciones_borradas: creadas.length, mensajes_devueltos: mensajeIds.length })
+  }
+
+  if (accion.herramienta === 'whatsapp-desconocido') {
+    const payload = accion.payload as {
+      accion?: string; prospecto_id?: string; previo?: Record<string, unknown>
+      contacto_creado?: string | null; puso_telefono?: boolean; telefono_anterior?: string | null
+    } | null
+    if (!payload?.previo) return NextResponse.json({ error: 'La acción no guardó el estado previo' }, { status: 400 })
+    if (payload.accion === 'vincular') {
+      if (payload.contacto_creado) {
+        const { error } = await admin.from('crm_contactos').delete().eq('id', payload.contacto_creado)
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      } else if (payload.puso_telefono && payload.prospecto_id) {
+        const { error } = await admin.from('prospectos')
+          .update({ telefono: payload.telefono_anterior ?? null }).eq('id', payload.prospecto_id)
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+    }
+    // Vuelve a la cuarentena tal como estaba (nombre de perfil incluido).
+    const { error } = await admin.from('whatsapp_desconocidos').upsert(payload.previo, { onConflict: 'telefono' })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, deshecha: accion.id })
+  }
+
   if (accion.herramienta === 'crear-gastos-bulk') {
     if (!accion.ok) {
       return NextResponse.json({ error: 'La acción no tiene una escritura reversible' }, { status: 400 })

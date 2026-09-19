@@ -73,6 +73,12 @@ export interface RespuestaInput {
   responde_a?: string
   hilo_id?: string
   gmail_thread?: string
+  /**
+   * No buscar a qué mensaje contestan. Para cargas HISTÓRICAS (WhatsApp de hace
+   * meses): "el último enviado" sería uno posterior a la respuesta, y quedaría
+   * marcado como respondido un toque que nadie contestó.
+   */
+  sin_responde_a?: boolean
 }
 
 /**
@@ -91,7 +97,7 @@ export async function insertarRespuesta(
   const hiloId = input.hilo_id || (await hiloVigente(client, prospectoId))
 
   let respondeA = input.responde_a || null
-  if (!respondeA) {
+  if (!respondeA && !input.sin_responde_a) {
     // El último mensaje NUESTRO: es al que, por defecto, están contestando.
     const { data: ultimo } = await client
       .from('crm_interacciones')
