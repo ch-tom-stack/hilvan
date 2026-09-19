@@ -199,8 +199,14 @@ export async function aplicarRespuesta(
 
   if (input.respuesta === 'postergo' || input.respuesta === 'no') {
     const base = input.respuesta === 'postergo' ? `Postergó hasta el ${hasta}` : 'Dijo que no'
+    // OJO con 'postergo': NO se marca nuestro último toque como respondido. En el
+    // motor de cadencia "respondido" significa "le debemos respuesta" —el estado
+    // más urgente, y el único que manda por sobre el aplazamiento—, así que
+    // marcarlo haría aparecer primero en la lista a quien pidió que lo dejaran
+    // tranquilo hasta marzo. A quien postergó no se le debe nada hasta la fecha.
     const r = await insertarRespuesta(admin, preg.prospecto_id, {
       fecha: hoy, tipo: 'mensaje', resumen: `${base}${detalle ? `. ${detalle}` : ''}${firma}`,
+      sin_responde_a: input.respuesta === 'postergo',
     }, preg.perfil_id)
     if (r.error || !r.id) return soltar(r.error ?? 'No se pudo registrar')
     efecto.interaccion_id = r.id

@@ -10,6 +10,13 @@ import type {
   RodajeLocacion,
 } from '@/types'
 
+/**
+ * Hora HH:MM REAL (00:00–23:59). Antes cada endpoint tenía su copia de
+ * /^\d{2}:\d{2}$/, que deja pasar "25:99": llegaba a Postgres y reventaba con
+ * un 500, cuando el contrato dice que una hora inválida se ignora.
+ */
+export const HORA_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
+
 export function resolverHoraLlamado(persona: RodajeEquipoTecnico, rodaje: Rodaje): string | undefined {
   if (persona.hora_llamado_individual) return persona.hora_llamado_individual
   if (persona.departamento?.hora_llamado) return persona.departamento.hora_llamado

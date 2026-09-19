@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
+import { HORA_HHMM } from '@/lib/rodaje-helpers'
 
 export const runtime = 'nodejs'
 
 const ACCIONES = ['agregar', 'editar', 'quitar'] as const
 type Accion = (typeof ACCIONES)[number]
-const HORA_RE = /^\d{2}:\d{2}$/
+const HORA_RE = HORA_HHMM
 
 // POST /api/agent/rodaje-equipo (JSON)
 // Gestiona el equipo técnico de un rodaje (sin equipo no hay citaciones).

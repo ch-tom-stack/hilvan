@@ -42,3 +42,11 @@ describe('una maleta reserva su contenido', () => {
     expect(conflictosDeNueva(['CH-OPT-007'], ['CH-KIT-003'], s)).toEqual(['CH-OPT-007'])
   })
 })
+
+import { HORA_HHMM } from '@/lib/rodaje-helpers'
+describe('HORA_HHMM', () => {
+  it('solo horas que existen: "25:99" reventaba en Postgres', () => {
+    for (const ok of ['00:00', '08:05', '13:35', '23:59']) expect(HORA_HHMM.test(ok)).toBe(true)
+    for (const mal of ['25:99', '24:00', '12:60', '8:00', '08:0', 'nunca', '']) expect(HORA_HHMM.test(mal)).toBe(false)
+  })
+})

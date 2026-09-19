@@ -3,10 +3,11 @@ import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
 import { esRolPersona } from '@/lib/rodaje-helpers'
+import { HORA_HHMM } from '@/lib/rodaje-helpers'
 
 export const runtime = 'nodejs'
 
-const HORA_RE = /^\d{2}:\d{2}$/
+const HORA_RE = HORA_HHMM
 
 // POST /api/agent/crear-rodaje (JSON)
 // Crea un rodaje SIN depender de una cotización (a diferencia de sembrar-rodaje).

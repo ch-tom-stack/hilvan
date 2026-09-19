@@ -29,7 +29,7 @@ export default async function PreguntaPage({
   const pregunta = await getPregunta(token)
 
   if (!pregunta) return <Aviso titulo="Link inválido" texto="Este link no corresponde a ninguna pregunta del CRM." />
-  if (pregunta.estado === 'respondida') return <Aviso titulo="Ya está contestada" texto={`Lo de ${pregunta.empresa} ya quedó registrado. Gracias.`} />
+  if (pregunta.estado === 'respondida') return <Aviso titulo="Anotado" texto={`Lo de ${pregunta.empresa} ya quedó registrado. Puedes cerrar esta página.`} />
   if (pregunta.estado === 'vencida') return <Aviso titulo="Link vencido" texto="Si sigue haciendo falta, la pregunta llega de nuevo en el próximo correo." />
 
   return <ResponderPregunta pregunta={pregunta} inicial={esRespuesta(r) ? r : null} />

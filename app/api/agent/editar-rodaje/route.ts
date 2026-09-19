@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
+import { HORA_HHMM } from '@/lib/rodaje-helpers'
 
 export const runtime = 'nodejs'
 
 const ESTADOS = ['borrador', 'confirmado', 'completado']
-const HORA_RE = /^\d{2}:\d{2}$/
+const HORA_RE = HORA_HHMM
 
 // POST /api/agent/editar-rodaje (JSON)
 // Edita la metadata de un rodaje ya creado. Solo cambia los campos presentes.
