@@ -62,7 +62,11 @@ export async function POST(req: Request) {
     .eq('cotizacion_id', cotizacion_id)
   const { data: sgs } = await admin
     .from('cotizacion_subgrupos')
-    .select('id, nombre, departamento_id')
+    .select('id, nombre, departamento_id, orden')
+    .eq('cotizacion_id', cotizacion_id)
+  const { data: itemsPrevios } = await admin
+    .from('cotizacion_items')
+    .select('departamento_id, subgrupo_id, orden')
     .eq('cotizacion_id', cotizacion_id)
 
   const creados: { tabla: string; id: string }[] = []
@@ -70,6 +74,21 @@ export async function POST(req: Request) {
   let maxDepOrden = Math.max(-1, ...(deps ?? []).map((d: any) => d.orden ?? 0))
   const sgKey = (depId: string, nombre: string) => `${depId}|${nombre.toLowerCase()}`
   const sgMap = new Map((sgs ?? []).map((s: any) => [sgKey(s.departamento_id, s.nombre), s.id]))
+
+  // Lo que se agrega va AL FINAL de su grupo. Antes cada tanda numeraba sus
+  // ítems desde 0 y todo subgrupo nuevo nacía con orden 0: quedaban empatados
+  // con lo que ya había y la base los devolvía mezclados, distinto en la app, el
+  // PDF y el link del cliente.
+  const maxSgOrden = new Map<string, number>()
+  for (const s of (sgs ?? []) as any[]) {
+    maxSgOrden.set(s.departamento_id, Math.max(maxSgOrden.get(s.departamento_id) ?? -1, s.orden ?? 0))
+  }
+  const contenedor = (depId: string, sgId: string | null) => `${depId}|${sgId ?? ''}`
+  const maxItemOrden = new Map<string, number>()
+  for (const i of (itemsPrevios ?? []) as any[]) {
+    const k = contenedor(i.departamento_id, i.subgrupo_id ?? null)
+    maxItemOrden.set(k, Math.max(maxItemOrden.get(k) ?? -1, i.orden ?? 0))
+  }
 
   async function getDep(nombre: string): Promise<string> {
     const ex = depByName.get(nombre.toLowerCase())
@@ -91,7 +110,11 @@ export async function POST(req: Request) {
     if (ex) return ex
     const { data, error } = await admin
       .from('cotizacion_subgrupos')
-      .insert({ cotizacion_id, departamento_id: depId, nombre, orden: 0 })
+      .insert({ cotizacion_id, departamento_id: depId, nombre, orden: (() => {
+        const o = (maxSgOrden.get(depId) ?? -1) + 1
+        maxSgOrden.set(depId, o)
+        return o
+      })() })
       .select('id')
       .single()
     if (error) throw new Error(error.message)
@@ -106,6 +129,9 @@ export async function POST(req: Request) {
       const depId = await getDep(n.dep)
       const sgId = n.subgrupo ? await getSg(depId, n.subgrupo) : null
       const it = n.item
+      const kOrden = contenedor(depId, sgId)
+      const ordenItem = (maxItemOrden.get(kOrden) ?? -1) + 1
+      maxItemOrden.set(kOrden, ordenItem)
       const { data, error } = await admin
         .from('cotizacion_items')
         .insert({
@@ -129,7 +155,7 @@ export async function POST(req: Request) {
           incluido: it.incluido,
           descuento_item: it.descuento_item,
           descuento_item_tipo: it.descuento_item_tipo,
-          orden: it.orden,
+          orden: ordenItem,
         })
         .select('id')
         .single()

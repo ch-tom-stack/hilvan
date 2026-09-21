@@ -16,6 +16,7 @@ import {
   eliminarDepartamento,
   agregarSubgrupo,
   actualizarSubgrupo,
+  reordenarNivel,
   eliminarSubgrupo,
   agregarItem,
   actualizarItem,
@@ -37,6 +38,7 @@ import ItemModal from './ItemModal'
 import PanelFacturacion from './PanelFacturacion'
 import DepBlock from './BloquesDepartamento'
 import PanelTotales from './PanelTotales'
+import { ordenar, renumerar, moverUnPuesto, insertarAntesDe, cambiosDeOrden, siguienteOrden } from '@/lib/orden'
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
 
@@ -128,7 +130,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   async function handleAgregarDep() {
     const nombre = await prompt('Nombre del departamento:')
     if (!nombre?.trim()) return
-    const orden = (cot.departamentos?.length ?? 0)
+    const orden = siguienteOrden(cot.departamentos ?? [])
     try {
       const data = await agregarDepartamento(cot.id, nombre.trim(), orden)
       setCot(c => ({
@@ -208,7 +210,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   async function handleAgregarSg(dep: CotizacionDepartamento) {
     const nombre = await prompt('Nombre del sub-grupo:')
     if (!nombre?.trim()) return
-    const orden = (dep.subgrupos?.length ?? 0)
+    const orden = siguienteOrden(dep.subgrupos ?? [])
     try {
       const data = await agregarSubgrupo(cot.id, dep.id, nombre.trim(), orden)
       actualizarDepLocal(dep.id, d => ({
@@ -250,7 +252,10 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   async function handleGuardarItem(itemData: Omit<CotizacionItem, 'id' | 'created_at' | 'subtotal_cliente' | 'costo_real' | 'margen'>) {
     try {
       if (itemModal?.mode === 'nuevo') {
-        const data = await agregarItem(itemData)
+        // Al final de SU grupo. El modal mandaba siempre orden 99: todos los
+        // ítems nacían empatados y la base los devolvía en cualquier orden.
+        const orden = siguienteOrden(itemsDe(itemModal.depId, itemModal.sgId ?? null))
+        const data = await agregarItem({ ...itemData, orden })
         momento('gasto.creado')
         if (itemModal.sgId) {
           actualizarSgLocal(itemModal.depId, itemModal.sgId, sg => ({
@@ -322,26 +327,90 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   }
 
   // Drag-and-drop: mover un ítem a otra categoría / subgrupo (o sacarlo: toSg=null).
-  async function moverItem(itemId: string, fromDep: string, fromSg: string | null, toDep: string, toSg: string | null) {
-    if (fromDep === toDep && (fromSg ?? null) === (toSg ?? null)) return
-    const depFrom = cot.departamentos?.find(d => d.id === fromDep)
-    const item = fromSg
-      ? depFrom?.subgrupos?.find(s => s.id === fromSg)?.items?.find(i => i.id === itemId)
-      : depFrom?.items?.find(i => i.id === itemId)
-    if (!item) return
+  // ── ORDEN ───────────────────────────────────────────────────────────────────
+  // Se mueve en pantalla al tiro y se guarda después; si el guardado falla se
+  // vuelve atrás. Siempre se renumera la lista completa (ver lib/orden.ts).
+
+  async function guardarOrden(
+    nivel: 'departamento' | 'subgrupo' | 'item',
+    antes: { id: string; orden: number }[],
+    despues: { id: string; orden: number }[],
+    aplicar: (lista: any[]) => void,
+  ) {
+    const cambios = cambiosDeOrden(antes, despues)
+    if (cambios.length === 0) return
+    aplicar(despues)
     try {
-      await actualizarItem(itemId, cot.id, { departamento_id: toDep, subgrupo_id: toSg })
-      const movido = { ...item, departamento_id: toDep, subgrupo_id: toSg }
-      if (fromSg) {
-        actualizarSgLocal(fromDep, fromSg, sg => ({ ...sg, items: sg.items?.filter(i => i.id !== itemId) }))
-      } else {
-        actualizarDepLocal(fromDep, d => ({ ...d, items: d.items?.filter(i => i.id !== itemId) }))
-      }
-      if (toSg) {
-        actualizarSgLocal(toDep, toSg, sg => ({ ...sg, items: [...(sg.items ?? []), movido] }))
-      } else {
-        actualizarDepLocal(toDep, d => ({ ...d, items: [...(d.items ?? []), movido] }))
-      }
+      await reordenarNivel(cot.id, nivel, cambios)
+    } catch (e) {
+      aplicar(ordenar(antes))
+      toastError(e instanceof Error ? e.message : 'No se pudo guardar el orden')
+    }
+  }
+
+  function moverDep(dep: CotizacionDepartamento, dir: -1 | 1) {
+    const antes = cot.departamentos ?? []
+    const despues = moverUnPuesto(antes, dep.id, dir)
+    if (!despues) return
+    void guardarOrden('departamento', antes, despues, lista => setCot(c => ({ ...c, departamentos: lista })))
+  }
+
+  function moverSg(dep: CotizacionDepartamento, sg: CotizacionSubgrupo, dir: -1 | 1) {
+    const antes = dep.subgrupos ?? []
+    const despues = moverUnPuesto(antes, sg.id, dir)
+    if (!despues) return
+    void guardarOrden('subgrupo', antes, despues, lista => actualizarDepLocal(dep.id, d => ({ ...d, subgrupos: lista })))
+  }
+
+  function itemsDe(depId: string, sgId: string | null): CotizacionItem[] {
+    const dep = cot.departamentos?.find(d => d.id === depId)
+    return (sgId ? dep?.subgrupos?.find(s => s.id === sgId)?.items : dep?.items) ?? []
+  }
+
+  function ponerItems(depId: string, sgId: string | null, lista: CotizacionItem[]) {
+    if (sgId) actualizarSgLocal(depId, sgId, sg => ({ ...sg, items: lista }))
+    else actualizarDepLocal(depId, d => ({ ...d, items: lista }))
+  }
+
+  function moverItemPuesto(item: CotizacionItem, depId: string, sgId: string | null, dir: -1 | 1) {
+    const antes = itemsDe(depId, sgId)
+    const despues = moverUnPuesto(antes, item.id, dir)
+    if (!despues) return
+    void guardarOrden('item', antes, despues, lista => ponerItems(depId, sgId, lista))
+  }
+
+  // Arrastrar: cambia de grupo y/o de posición. Soltar SOBRE un ítem lo deja
+  // justo antes de ese; soltar en el grupo lo deja al final.
+  async function moverItem(
+    itemId: string, fromDep: string, fromSg: string | null,
+    toDep: string, toSg: string | null, antesDeId: string | null = null,
+  ) {
+    const mismoGrupo = fromDep === toDep && (fromSg ?? null) === (toSg ?? null)
+    if (mismoGrupo && !antesDeId) return
+    const origen = itemsDe(fromDep, fromSg)
+    const item = origen.find(i => i.id === itemId)
+    if (!item) return
+
+    if (mismoGrupo) {
+      await guardarOrden('item', origen, insertarAntesDe(origen, item, antesDeId), lista => ponerItems(toDep, toSg, lista))
+      return
+    }
+
+    const destino = itemsDe(toDep, toSg)
+    const movido = { ...item, departamento_id: toDep, subgrupo_id: toSg }
+    const destinoNuevo = insertarAntesDe(destino, movido, antesDeId)
+    const origenNuevo = renumerar(ordenar(origen).filter(i => i.id !== itemId))
+    try {
+      const ordenMovido = destinoNuevo.find(i => i.id === itemId)!.orden
+      await actualizarItem(itemId, cot.id, { departamento_id: toDep, subgrupo_id: toSg, orden: ordenMovido })
+      ponerItems(fromDep, fromSg, origenNuevo)
+      ponerItems(toDep, toSg, destinoNuevo)
+      // El resto de las filas que se corrieron, en los dos grupos.
+      const resto = [
+        ...cambiosDeOrden(origen, origenNuevo),
+        ...cambiosDeOrden(destino, destinoNuevo).filter(c => c.id !== itemId),
+      ]
+      if (resto.length > 0) await reordenarNivel(cot.id, 'item', resto)
       toastOk('Ítem movido')
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al mover el ítem')
@@ -557,7 +626,7 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           <PanelFacturacion cot={cot} setCot={setCot} />
 
           {/* Departamentos */}
-          {(cot.departamentos ?? []).map(dep => (
+          {(cot.departamentos ?? []).map((dep, iDep, todosDep) => (
             <DepBlock
               key={dep.id}
               dep={dep}
@@ -574,6 +643,10 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               onEditarItem={(item, sgId) => setItemModal({ mode: 'editar', depId: dep.id, sgId, item })}
               onEliminarItem={(item, sgId) => handleEliminarItem(item, dep.id, sgId)}
               onMoverItem={moverItem}
+              onSubir={iDep > 0 ? () => moverDep(dep, -1) : undefined}
+              onBajar={iDep < todosDep.length - 1 ? () => moverDep(dep, 1) : undefined}
+              onMoverSg={(sg, dir) => moverSg(dep, sg, dir)}
+              onMoverItemPuesto={(item, sgId, dir) => moverItemPuesto(item, dep.id, sgId, dir)}
             />
           ))}
 

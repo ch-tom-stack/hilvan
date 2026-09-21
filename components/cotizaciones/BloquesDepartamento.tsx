@@ -28,6 +28,22 @@ const TIPO_LABELS: Record<TipoItem, string> = {
 
 // ─── DEP BLOCK ───────────────────────────────────────────────────────────────
 
+/**
+ * Subir / bajar un puesto. Siempre visibles (en el celular no existe el hover) y
+ * disponibles en cualquier estado de la cotización: el orden es presentación,
+ * no entra en ningún total.
+ */
+function Flechas({ onSubir, onBajar, que }: { onSubir?: () => void; onBajar?: () => void; que: string }) {
+  const base = 'font-body text-[11px] leading-none px-1 py-1 transition-colors ch-press'
+  const clase = (activo: boolean) => `${base} ${activo ? 'text-ch-muted hover:text-ch-cream' : 'text-ch-border cursor-default'}`
+  return (
+    <span className="flex items-center shrink-0" onClick={e => e.stopPropagation()}>
+      <button type="button" onClick={onSubir} disabled={!onSubir} aria-label={`Subir ${que}`} title="Subir" className={clase(!!onSubir)}>↑</button>
+      <button type="button" onClick={onBajar} disabled={!onBajar} aria-label={`Bajar ${que}`} title="Bajar" className={clase(!!onBajar)}>↓</button>
+    </span>
+  )
+}
+
 interface DepBlockProps {
   dep: CotizacionDepartamento
   editable: boolean
@@ -42,7 +58,13 @@ interface DepBlockProps {
   onAgregarItem: (sgId?: string) => void
   onEditarItem: (item: CotizacionItem, sgId?: string) => void
   onEliminarItem: (item: CotizacionItem, sgId?: string) => void
-  onMoverItem: (itemId: string, fromDep: string, fromSg: string | null, toDep: string, toSg: string | null) => void
+  /** antesDeId: soltar SOBRE un ítem lo deja justo antes de ese; null = al final del grupo. */
+  onMoverItem: (itemId: string, fromDep: string, fromSg: string | null, toDep: string, toSg: string | null, antesDeId?: string | null) => void
+  /** undefined cuando ya es el primero / el último. */
+  onSubir?: () => void
+  onBajar?: () => void
+  onMoverSg: (sg: CotizacionSubgrupo, dir: -1 | 1) => void
+  onMoverItemPuesto: (item: CotizacionItem, sgId: string | null, dir: -1 | 1) => void
 }
 
 export default function DepBlock({
@@ -50,6 +72,7 @@ export default function DepBlock({
   onRenombrar, onPrecio, onEliminar, onAgregarSg,
   onRenombrarSg, onPrecioSg, onEliminarSg,
   onAgregarItem, onEditarItem, onEliminarItem, onMoverItem,
+  onSubir, onBajar, onMoverSg, onMoverItemPuesto,
 }: DepBlockProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [overDir, setOverDir] = useState(false)
@@ -57,10 +80,10 @@ export default function DepBlock({
   const bundle = dep.precio_manual != null
 
   // Lee el ítem arrastrado y lo mueve a (este depto, toSg).
-  const soltar = (e: React.DragEvent, toSg: string | null) => {
+  const soltar = (e: React.DragEvent, toSg: string | null, antesDeId: string | null = null) => {
     try {
       const { itemId, fromDep, fromSg } = JSON.parse(e.dataTransfer.getData('application/json'))
-      if (itemId) onMoverItem(itemId, fromDep, fromSg ?? null, dep.id, toSg)
+      if (itemId && itemId !== antesDeId) onMoverItem(itemId, fromDep, fromSg ?? null, dep.id, toSg, antesDeId)
     } catch { /* drop inválido */ }
   }
 
@@ -72,6 +95,7 @@ export default function DepBlock({
           <button onClick={() => setCollapsed(v => !v)} className="text-ch-muted hover:text-ch-cream transition-colors text-xs ch-press">
             {collapsed ? '▶' : '▼'}
           </button>
+          <Flechas onSubir={onSubir} onBajar={onBajar} que={`el grupo ${dep.nombre}`} />
           <span className="font-body text-sm font-medium text-ch-cream uppercase tracking-wider">
             {dep.nombre}
           </span>
@@ -100,10 +124,14 @@ export default function DepBlock({
       {!collapsed && (
         <div className="divide-y divide-ch-border/30">
           {/* Sub-grupos */}
-          {(dep.subgrupos ?? []).map(sg => (
+          {(dep.subgrupos ?? []).map((sg, iSg, todosSg) => (
             <SgBlock
               key={sg.id}
               sg={sg}
+              onSubir={iSg > 0 ? () => onMoverSg(sg, -1) : undefined}
+              onBajar={iSg < todosSg.length - 1 ? () => onMoverSg(sg, 1) : undefined}
+              onMoverItemPuesto={(item, dir) => onMoverItemPuesto(item, sg.id, dir)}
+              onSoltarSobreItem={(e, item) => soltar(e, sg.id, item.id)}
               depId={dep.id}
               editable={editable}
               showInterno={showInterno}
@@ -125,10 +153,13 @@ export default function DepBlock({
             onDrop={editable ? (e => { e.preventDefault(); setOverDir(false); soltar(e, null) }) : undefined}
             className={overDir ? 'ring-1 ring-inset ring-ch-green/60 bg-ch-green/5' : ''}
           >
-            {(dep.items ?? []).map(item => (
+            {(dep.items ?? []).map((item, i, todos) => (
               <ItemRow
                 key={item.id}
                 item={item}
+                onSubir={i > 0 ? () => onMoverItemPuesto(item, null, -1) : undefined}
+                onBajar={i < todos.length - 1 ? () => onMoverItemPuesto(item, null, 1) : undefined}
+                onSoltarSobre={e => soltar(e, null, item.id)}
                 editable={editable}
                 showInterno={showInterno}
                 indent={false}
@@ -166,12 +197,17 @@ interface SgBlockProps {
   onEditarItem: (item: CotizacionItem) => void
   onEliminarItem: (item: CotizacionItem) => void
   onSoltarItem: (e: React.DragEvent) => void
+  onSoltarSobreItem: (e: React.DragEvent, item: CotizacionItem) => void
+  onSubir?: () => void
+  onBajar?: () => void
+  onMoverItemPuesto: (item: CotizacionItem, dir: -1 | 1) => void
 }
 
 function SgBlock({
   sg, depId, editable, showInterno, bundlePadre,
   onRenombrar, onPrecio, onEliminar, onAgregarItem,
-  onEditarItem, onEliminarItem, onSoltarItem,
+  onEditarItem, onEliminarItem, onSoltarItem, onSoltarSobreItem,
+  onSubir, onBajar, onMoverItemPuesto,
 }: SgBlockProps) {
   const subtotal = subtotalSubgrupo(sg)
   const bundle = bundlePadre || sg.precio_manual != null
@@ -187,6 +223,7 @@ function SgBlock({
       {/* Header sub-grupo */}
       <div className="flex items-center justify-between px-4 py-2 bg-ch-dark/20">
         <div className="flex items-center gap-2">
+          <Flechas onSubir={onSubir} onBajar={onBajar} que={`el sub-grupo ${sg.nombre}`} />
           <span className="font-body text-xs font-semibold text-ch-cream/80">{sg.nombre}</span>
           {sg.precio_manual != null && (
             <span className="font-body text-[9px] text-ch-green bg-ch-green/10 px-1.5 py-0.5 rounded uppercase tracking-wider">bundle</span>
@@ -207,10 +244,13 @@ function SgBlock({
         </div>
       </div>
       {/* Ítems del sub-grupo */}
-      {(sg.items ?? []).map(item => (
+      {(sg.items ?? []).map((item, i, todos) => (
         <ItemRow
           key={item.id}
           item={item}
+          onSubir={i > 0 ? () => onMoverItemPuesto(item, -1) : undefined}
+          onBajar={i < todos.length - 1 ? () => onMoverItemPuesto(item, 1) : undefined}
+          onSoltarSobre={e => onSoltarSobreItem(e, item)}
           editable={editable}
           showInterno={showInterno}
           indent={true}
@@ -237,9 +277,13 @@ interface ItemRowProps {
   sgId?: string
   onEditar: () => void
   onEliminar: () => void
+  onSubir?: () => void
+  onBajar?: () => void
+  onSoltarSobre: (e: React.DragEvent) => void
 }
 
-function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onEditar, onEliminar }: ItemRowProps) {
+function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onEditar, onEliminar, onSubir, onBajar, onSoltarSobre }: ItemRowProps) {
+  const [encima, setEncima] = useState(false)
   const subtotal = subtotalItem(item)
   const costo = Math.round(item.precio_bruto * item.cantidad * item.dias)
   const margen = subtotal - costo
@@ -251,10 +295,16 @@ function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onE
         e.dataTransfer.setData('application/json', JSON.stringify({ itemId: item.id, fromDep: depId, fromSg: sgId ?? null }))
         e.dataTransfer.effectAllowed = 'move'
       }}
-      className={`flex items-start justify-between py-2 pr-4 hover:bg-ch-border/5 group ${indent ? 'pl-8' : 'pl-4'} ${editable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+      // Soltar SOBRE un ítem = dejarlo justo antes. stopPropagation para que no
+      // lo reciba además el grupo, que lo mandaría al final.
+      onDragOver={editable ? (e => { e.preventDefault(); e.stopPropagation(); setEncima(true) }) : undefined}
+      onDragLeave={editable ? (() => setEncima(false)) : undefined}
+      onDrop={editable ? (e => { e.preventDefault(); e.stopPropagation(); setEncima(false); onSoltarSobre(e) }) : undefined}
+      className={`flex items-start justify-between py-2 pr-4 hover:bg-ch-border/5 group ${indent ? 'pl-8' : 'pl-4'} ${editable ? 'cursor-grab active:cursor-grabbing' : ''} border-t ${encima ? 'border-ch-green' : 'border-transparent'}`}
     >
       <div className="flex-1 min-w-0 pr-4">
         <div className="flex items-center gap-2">
+          <Flechas onSubir={onSubir} onBajar={onBajar} que={item.nombre} />
           {editable && (
             <span className="font-body text-[10px] text-ch-border group-hover:text-ch-muted shrink-0 select-none" title="Arrastra para mover">⠿</span>
           )}

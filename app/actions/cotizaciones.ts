@@ -12,6 +12,7 @@ import type {
 } from '@/types'
 import { numeroCotizacion } from '@/types'
 import { autoCrearProyectoDesdeAprobacion } from '@/app/actions/clientes'
+import { porOrden } from '@/lib/orden'
 
 // ============================================================
 // HELPERS INTERNOS
@@ -52,12 +53,12 @@ async function cargarCotizacionCompleta(id: string) {
         (item: any) => item.subgrupo_id === null
       )
     }
-    cotizacion.departamentos.sort((a: any, b: any) => a.orden - b.orden)
+    cotizacion.departamentos.sort(porOrden)
     for (const dep of cotizacion.departamentos) {
-      dep.subgrupos?.sort((a: any, b: any) => a.orden - b.orden)
-      dep.items?.sort((a: any, b: any) => a.orden - b.orden)
+      dep.subgrupos?.sort(porOrden)
+      dep.items?.sort(porOrden)
       for (const sg of dep.subgrupos ?? []) {
-        sg.items?.sort((a: any, b: any) => a.orden - b.orden)
+        sg.items?.sort(porOrden)
       }
     }
   }
@@ -792,6 +793,52 @@ export async function reordenarItems(
     throw new Error(
       `No se pudo reordenar ${fallidos.length} de ${items.length} ítems. Recarga e intenta de nuevo.`
     )
+  }
+}
+
+/**
+ * Guarda el orden de los grupos, sub-grupos o ítems de una cotización.
+ *
+ * Recibe la lista YA renumerada (ver lib/orden.ts) y solo las filas que
+ * cambiaron. Cada update va acotado a `cotizacion_id`: un id de otra cotización
+ * no se toca aunque llegue en la lista.
+ *
+ * El orden es presentación pura —no entra en ningún total— así que se permite
+ * en cualquier estado de la cotización, no solo en borrador.
+ */
+export async function reordenarNivel(
+  cotizacion_id: string,
+  nivel: 'departamento' | 'subgrupo' | 'item',
+  filas: Array<{ id: string; orden: number }>,
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('No autenticado')
+
+  const tabla =
+    nivel === 'departamento' ? 'cotizacion_departamentos'
+    : nivel === 'subgrupo' ? 'cotizacion_subgrupos'
+    : nivel === 'item' ? 'cotizacion_items'
+    : null
+  if (!tabla) throw new Error('Nivel inválido')
+  if (!Array.isArray(filas) || filas.length > 500) throw new Error('Lista inválida')
+  for (const f of filas) {
+    if (typeof f?.id !== 'string' || !Number.isInteger(f?.orden) || f.orden < 0) throw new Error('Lista inválida')
+  }
+  if (filas.length === 0) return
+
+  const resultados = await Promise.allSettled(
+    filas.map(({ id, orden }) =>
+      supabase.from(tabla).update({ orden }).eq('id', id).eq('cotizacion_id', cotizacion_id)
+        .then(({ error }) => { if (error) throw new Error(error.message) }),
+    ),
+  )
+
+  revalidatePath(`/cotizaciones/${cotizacion_id}`)
+
+  const fallidos = resultados.filter(r => r.status === 'rejected')
+  if (fallidos.length > 0) {
+    throw new Error(`No se pudo guardar el orden de ${fallidos.length} de ${filas.length} elementos. Recarga e intenta de nuevo.`)
   }
 }
 
