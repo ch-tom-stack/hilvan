@@ -1999,6 +1999,25 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_cotizacion_ordenar',
+      {
+        title: 'Ordenar una cotización',
+        description: 'Ordena una cotización completa en UNA llamada: los grupos, los sub-grupos de un grupo y los ítems de un grupo o sub-grupo. En cada orden, `orden` es una lista de NOMBRES (o ids): lo nombrado va primero, en ese orden, y lo que NO nombras queda después conservando su orden relativo — para dejar "Producción y Cámara primero" basta nombrar esos dos. `departamento` y `subgrupo` también aceptan nombre o id; los nombres no distinguen mayúsculas ni tildes. Si un nombre calza con dos elementos (dos ítems "Asistente") responde 400 con sus ids: usa el id, no adivines. Valida TODO antes de escribir: si algo falla no cambia nada y te dice qué nombres existen. El orden es presentación pura —no entra en ningún total— así que sirve en cualquier estado, también en cotizaciones enviadas o aprobadas; ojo que cambia cómo la ve el cliente en su link y en el PDF. Si `numero` tiene varias versiones o variantes responde 400 con la lista: cada documento tiene su propio orden, indica cotizacion_id. La respuesta trae `estructura`, el esqueleto completo como queda. Saca los nombres de hilvan_cotizacion_detalle. Reversible con hilvan_deshacer.',
+        inputSchema: {
+          cotizacion_id: z.string().optional(),
+          numero: z.string().optional().describe('ej. CH-2026-104; solo si tiene un único documento'),
+          ordenes: z.array(z.object({
+            nivel: z.enum(['departamento', 'subgrupo', 'item']),
+            departamento: z.string().optional().describe('nombre o id del grupo; obligatorio para subgrupo e item'),
+            subgrupo: z.string().optional().describe('nombre o id; solo para ordenar los ítems DE un sub-grupo. Sin esto se ordenan los ítems directos del grupo'),
+            orden: z.array(z.string()).describe('nombres o ids, en el orden deseado'),
+          })),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-ordenar', args)),
+    )
+
+    server.registerTool(
       'hilvan_preguntas_equipo',
       {
         title: '¿En qué quedó? — preguntas al equipo (CRM)',

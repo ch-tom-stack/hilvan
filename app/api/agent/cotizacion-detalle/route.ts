@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { porOrden } from '@/lib/orden'
 import { subtotalItem, subtotalSubgrupo, subtotalDepartamento, calcularTotales } from '@/lib/cotizaciones-calc'
 
 export const runtime = 'nodejs'
@@ -53,11 +54,11 @@ export async function GET(req: Request) {
 
   const salida = (cots ?? []).map((cot: any) => {
     // Filtrar ítems directos (subgrupo_id === null) y ordenar, como en la app.
-    const deps = [...(cot.departamentos ?? [])].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+    const deps = [...(cot.departamentos ?? [])].sort(porOrden)
     for (const d of deps) {
-      d.items = (d.items ?? []).filter((i: any) => i.subgrupo_id === null).sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0))
-      d.subgrupos = [...(d.subgrupos ?? [])].sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0))
-      for (const sg of d.subgrupos) sg.items = (sg.items ?? []).sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0))
+      d.items = (d.items ?? []).filter((i: any) => i.subgrupo_id === null).sort(porOrden)
+      d.subgrupos = [...(d.subgrupos ?? [])].sort(porOrden)
+      for (const sg of d.subgrupos) sg.items = (sg.items ?? []).sort(porOrden)
     }
     const totales = calcularTotales({ ...cot, departamentos: deps } as any)
     return {

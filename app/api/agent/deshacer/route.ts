@@ -77,6 +77,24 @@ export async function POST(req: Request) {
   // ── Bulk: no usa resultado_tabla/_id; revierte por payload.creados ─────────
   // Se trata ANTES del guard de resultado_tabla/_id porque la carga masiva es
   // multi-fila y no tiene una única fila/tabla de resultado.
+  // ── Orden de una cotización: restaura el `orden` anterior de cada fila ─────
+  if (accion.herramienta === 'cotizacion-ordenar') {
+    const payload = accion.payload as { cotizacion_id?: string; previo?: { tabla: string; id: string; orden: number }[] } | null
+    const TABLAS_ORDEN = ['cotizacion_departamentos', 'cotizacion_subgrupos', 'cotizacion_items']
+    const previo = payload?.previo ?? []
+    if (!payload?.cotizacion_id) return NextResponse.json({ error: 'La acción no guardó la cotización' }, { status: 400 })
+    // Todo se valida antes de restaurar nada: la tabla sale de un payload guardado.
+    if (previo.some(f => !TABLAS_ORDEN.includes(f.tabla) || typeof f.id !== 'string' || !Number.isFinite(f.orden))) {
+      return NextResponse.json({ error: 'El estado previo guardado no es válido' }, { status: 400 })
+    }
+    for (const f of previo) {
+      const { error } = await admin.from(f.tabla).update({ orden: f.orden }).eq('id', f.id).eq('cotizacion_id', payload.cotizacion_id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, filas_restauradas: previo.length })
+  }
+
   // ── WhatsApp: ambas trabajan desde el payload, no desde resultado_id ───────
   if (accion.herramienta === 'whatsapp-registrar') {
     const payload = accion.payload as { creadas?: string[]; respondido_marcado?: string | null; mensaje_ids?: string[] } | null
