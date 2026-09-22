@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition, useCallback } from 'react'
+import { useState, useTransition, useCallback, useEffect } from 'react'
+import { copiaDeItem, copiaDeGrupo, cuentaItems, guardarPortapapeles, leerPortapapeles, CLAVE_PORTAPAPELES, type Portapapeles } from '@/lib/portapapeles-cotizacion'
 import { useConfirm, usePrompt } from '@/components/ui/useConfirm'
 import { toastOk, toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
@@ -327,6 +328,75 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   }
 
   // Drag-and-drop: mover un ítem a otra categoría / subgrupo (o sacarlo: toSg=null).
+  // ── COPIAR / PEGAR (entre cotizaciones, vía localStorage) ───────────────────
+  const [portapapeles, setPortapapeles] = useState<Portapapeles | null>(null)
+  useEffect(() => {
+    setPortapapeles(leerPortapapeles())
+    // Copiar en otra pestaña se refleja acá sin recargar.
+    const onStorage = (e: StorageEvent) => { if (e.key === CLAVE_PORTAPAPELES) setPortapapeles(leerPortapapeles()) }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  function copiarItem(item: CotizacionItem) {
+    const p: Portapapeles = { tipo: 'item', etiqueta: item.nombre, origen: cot.nombre, datos: copiaDeItem(item) }
+    if (!guardarPortapapeles(p)) { toastError('No se pudo copiar (el navegador bloquea el almacenamiento)'); return }
+    setPortapapeles(p)
+    toastOk(`Copiado «${item.nombre}». Aparece "pegar ítem" en cada grupo, también en otras cotizaciones.`)
+  }
+
+  function copiarGrupo(dep: CotizacionDepartamento) {
+    const datos = copiaDeGrupo(dep)
+    const p: Portapapeles = { tipo: 'grupo', etiqueta: dep.nombre, origen: cot.nombre, datos }
+    if (!guardarPortapapeles(p)) { toastError('No se pudo copiar (el navegador bloquea el almacenamiento)'); return }
+    setPortapapeles(p)
+    toastOk(`Copiado el grupo «${dep.nombre}» (${cuentaItems(datos)} ítems). Aparece "Pegar grupo" al final, también en otras cotizaciones.`)
+  }
+
+  async function pegarItem(depId: string, sgId: string | null) {
+    if (portapapeles?.tipo !== 'item') return
+    try {
+      const data = await agregarItem({
+        ...portapapeles.datos, cotizacion_id: cot.id, departamento_id: depId, subgrupo_id: sgId,
+        orden: siguienteOrden(itemsDe(depId, sgId)),
+      })
+      ponerItems(depId, sgId, [...itemsDe(depId, sgId), data])
+      toastOk(`Pegado «${portapapeles.etiqueta}»`)
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'No se pudo pegar el ítem')
+    }
+  }
+
+  async function pegarGrupo() {
+    if (portapapeles?.tipo !== 'grupo') return
+    const g = portapapeles.datos
+    try {
+      // Se crea en orden y se refleja al final: si algo falla a mitad queda lo
+      // creado hasta ahí (se ve al recargar) y se avisa.
+      const dep = await agregarDepartamento(cot.id, g.nombre, siguienteOrden(cot.departamentos ?? []))
+      if (g.precio_manual != null) await actualizarDepartamento(dep.id, cot.id, { precio_manual: g.precio_manual })
+      const items: CotizacionItem[] = []
+      for (let i = 0; i < g.items.length; i++) {
+        items.push(await agregarItem({ ...g.items[i], cotizacion_id: cot.id, departamento_id: dep.id, subgrupo_id: null, orden: i }))
+      }
+      const subgrupos: CotizacionSubgrupo[] = []
+      for (let k = 0; k < g.subgrupos.length; k++) {
+        const sgc = g.subgrupos[k]
+        const sg = await agregarSubgrupo(cot.id, dep.id, sgc.nombre, k)
+        if (sgc.precio_manual != null) await actualizarSubgrupo(sg.id, cot.id, { precio_manual: sgc.precio_manual })
+        const sgItems: CotizacionItem[] = []
+        for (let i = 0; i < sgc.items.length; i++) {
+          sgItems.push(await agregarItem({ ...sgc.items[i], cotizacion_id: cot.id, departamento_id: dep.id, subgrupo_id: sg.id, orden: i }))
+        }
+        subgrupos.push({ ...sg, precio_manual: sgc.precio_manual, items: sgItems })
+      }
+      setCot(c => ({ ...c, departamentos: [...(c.departamentos ?? []), { ...dep, precio_manual: g.precio_manual, subgrupos, items }] }))
+      toastOk(`Pegado el grupo «${g.nombre}» con ${cuentaItems(g)} ítems`)
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'No se pudo pegar el grupo completo. Recarga para ver qué alcanzó a crearse.')
+    }
+  }
+
   // ── ORDEN ───────────────────────────────────────────────────────────────────
   // Se mueve en pantalla al tiro y se guarda después; si el guardado falla se
   // vuelve atrás. Siempre se renumera la lista completa (ver lib/orden.ts).
@@ -647,6 +717,10 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               onBajar={iDep < todosDep.length - 1 ? () => moverDep(dep, 1) : undefined}
               onMoverSg={(sg, dir) => moverSg(dep, sg, dir)}
               onMoverItemPuesto={(item, sgId, dir) => moverItemPuesto(item, dep.id, sgId, dir)}
+              copiado={editable && portapapeles ? { tipo: portapapeles.tipo, etiqueta: portapapeles.etiqueta } : null}
+              onCopiarItem={copiarItem}
+              onCopiarGrupo={() => copiarGrupo(dep)}
+              onPegarItem={sgId => pegarItem(dep.id, sgId)}
             />
           ))}
 
@@ -656,6 +730,14 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               className="w-full py-3 border border-dashed border-ch-border/40 rounded text-ch-muted font-body text-xs hover:text-ch-cream hover:border-ch-border transition-colors ch-press"
             >
               + Agregar departamento
+            </button>
+          )}
+          {editable && portapapeles?.tipo === 'grupo' && (
+            <button
+              onClick={pegarGrupo}
+              className="w-full py-3 border border-dashed border-ch-green/40 rounded text-ch-green font-body text-xs hover:border-ch-green transition-colors ch-press"
+            >
+              Pegar grupo «{portapapeles.etiqueta}» ({cuentaItems(portapapeles.datos)} ítems{portapapeles.origen !== cot.nombre ? ` · de ${portapapeles.origen}` : ''})
             </button>
           )}
         </div>

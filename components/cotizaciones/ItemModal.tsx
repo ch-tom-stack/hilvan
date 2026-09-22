@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import InputNumero from '@/components/ui/InputNumero'
+import { toastError } from '@/lib/toast'
 import {
   formatCLP,
   calcularBruto,
@@ -109,52 +111,87 @@ export default function ItemModal({
     return Math.round(base - descItem)
   })()
 
+  const [amplio, setAmplio] = useState(false)
+  const descRef = useRef<HTMLTextAreaElement>(null)
+
+  // ¿Hay cambios sin guardar? Se compara contra una foto del estado inicial.
+  const foto = () => JSON.stringify([depIdSel, sgIdSel, tipo, nombre, descripcion, unidad, cantidad, dias, incluido, conBoleta, netoProveedor, precioPersonalizado, precioCliente, descItem, descItemTipo])
+  const inicial = useRef(foto())
+  const sucio = foto() !== inicial.current
+
+  function armar() {
+    return {
+      cotizacion_id: cotizacionId,
+      departamento_id: depIdSel,
+      subgrupo_id: sgIdSel || null,
+      tipo,
+      equipo_id: null,
+      tarifa_id: null,
+      nombre: nombre.trim(),
+      descripcion: descripcion.trim() || undefined,
+      con_boleta: conBoleta,
+      tasa_boleta: tasaBoleta,
+      precio_neto_proveedor: netoProveedor,
+      precio_bruto: bruto,
+      precio_cliente_personalizado: precioPersonalizado,
+      precio_cliente: precioClienteEfectivo,
+      cantidad,
+      dias,
+      unidad,
+      incluido,
+      descuento_item: descItem,
+      descuento_item_tipo: descItemTipo,
+      orden: item?.orden ?? 99,
+    }
+  }
+
+  // Cerrar = guardar. Antes, hacer clic fuera del panel botaba los cambios en
+  // silencio, y el botón de guardar quedaba fuera de la vista en formularios
+  // largos: la gente editaba, cerraba y creía que había guardado.
+  function cerrarGuardando() {
+    if (!sucio) { onCerrar(); return }
+    if (!nombre.trim()) { toastError('Ponle un nombre al ítem, o descarta los cambios'); return }
+    startTransition(async () => { await onGuardar(armar()) })
+  }
+
+  function descartar() {
+    if (sucio && !window.confirm('¿Descartar los cambios de este ítem?')) return
+    onCerrar()
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); cerrarGuardando() }
+      if (e.key === 'Escape') { e.preventDefault(); cerrarGuardando() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!nombre.trim()) return
 
     startTransition(async () => {
-      await onGuardar({
-        cotizacion_id: cotizacionId,
-        departamento_id: depIdSel,
-        subgrupo_id: sgIdSel || null,
-        tipo,
-        equipo_id: null,
-        tarifa_id: null,
-        nombre: nombre.trim(),
-        descripcion: descripcion.trim() || undefined,
-        con_boleta: conBoleta,
-        tasa_boleta: tasaBoleta,
-        precio_neto_proveedor: netoProveedor,
-        precio_bruto: bruto,
-        precio_cliente_personalizado: precioPersonalizado,
-        precio_cliente: precioClienteEfectivo,
-        cantidad,
-        dias,
-        unidad,
-        incluido,
-        descuento_item: descItem,
-        descuento_item_tipo: descItemTipo,
-        orden: item?.orden ?? 99,
-      })
+      await onGuardar(armar())
     })
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50" onClick={onCerrar} />
+      <div className="absolute inset-0 bg-black/50" onClick={cerrarGuardando} />
 
       {/* Panel */}
-      <div className="relative w-full max-w-md h-full bg-ch-dark border-l border-ch-border overflow-y-auto">
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+      <div className={`relative w-full ${amplio ? 'max-w-3xl' : 'max-w-md'} h-full bg-ch-dark border-l border-ch-border overflow-y-auto transition-[max-width]`}>
+        <form onSubmit={handleSubmit} className="p-6 pb-28 space-y-5">
 
           {/* Header modal */}
           <div className="flex items-center justify-between">
             <h2 className="font-body text-sm font-medium text-ch-cream">
               {mode === 'nuevo' ? 'Nuevo ítem' : 'Editar ítem'}
             </h2>
-            <button type="button" onClick={onCerrar} className="text-ch-muted hover:text-ch-cream text-lg ch-press">✕</button>
+            <button type="button" onClick={cerrarGuardando} title="Cerrar (guarda los cambios)" className="text-ch-muted hover:text-ch-cream text-lg ch-press">✕</button>
           </div>
 
           {/* Ubicación: mover entre categorías / dentro o fuera de subgrupos (solo al editar) */}
@@ -281,15 +318,22 @@ export default function ItemModal({
 
           {/* Descripción */}
           <div>
-            <label className="block font-body text-xs tracking-wider uppercase text-ch-muted mb-1.5">
-              Descripción <span className="normal-case text-ch-muted/60">(bullets visibles al cliente)</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block font-body text-xs tracking-wider uppercase text-ch-muted">
+                Descripción <span className="normal-case text-ch-muted/60">(bullets visibles al cliente)</span>
+              </label>
+              <button type="button" onClick={() => setAmplio(a => !a)} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors ch-press">
+                {amplio ? 'Reducir' : 'Ampliar ⤢'}
+              </button>
+            </div>
             <textarea
+              ref={descRef}
               value={descripcion}
               onChange={e => setDescripcion(e.target.value)}
-              rows={3}
+              rows={amplio ? 18 : 5}
               placeholder="- Ítem 1&#10;- Ítem 2"
-              className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream placeholder-ch-muted/40 focus:outline-none focus:border-ch-cream/40 resize-none"
+              className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream placeholder-ch-muted/40 focus:outline-none focus:border-ch-cream/40 resize-y leading-relaxed"
+              style={{ minHeight: amplio ? '50vh' : '7.5rem' }}
             />
           </div>
 
@@ -311,13 +355,12 @@ export default function ItemModal({
               <label className="block font-body text-xs text-ch-muted mb-1">
                 {conBoleta ? 'Neto proveedor (lo que recibe)' : 'Precio'}
               </label>
-              <input
-                type="number"
-                min="0"
-                value={netoProveedor || ''}
-                onChange={e => setNetoProveedor(Number(e.target.value) || 0)}
-                placeholder="0"
-                className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream focus:outline-none focus:border-ch-cream/40"
+              <InputNumero
+                value={netoProveedor}
+                onChange={setNetoProveedor}
+                min={0}
+                placeholder="0 — acepta fórmulas: 3*85000"
+                className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream placeholder-ch-muted/40 focus:outline-none focus:border-ch-cream/40"
               />
             </div>
 
@@ -344,12 +387,12 @@ export default function ItemModal({
             {precioPersonalizado && (
               <div>
                 <label className="block font-body text-xs text-ch-muted mb-1">Precio al cliente</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={precioCliente || ''}
-                  onChange={e => setPrecioCliente(Number(e.target.value) || 0)}
-                  className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream focus:outline-none focus:border-ch-cream/40"
+                <InputNumero
+                  value={precioCliente}
+                  onChange={setPrecioCliente}
+                  min={0}
+                  placeholder="0"
+                  className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream placeholder-ch-muted/40 focus:outline-none focus:border-ch-cream/40"
                 />
               </div>
             )}
@@ -370,23 +413,21 @@ export default function ItemModal({
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block font-body text-xs text-ch-muted mb-1">Cantidad</label>
-                <input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
+                <InputNumero
                   value={cantidad}
-                  onChange={e => setCantidad(Number(e.target.value) || 1)}
+                  onChange={setCantidad}
+                  min={0.5}
+                  decimales={1}
                   className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream focus:outline-none focus:border-ch-cream/40"
                 />
               </div>
               <div>
                 <label className="block font-body text-xs text-ch-muted mb-1">Días/unid</label>
-                <input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
+                <InputNumero
                   value={dias}
-                  onChange={e => setDias(Number(e.target.value) || 1)}
+                  onChange={setDias}
+                  min={0.5}
+                  decimales={1}
                   className="w-full bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream focus:outline-none focus:border-ch-cream/40"
                 />
               </div>
@@ -408,13 +449,13 @@ export default function ItemModal({
             <div>
               <label className="block font-body text-xs text-ch-muted mb-1">Descuento ítem</label>
               <div className="flex gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  value={descItem || ''}
-                  onChange={e => setDescItem(Number(e.target.value) || 0)}
+                <InputNumero
+                  value={descItem}
+                  onChange={setDescItem}
+                  min={0}
+                  decimales={2}
                   placeholder="0"
-                  className="flex-1 bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream focus:outline-none"
+                  className="flex-1 bg-ch-dark border border-ch-border rounded px-3 py-2 font-body text-sm text-ch-cream placeholder-ch-muted/40 focus:outline-none"
                 />
                 <select
                   value={descItemTipo}
@@ -436,8 +477,9 @@ export default function ItemModal({
             </div>
           )}
 
-          {/* Botones */}
-          <div className="flex gap-2 pt-1">
+          {/* Pie fijo: el botón se ve siempre, aunque el formulario sea largo.
+              Cerrar también guarda; "Descartar" es lo único que pierde cambios. */}
+          <div className="fixed bottom-0 right-0 w-full max-w-[inherit] bg-ch-dark/95 border-t border-ch-border px-6 py-3 flex items-center gap-2" style={{ maxWidth: amplio ? '48rem' : '28rem' }}>
             <button
               type="submit"
               disabled={isPending || !nombre.trim()}
@@ -447,11 +489,12 @@ export default function ItemModal({
             </button>
             <button
               type="button"
-              onClick={onCerrar}
+              onClick={descartar}
               className="px-4 py-2.5 border border-ch-border text-ch-muted font-body text-sm rounded hover:text-ch-cream hover:border-ch-cream/40 transition-colors ch-press"
             >
-              Cancelar
+              {sucio ? 'Descartar' : 'Cerrar'}
             </button>
+            <span className="font-body text-[10px] text-ch-subtle hidden sm:inline">⌘↵ guarda</span>
           </div>
         </form>
       </div>

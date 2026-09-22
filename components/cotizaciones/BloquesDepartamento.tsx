@@ -65,6 +65,11 @@ interface DepBlockProps {
   onBajar?: () => void
   onMoverSg: (sg: CotizacionSubgrupo, dir: -1 | 1) => void
   onMoverItemPuesto: (item: CotizacionItem, sgId: string | null, dir: -1 | 1) => void
+  /** Portapapeles (localStorage): qué hay copiado, para mostrar "Pegar". */
+  copiado: { tipo: 'item' | 'grupo'; etiqueta: string } | null
+  onCopiarItem: (item: CotizacionItem) => void
+  onCopiarGrupo: () => void
+  onPegarItem: (sgId: string | null) => void
 }
 
 export default function DepBlock({
@@ -73,6 +78,7 @@ export default function DepBlock({
   onRenombrarSg, onPrecioSg, onEliminarSg,
   onAgregarItem, onEditarItem, onEliminarItem, onMoverItem,
   onSubir, onBajar, onMoverSg, onMoverItemPuesto,
+  copiado, onCopiarItem, onCopiarGrupo, onPegarItem,
 }: DepBlockProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [overDir, setOverDir] = useState(false)
@@ -113,6 +119,12 @@ export default function DepBlock({
               <button onClick={() => onAgregarItem(undefined)} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20 ch-press">
                 + ítem
               </button>
+              {copiado?.tipo === 'item' && (
+                <button onClick={() => onPegarItem(null)} title={`Pegar «${copiado.etiqueta}» acá`} className="font-body text-[10px] text-ch-green hover:text-ch-green-light transition-colors px-1.5 py-0.5 rounded hover:bg-ch-green/10 ch-press">
+                  pegar ítem
+                </button>
+              )}
+              <button onClick={onCopiarGrupo} title="Copiar el grupo completo (con sub-grupos e ítems) para pegarlo en esta u otra cotización" className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1 ch-press">⧉</button>
               <button onClick={onPrecio} title="Precio del bundle" className={`font-body text-[10px] px-1 transition-colors ${bundle ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'} ch-press`}>$</button>
               <button onClick={onRenombrar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1 ch-press">✎</button>
               <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 transition-colors px-1 ch-press">✕</button>
@@ -132,6 +144,9 @@ export default function DepBlock({
               onBajar={iSg < todosSg.length - 1 ? () => onMoverSg(sg, 1) : undefined}
               onMoverItemPuesto={(item, dir) => onMoverItemPuesto(item, sg.id, dir)}
               onSoltarSobreItem={(e, item) => soltar(e, sg.id, item.id)}
+              copiado={copiado}
+              onCopiarItem={onCopiarItem}
+              onPegarItem={() => onPegarItem(sg.id)}
               depId={dep.id}
               editable={editable}
               showInterno={showInterno}
@@ -160,6 +175,7 @@ export default function DepBlock({
                 onSubir={i > 0 ? () => onMoverItemPuesto(item, null, -1) : undefined}
                 onBajar={i < todos.length - 1 ? () => onMoverItemPuesto(item, null, 1) : undefined}
                 onSoltarSobre={e => soltar(e, null, item.id)}
+                onCopiar={() => onCopiarItem(item)}
                 editable={editable}
                 showInterno={showInterno}
                 indent={false}
@@ -201,13 +217,16 @@ interface SgBlockProps {
   onSubir?: () => void
   onBajar?: () => void
   onMoverItemPuesto: (item: CotizacionItem, dir: -1 | 1) => void
+  copiado: { tipo: 'item' | 'grupo'; etiqueta: string } | null
+  onCopiarItem: (item: CotizacionItem) => void
+  onPegarItem: () => void
 }
 
 function SgBlock({
   sg, depId, editable, showInterno, bundlePadre,
   onRenombrar, onPrecio, onEliminar, onAgregarItem,
   onEditarItem, onEliminarItem, onSoltarItem, onSoltarSobreItem,
-  onSubir, onBajar, onMoverItemPuesto,
+  onSubir, onBajar, onMoverItemPuesto, copiado, onCopiarItem, onPegarItem,
 }: SgBlockProps) {
   const subtotal = subtotalSubgrupo(sg)
   const bundle = bundlePadre || sg.precio_manual != null
@@ -236,6 +255,11 @@ function SgBlock({
               <button onClick={onAgregarItem} className="font-body text-[10px] text-ch-muted hover:text-ch-cream transition-colors px-1.5 py-0.5 rounded hover:bg-ch-border/20 ch-press">
                 + ítem
               </button>
+              {copiado?.tipo === 'item' && (
+                <button onClick={onPegarItem} title={`Pegar «${copiado.etiqueta}» acá`} className="font-body text-[10px] text-ch-green hover:text-ch-green-light transition-colors px-1.5 py-0.5 rounded hover:bg-ch-green/10 ch-press">
+                  pegar ítem
+                </button>
+              )}
               <button onClick={onPrecio} title="Precio del bundle" className={`font-body text-[10px] px-1 transition-colors ${sg.precio_manual != null ? 'text-ch-green hover:text-ch-green-light' : 'text-ch-muted hover:text-ch-cream'} ch-press`}>$</button>
               <button onClick={onRenombrar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 ch-press">✎</button>
               <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 px-1 ch-press">✕</button>
@@ -251,6 +275,7 @@ function SgBlock({
           onSubir={i > 0 ? () => onMoverItemPuesto(item, -1) : undefined}
           onBajar={i < todos.length - 1 ? () => onMoverItemPuesto(item, 1) : undefined}
           onSoltarSobre={e => onSoltarSobreItem(e, item)}
+          onCopiar={() => onCopiarItem(item)}
           editable={editable}
           showInterno={showInterno}
           indent={true}
@@ -280,9 +305,10 @@ interface ItemRowProps {
   onSubir?: () => void
   onBajar?: () => void
   onSoltarSobre: (e: React.DragEvent) => void
+  onCopiar: () => void
 }
 
-function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onEditar, onEliminar, onSubir, onBajar, onSoltarSobre }: ItemRowProps) {
+function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onEditar, onEliminar, onSubir, onBajar, onSoltarSobre, onCopiar }: ItemRowProps) {
   const [encima, setEncima] = useState(false)
   const subtotal = subtotalItem(item)
   const costo = Math.round(item.precio_bruto * item.cantidad * item.dias)
@@ -346,12 +372,15 @@ function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onE
         <span className={`font-body text-xs ${bundle ? 'text-ch-muted/40' : 'text-ch-cream'}`}>
           {bundle ? '—' : item.incluido ? 'Incluida' : formatCLP(subtotal)}
         </span>
-        {editable && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onEditar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 ch-press">✎</button>
-            <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 px-1 ch-press">✕</button>
-          </div>
-        )}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <button onClick={onCopiar} title="Copiar ítem (para pegarlo en esta u otra cotización)" className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 ch-press">⧉</button>
+          {editable && (
+            <>
+              <button onClick={onEditar} className="font-body text-[10px] text-ch-muted hover:text-ch-cream px-1 ch-press">✎</button>
+              <button onClick={onEliminar} className="font-body text-[10px] text-ch-muted hover:text-red-400 px-1 ch-press">✕</button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
