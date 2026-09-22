@@ -17,6 +17,14 @@ import {
   formatHora,
 } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
+import { registrar, capturar, opInsert, opUpdate, opDelete, type Fila, type Op } from '@/lib/historial'
+
+// ── Historial (Ctrl+Z) ───────────────────────────────────────────────────────
+async function historial(supabase: Awaited<ReturnType<typeof createClient>>, rodajeId: string, descripcion: string, ops: (Op | null)[]) {
+  const { data: { user } } = await supabase.auth.getUser()
+  await registrar(supabase, user?.id, { ruta: `/rodaje/${rodajeId}`, modulo: 'rodaje', descripcion, ops })
+}
+const corto = (s: unknown, n = 40) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -138,15 +146,21 @@ export async function actualizarRodaje(id: string, formData: FormData) {
     estado: formData.get('estado') as string,
   }
 
+  const antes = await capturar(supabase, 'rodajes', { col: 'id', valor: id })
   const { error } = await supabase.from('rodajes').update(payload).eq('id', id)
   if (error) throw error
+  const despues = await capturar(supabase, 'rodajes', { col: 'id', valor: id })
+  await historial(supabase, id, 'Editar ficha del rodaje', [opUpdate('rodajes', antes, despues)])
   revalidatePath(`/rodaje/${id}`)
 }
 
 export async function actualizarEstadoRodaje(id: string, estado: 'borrador' | 'confirmado' | 'completado') {
   const supabase = await createClient()
+  const antes = await capturar(supabase, 'rodajes', { col: 'id', valor: id })
   const { error } = await supabase.from('rodajes').update({ estado }).eq('id', id)
   if (error) throw error
+  const despues = await capturar(supabase, 'rodajes', { col: 'id', valor: id })
+  await historial(supabase, id, `Cambiar estado a ${estado}`, [opUpdate('rodajes', antes, despues)])
   revalidatePath(`/rodaje/${id}`)
   revalidatePath('/rodaje')
 }
@@ -174,30 +188,41 @@ export async function crearDepartamento(rodajeId: string, formData: FormData) {
 
   const orden = existentes && existentes.length > 0 ? existentes[0].orden + 1 : 0
 
-  const { error } = await supabase.from('rodaje_departamentos').insert({
+  const { data, error } = await supabase.from('rodaje_departamentos').insert({
     rodaje_id: rodajeId,
     nombre: limpiarTexto(formData.get('nombre')) ?? '',
     hora_llamado: (formData.get('hora_llamado') as string) || null,
     orden,
-  })
+  }).select().single()
   if (error) throw error
+  await historial(supabase, rodajeId, `Agregar departamento ${corto(data?.nombre)}`, [opInsert('rodaje_departamentos', data ? [data as Fila] : [])])
   revalidatePath(`/rodaje/${rodajeId}/equipo`)
 }
 
 export async function actualizarDepartamento(id: string, rodajeId: string, formData: FormData) {
   const supabase = await createClient()
+  const antes = await capturar(supabase, 'rodaje_departamentos', { col: 'id', valor: id })
   const { error } = await supabase.from('rodaje_departamentos').update({
     nombre: limpiarTexto(formData.get('nombre')) ?? '',
     hora_llamado: (formData.get('hora_llamado') as string) || null,
   }).eq('id', id)
   if (error) throw error
+  const despues = await capturar(supabase, 'rodaje_departamentos', { col: 'id', valor: id })
+  await historial(supabase, rodajeId, `Editar departamento ${corto(despues[0]?.nombre)}`, [opUpdate('rodaje_departamentos', antes, despues)])
   revalidatePath(`/rodaje/${rodajeId}/equipo`)
 }
 
 export async function eliminarDepartamento(id: string, rodajeId: string) {
   const supabase = await createClient()
+  // Las personas del departamento se capturan también: según la FK pueden
+  // borrarse en cascada o quedar sin departamento; reinsertarlas cubre ambos.
+  const [dep, personas] = await Promise.all([
+    capturar(supabase, 'rodaje_departamentos', { col: 'id', valor: id }),
+    capturar(supabase, 'rodaje_equipo_tecnico', { col: 'departamento_id', valor: id }),
+  ])
   const { error } = await supabase.from('rodaje_departamentos').delete().eq('id', id)
   if (error) throw error
+  await historial(supabase, rodajeId, `Eliminar departamento ${corto(dep[0]?.nombre)}`, [opDelete([{ tabla: 'rodaje_departamentos', filas: dep }, { tabla: 'rodaje_equipo_tecnico', filas: personas }])])
   revalidatePath(`/rodaje/${rodajeId}/equipo`)
 }
 
@@ -256,7 +281,7 @@ export async function agregarPersonaEquipo(rodajeId: string, formData: FormData)
     if (nuevoColab) colaboradorIdFinal = nuevoColab.id
   }
 
-  const { error } = await supabase.from('rodaje_equipo_tecnico').insert({
+  const { data: persona, error } = await supabase.from('rodaje_equipo_tecnico').insert({
     rodaje_id: rodajeId,
     departamento_id: (formData.get('departamento_id') as string) || null,
     colaborador_id: colaboradorIdFinal,
@@ -266,8 +291,9 @@ export async function agregarPersonaEquipo(rodajeId: string, formData: FormData)
     telefono: (formData.get('telefono') as string) || null,
     es_jefe_departamento: formData.get('es_jefe_departamento') === 'true',
     hora_llamado_individual: (formData.get('hora_llamado_individual') as string) || null,
-  })
+  }).select().single()
   if (error) throw error
+  await historial(supabase, rodajeId, `Agregar a ${corto(persona?.nombre)} al equipo`, [opInsert('rodaje_equipo_tecnico', persona ? [persona as Fila] : [])])
 
   revalidatePath(`/rodaje/${rodajeId}/equipo`)
   revalidatePath(`/rodaje/${rodajeId}/citaciones`)
@@ -275,6 +301,7 @@ export async function agregarPersonaEquipo(rodajeId: string, formData: FormData)
 
 export async function actualizarPersonaEquipo(id: string, rodajeId: string, formData: FormData) {
   const supabase = await createClient()
+  const antes = await capturar(supabase, 'rodaje_equipo_tecnico', { col: 'id', valor: id })
   const { error } = await supabase.from('rodaje_equipo_tecnico').update({
     departamento_id: (formData.get('departamento_id') as string) || null,
     nombre: limpiarTexto(formData.get('nombre')) ?? '',
@@ -285,13 +312,20 @@ export async function actualizarPersonaEquipo(id: string, rodajeId: string, form
     hora_llamado_individual: (formData.get('hora_llamado_individual') as string) || null,
   }).eq('id', id)
   if (error) throw error
+  const despues = await capturar(supabase, 'rodaje_equipo_tecnico', { col: 'id', valor: id })
+  await historial(supabase, rodajeId, `Editar a ${corto(despues[0]?.nombre)}`, [opUpdate('rodaje_equipo_tecnico', antes, despues)])
   revalidatePath(`/rodaje/${rodajeId}/equipo`)
 }
 
 export async function eliminarPersonaEquipo(id: string, rodajeId: string) {
   const supabase = await createClient()
+  const [persona, citaciones] = await Promise.all([
+    capturar(supabase, 'rodaje_equipo_tecnico', { col: 'id', valor: id }),
+    capturar(supabase, 'rodaje_citaciones', { col: 'persona_id', valor: id }),
+  ])
   const { error } = await supabase.from('rodaje_equipo_tecnico').delete().eq('id', id)
   if (error) throw error
+  await historial(supabase, rodajeId, `Quitar a ${corto(persona[0]?.nombre)} del equipo`, [opDelete([{ tabla: 'rodaje_equipo_tecnico', filas: persona }, { tabla: 'rodaje_citaciones', filas: citaciones }])])
   revalidatePath(`/rodaje/${rodajeId}/equipo`)
   revalidatePath(`/rodaje/${rodajeId}/citaciones`)
 }
@@ -310,7 +344,7 @@ export async function crearEscena(rodajeId: string, formData: FormData) {
 
   const orden = existentes && existentes.length > 0 ? existentes[0].orden + 1 : 0
 
-  const { error } = await supabase.from('rodaje_escenas').insert({
+  const { data: escena, error } = await supabase.from('rodaje_escenas').insert({
     rodaje_id: rodajeId,
     orden,
     titulo: formData.get('titulo') as string,
@@ -320,13 +354,15 @@ export async function crearEscena(rodajeId: string, formData: FormData) {
     locacion_especifica: (formData.get('locacion_especifica') as string) || null,
     notas: (formData.get('notas') as string) || null,
     visible_en_citacion: formData.get('visible_en_citacion') !== 'false',
-  })
+  }).select().single()
   if (error) throw error
+  await historial(supabase, rodajeId, `Agregar escena ${corto(escena?.titulo)}`, [opInsert('rodaje_escenas', escena ? [escena as Fila] : [])])
   revalidatePath(`/rodaje/${rodajeId}/plan`)
 }
 
 export async function actualizarEscena(id: string, rodajeId: string, formData: FormData) {
   const supabase = await createClient()
+  const antes = await capturar(supabase, 'rodaje_escenas', { col: 'id', valor: id })
   const { error } = await supabase.from('rodaje_escenas').update({
     titulo: formData.get('titulo') as string,
     descripcion: (formData.get('descripcion') as string) || null,
@@ -337,11 +373,14 @@ export async function actualizarEscena(id: string, rodajeId: string, formData: F
     visible_en_citacion: formData.get('visible_en_citacion') !== 'false',
   }).eq('id', id)
   if (error) throw error
+  const despues = await capturar(supabase, 'rodaje_escenas', { col: 'id', valor: id })
+  await historial(supabase, rodajeId, `Editar escena ${corto(despues[0]?.titulo)}`, [opUpdate('rodaje_escenas', antes, despues)])
   revalidatePath(`/rodaje/${rodajeId}/plan`)
 }
 
 export async function reordenarEscenas(rodajeId: string, ordenIds: string[]) {
   const supabase = await createClient()
+  const antes = await capturar(supabase, 'rodaje_escenas', { col: 'id', valor: ordenIds })
   const resultados = await Promise.allSettled(
     ordenIds.map((id, index) =>
       supabase
@@ -353,6 +392,8 @@ export async function reordenarEscenas(rodajeId: string, ordenIds: string[]) {
         })
     )
   )
+  const despues = await capturar(supabase, 'rodaje_escenas', { col: 'id', valor: ordenIds })
+  await historial(supabase, rodajeId, 'Reordenar escenas', [opUpdate('rodaje_escenas', antes, despues)])
   revalidatePath(`/rodaje/${rodajeId}/plan`)
   const fallidos = resultados.filter((r) => r.status === 'rejected')
   if (fallidos.length > 0) {
@@ -362,8 +403,10 @@ export async function reordenarEscenas(rodajeId: string, ordenIds: string[]) {
 
 export async function eliminarEscena(id: string, rodajeId: string) {
   const supabase = await createClient()
+  const fila = await capturar(supabase, 'rodaje_escenas', { col: 'id', valor: id })
   const { error } = await supabase.from('rodaje_escenas').delete().eq('id', id)
   if (error) throw error
+  await historial(supabase, rodajeId, `Eliminar escena ${corto(fila[0]?.titulo)}`, [opDelete([{ tabla: 'rodaje_escenas', filas: fila }])])
   revalidatePath(`/rodaje/${rodajeId}/plan`)
 }
 

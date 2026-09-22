@@ -23,6 +23,8 @@ export interface GrupoCopiado {
 export type Portapapeles =
   | { tipo: 'item'; etiqueta: string; origen: string; datos: ItemCopiado }
   | { tipo: 'grupo'; etiqueta: string; origen: string; datos: GrupoCopiado }
+  /** Bloque del plan de rodaje (sin ids ni orden): se pega en cualquier rodaje. */
+  | { tipo: 'bloque'; etiqueta: string; origen: string; datos: Record<string, unknown> & { titulo: string } }
 
 export function copiaDeItem(i: CotizacionItem): ItemCopiado {
   return {
@@ -72,6 +74,7 @@ export function leerPortapapeles(): Portapapeles | null {
     const p = JSON.parse(raw)
     if (p?.tipo === 'item' && p.datos?.nombre) return p as Portapapeles
     if (p?.tipo === 'grupo' && p.datos?.nombre && Array.isArray(p.datos.items) && Array.isArray(p.datos.subgrupos)) return p as Portapapeles
+    if (p?.tipo === 'bloque' && p.datos?.titulo) return p as Portapapeles
     return null
   } catch { return null }
 }

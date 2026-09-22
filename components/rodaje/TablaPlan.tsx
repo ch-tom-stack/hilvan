@@ -69,6 +69,7 @@ export default function TablaPlan({
   mostrarPlantillas, setMostrarPlantillas,
   vistaTimeline, setVistaTimeline,
   onActualizar, onCrear, onCrearDesdePlantilla, onEliminar,
+  seleccionadoId = null, onSeleccionar,
 }: {
   rodajeId: string
   bloques: RodajeBloque[]
@@ -84,6 +85,9 @@ export default function TablaPlan({
   onCrear: (p: any) => void
   onCrearDesdePlantilla: (label: string) => void
   onEliminar: (id: string) => Promise<void>
+  /** Fila seleccionada (Ctrl+C / Ctrl+V / Delete la usan). */
+  seleccionadoId?: string | null
+  onSeleccionar?: (id: string) => void
 }) {
   const [buscarBloque, setBuscarBloque] = useState('')
   const bloqueCoincide = (b: RodajeBloque) => {
@@ -331,11 +335,11 @@ export default function TablaPlan({
             const isEliminando = confirmarEliminar === bloque.id
 
             return (
-              <div key={bloque.id} className={bloque.es_paralelo ? 'opacity-75' : ''}>
+              <div key={bloque.id} className={bloque.es_paralelo ? 'opacity-75' : ''} onClick={() => onSeleccionar?.(bloque.id)}>
 
                 {/* FILA DESKTOP */}
                 <div
-                  className="hidden lg:grid border-b border-ch-border/30 hover:bg-ch-surface/40 transition-colors group items-center min-h-[34px]"
+                  className={`hidden lg:grid border-b border-ch-border/30 hover:bg-ch-surface/40 transition-colors group items-center min-h-[34px] border-l-2 ${seleccionadoId === bloque.id ? 'border-l-ch-green bg-ch-surface/30' : 'border-l-transparent'}`}
                   style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 84px 60px 50px 40px 56px' }}
                 >
                   {/* Orden */}

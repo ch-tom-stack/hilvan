@@ -3,6 +3,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { RodajeLocacion, RodajeBloque, BloqueEstilo, PLANTILLAS_BLOQUES } from '@/types'
+import { registrar, capturar, opInsert, opUpdate, opDelete, type Fila, type Op } from '@/lib/historial'
+
+// ── Historial (Ctrl+Z) ───────────────────────────────────────────────────────
+async function historial(supabase: Awaited<ReturnType<typeof createClient>>, rodajeId: string, descripcion: string, ops: (Op | null)[]) {
+  const { data: { user } } = await supabase.auth.getUser()
+  await registrar(supabase, user?.id, { ruta: `/rodaje/${rodajeId}`, modulo: 'rodaje', descripcion, ops })
+}
+const corto = (s: unknown, n = 40) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
 
 // ─── LOCACIONES ───────────────────────────────────────────────────────────────
 
@@ -73,8 +81,10 @@ export async function actualizarLocacion(id: string, rodajeId: string, payload: 
 
 export async function eliminarLocacion(id: string, rodajeId: string) {
   const supabase = await createClient()
+  const fila = await capturar(supabase, 'rodaje_locaciones', { col: 'id', valor: id })
   const { error } = await supabase.from('rodaje_locaciones').delete().eq('id', id)
   if (error) throw error
+  await historial(supabase, rodajeId, `Eliminar locación ${corto(fila[0]?.nombre)}`, [opDelete([{ tabla: 'rodaje_locaciones', filas: fila }])])
   revalidatePath(`/rodaje/${rodajeId}`)
 }
 
@@ -160,6 +170,7 @@ export async function crearBloque(
     .select()
     .single()
   if (error) throw error
+  await historial(supabase, rodajeId, `Agregar bloque ${corto(payload.titulo)}`, [opInsert('rodaje_bloques', [data as Fila])])
   return data as RodajeBloque
 }
 
@@ -228,6 +239,8 @@ export async function guardarBloques(
     'imagen_url', 'contenido_rico', 'estilo',
   ] as const
 
+  const ids = reales.map(b => b.id)
+  const antes = await capturar(supabase, 'rodaje_bloques', { col: 'id', valor: ids })
   const resultados = await Promise.allSettled(
     reales.map((b) => {
       const update: Record<string, unknown> = {}
@@ -241,6 +254,13 @@ export async function guardarBloques(
         })
     })
   )
+  // El plan se guarda en tandas (autoguardado): una tanda = una acción del
+  // historial, y solo si algo cambió de verdad.
+  const despues = await capturar(supabase, 'rodaje_bloques', { col: 'id', valor: ids })
+  const op = opUpdate('rodaje_bloques', antes, despues)
+  if (op && op.tipo === 'update') {
+    await historial(supabase, rodajeId, `Editar plan (${op.cambios.length} bloque${op.cambios.length === 1 ? '' : 's'})`, [op])
+  }
 
   revalidatePath(`/rodaje/${rodajeId}`)
 
@@ -257,18 +277,26 @@ export async function guardarBloques(
 // limpiaría en la base.
 export async function desanclarBloque(id: string, rodajeId: string) {
   const supabase = await createClient()
+  const antes = await capturar(supabase, 'rodaje_bloques', { col: 'id', valor: id })
   const { error } = await supabase
     .from('rodaje_bloques')
     .update({ hora_inicio_fija: null, es_anclado: false })
     .eq('id', id)
   if (error) throw error
+  const despues = await capturar(supabase, 'rodaje_bloques', { col: 'id', valor: id })
+  await historial(supabase, rodajeId, `Desanclar bloque ${corto(antes[0]?.titulo)}`, [opUpdate('rodaje_bloques', antes, despues)])
   revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 export async function eliminarBloque(id: string, rodajeId: string) {
   const supabase = await createClient()
+  const [bloque, hijos] = await Promise.all([
+    capturar(supabase, 'rodaje_bloques', { col: 'id', valor: id }),
+    capturar(supabase, 'rodaje_bloques', { col: 'padre_id', valor: id }),
+  ])
   const { error } = await supabase.from('rodaje_bloques').delete().eq('id', id)
   if (error) throw error
+  await historial(supabase, rodajeId, `Eliminar bloque ${corto(bloque[0]?.titulo)}`, [opDelete([{ tabla: 'rodaje_bloques', filas: [...bloque, ...hijos] }])])
   revalidatePath(`/rodaje/${rodajeId}`)
 }
 
@@ -286,6 +314,7 @@ export async function dividirBloque(id: string, rodajeId: string) {
   const mitad = Math.ceil((original.duracion_min ?? 30) / 2)
   const segunda = (original.duracion_min ?? 30) - mitad
 
+  const antesOriginal = { ...(original as Fila) }
   await supabase
     .from('rodaje_bloques')
     .update({ duracion_min: mitad })
@@ -300,7 +329,7 @@ export async function dividirBloque(id: string, rodajeId: string) {
 
   const orden = existentes?.length ? existentes[0].orden + 1 : original.orden + 1
 
-  await supabase.from('rodaje_bloques').insert({
+  const { data: nuevo } = await supabase.from('rodaje_bloques').insert({
     rodaje_id: rodajeId,
     padre_id: original.padre_id ?? null,
     orden,
@@ -318,7 +347,12 @@ export async function dividirBloque(id: string, rodajeId: string) {
     visible_catering: original.visible_catering,
     visible_extras: original.visible_extras,
     visible_cliente: original.visible_cliente,
-  })
+  }).select().single()
+
+  await historial(supabase, rodajeId, `Dividir bloque ${corto(original.titulo)}`, [
+    opUpdate('rodaje_bloques', [antesOriginal], [{ ...antesOriginal, duracion_min: mitad }]),
+    nuevo ? opInsert('rodaje_bloques', [nuevo as Fila]) : null,
+  ])
 
   revalidatePath(`/rodaje/${rodajeId}`)
 }

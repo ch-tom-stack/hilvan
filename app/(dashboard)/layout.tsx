@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import RevelacionMedalla from '@/components/perfil/RevelacionMedalla'
 import RevelacionReconocimiento from '@/components/reconocimientos/RevelacionReconocimiento'
+import AtajosGlobales from '@/components/ui/AtajosGlobales'
 import type { Profile } from '@/types'
 
 export default async function DashboardLayout({
@@ -42,6 +43,8 @@ export default async function DashboardLayout({
       {/* Vive en el layout y no en cada página: la medalla se puede ganar en
           cualquier parte de la app. */}
       <RevelacionMedalla />
+      {/* Ctrl+Z / Ctrl+Shift+Z en toda la app (ver lib/historial.ts). */}
+      <AtajosGlobales />
       <RevelacionReconocimiento />
     </div>
   )

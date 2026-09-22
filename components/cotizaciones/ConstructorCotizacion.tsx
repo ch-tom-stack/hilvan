@@ -68,6 +68,12 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
   // saber si el cambio surtió efecto es el total.
   const cam = useCambiado<HTMLDivElement>()
   const [cot, setCot] = useState<Cotizacion>(initial)
+  // Tras un deshacer/rehacer global la página se refresca y llega un `initial`
+  // nuevo: el estado local se alinea con lo que quedó en el servidor.
+  useEffect(() => { setCot(initial) }, [initial])
+
+  // Selección con clic (para Ctrl+C / Ctrl+V): un ítem o un grupo.
+  const [seleccion, setSeleccion] = useState<{ tipo: 'item'; item: CotizacionItem; depId: string; sgId: string | null } | { tipo: 'grupo'; depId: string } | null>(null)
   const [isPending, startTransition] = useTransition()
   const [linkCopiado, setLinkCopiado] = useState(false)
   const [estadoOpen, setEstadoOpen] = useState(false)
@@ -397,6 +403,34 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
     }
   }
 
+  // Ctrl+C copia lo seleccionado; Ctrl+V pega en el grupo de lo seleccionado
+  // (un ítem) o al final (un grupo). Dentro de un campo de texto no interviene.
+  useEffect(() => {
+    const enCampo = () => { const t = document.activeElement?.tagName; return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || (document.activeElement as HTMLElement | null)?.isContentEditable }
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || enCampo() || itemModal) return
+      const k = e.key.toLowerCase()
+      if (k === 'c' && seleccion) {
+        e.preventDefault()
+        if (seleccion.tipo === 'item') copiarItem(seleccion.item)
+        else { const d = cot.departamentos?.find(x => x.id === seleccion.depId); if (d) copiarGrupo(d) }
+      } else if (k === 'v' && editable && portapapeles) {
+        if (portapapeles.tipo === 'item') {
+          e.preventDefault()
+          const destino = seleccion?.tipo === 'item' ? { depId: seleccion.depId, sgId: seleccion.sgId }
+            : seleccion?.tipo === 'grupo' ? { depId: seleccion.depId, sgId: null }
+            : cot.departamentos?.length ? { depId: cot.departamentos[cot.departamentos.length - 1].id, sgId: null } : null
+          if (destino) void pegarItem(destino.depId, destino.sgId)
+        } else if (portapapeles.tipo === 'grupo') {
+          e.preventDefault()
+          void pegarGrupo()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   // ── ORDEN ───────────────────────────────────────────────────────────────────
   // Se mueve en pantalla al tiro y se guarda después; si el guardado falla se
   // vuelve atrás. Siempre se renumera la lista completa (ver lib/orden.ts).
@@ -717,10 +751,13 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               onBajar={iDep < todosDep.length - 1 ? () => moverDep(dep, 1) : undefined}
               onMoverSg={(sg, dir) => moverSg(dep, sg, dir)}
               onMoverItemPuesto={(item, sgId, dir) => moverItemPuesto(item, dep.id, sgId, dir)}
-              copiado={editable && portapapeles ? { tipo: portapapeles.tipo, etiqueta: portapapeles.etiqueta } : null}
+              copiado={editable && portapapeles && portapapeles.tipo !== 'bloque' ? { tipo: portapapeles.tipo, etiqueta: portapapeles.etiqueta } : null}
               onCopiarItem={copiarItem}
               onCopiarGrupo={() => copiarGrupo(dep)}
               onPegarItem={sgId => pegarItem(dep.id, sgId)}
+              seleccionId={seleccion?.tipo === 'item' ? seleccion.item.id : seleccion?.tipo === 'grupo' ? seleccion.depId : null}
+              onSeleccionarItem={(item, sgId) => setSeleccion({ tipo: 'item', item, depId: dep.id, sgId })}
+              onSeleccionarGrupo={() => setSeleccion({ tipo: 'grupo', depId: dep.id })}
             />
           ))}
 

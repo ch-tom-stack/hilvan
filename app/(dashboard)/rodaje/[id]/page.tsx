@@ -3,6 +3,8 @@
 import { use, useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { EVENTO_HISTORIAL } from '@/components/ui/AtajosGlobales'
+import { guardarPortapapeles, leerPortapapeles, type Portapapeles } from '@/lib/portapapeles-cotizacion'
 import { getRodaje, actualizarEstadoRodaje } from '@/app/actions/rodaje'
 import { toastError, toastOk } from '@/lib/toast'
 import {
@@ -54,9 +56,12 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
   const [creando, setCreando] = useState(false)
   const [vistaTimeline, setVistaTimeline] = useState(false)
 
-  // Undo/Redo
+  // Undo/Redo LOCAL (ediciones en memoria, antes del autoguardado). Lo que ya
+  // se guardó lo deshace el historial global (Ctrl+Z en AtajosGlobales): este
+  // handler solo toma el atajo cuando tiene algo en memoria, si no lo deja pasar.
   const [historia, setHistoria] = useState<RodajeBloque[][]>([])
   const [historiaIdx, setHistoriaIdx] = useState(-1)
+  const [bloqueSel, setBloqueSel] = useState<string | null>(null)
 
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bloquesRef = useRef<RodajeBloque[]>([])
@@ -98,37 +103,50 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     cargarTodo().finally(() => setLoading(false))
   }, [cargarTodo])
 
-  // Keyboard: Cmd+Z / Ctrl+Z undo, Cmd+Shift+Z / Ctrl+Y redo
+  // Keyboard: Cmd+Z / Ctrl+Z undo, Cmd+Shift+Z / Ctrl+Y redo (local, en memoria).
+  // Si no hay nada local que deshacer/rehacer, NO se detiene el evento y lo
+  // toma el historial global (lo ya guardado: bloques borrados, equipo, etc.).
   useEffect(() => {
+    const enCampo = () => { const t = document.activeElement?.tagName; return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || (document.activeElement as HTMLElement | null)?.isContentEditable }
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey
-      if (!meta) return
-      if (e.key === 'z' && !e.shiftKey) {
+      if (!meta || enCampo()) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) {
+        if (historiaIdx <= 0) return
+        e.preventDefault(); e.stopImmediatePropagation()
+        const newIdx = historiaIdx - 1
+        setBloques(historia[newIdx]); setHistoriaIdx(newIdx); setCambiosSinGuardar(true); programarAutoSave()
+      } else if ((k === 'z' && e.shiftKey) || k === 'y') {
+        if (historiaIdx >= historia.length - 1) return
+        e.preventDefault(); e.stopImmediatePropagation()
+        const newIdx = historiaIdx + 1
+        setBloques(historia[newIdx]); setHistoriaIdx(newIdx); setCambiosSinGuardar(true); programarAutoSave()
+      } else if (k === 'c' && bloqueSel) {
+        const b = bloquesRef.current.find(x => x.id === bloqueSel)
+        if (!b) return
         e.preventDefault()
-        setHistoriaIdx(prev => {
-          const newIdx = prev - 1
-          if (newIdx < 0) return prev
-          setBloques(historia[newIdx])
-          setCambiosSinGuardar(true)
-          programarAutoSave()
-          return newIdx
-        })
-      }
-      if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+        const { id: _i, rodaje_id: _r, created_at: _c, updated_at: _u, orden: _o, padre_id: _p, hijos: _h, locacion: _l, ...datos } = b as any
+        const p: Portapapeles = { tipo: 'bloque', etiqueta: b.titulo, origen: rodaje?.nombre ?? '', datos }
+        guardarPortapapeles(p)
+        toastOk(`Copiado el bloque «${b.titulo}». Ctrl+V lo pega después del bloque seleccionado (también en otro rodaje).`)
+      } else if (k === 'v') {
+        const p = leerPortapapeles()
+        if (p?.tipo !== 'bloque') return
         e.preventDefault()
-        setHistoriaIdx(prev => {
-          const newIdx = prev + 1
-          if (newIdx >= historia.length) return prev
-          setBloques(historia[newIdx])
-          setCambiosSinGuardar(true)
-          programarAutoSave()
-          return newIdx
-        })
+        pegarBloque(p.datos as Partial<RodajeBloque> & { titulo: string })
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [historia])
+  }) // sin deps a propósito: lee siempre el estado vigente
+
+  // Tras un deshacer/rehacer GLOBAL (ya guardado en el servidor) se recarga todo.
+  useEffect(() => {
+    const onHistorial = () => { void cargarTodo() }
+    window.addEventListener(EVENTO_HISTORIAL, onHistorial)
+    return () => window.removeEventListener(EVENTO_HISTORIAL, onHistorial)
+  }, [cargarTodo])
 
   const programarAutoSave = useCallback(() => {
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
@@ -226,6 +244,24 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       setBloques(prev => prev.filter(b => b.id !== tempId))
       setHistoria(prev => prev.map(snap => snap.filter(b => b.id !== tempId)))
     })
+  }
+
+  // Pegar: se crea al final (como cualquier bloque nuevo) y se mueve justo
+  // después del seleccionado; el orden nuevo sale con el autoguardado.
+  const pegarBloque = (datos: Partial<RodajeBloque> & { titulo: string }) => {
+    const limpio: Partial<RodajeBloque> & { titulo: string } = { ...datos, titulo: datos.titulo, hora_inicio_fija: undefined, es_anclado: false }
+    crearBloque(id, { ...limpio, duracion_min: limpio.duracion_min ?? 30 }).then(real => {
+      const nuevo = real as RodajeBloque
+      const actuales = bloquesRef.current
+      const raiz = actuales.filter(b => !b.padre_id).sort((a, b) => a.orden - b.orden)
+      const pos = bloqueSel ? raiz.findIndex(b => b.id === bloqueSel) : -1
+      const raizNueva = [...raiz]
+      raizNueva.splice(pos >= 0 ? pos + 1 : raizNueva.length, 0, nuevo)
+      const renumerada = raizNueva.map((b, i) => ({ ...b, orden: i }))
+      actualizarBloques([...actuales.filter(b => b.padre_id), ...renumerada])
+      setBloqueSel(nuevo.id)
+      toastOk(`Pegado «${nuevo.titulo}»`)
+    }).catch(e => toastError(e instanceof Error ? e.message : 'No se pudo pegar el bloque'))
   }
 
   const handleCrearBloque = (payload: any) => {
@@ -463,6 +499,8 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
             vistaTimeline={vistaTimeline}
             setVistaTimeline={setVistaTimeline}
             onActualizar={actualizarBloques}
+            seleccionadoId={bloqueSel}
+            onSeleccionar={setBloqueSel}
             onCrear={handleCrearBloque}
             onCrearDesdePlantilla={handleCrearDesdePlantilla}
             onEliminar={async (bloqueId) => {

@@ -13,6 +13,16 @@ import type {
 import { numeroCotizacion } from '@/types'
 import { autoCrearProyectoDesdeAprobacion } from '@/app/actions/clientes'
 import { porOrden } from '@/lib/orden'
+import { registrar, capturar, opInsert, opUpdate, opDelete, type Fila, type Op } from '@/lib/historial'
+
+// ── Historial (Ctrl+Z) ───────────────────────────────────────────────────────
+// Cada acción que muta registra sus operaciones con lo necesario para volver
+// atrás. Nunca lanza: si el historial falla, la acción ya se hizo.
+async function historial(supabase: Awaited<ReturnType<typeof createClient>>, cotizacion_id: string, descripcion: string, ops: (Op | null)[]) {
+  const { data: { user } } = await supabase.auth.getUser()
+  await registrar(supabase, user?.id, { ruta: `/cotizaciones/${cotizacion_id}`, modulo: 'cotizaciones', descripcion, ops })
+}
+const corto = (s: unknown, n = 40) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
 
 // ============================================================
 // HELPERS INTERNOS
@@ -522,11 +532,16 @@ export async function actualizarCotizacion(
   campos: Partial<Cotizacion>
 ) {
   const supabase = await createClient()
+  const [antes] = await capturar(supabase, 'cotizaciones', { col: 'id', valor: id })
   const { error } = await supabase
     .from('cotizaciones')
     .update(campos)
     .eq('id', id)
   if (error) throw new Error(error.message)
+  const [despues] = await capturar(supabase, 'cotizaciones', { col: 'id', valor: id })
+  if (antes && despues) {
+    await historial(supabase, id, `Editar cotización (${Object.keys(campos).join(', ')})`, [opUpdate('cotizaciones', [antes], [despues])])
+  }
   revalidatePath(`/cotizaciones/${id}`)
 }
 
@@ -644,6 +659,7 @@ export async function agregarDepartamento(
     .select()
     .single()
   if (error) throw new Error(error.message)
+  await historial(supabase, cotizacion_id, `Agregar grupo ${corto(nombre)}`, [opInsert('cotizacion_departamentos', [data as Fila])])
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
   return data
 }
@@ -654,11 +670,17 @@ export async function actualizarDepartamento(
   campos: { nombre?: string; orden?: number; precio_manual?: number | null }
 ) {
   const supabase = await createClient()
+  const [antes] = await capturar(supabase, 'cotizacion_departamentos', { col: 'id', valor: id })
   const { error } = await supabase
     .from('cotizacion_departamentos')
     .update(campos)
     .eq('id', id)
   if (error) throw new Error(error.message)
+  const [despues] = await capturar(supabase, 'cotizacion_departamentos', { col: 'id', valor: id })
+  if (antes && despues) {
+    const que = 'precio_manual' in campos ? 'precio' : 'nombre' in campos ? 'nombre' : 'orden'
+    await historial(supabase, cotizacion_id, `Editar ${que} del grupo ${corto(despues.nombre)}`, [opUpdate('cotizacion_departamentos', [antes], [despues])])
+  }
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
 }
 
@@ -667,11 +689,21 @@ export async function eliminarDepartamento(
   cotizacion_id: string
 ) {
   const supabase = await createClient()
+  // Se captura el árbol completo ANTES de borrar: el grupo, sus sub-grupos y
+  // todos sus ítems (los directos y los de los sub-grupos).
+  const [dep, sgs, items] = await Promise.all([
+    capturar(supabase, 'cotizacion_departamentos', { col: 'id', valor: id }),
+    capturar(supabase, 'cotizacion_subgrupos', { col: 'departamento_id', valor: id }),
+    capturar(supabase, 'cotizacion_items', { col: 'departamento_id', valor: id }),
+  ])
   const { error } = await supabase
     .from('cotizacion_departamentos')
     .delete()
     .eq('id', id)
   if (error) throw new Error(error.message)
+  await historial(supabase, cotizacion_id, `Eliminar grupo ${corto(dep[0]?.nombre)} (${items.length} ítems)`, [
+    opDelete([{ tabla: 'cotizacion_departamentos', filas: dep }, { tabla: 'cotizacion_subgrupos', filas: sgs }, { tabla: 'cotizacion_items', filas: items }]),
+  ])
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
 }
 
@@ -692,6 +724,7 @@ export async function agregarSubgrupo(
     .select()
     .single()
   if (error) throw new Error(error.message)
+  await historial(supabase, cotizacion_id, `Agregar sub-grupo ${corto(nombre)}`, [opInsert('cotizacion_subgrupos', [data as Fila])])
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
   return data
 }
@@ -702,21 +735,34 @@ export async function actualizarSubgrupo(
   campos: { nombre?: string; orden?: number; precio_manual?: number | null }
 ) {
   const supabase = await createClient()
+  const [antes] = await capturar(supabase, 'cotizacion_subgrupos', { col: 'id', valor: id })
   const { error } = await supabase
     .from('cotizacion_subgrupos')
     .update(campos)
     .eq('id', id)
   if (error) throw new Error(error.message)
+  const [despues] = await capturar(supabase, 'cotizacion_subgrupos', { col: 'id', valor: id })
+  if (antes && despues) {
+    const que = 'precio_manual' in campos ? 'precio' : 'nombre' in campos ? 'nombre' : 'orden'
+    await historial(supabase, cotizacion_id, `Editar ${que} del sub-grupo ${corto(despues.nombre)}`, [opUpdate('cotizacion_subgrupos', [antes], [despues])])
+  }
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
 }
 
 export async function eliminarSubgrupo(id: string, cotizacion_id: string) {
   const supabase = await createClient()
+  const [sg, items] = await Promise.all([
+    capturar(supabase, 'cotizacion_subgrupos', { col: 'id', valor: id }),
+    capturar(supabase, 'cotizacion_items', { col: 'subgrupo_id', valor: id }),
+  ])
   const { error } = await supabase
     .from('cotizacion_subgrupos')
     .delete()
     .eq('id', id)
   if (error) throw new Error(error.message)
+  await historial(supabase, cotizacion_id, `Eliminar sub-grupo ${corto(sg[0]?.nombre)} (${items.length} ítems)`, [
+    opDelete([{ tabla: 'cotizacion_subgrupos', filas: sg }, { tabla: 'cotizacion_items', filas: items }]),
+  ])
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
 }
 
@@ -737,6 +783,7 @@ export async function agregarItem(
     .select()
     .single()
   if (error) throw new Error(error.message)
+  await historial(supabase, item.cotizacion_id, `Agregar ítem ${corto(item.nombre)}`, [opInsert('cotizacion_items', [data as Fila])])
   revalidatePath(`/cotizaciones/${item.cotizacion_id}`)
   return data
 }
@@ -747,21 +794,29 @@ export async function actualizarItem(
   campos: Partial<CotizacionItem>
 ) {
   const supabase = await createClient()
+  const [antes] = await capturar(supabase, 'cotizacion_items', { col: 'id', valor: id })
   const { error } = await supabase
     .from('cotizacion_items')
     .update(campos)
     .eq('id', id)
   if (error) throw new Error(error.message)
+  const [despues] = await capturar(supabase, 'cotizacion_items', { col: 'id', valor: id })
+  if (antes && despues) {
+    const movido = 'departamento_id' in campos || 'subgrupo_id' in campos
+    await historial(supabase, cotizacion_id, `${movido ? 'Mover' : 'Editar'} ítem ${corto(despues.nombre)}`, [opUpdate('cotizacion_items', [antes], [despues])])
+  }
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
 }
 
 export async function eliminarItem(id: string, cotizacion_id: string) {
   const supabase = await createClient()
+  const fila = await capturar(supabase, 'cotizacion_items', { col: 'id', valor: id })
   const { error } = await supabase
     .from('cotizacion_items')
     .delete()
     .eq('id', id)
   if (error) throw new Error(error.message)
+  await historial(supabase, cotizacion_id, `Eliminar ítem ${corto(fila[0]?.nombre)}`, [opDelete([{ tabla: 'cotizacion_items', filas: fila }])])
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
 }
 
@@ -827,12 +882,17 @@ export async function reordenarNivel(
   }
   if (filas.length === 0) return
 
+  const ids = filas.map(f => f.id)
+  const antes = await capturar(supabase, tabla, { col: 'id', valor: ids })
   const resultados = await Promise.allSettled(
     filas.map(({ id, orden }) =>
       supabase.from(tabla).update({ orden }).eq('id', id).eq('cotizacion_id', cotizacion_id)
         .then(({ error }) => { if (error) throw new Error(error.message) }),
     ),
   )
+  const despues = await capturar(supabase, tabla, { col: 'id', valor: ids })
+  const nombreNivel = nivel === 'departamento' ? 'grupos' : nivel === 'subgrupo' ? 'sub-grupos' : 'ítems'
+  await historial(supabase, cotizacion_id, `Reordenar ${nombreNivel}`, [opUpdate(tabla, antes, despues)])
 
   revalidatePath(`/cotizaciones/${cotizacion_id}`)
 

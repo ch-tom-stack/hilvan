@@ -70,6 +70,10 @@ interface DepBlockProps {
   onCopiarItem: (item: CotizacionItem) => void
   onCopiarGrupo: () => void
   onPegarItem: (sgId: string | null) => void
+  /** Selección con clic (para Ctrl+C / Ctrl+V): id del ítem o del grupo seleccionado. */
+  seleccionId: string | null
+  onSeleccionarItem: (item: CotizacionItem, sgId: string | null) => void
+  onSeleccionarGrupo: () => void
 }
 
 export default function DepBlock({
@@ -79,6 +83,7 @@ export default function DepBlock({
   onAgregarItem, onEditarItem, onEliminarItem, onMoverItem,
   onSubir, onBajar, onMoverSg, onMoverItemPuesto,
   copiado, onCopiarItem, onCopiarGrupo, onPegarItem,
+  seleccionId, onSeleccionarItem, onSeleccionarGrupo,
 }: DepBlockProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [overDir, setOverDir] = useState(false)
@@ -94,9 +99,9 @@ export default function DepBlock({
   }
 
   return (
-    <div className="border border-ch-border overflow-hidden">
-      {/* Header departamento */}
-      <div className="flex items-center justify-between px-4 py-3 bg-ch-dark/40">
+    <div className={`border overflow-hidden ${seleccionId === dep.id ? 'border-ch-green' : 'border-ch-border'}`}>
+      {/* Header departamento (clic = seleccionar el grupo para Ctrl+C) */}
+      <div className="flex items-center justify-between px-4 py-3 bg-ch-dark/40 cursor-default" onClick={onSeleccionarGrupo}>
         <div className="flex items-center gap-3">
           <button onClick={() => setCollapsed(v => !v)} className="text-ch-muted hover:text-ch-cream transition-colors text-xs ch-press">
             {collapsed ? '▶' : '▼'}
@@ -147,6 +152,8 @@ export default function DepBlock({
               copiado={copiado}
               onCopiarItem={onCopiarItem}
               onPegarItem={() => onPegarItem(sg.id)}
+              seleccionId={seleccionId}
+              onSeleccionarItem={item => onSeleccionarItem(item, sg.id)}
               depId={dep.id}
               editable={editable}
               showInterno={showInterno}
@@ -176,6 +183,8 @@ export default function DepBlock({
                 onBajar={i < todos.length - 1 ? () => onMoverItemPuesto(item, null, 1) : undefined}
                 onSoltarSobre={e => soltar(e, null, item.id)}
                 onCopiar={() => onCopiarItem(item)}
+                seleccionado={seleccionId === item.id}
+                onSeleccionar={() => onSeleccionarItem(item, null)}
                 editable={editable}
                 showInterno={showInterno}
                 indent={false}
@@ -220,13 +229,15 @@ interface SgBlockProps {
   copiado: { tipo: 'item' | 'grupo'; etiqueta: string } | null
   onCopiarItem: (item: CotizacionItem) => void
   onPegarItem: () => void
+  seleccionId: string | null
+  onSeleccionarItem: (item: CotizacionItem) => void
 }
 
 function SgBlock({
   sg, depId, editable, showInterno, bundlePadre,
   onRenombrar, onPrecio, onEliminar, onAgregarItem,
   onEditarItem, onEliminarItem, onSoltarItem, onSoltarSobreItem,
-  onSubir, onBajar, onMoverItemPuesto, copiado, onCopiarItem, onPegarItem,
+  onSubir, onBajar, onMoverItemPuesto, copiado, onCopiarItem, onPegarItem, seleccionId, onSeleccionarItem,
 }: SgBlockProps) {
   const subtotal = subtotalSubgrupo(sg)
   const bundle = bundlePadre || sg.precio_manual != null
@@ -276,6 +287,8 @@ function SgBlock({
           onBajar={i < todos.length - 1 ? () => onMoverItemPuesto(item, 1) : undefined}
           onSoltarSobre={e => onSoltarSobreItem(e, item)}
           onCopiar={() => onCopiarItem(item)}
+          seleccionado={seleccionId === item.id}
+          onSeleccionar={() => onSeleccionarItem(item)}
           editable={editable}
           showInterno={showInterno}
           indent={true}
@@ -306,9 +319,11 @@ interface ItemRowProps {
   onBajar?: () => void
   onSoltarSobre: (e: React.DragEvent) => void
   onCopiar: () => void
+  seleccionado: boolean
+  onSeleccionar: () => void
 }
 
-function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onEditar, onEliminar, onSubir, onBajar, onSoltarSobre, onCopiar }: ItemRowProps) {
+function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onEditar, onEliminar, onSubir, onBajar, onSoltarSobre, onCopiar, seleccionado, onSeleccionar }: ItemRowProps) {
   const [encima, setEncima] = useState(false)
   const subtotal = subtotalItem(item)
   const costo = Math.round(item.precio_bruto * item.cantidad * item.dias)
@@ -326,7 +341,8 @@ function ItemRow({ item, editable, showInterno, indent, bundle, depId, sgId, onE
       onDragOver={editable ? (e => { e.preventDefault(); e.stopPropagation(); setEncima(true) }) : undefined}
       onDragLeave={editable ? (() => setEncima(false)) : undefined}
       onDrop={editable ? (e => { e.preventDefault(); e.stopPropagation(); setEncima(false); onSoltarSobre(e) }) : undefined}
-      className={`flex items-start justify-between py-2 pr-4 hover:bg-ch-border/5 group ${indent ? 'pl-8' : 'pl-4'} ${editable ? 'cursor-grab active:cursor-grabbing' : ''} border-t ${encima ? 'border-ch-green' : 'border-transparent'}`}
+      onClick={e => { e.stopPropagation(); onSeleccionar() }}
+      className={`flex items-start justify-between py-2 pr-4 hover:bg-ch-border/5 group ${indent ? 'pl-8' : 'pl-4'} ${editable ? 'cursor-grab active:cursor-grabbing' : ''} border-t ${encima ? 'border-ch-green' : 'border-transparent'} border-l-2 ${seleccionado ? 'border-l-ch-green bg-ch-surface/30' : 'border-l-transparent'}`}
     >
       <div className="flex-1 min-w-0 pr-4">
         <div className="flex items-center gap-2">
