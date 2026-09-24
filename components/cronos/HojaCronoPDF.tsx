@@ -165,14 +165,17 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
   return (
     <Document title={`Crono · ${crono.nombre}`} author="Casa Hiedra">
       <Page size="A4" orientation="landscape" style={styles.page} wrap={false}>
-        {/* Encabezado: una línea */}
-        <View style={{ height: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderBottomWidth: 1.2, borderBottomColor: CH.negro, paddingBottom: 5, marginBottom: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-            {logoBase64 ? <Image src={logoBase64} style={{ width: 54, height: 15, objectFit: 'contain', marginRight: 10, marginBottom: 1 }} /> : null}
-            <Text style={{ fontSize: 15, fontFamily: 'Helvetica-Bold' }}>{crono.nombre}</Text>
-            <Text style={{ fontSize: 8, color: CH.gris, marginLeft: 8, marginBottom: 1 }}>Cronograma{cliente ? ` · ${cliente}` : ''}{crono.variante ? ` · variante ${crono.variante}` : ''}</Text>
+        {/* Encabezado: título a la izquierda (se achica si es largo, nunca se monta),
+            meta a la derecha con ancho fijo; el subtítulo va debajo del título. */}
+        <View style={{ height: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderBottomWidth: 1.2, borderBottomColor: CH.negro, paddingBottom: 4, marginBottom: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', flex: 1, minWidth: 0, paddingRight: 12 }}>
+            {logoBase64 ? <Image src={logoBase64} style={{ width: 54, height: 15, objectFit: 'contain', marginRight: 10, marginBottom: 2 }} /> : null}
+            <View style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              <Text style={{ fontSize: crono.nombre.length > 60 ? 10.5 : crono.nombre.length > 40 ? 12.5 : 15, fontFamily: 'Helvetica-Bold', lineHeight: 1.05, height: crono.nombre.length > 60 ? 12 : crono.nombre.length > 40 ? 14 : 17, overflow: 'hidden' }}>{crono.nombre}</Text>
+              <Text style={{ fontSize: 7, color: CH.gris, marginTop: 1 }}>Cronograma{cliente ? ` · ${cliente}` : ''}{crono.variante ? ` · variante ${crono.variante}` : ''}</Text>
+            </View>
           </View>
-          <Text style={styles.lbl}>{[cliente, 'Casa Hiedra', `emitido ${fechaEmision}`].filter(Boolean).join(' · ')}</Text>
+          <Text style={{ ...styles.lbl, width: 250, textAlign: 'right' }}>{['Casa Hiedra', `emitido ${fechaEmision}`].join(' · ')}</Text>
         </View>
 
         {/* Etapas */}
@@ -235,16 +238,16 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
           })}
         </View>
 
-        {/* Leyenda + pie */}
+        {/* Leyenda + nota del crono: cada una con su espacio; la nota se recorta a una línea. */}
         <View style={{ height: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
             <View style={{ width: 11, height: 7, borderWidth: 0.6, borderColor: CH.negro, padding: 0.8, marginRight: 3 }}><View style={{ flex: 1, borderWidth: 0.6, borderColor: CH.negro }} /></View>
             <Text style={styles.lbl}>rodaje · emisión · entrega final   </Text>
             <View style={{ width: 11, height: 7, backgroundColor: CH.negro, marginRight: 3 }} /><Text style={styles.lbl}>hito clave   </Text>
             <View style={{ width: 11, height: 7, backgroundColor: CH.lila, marginRight: 3 }} /><Text style={styles.lbl}>otro · reunión · pago   </Text>
             <View style={{ width: 11, height: 7, borderWidth: 0.5, borderColor: CH.linea, marginRight: 3, position: 'relative', overflow: 'hidden' }}><FondoFeriado w={11} h={7} /></View><Text style={styles.lbl}>feriado</Text>
           </View>
-          <Text style={{ fontSize: 6.5, color: CH.gris }}>{crono.notas ?? ''}</Text>
+          <Text style={{ fontSize: 6.5, color: CH.gris, flex: 1, minWidth: 0, textAlign: 'right', paddingLeft: 16, height: 9, overflow: 'hidden' }}>{crono.notas ?? ''}</Text>
         </View>
         <View style={{ position: 'absolute', bottom: 14, left: M, right: M, flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={styles.lbl}>Casa Hiedra · casahiedra.com</Text>

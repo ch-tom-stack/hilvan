@@ -163,5 +163,5 @@ export async function POST(req: Request) {
     ok: true,
   })
 
-  return NextResponse.json({ ok: true, item_id, cambios, previo })
+  return NextResponse.json({ ok: true, item_id, cambios, previo, creadas })
 }
