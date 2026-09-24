@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
+import { resolverCategoria, cotizacionDeItem } from '@/lib/agent-categorias'
 
 export const runtime = 'nodejs'
 
@@ -19,6 +20,9 @@ function tablaDe(nivel: string) {
 //  - eliminar:  { nivel, id }   (solo si NO tiene ítems ni subgrupos)
 //  - mover_item:{ item_id, departamento_id, subgrupo_id? }
 // nivel = 'departamento' | 'subgrupo'. Todas reversibles con /api/agent/deshacer.
+// `id`, `departamento_id` y `subgrupo_id` aceptan uuid o NOMBRE (sin mayúsculas ni
+// tildes) dentro de la cotización; por nombre hace falta cotizacion_id (en
+// mover_item se deduce del ítem). Nombre ambiguo → error con los ids.
 export async function POST(req: Request) {
   const unauthorized = requireAgentToken(req)
   if (unauthorized) return unauthorized
@@ -50,11 +54,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'nombre inválido' }, { status: 400 })
     }
     if (nivel === 'subgrupo' && (!departamento_id || typeof departamento_id !== 'string')) {
-      return NextResponse.json({ error: 'subgrupo requiere departamento_id' }, { status: 400 })
+      return NextResponse.json({ error: 'subgrupo requiere departamento_id (uuid o nombre)' }, { status: 400 })
+    }
+    let depId: string | null = null
+    if (nivel === 'subgrupo') {
+      const d = await resolverCategoria(admin, 'departamento', departamento_id, { cotizacionId: cotizacion_id })
+      if (!d.ok) return NextResponse.json({ error: d.error }, { status: d.status })
+      depId = d.fila.id
     }
     const tabla = tablaDe(nivel)
     const fila: Record<string, unknown> = { cotizacion_id, nombre: nombre.trim(), orden: Number.isFinite(orden) ? Math.round(orden) : 0 }
-    if (nivel === 'subgrupo') fila.departamento_id = departamento_id
+    if (nivel === 'subgrupo') fila.departamento_id = depId
     const { data, error } = await admin.from(tabla).insert(fila).select('id').single()
     if (error) {
       await registrarAccion({ herramienta: 'cotizacion-categoria', payload: body, ok: false, error: error.message })
@@ -72,11 +82,14 @@ export async function POST(req: Request) {
 
   // ── RENOMBRAR / REORDENAR ─────────────────────────────────────────────────
   if (accion === 'renombrar' || accion === 'reordenar') {
-    const { nivel, id, nombre, orden } = body
+    const { nivel, id: ref, nombre, orden, cotizacion_id, departamento_id } = body
     if (nivel !== 'departamento' && nivel !== 'subgrupo') {
       return NextResponse.json({ error: "nivel debe ser 'departamento' o 'subgrupo'" }, { status: 400 })
     }
-    if (!id || typeof id !== 'string') return NextResponse.json({ error: 'Falta id' }, { status: 400 })
+    if (!ref || typeof ref !== 'string') return NextResponse.json({ error: 'Falta id (uuid o nombre)' }, { status: 400 })
+    const res = await resolverCategoria(admin, nivel, ref, { cotizacionId: typeof cotizacion_id === 'string' ? cotizacion_id : null, departamentoId: typeof departamento_id === 'string' ? departamento_id : null })
+    if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status })
+    const id = res.fila.id
     const tabla = tablaDe(nivel)
     const { data: fila, error: eLeer } = await admin.from(tabla).select('id, nombre, orden').eq('id', id).maybeSingle()
     if (eLeer) return NextResponse.json({ error: eLeer.message }, { status: 500 })
@@ -106,11 +119,14 @@ export async function POST(req: Request) {
 
   // ── ELIMINAR (solo si está vacío) ──────────────────────────────────────────
   if (accion === 'eliminar') {
-    const { nivel, id } = body
+    const { nivel, id: ref, cotizacion_id, departamento_id } = body
     if (nivel !== 'departamento' && nivel !== 'subgrupo') {
       return NextResponse.json({ error: "nivel debe ser 'departamento' o 'subgrupo'" }, { status: 400 })
     }
-    if (!id || typeof id !== 'string') return NextResponse.json({ error: 'Falta id' }, { status: 400 })
+    if (!ref || typeof ref !== 'string') return NextResponse.json({ error: 'Falta id (uuid o nombre)' }, { status: 400 })
+    const res = await resolverCategoria(admin, nivel, ref, { cotizacionId: typeof cotizacion_id === 'string' ? cotizacion_id : null, departamentoId: typeof departamento_id === 'string' ? departamento_id : null })
+    if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status })
+    const id = res.fila.id
     const tabla = tablaDe(nivel)
 
     // Verificar que no tenga ítems (ni subgrupos, si es departamento).
@@ -154,25 +170,34 @@ export async function POST(req: Request) {
     if (!departamento_id || typeof departamento_id !== 'string') {
       return NextResponse.json({ error: 'Falta departamento_id destino' }, { status: 400 })
     }
-    const sg = subgrupo_id && typeof subgrupo_id === 'string' ? subgrupo_id : null
-
     const { data: fila, error: eLeer } = await admin
       .from('cotizacion_items')
-      .select('id, departamento_id, subgrupo_id')
+      .select('id, cotizacion_id, departamento_id, subgrupo_id')
       .eq('id', item_id)
       .maybeSingle()
     if (eLeer) return NextResponse.json({ error: eLeer.message }, { status: 500 })
     if (!fila) return NextResponse.json({ error: 'Ítem no encontrado' }, { status: 404 })
 
+    // Destinos por uuid o nombre, dentro de la cotización del ítem.
+    const d = await resolverCategoria(admin, 'departamento', departamento_id, { cotizacionId: fila.cotizacion_id })
+    if (!d.ok) return NextResponse.json({ error: d.error }, { status: d.status })
+    const depDestino = d.fila.id
+    let sg: string | null = null
+    if (subgrupo_id && typeof subgrupo_id === 'string') {
+      const s = await resolverCategoria(admin, 'subgrupo', subgrupo_id, { cotizacionId: fila.cotizacion_id, departamentoId: depDestino })
+      if (!s.ok) return NextResponse.json({ error: s.error }, { status: s.status })
+      sg = s.fila.id
+    }
+
     const previo = { departamento_id: fila.departamento_id, subgrupo_id: fila.subgrupo_id ?? null }
     const { error: eUpd } = await admin
       .from('cotizacion_items')
-      .update({ departamento_id, subgrupo_id: sg })
+      .update({ departamento_id: depDestino, subgrupo_id: sg })
       .eq('id', item_id)
     if (eUpd) return NextResponse.json({ error: eUpd.message }, { status: 500 })
     await registrarAccion({
       herramienta: 'cotizacion-categoria',
-      payload: { accion, item_id, previo, nuevo: { departamento_id, subgrupo_id: sg } },
+      payload: { accion, item_id, previo, nuevo: { departamento_id: depDestino, subgrupo_id: sg } },
       resultado_tabla: 'cotizacion_items',
       resultado_id: item_id,
       ok: true,

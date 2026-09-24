@@ -103,7 +103,7 @@ const baseHandler = createMcpHandler(
       'hilvan_buscar_cotizacion',
       {
         title: 'Buscar cotización',
-        description: 'Busca cotizaciones por nombre, número (ej. CH-COT-007) o cliente.',
+        description: 'Busca cotizaciones por nombre, número (ej. CH-COT-007), cliente o agencia. Devuelve id, numero, nombre, cliente (la marca), agencia (si hay intermediario), estado, total y fechas de factura/pago.',
         inputSchema: { q: z.string().describe('texto de búsqueda') },
       },
       async ({ q }, extra) =>
@@ -263,12 +263,14 @@ const baseHandler = createMcpHandler(
       {
         title: 'Crear cotización',
         description:
-          'Crea una cotización COMPLETA, idéntica a la de un usuario y 100% editable en la app después. Define nombre (requerido) y, opcionalmente, cliente (cliente_id o cliente_nombre_libre), proyecto, IVA, descuento global, notas y la estructura de departamentos → subgrupos → ítems. Si no entregas departamentos, crea los 8 por defecto (como "Nueva cotización"). Para importar cotizaciones HISTÓRICAS (pre-Hilván): pasa serie="ARCH" (numeración propia CH-ARCH-001… que no toca el contador activo) + historica=true (flag es_archivo, queda fuera de métricas). Devuelve {cotizacion_id, numero, url}. Reversible con hilvan_deshacer (borra todo en cascada). CONFIRMA con el usuario antes de llamar; crea una cotización editable en la app.',
+          'Crea una cotización COMPLETA, idéntica a la de un usuario y 100% editable en la app después. Define nombre (requerido) y, opcionalmente, cliente final —la marca— (cliente_id o cliente_nombre_libre), agencia intermediaria (agencia_id o agencia_nombre_libre), proyecto, IVA, descuento global, notas y la estructura de departamentos → subgrupos → ítems. Si no entregas departamentos, crea los 8 por defecto (como "Nueva cotización"). Para importar cotizaciones HISTÓRICAS (pre-Hilván): pasa serie="ARCH" (numeración propia CH-ARCH-001… que no toca el contador activo) + historica=true (flag es_archivo, queda fuera de métricas). Devuelve {cotizacion_id, numero, url}. Reversible con hilvan_deshacer (borra todo en cascada). CONFIRMA con el usuario antes de llamar; crea una cotización editable en la app.',
         inputSchema: {
           nombre: z.string(),
           cliente_id: z.string().optional(),
           cliente_nombre_libre: z.string().optional(),
           cliente_email_libre: z.string().optional(),
+          agencia_id: z.string().optional().describe('uuid de clientes: agencia intermediaria (opcional)'),
+          agencia_nombre_libre: z.string().optional().describe('agencia intermediaria como texto libre (opcional)'),
           proyecto_id: z.string().optional(),
           con_iva: z.boolean().optional().describe('default true'),
           formato_pdf: z.enum(['simple', 'detallado']).optional().describe('default detallado'),
@@ -508,7 +510,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Ítems de cotización',
         description:
-          'Lista los ítems (con sus IDs) de una cotización por número (ej. CH-COT-005) o id. Necesario para cargar un gasto de proyecto, que requiere cotizacion_item_id.',
+          'Lista plana de los ítems (con sus IDs) de una cotización por número (ej. CH-COT-005) o id. Cada fila trae item_id, departamento + departamento_id, subgrupo + subgrupo_id (uuid). Necesario para cargar un gasto de proyecto (cotizacion_item_id) y para las herramientas de categorías.',
         inputSchema: {
           numero: z.string().optional().describe('número del grupo, ej. CH-COT-005'),
           cotizacion_id: z.string().optional().describe('UUID de la cotización'),
@@ -822,10 +824,12 @@ const baseHandler = createMcpHandler(
       {
         title: 'Precio de bundle por categoría',
         description:
-          'Fija (o limpia) el precio NATIVO de bundle de una categoría (departamento) o subcategoría (subgrupo). Casa Hiedra precia el bundle, no equipo por equipo: con precio_manual seteado, el total de la categoría es ese valor y los ítems pasan a ser solo descripción (sin monto). Manda precio_manual=null para volver a sumar los ítems. Obtén los ids con hilvan_items_cotizacion. Reversible con hilvan_deshacer (restaura el precio previo). CONFIRMA con el usuario antes de llamar.',
+          'Fija (o limpia) el precio NATIVO de bundle de una categoría (departamento) o subcategoría (subgrupo). Casa Hiedra precia el bundle, no equipo por equipo: con precio_manual seteado, el total de la categoría es ese valor y los ítems pasan a ser solo descripción (sin monto). Manda precio_manual=null para volver a sumar los ítems. `id` acepta el uuid O el NOMBRE de la categoría (sin distinguir mayúsculas ni tildes); por nombre indica cotizacion_id (y, para sub-grupos con nombre repetido, departamento_id). Nombre ambiguo → error con los ids. Reversible con hilvan_deshacer (restaura el precio previo). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           nivel: z.enum(['departamento', 'subgrupo']),
-          id: z.string().describe('id de la categoría o subcategoría'),
+          id: z.string().describe('uuid o NOMBRE de la categoría/subcategoría'),
+          cotizacion_id: z.string().optional().describe('obligatorio si `id` es un nombre'),
+          departamento_id: z.string().optional().describe('uuid o nombre del grupo, para acotar un sub-grupo por nombre'),
           precio_manual: z
             .number()
             .nullable()
@@ -854,9 +858,11 @@ const baseHandler = createMcpHandler(
       {
         title: 'Editar ítem de cotización',
         description:
-          'Edita un ítem existente: precio_cliente, nombre, descripcion, incluido, cantidad, dias, con_boleta, tasa_boleta. Debe venir al menos un campo. Si mandas precio_cliente se marca como precio personalizado. tasa_boleta va como FRACCIÓN (0.1525 = 15,25%); si activas con_boleta sin tasa y el ítem la tenía en 0, se rellena con la retención del año (Ley 21.133). Obtén item_id con hilvan_cotizacion_detalle. Reversible con hilvan_deshacer (restaura los valores previos). CONFIRMA con el usuario antes de llamar.',
+          'Edita un ítem existente: precio_cliente, nombre, descripcion, incluido, cantidad, dias, con_boleta, tasa_boleta, y su UBICACIÓN: `departamento` y `subgrupo` (uuid o nombre; se crean si no existen; subgrupo=null lo saca del sub-grupo y lo deja directo en el grupo) — mueve el ítem sin recrearlo. Debe venir al menos un campo. Si mandas precio_cliente se marca como precio personalizado. tasa_boleta va como FRACCIÓN (0.1525 = 15,25%); si activas con_boleta sin tasa y el ítem la tenía en 0, se rellena con la retención del año (Ley 21.133); con_boleta=false deja tasa_boleta en 0. Obtén item_id con hilvan_cotizacion_detalle. Reversible con hilvan_deshacer (restaura los valores previos). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           item_id: z.string(),
+          departamento: z.string().optional().describe('uuid o nombre del grupo destino; se crea si no existe'),
+          subgrupo: z.string().nullable().optional().describe('uuid o nombre del sub-grupo destino (se crea si no existe); null = sacarlo del sub-grupo'),
           precio_cliente: z.number().optional().describe('precio al cliente (≥0)'),
           nombre: z.string().optional(),
           descripcion: z.string().optional(),
@@ -875,7 +881,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Gestionar categorías de cotización',
         description:
-          'Gestiona la estructura de categorías de una cotización. accion: ' +
+          'Gestiona la estructura de categorías de una cotización. `id`, `departamento_id` y `subgrupo_id` aceptan uuid O NOMBRE (sin mayúsculas ni tildes) dentro de la cotización: por nombre manda cotizacion_id (en mover_item se deduce del ítem); nombre ambiguo → error con los ids. "eliminar" solo si está vacía (hilvan_cotizacion_detalle marca `vacio: true`). accion: ' +
           '"crear" {cotizacion_id, nivel, nombre, orden?, departamento_id? (si nivel=subgrupo)}; ' +
           '"renombrar" {nivel, id, nombre}; "reordenar" {nivel, id, orden}; ' +
           '"eliminar" {nivel, id} (solo si la categoría NO tiene ítems ni subgrupos); ' +
@@ -885,11 +891,11 @@ const baseHandler = createMcpHandler(
           accion: z.enum(['crear', 'renombrar', 'reordenar', 'eliminar', 'mover_item']),
           nivel: z.enum(['departamento', 'subgrupo']).optional(),
           cotizacion_id: z.string().optional(),
-          id: z.string().optional().describe('id de la categoría/subcategoría (renombrar/reordenar/eliminar)'),
+          id: z.string().optional().describe('uuid o NOMBRE de la categoría/subcategoría (renombrar/reordenar/eliminar); por nombre indica cotizacion_id'),
           nombre: z.string().optional(),
           orden: z.number().optional(),
-          departamento_id: z.string().optional().describe('depto destino (crear subgrupo / mover_item)'),
-          subgrupo_id: z.string().optional().describe('subgrupo destino en mover_item (omitir = ítem directo)'),
+          departamento_id: z.string().optional().describe('uuid o NOMBRE del grupo: destino en crear subgrupo / mover_item, o para acotar un sub-grupo por nombre'),
+          subgrupo_id: z.string().optional().describe('uuid o NOMBRE del sub-grupo destino en mover_item (omitir = ítem directo)'),
           item_id: z.string().optional().describe('ítem a mover (mover_item)'),
         },
       },
@@ -901,7 +907,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Agregar ítems a una cotización existente',
         description:
-          'Inserta líneas NUEVAS en una cotización YA creada (lo que faltaba: agregar/copiar ítems sin rehacer la cotización). Cada ítem indica su `departamento` por NOMBRE (si no existe en la cotización, se crea) y opcional `subgrupo` por nombre. Campos del ítem: nombre (req), precio_cliente, cantidad, dias, unidad (día|hora|jornada|unidad|proyecto), tipo (rol|equipo_ch|equipo_externo|servicio|consumible|post_produccion|locacion|cast|otro), descripcion, incluido. Valida TODOS antes de escribir. Obtén el cotizacion_id con hilvan_buscar_cotizacion. Reversible con hilvan_deshacer (borra lo creado). CONFIRMA con el usuario antes de llamar.',
+          'Inserta líneas NUEVAS en una cotización YA creada (lo que faltaba: agregar/copiar ítems sin rehacer la cotización). Cada ítem indica su `departamento` por NOMBRE (si no existe en la cotización, se crea) y opcional `subgrupo` por nombre. Campos del ítem (los mismos que hilvan_crear_cotizacion): nombre (req), precio_cliente, cantidad, dias, unidad (día|hora|jornada|unidad|proyecto), tipo (rol|equipo_ch|equipo_externo|servicio|consumible|post_produccion|locacion|cast|otro), descripcion, incluido, con_boleta, tasa_boleta, precio_neto_proveedor, precio_bruto, descuento_item, descuento_item_tipo, equipo_id, tarifa_id, orden (default: al final del grupo). Valida TODOS antes de escribir. Obtén el cotizacion_id con hilvan_buscar_cotizacion. Reversible con hilvan_deshacer (borra lo creado). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           cotizacion_id: z.string(),
           items: z
@@ -917,6 +923,15 @@ const baseHandler = createMcpHandler(
                 tipo: z.string().optional(),
                 descripcion: z.string().optional(),
                 incluido: z.boolean().optional(),
+                con_boleta: z.boolean().optional().describe('el proveedor emite boleta de honorarios'),
+                tasa_boleta: z.number().optional().describe('retención como fracción 0–1; default la del año si con_boleta'),
+                precio_neto_proveedor: z.number().optional().describe('lo que recibe el proveedor (costo)'),
+                precio_bruto: z.number().optional(),
+                descuento_item: z.number().optional(),
+                descuento_item_tipo: z.enum(['porcentaje', 'monto']).optional(),
+                equipo_id: z.string().optional(),
+                tarifa_id: z.string().optional(),
+                orden: z.number().optional().describe('posición dentro del grupo; default al final'),
               }),
             )
             .describe('líneas a agregar'),
@@ -930,13 +945,15 @@ const baseHandler = createMcpHandler(
       {
         title: 'Editar campos de la cotización',
         description:
-          'Edita campos a nivel cotización (título, descripción, cliente, IVA, descuento, notas, formato y el Encargo). Debe venir al menos un campo. cliente_id enlaza un cliente formal; cliente_nombre_libre (alias agencia_cliente) es texto libre. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+          'Edita campos a nivel cotización (título, descripción, cliente, agencia, IVA, descuento, notas, formato y el Encargo). Debe venir al menos un campo. ENCABEZADO: cliente_id / cliente_nombre_libre es el CLIENTE FINAL (la marca); agencia_id / agencia_nombre_libre la contraparte intermedia, opcional. cliente_final es un campo HEREDADO del modelo viejo: no lo uses en cotizaciones nuevas. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           cotizacion_id: z.string(),
           nombre: z.string().optional(),
           descripcion: z.string().optional(),
-          cliente_id: z.string().nullable().optional().describe('uuid de clientes; null para soltar el cliente formal'),
-          cliente_nombre_libre: z.string().optional().describe('agencia/cliente como texto libre'),
+          cliente_id: z.string().nullable().optional().describe('uuid de clientes (la marca); null para soltar el cliente formal'),
+          cliente_nombre_libre: z.string().optional().describe('cliente final (la marca) como texto libre'),
+          agencia_id: z.string().nullable().optional().describe('uuid de clientes para la agencia intermediaria; null para soltarla'),
+          agencia_nombre_libre: z.string().nullable().optional().describe('agencia como texto libre; null para quitarla'),
           cliente_email_libre: z.string().optional(),
           con_iva: z.boolean().optional(),
           descuento_global: z.number().optional(),
@@ -946,7 +963,7 @@ const baseHandler = createMcpHandler(
           formato_pdf: z.enum(['simple', 'detallado']).optional(),
           proyecto_id: z.string().nullable().optional(),
           solicita: z.string().optional(),
-          cliente_final: z.string().optional().describe('marca o cliente final'),
+          cliente_final: z.string().optional().describe('HEREDADO (modelo viejo). Usa cliente_nombre_libre + agencia_nombre_libre'),
           medios: z.string().optional(),
           referencia: z.string().optional(),
         },
@@ -959,16 +976,18 @@ const baseHandler = createMcpHandler(
       {
         title: 'Detalle de cotización con precios',
         description:
-          'Desglose CON precios de una cotización + RESUMEN (subtotal por departamento, neto, descuento, IVA, total). Cada ítem trae precio_cliente, cantidad, dias, unidad, incluido, con_boleta y su subtotal. Para verificar montos sin abrir el navegador. Pasa `numero` (ej. CH-COT-005) o `cotizacion_id`. Solo lectura.',
+          'Desglose CON precios de una cotización + RESUMEN (subtotal por departamento, neto, descuento, IVA, total). A nivel cotización trae cliente, agencia, cliente_id, agencia_id, solicita, medios, referencia y —salvo incluir_textos=false— descripcion, notas_cliente y notas_internas. Cada departamento trae departamento_id y `vacio` (sin ítems ni sub-grupos: se puede eliminar); cada sub-grupo subgrupo_id y `vacio`; cada ítem item_id, departamento_id, subgrupo_id, descripcion, precio_cliente, cantidad, dias, unidad, incluido, con_boleta, tasa_boleta y subtotal. Pasa `numero` (ej. CH-COT-005) o `cotizacion_id`. Solo lectura.',
         inputSchema: {
           numero: z.string().optional(),
           cotizacion_id: z.string().optional(),
+          incluir_textos: z.boolean().optional().describe('default true; false deja fuera descripciones y notas (respuesta más liviana)'),
         },
       },
       async (args, extra) => {
         const qs = new URLSearchParams()
         if (args.numero) qs.set('numero', args.numero)
         if (args.cotizacion_id) qs.set('cotizacion_id', args.cotizacion_id)
+        if (args.incluir_textos === false) qs.set('incluir_textos', 'false')
         return ok(await callAgent(extra as ToolExtra, 'GET', `/cotizacion-detalle?${qs.toString()}`))
       },
     )
@@ -985,6 +1004,50 @@ const baseHandler = createMcpHandler(
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-eliminar-item', args)),
+    )
+
+    server.registerTool(
+      'hilvan_cotizacion_eliminar',
+      {
+        title: 'Eliminar cotización',
+        description: 'Elimina UNA cotización (una versión/variante) por cotizacion_id, o por numero si el grupo tiene un solo documento (si tiene varios responde 400 con la lista). Borrado real pero REVERSIBLE con hilvan_deshacer: el árbol completo (grupo numerado si era la última versión, grupos, sub-grupos e ítems) se reinserta con los mismos ids. El número NO se reutiliza. Se niega si la cotización tiene rendiciones, gastos rendidos contra sus ítems o rodajes sembrados desde ella, y dice cuáles. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          cotizacion_id: z.string().optional(),
+          numero: z.string().optional().describe('ej. CH-2026-104; solo si tiene un único documento'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cotizacion-eliminar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_equipos_listar',
+      {
+        title: 'Equipos (catálogo CH-1)',
+        description: 'Catálogo de equipos de Casa Hiedra, SOLO LECTURA: código, nombre, categoría, marca/modelo, precio por jornada, estado, cantidad y si es rentable. Es lo mismo que muestra rental.casahiedra.com (solo_rentables=true) y /equipos. Filtra por texto (q: código, nombre, marca, modelo) y por categoria (código como CAM/OPT/ILU o nombre); la respuesta trae la lista de categorías. Para paquetes/kits usa hilvan_bundles_listar. Sirve para armar cotizaciones con precios reales sin salir a la web (equipo_id se puede pasar en los ítems).',
+        inputSchema: {
+          q: z.string().optional(),
+          categoria: z.string().optional().describe('código (CAM, OPT, ILU, GRI…) o nombre'),
+          solo_rentables: z.boolean().optional().describe('true = solo el catálogo de arriendo web'),
+        },
+      },
+      async ({ q, categoria, solo_rentables }, extra) => {
+        const qs = new URLSearchParams()
+        if (q) qs.set('q', q)
+        if (categoria) qs.set('categoria', categoria)
+        if (solo_rentables) qs.set('solo_rentables', 'true')
+        const t = qs.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/equipos${t ? `?${t}` : ''}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_bundles_listar',
+      {
+        title: 'Kits / paquetes de arriendo',
+        description: 'Los paquetes del catálogo de arriendo (Camión Completo, Maleta de Cámara, Kit Entrevista, Kit Luz 3 Puntos, Kit Producto, Pack Nanlux, Pack Godox…), SOLO LECTURA: nombre, precio por jornada, valor de los componentes sueltos y qué incluye (código, nombre, cantidad) según la composición que también usa la disponibilidad del rental. `composicion_definida:false` avisa de un kit sin composición cargada.',
+        inputSchema: {},
+      },
+      async (_args, extra) => ok(await callAgent(extra as ToolExtra, 'GET', '/bundles')),
     )
 
     server.registerTool(

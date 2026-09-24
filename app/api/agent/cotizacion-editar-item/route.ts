@@ -3,6 +3,7 @@ import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
 import { tasaRetencionBoleta } from '@/lib/rendiciones-calc'
+import { obtenerOCrearCategoria, cotizacionDeItem } from '@/lib/agent-categorias'
 
 export const runtime = 'nodejs'
 
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
-  const { item_id, precio_cliente, nombre, descripcion, incluido, cantidad, dias, con_boleta, tasa_boleta } = body ?? {}
+  const { item_id, precio_cliente, nombre, descripcion, incluido, cantidad, dias, con_boleta, tasa_boleta, departamento, subgrupo } = body ?? {}
   if (!item_id || typeof item_id !== 'string') {
     return NextResponse.json({ error: 'Falta item_id' }, { status: 400 })
   }
@@ -86,17 +87,47 @@ export async function POST(req: Request) {
     tasaProvista = true
   }
 
+  const admin = createAdminClient()
+
+  // Mover de categoría sin recrear el ítem: `departamento` / `subgrupo` por uuid o
+  // nombre (se crean si no existen); `subgrupo: null` = sacarlo del sub-grupo.
+  const creadas: { tabla: string; id: string }[] = []
+  if (departamento !== undefined || subgrupo !== undefined) {
+    const ubic = await cotizacionDeItem(admin, item_id)
+    if (!ubic) return NextResponse.json({ error: 'Ítem no encontrado' }, { status: 404 })
+    let depId = ubic.departamento_id
+    if (departamento !== undefined) {
+      if (typeof departamento !== 'string' || !departamento.trim()) return NextResponse.json({ error: 'departamento debe ser uuid o nombre' }, { status: 400 })
+      const d = await obtenerOCrearCategoria(admin, 'departamento', departamento, ubic.cotizacion_id)
+      if (!d.ok) return NextResponse.json({ error: d.error }, { status: d.status })
+      depId = d.id
+      if (d.creada) creadas.push({ tabla: 'cotizacion_departamentos', id: d.id })
+      cambios.departamento_id = depId
+      // Al cambiar de departamento el sub-grupo anterior deja de tener sentido.
+      if (subgrupo === undefined && depId !== ubic.departamento_id) cambios.subgrupo_id = null
+    }
+    if (subgrupo !== undefined) {
+      if (subgrupo === null || subgrupo === '') {
+        cambios.subgrupo_id = null
+      } else {
+        if (typeof subgrupo !== 'string') return NextResponse.json({ error: 'subgrupo debe ser uuid, nombre o null' }, { status: 400 })
+        const s = await obtenerOCrearCategoria(admin, 'subgrupo', subgrupo, ubic.cotizacion_id, depId)
+        if (!s.ok) return NextResponse.json({ error: s.error }, { status: s.status })
+        cambios.subgrupo_id = s.id
+        if (s.creada) creadas.push({ tabla: 'cotizacion_subgrupos', id: s.id })
+      }
+    }
+  }
+
   if (Object.keys(cambios).length === 0) {
     return NextResponse.json(
-      { error: 'Debe venir al menos uno de: precio_cliente, nombre, descripcion, incluido, cantidad, dias, con_boleta, tasa_boleta' },
+      { error: 'Debe venir al menos uno de: precio_cliente, nombre, descripcion, incluido, cantidad, dias, con_boleta, tasa_boleta, departamento, subgrupo' },
       { status: 400 },
     )
   }
 
-  const admin = createAdminClient()
-
   // Leer los valores previos SOLO de los campos que se van a tocar (para deshacer).
-  const camposPrevio = ['precio_cliente', 'precio_cliente_personalizado', 'nombre', 'descripcion', 'incluido', 'cantidad', 'dias', 'con_boleta', 'tasa_boleta']
+  const camposPrevio = ['precio_cliente', 'precio_cliente_personalizado', 'nombre', 'descripcion', 'incluido', 'cantidad', 'dias', 'con_boleta', 'tasa_boleta', 'departamento_id', 'subgrupo_id']
   const { data: fila, error: eLeer } = await admin
     .from('cotizacion_items')
     .select(['id', ...camposPrevio].join(', '))
@@ -112,6 +143,8 @@ export async function POST(req: Request) {
   if (cambios.con_boleta === true && !tasaProvista && !filaAny.tasa_boleta) {
     cambios.tasa_boleta = tasaRetencionBoleta()
   }
+  // Sin boleta no hay retención: la tasa queda en 0 (había ítems con 15,3% y con_boleta=false).
+  if (cambios.con_boleta === false) cambios.tasa_boleta = 0
 
   const previo: Record<string, unknown> = {}
   for (const k of Object.keys(cambios)) previo[k] = filaAny[k] ?? null
@@ -124,7 +157,7 @@ export async function POST(req: Request) {
 
   await registrarAccion({
     herramienta: 'cotizacion-editar-item',
-    payload: { item_id, previo, cambios },
+    payload: { item_id, previo, cambios, creadas },
     resultado_tabla: 'cotizacion_items',
     resultado_id: item_id,
     ok: true,

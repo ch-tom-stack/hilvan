@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       id, numero_factura, fecha_factura_emitida, estado, con_iva,
       descuento_global, descuento_global_tipo, fecha_respuesta_cliente, created_at,
       grupo:cotizacion_grupos(numero_base),
-      cliente:clientes(nombre, rut),
+      cliente:clientes!cliente_id(nombre, rut),
       departamentos:cotizacion_departamentos(
         subgrupos:cotizacion_subgrupos(items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)),
         items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)

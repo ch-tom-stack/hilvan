@@ -89,6 +89,8 @@ export interface CabeceraNormalizada {
   cliente_id: string | null
   cliente_nombre_libre: string | null
   cliente_email_libre: string | null
+  agencia_id: string | null
+  agencia_nombre_libre: string | null
   proyecto_id: string | null
   con_iva: boolean
   formato_pdf: 'simple' | 'detallado'
@@ -183,7 +185,8 @@ export function validarItem(
   // del año actual (Ley 21.133, ej. 15,25% en 2026) en vez de 0 — así una boleta
   // de honorarios no queda con retención 0% por omisión. Sin boleta → 0.
   const con_boleta = boolConDefault(raw.con_boleta, false)
-  const tasa_boleta = numOpcional(raw.tasa_boleta, con_boleta ? tasaRetencionBoleta() : 0)
+  // Sin boleta la tasa es 0 aunque venga otra cosa: una retención sin boleta no existe.
+  const tasa_boleta = con_boleta ? numOpcional(raw.tasa_boleta, tasaRetencionBoleta()) : 0
   const precio_neto_proveedor = numOpcional(raw.precio_neto_proveedor, 0)
   const precio_bruto = numOpcional(raw.precio_bruto, 0)
   const precio_cliente = numOpcional(raw.precio_cliente, 0)
@@ -255,6 +258,9 @@ export function validarCotizacion(body: any): ResultadoValidacion {
   const cliente_id = strOpcional(body.cliente_id)
   const cliente_nombre_libre = strOpcional(body.cliente_nombre_libre)
   const cliente_email_libre = strOpcional(body.cliente_email_libre)
+  // Agencia (intermediaria), opcional: id de clientes o nombre libre.
+  const agencia_id = strOpcional(body.agencia_id)
+  const agencia_nombre_libre = strOpcional(body.agencia_nombre_libre)
   const proyecto_id = strOpcional(body.proyecto_id)
 
   // Cabecera con defaults reales de la UI.
@@ -301,6 +307,8 @@ export function validarCotizacion(body: any): ResultadoValidacion {
     cliente_id,
     cliente_nombre_libre,
     cliente_email_libre,
+    agencia_id,
+    agencia_nombre_libre,
     proyecto_id,
     con_iva: boolConDefault(body.con_iva, true),
     formato_pdf,

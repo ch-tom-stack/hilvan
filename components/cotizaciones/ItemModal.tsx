@@ -130,7 +130,7 @@ export default function ItemModal({
       nombre: nombre.trim(),
       descripcion: descripcion.trim() || undefined,
       con_boleta: conBoleta,
-      tasa_boleta: tasaBoleta,
+      tasa_boleta: conBoleta ? tasaBoleta : 0,
       precio_neto_proveedor: netoProveedor,
       precio_bruto: bruto,
       precio_cliente_personalizado: precioPersonalizado,

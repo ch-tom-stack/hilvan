@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { actualizarCotizacion } from '@/app/actions/cotizaciones'
 import type { Cotizacion } from '@/types'
+import { encabezadoCotizacion } from '@/lib/cotizaciones-encabezado'
 
 // ─── ENCARGO PANEL ───────────────────────────────────────────────────────────
 
@@ -24,12 +25,24 @@ export function EncargoPanel({ cot, setCot }: { cot: Cotizacion; setCot: React.D
     await actualizarCotizacion(cot.id, { [field]: value || null } as any)
   }
 
-  // Agencia/Cliente: editable como texto libre. Al cambiarla, suelta el cliente
-  // formal heredado (típico al copiar una cotización y reapuntarla a otra marca).
+  // Encabezado: CLIENTE (la marca) y AGENCIA (intermediaria, opcional), como texto
+  // libre. Editar cualquiera suelta el vínculo formal heredado (típico al copiar
+  // una cotización y reapuntarla). Las filas del modelo viejo (agencia en
+  // cliente_*, marca en cliente_final) se normalizan en la primera edición.
+  const enc = encabezadoCotizacion(cot)
+  async function saveCliente(value: string) {
+    const v = value.trim()
+    const cambios: Record<string, unknown> = { cliente_nombre_libre: v || null, cliente_id: null, cliente_final: null }
+    if (enc.modeloViejo && enc.agencia) { cambios.agencia_nombre_libre = enc.agencia; cambios.agencia_id = null }
+    await actualizarCotizacion(cot.id, cambios as any)
+    setCot(c => ({ ...c, ...cambios, cliente: undefined, agencia: undefined } as any))
+  }
   async function saveAgencia(value: string) {
     const v = value.trim()
-    await actualizarCotizacion(cot.id, { cliente_nombre_libre: v || null, cliente_id: null } as any)
-    setCot(c => ({ ...c, cliente_nombre_libre: v || undefined, cliente_id: undefined, cliente: undefined }))
+    const cambios: Record<string, unknown> = { agencia_nombre_libre: v || null, agencia_id: null }
+    if (enc.modeloViejo) { cambios.cliente_nombre_libre = enc.cliente; cambios.cliente_id = null; cambios.cliente_final = null }
+    await actualizarCotizacion(cot.id, cambios as any)
+    setCot(c => ({ ...c, ...cambios, cliente: undefined, agencia: undefined } as any))
   }
 
   return (
@@ -44,15 +57,17 @@ export function EncargoPanel({ cot, setCot }: { cot: Cotizacion; setCot: React.D
           <input defaultValue={cot.solicita ?? ''} onBlur={e => save('solicita', e.target.value)}
             placeholder="Nombre o contacto" className={iCls} />
 
-          <label className={lCls}>Agencia / Cliente</label>
-          <input key={cot.cliente_nombre_libre ?? cot.cliente?.nombre ?? ''}
-            defaultValue={cot.cliente_nombre_libre ?? cot.cliente?.nombre ?? ''}
-            onBlur={e => saveAgencia(e.target.value)}
-            placeholder="Agencia o cliente" className={iCls} />
-
-          <label className={lCls}>Cliente final</label>
-          <input defaultValue={cot.cliente_final ?? ''} onBlur={e => save('cliente_final', e.target.value)}
+          <label className={lCls}>Cliente</label>
+          <input key={`c-${enc.cliente ?? ''}`}
+            defaultValue={enc.cliente ?? ''}
+            onBlur={e => { if (e.target.value.trim() !== (enc.cliente ?? '')) saveCliente(e.target.value) }}
             placeholder="Marca o cliente final" className={iCls} />
+
+          <label className={lCls}>Agencia <span className="normal-case tracking-normal text-ch-muted/60">(si hay intermediario)</span></label>
+          <input key={`a-${enc.agencia ?? ''}`}
+            defaultValue={enc.agencia ?? ''}
+            onBlur={e => { if (e.target.value.trim() !== (enc.agencia ?? '')) saveAgencia(e.target.value) }}
+            placeholder="Agencia o productora que intermedia" className={iCls} />
 
           <label className={lCls}>Medios</label>
           <input defaultValue={cot.medios ?? ''} onBlur={e => save('medios', e.target.value)}

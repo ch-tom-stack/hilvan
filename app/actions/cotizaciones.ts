@@ -13,7 +13,9 @@ import type {
 import { numeroCotizacion } from '@/types'
 import { autoCrearProyectoDesdeAprobacion } from '@/app/actions/clientes'
 import { porOrden } from '@/lib/orden'
+import { etiquetaEncabezado } from '@/lib/cotizaciones-encabezado'
 import { registrar, capturar, opInsert, opUpdate, opDelete, type Fila, type Op } from '@/lib/historial'
+import { bloqueosCotizacion, capturarArbolCotizacion, borrarCotizacion } from '@/lib/cotizaciones-eliminar'
 
 // ── Historial (Ctrl+Z) ───────────────────────────────────────────────────────
 // Cada acción que muta registra sus operaciones con lo necesario para volver
@@ -40,7 +42,7 @@ async function cargarCotizacionCompleta(id: string) {
         cliente:clientes(*),
         proyecto:proyectos(*)
       ),
-      cliente:clientes(*),
+      cliente:clientes!cliente_id(*), agencia:clientes!agencia_id(*),
       proyecto:proyectos(*),
       departamentos:cotizacion_departamentos(
         *,
@@ -122,7 +124,9 @@ export async function getCotizacionesGrupos(q?: string, estado?: string, etiquet
       cliente:clientes(*),
       proyecto:proyectos(*),
       cotizaciones(
-        id, version, variante, nombre, estado, updated_at, created_by
+        id, version, variante, nombre, estado, updated_at, created_by,
+        cliente_nombre_libre, cliente_final, agencia_nombre_libre,
+        cliente:clientes!cliente_id(nombre, empresa), agencia:clientes!agencia_id(nombre, empresa)
       ),
       etiquetas:cotizacion_grupo_etiquetas(etiqueta:cotizacion_etiquetas(*))
     `)
@@ -145,7 +149,8 @@ export async function getCotizacionesGrupos(q?: string, estado?: string, etiquet
       g.cliente?.nombre?.toLowerCase().includes(needle) ||
       g.cliente?.empresa?.toLowerCase().includes(needle) ||
       g.proyecto?.nombre?.toLowerCase().includes(needle) ||
-      (g.cotizaciones ?? []).some((c: any) => c.nombre?.toLowerCase().includes(needle))
+      (g.cotizaciones ?? []).some((c: any) =>
+        c.nombre?.toLowerCase().includes(needle) || etiquetaEncabezado(c).toLowerCase().includes(needle))
     )
   }
   if (estado) {
@@ -172,7 +177,7 @@ export async function getCotizacionPorToken(token: string) {
     .select(`
       *,
       grupo:cotizacion_grupos(*),
-      cliente:clientes(*),
+      cliente:clientes!cliente_id(*), agencia:clientes!agencia_id(*),
       departamentos:cotizacion_departamentos(
         *,
         subgrupos:cotizacion_subgrupos(
@@ -900,6 +905,35 @@ export async function reordenarNivel(
   if (fallidos.length > 0) {
     throw new Error(`No se pudo guardar el orden de ${fallidos.length} de ${filas.length} elementos. Recarga e intenta de nuevo.`)
   }
+}
+
+/**
+ * Elimina una cotización (esta versión/variante). Reversible con Ctrl+Z: el
+ * árbol completo queda en el historial y se reinserta con los mismos ids.
+ * Se niega si tiene rendiciones, gastos rendidos o rodajes colgando.
+ */
+export async function eliminarCotizacion(id: string): Promise<{ numero: string | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('No autenticado')
+  const { data: self } = await supabase.from('profiles').select('rol').eq('id', user.id).single<{ rol: string }>()
+  if (!self || !['admin', 'productor'].includes(self.rol)) throw new Error('Sin permisos para eliminar cotizaciones')
+
+  const admin = createAdminClient()
+  const bloqueos = await bloqueosCotizacion(admin, id)
+  if (bloqueos.length > 0) throw new Error(`No se puede eliminar: ${bloqueos.join('; ')}.`)
+  const arbol = await capturarArbolCotizacion(admin, id)
+  if (!arbol) throw new Error('Cotización no encontrada')
+
+  const fallo = await borrarCotizacion(admin, id, arbol)
+  if (fallo) throw new Error(fallo)
+
+  const etiqueta = `${arbol.numero ?? ''}${arbol.version > 1 ? ` v${arbol.version}` : ''}${arbol.variante ? ` ${arbol.variante}` : ''}`.trim()
+  // Ruta del LISTADO, no de la cotización: la página ya no existe y Ctrl+Z se
+  // hace desde /cotizaciones.
+  await registrar(supabase, user.id, { ruta: '/cotizaciones', modulo: 'cotizaciones', descripcion: `Eliminar cotización ${etiqueta} (${arbol.items} ítems)`, ops: [arbol.op] })
+  revalidatePath('/cotizaciones')
+  return { numero: arbol.numero }
 }
 
 // ============================================================

@@ -256,6 +256,10 @@ export interface Cotizacion {
   cliente?: Cliente
   cliente_nombre_libre?: string
   cliente_email_libre?: string
+  /** Contraparte intermedia (agencia), opcional. cliente_* es el CLIENTE FINAL (la marca). */
+  agencia_id?: string | null
+  agencia?: Cliente | null
+  agencia_nombre_libre?: string | null
   proyecto_id?: string
   proyecto?: Proyecto
 
@@ -280,6 +284,7 @@ export interface Cotizacion {
   notas_cliente?: string
 
   // Header del documento
+  /** HEREDADO: en el modelo viejo la marca iba acá y la agencia en cliente_*. Ver lib/cotizaciones-encabezado.ts. */
   cliente_final?: string | null
   medios?: string | null
   referencia?: string | null

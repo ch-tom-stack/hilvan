@@ -13,6 +13,7 @@ import {
   formatCLP,
   type Cotizacion,
 } from '@/types'
+import { encabezadoCotizacion } from '@/lib/cotizaciones-encabezado'
 
 interface Props {
   cotizacion: Cotizacion
@@ -48,10 +49,8 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
     })
   }
 
-  const nombreCliente =
-    cotizacion.cliente?.nombre ||
-    cotizacion.cliente_nombre_libre ||
-    'Cliente'
+  const encabezado = encabezadoCotizacion(cotizacion)
+  const nombreCliente = encabezado.cliente || 'Cliente'
 
   return (
     <div className="min-h-screen bg-white">
@@ -73,6 +72,9 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
           </div>
           <div className="text-right">
             <p className="text-sm text-white/70 font-sans">Para {nombreCliente}</p>
+            {encabezado.agencia && (
+              <p className="text-xs text-white/50 font-sans">Agencia: {encabezado.agencia}</p>
+            )}
             {cotizacion.fecha_envio && (
               <p className="text-xs text-white/50 font-sans mt-0.5">
                 {new Date(cotizacion.fecha_envio).toLocaleDateString('es-CL', {

@@ -45,14 +45,14 @@ export async function POST(req: Request) {
   if (!cot) return NextResponse.json({ error: 'Cotización no encontrada' }, { status: 404 })
 
   // ── Validar TODOS los ítems antes de escribir ──────────────────────────────
-  const norm: { dep: string; subgrupo: string | null; item: any }[] = []
+  const norm: { dep: string; subgrupo: string | null; item: any; ordenExplicito: boolean }[] = []
   for (let i = 0; i < items.length; i++) {
     const raw = items[i]
     const dep = typeof raw?.departamento === 'string' ? raw.departamento.trim() : ''
     if (!dep) return NextResponse.json({ error: `ítem ${i}: falta "departamento" (nombre)` }, { status: 400 })
     const v = validarItem(raw, `ítem ${i}`, 99)
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
-    norm.push({ dep, subgrupo: typeof raw?.subgrupo === 'string' ? raw.subgrupo.trim() : null, item: v.data })
+    norm.push({ dep, subgrupo: typeof raw?.subgrupo === 'string' ? raw.subgrupo.trim() : null, item: v.data, ordenExplicito: raw?.orden !== undefined && raw?.orden !== null })
   }
 
   // ── Resolver/crear departamentos y subgrupos por nombre ────────────────────
@@ -130,8 +130,9 @@ export async function POST(req: Request) {
       const sgId = n.subgrupo ? await getSg(depId, n.subgrupo) : null
       const it = n.item
       const kOrden = contenedor(depId, sgId)
-      const ordenItem = (maxItemOrden.get(kOrden) ?? -1) + 1
-      maxItemOrden.set(kOrden, ordenItem)
+      // Al final de su grupo, salvo que el ítem traiga `orden` explícito.
+      const ordenItem = n.ordenExplicito ? it.orden : (maxItemOrden.get(kOrden) ?? -1) + 1
+      maxItemOrden.set(kOrden, Math.max(maxItemOrden.get(kOrden) ?? -1, ordenItem))
       const { data, error } = await admin
         .from('cotizacion_items')
         .insert({

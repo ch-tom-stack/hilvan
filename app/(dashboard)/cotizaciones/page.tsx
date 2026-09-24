@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { numeroCotizacion, formatCLP } from '@/types'
 import type { CotizacionGrupo, Cotizacion, Etiqueta } from '@/types'
 import EtiquetaPicker from '@/components/ui/EtiquetaPicker'
+import { etiquetaEncabezado } from '@/lib/cotizaciones-encabezado'
 
 const ESTADO_LABELS: Record<string, { label: string; color: string }> = {
   borrador:      { label: 'Borrador',      color: 'bg-ch-muted/20 text-ch-muted' },
@@ -173,8 +174,9 @@ function GrupoCotizacion({ grupo, etiquetasDisponibles }: { grupo: CotizacionGru
           <span className="font-body text-[10px] text-ch-muted tracking-wider font-medium shrink-0">
             {grupo.numero_base}
           </span>
-          <span className="font-body text-sm text-ch-cream font-medium truncate">
-            {grupo.cliente?.nombre ?? grupo.cliente?.empresa ?? '—'}
+          <span className="font-body text-sm text-ch-cream font-medium truncate" title={etiquetaEncabezado(principal ?? {})}>
+            {/* El encabezado de la versión más reciente (agencia · cliente); si no tiene, el cliente del grupo. */}
+            {etiquetaEncabezado(principal ?? {}) !== '—' ? etiquetaEncabezado(principal ?? {}) : (grupo.cliente?.nombre ?? grupo.cliente?.empresa ?? '—')}
           </span>
           {grupo.proyecto && (
             <span className="font-body text-xs text-ch-muted truncate hidden sm:block">

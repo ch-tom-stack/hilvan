@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { obtenerAccion } from '@/lib/agent-audit'
 import { esMatchTablaValida } from '@/lib/agent-conciliacion'
 import { recomputarObligacion, recomputarMovimiento } from '@/lib/agent-conciliacion-io'
+import { aplicar, type Op } from '@/lib/historial'
 
 export const runtime = 'nodejs'
 
@@ -93,6 +94,16 @@ export async function POST(req: Request) {
     }
     await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
     return NextResponse.json({ ok: true, filas_restauradas: previo.length })
+  }
+
+  // ── Cotización eliminada: reinserta el árbol completo con los mismos ids ────
+  if (accion.herramienta === 'cotizacion-eliminar') {
+    const payload = accion.payload as { op?: Op } | null
+    if (!payload?.op || payload.op.tipo !== 'delete') return NextResponse.json({ error: 'La acción no guardó el árbol borrado' }, { status: 400 })
+    const fallo = await aplicar(admin, [payload.op], 'deshacer')
+    if (fallo) return NextResponse.json({ error: `No se pudo restaurar: ${fallo}` }, { status: 500 })
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, restaurada: accion.resultado_id })
   }
 
   // ── WhatsApp: ambas trabajan desde el payload, no desde resultado_id ───────

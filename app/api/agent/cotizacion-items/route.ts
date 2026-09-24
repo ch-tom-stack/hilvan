@@ -17,7 +17,7 @@ export const runtime = 'nodejs'
 // Si se pasa `cotizacion_id`, devuelve solo los ítems de esa cotización.
 //
 // Devuelve lista plana ordenada por departamento.orden, item.orden:
-//   { cotizacion_id, numero, version, variante, departamento, subgrupo, item_id, nombre, tipo }
+//   { cotizacion_id, numero, version, variante, departamento, departamento_id, subgrupo, subgrupo_id, item_id, nombre, tipo }
 
 export async function GET(req: Request) {
   const unauthorized = requireAgentToken(req)
@@ -99,7 +99,9 @@ export async function GET(req: Request) {
     version: string | null
     variante: string | null
     departamento: string
+    departamento_id: string
     subgrupo: string | null
+    subgrupo_id: string | null
     item_id: string
     nombre: string
     tipo: string | null
@@ -129,7 +131,9 @@ export async function GET(req: Request) {
           version: (cot.version as string | null) ?? null,
           variante: (cot.variante as string | null) ?? null,
           departamento: dep.nombre as string,
+          departamento_id: dep.id as string,
           subgrupo: null,
+          subgrupo_id: null,
           item_id: item.id as string,
           nombre: item.nombre as string,
           tipo: (item.tipo as string | null) ?? null,
@@ -151,7 +155,9 @@ export async function GET(req: Request) {
             version: (cot.version as string | null) ?? null,
             variante: (cot.variante as string | null) ?? null,
             departamento: dep.nombre as string,
+            departamento_id: dep.id as string,
             subgrupo: sg.nombre as string,
+            subgrupo_id: sg.id as string,
             item_id: item.id as string,
             nombre: item.nombre as string,
             tipo: (item.tipo as string | null) ?? null,

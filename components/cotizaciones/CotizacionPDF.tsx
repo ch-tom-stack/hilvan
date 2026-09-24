@@ -15,6 +15,7 @@ import {
   formatCLP,
   type Cotizacion,
 } from '@/types'
+import { encabezadoCotizacion } from '@/lib/cotizaciones-encabezado'
 
 const S = StyleSheet.create({
   page: {
@@ -245,8 +246,9 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
     version: cotizacion.version,
     variante: cotizacion.variante,
   })
-  const nombreCliente =
-    cotizacion.cliente?.nombre || cotizacion.cliente_nombre_libre || '—'
+  // Cliente (la marca) siempre; Agencia solo si hay intermediario. Cubre el
+  // modelo viejo (agencia en cliente_*, marca en cliente_final) sin migrar.
+  const encabezado = encabezadoCotizacion(cotizacion)
 
   return (
     <Document>
@@ -273,16 +275,16 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
               <Text style={S.metaValue}>{cotizacion.solicita}</Text>
             </View>
           )}
-          <View style={S.metaRow}>
-            <Text style={S.metaLabel}>Agencia:</Text>
-            <Text style={S.metaValue}>{nombreCliente}</Text>
-          </View>
-          {cotizacion.cliente_final && (
+          {encabezado.agencia && (
             <View style={S.metaRow}>
-              <Text style={S.metaLabel}>Cliente:</Text>
-              <Text style={S.metaValue}>{cotizacion.cliente_final}</Text>
+              <Text style={S.metaLabel}>Agencia:</Text>
+              <Text style={S.metaValue}>{encabezado.agencia}</Text>
             </View>
           )}
+          <View style={S.metaRow}>
+            <Text style={S.metaLabel}>Cliente:</Text>
+            <Text style={S.metaValue}>{encabezado.cliente ?? '—'}</Text>
+          </View>
           {cotizacion.referencia && (
             <View style={S.metaRow}>
               <Text style={S.metaLabel}>Referencia:</Text>

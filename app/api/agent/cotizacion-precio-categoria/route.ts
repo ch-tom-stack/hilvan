@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
+import { resolverCategoria, tablaDeNivel } from '@/lib/agent-categorias'
 
 export const runtime = 'nodejs'
 
@@ -22,13 +23,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
-  const { nivel, id, precio_manual } = body ?? {}
+  const { nivel, id: ref, precio_manual, cotizacion_id, departamento_id } = body ?? {}
 
   if (nivel !== 'departamento' && nivel !== 'subgrupo') {
     return NextResponse.json({ error: "nivel debe ser 'departamento' o 'subgrupo'" }, { status: 400 })
   }
-  if (!id || typeof id !== 'string') {
-    return NextResponse.json({ error: 'Falta id (de la categoría/subcategoría)' }, { status: 400 })
+  if (!ref || typeof ref !== 'string') {
+    return NextResponse.json({ error: 'Falta id (uuid o NOMBRE de la categoría/subcategoría; por nombre indica cotizacion_id)' }, { status: 400 })
   }
 
   // precio_manual: número ≥ 0, o null para limpiar.
@@ -43,9 +44,16 @@ export async function POST(req: Request) {
     precio = Math.round(n)
   }
 
-  const tabla = nivel === 'subgrupo' ? 'cotizacion_subgrupos' : 'cotizacion_departamentos'
+  const tabla = tablaDeNivel(nivel)
   const admin = createAdminClient()
 
+  // `id` acepta uuid o nombre (sin distinguir mayúsculas ni tildes).
+  const res = await resolverCategoria(admin, nivel, ref, {
+    cotizacionId: typeof cotizacion_id === 'string' ? cotizacion_id : null,
+    departamentoId: typeof departamento_id === 'string' ? departamento_id : null,
+  })
+  if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status })
+  const id = res.fila.id
   const { data: fila, error: eLeer } = await admin
     .from(tabla)
     .select('id, nombre, precio_manual')

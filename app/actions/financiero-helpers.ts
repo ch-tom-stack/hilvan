@@ -3,6 +3,7 @@
 // de financiero (config, resultados, flujo, gastos-fijos). No son server actions.
 
 import { calcularRetencion } from '@/types'
+import { etiquetaEncabezado } from '@/lib/cotizaciones-encabezado'
 
 // ── Periodos ──────────────────────────────────────────────────────────────────
 
@@ -37,9 +38,10 @@ export function generarFechaVencimiento(fechaInicio: string, n: number, dia: num
 export const COT_FINANCIERO_SELECT = `
   id, nombre, estado, con_iva, descuento_global, descuento_global_tipo,
   fecha_factura_emitida, fecha_pago_recibido, numero_factura,
-  cliente_nombre_libre,
+  cliente_nombre_libre, cliente_final, agencia_nombre_libre,
   grupo:cotizacion_grupos(numero_base),
-  cliente:clientes(nombre),
+  cliente:clientes!cliente_id(nombre),
+  agencia:clientes!agencia_id(nombre),
   departamentos:cotizacion_departamentos(
     subgrupos:cotizacion_subgrupos(
       items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)
@@ -51,9 +53,10 @@ export const COT_FINANCIERO_SELECT = `
 export const COT_COBRAR_SELECT = `
   id, nombre, estado, con_iva, descuento_global, descuento_global_tipo,
   fecha_factura_emitida, fecha_pago_recibido, numero_factura,
-  cliente_nombre_libre, fecha_respuesta_cliente,
+  cliente_nombre_libre, cliente_final, agencia_nombre_libre, fecha_respuesta_cliente,
   grupo:cotizacion_grupos(numero_base),
-  cliente:clientes(nombre),
+  cliente:clientes!cliente_id(nombre),
+  agencia:clientes!agencia_id(nombre),
   departamentos:cotizacion_departamentos(
     subgrupos:cotizacion_subgrupos(
       items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)
@@ -105,7 +108,8 @@ export function nombreCot(cot: any): string {
 }
 
 export function clienteCot(cot: any): string {
-  return (cot.cliente as any)?.nombre ?? cot.cliente_nombre_libre ?? '—'
+  // "Agencia · Cliente" cuando hay intermediario; cubre el modelo viejo (cliente_final).
+  return etiquetaEncabezado(cot)
 }
 
 // ── Cálculo de campos para exportación al contador ────────────────────────────

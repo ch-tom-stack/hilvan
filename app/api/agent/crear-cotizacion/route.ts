@@ -62,6 +62,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'cliente_id no encontrado' }, { status: 400 })
     }
   }
+  if (cabecera.agencia_id) {
+    const { data: ag, error } = await admin.from('clientes').select('id').eq('id', cabecera.agencia_id).maybeSingle()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!ag) return NextResponse.json({ error: 'agencia_id no encontrado' }, { status: 400 })
+  }
   if (cabecera.proyecto_id) {
     const { data: proy, error } = await admin
       .from('proyectos')
@@ -147,6 +152,8 @@ export async function POST(req: Request) {
       cliente_id: cabecera.cliente_id,
       cliente_nombre_libre: cabecera.cliente_nombre_libre,
       cliente_email_libre: cabecera.cliente_email_libre,
+      agencia_id: cabecera.agencia_id,
+      agencia_nombre_libre: cabecera.agencia_nombre_libre,
       proyecto_id: cabecera.proyecto_id,
       con_iva: cabecera.con_iva,
       formato_pdf: cabecera.formato_pdf,

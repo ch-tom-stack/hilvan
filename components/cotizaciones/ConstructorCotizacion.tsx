@@ -12,6 +12,7 @@ import {
   nuevaVersion,
   nuevaVariante,
   duplicarCotizacion,
+  eliminarCotizacion,
   agregarDepartamento,
   actualizarDepartamento,
   eliminarDepartamento,
@@ -327,6 +328,24 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
           ...d,
           items: d.items?.filter(i => i.id !== item.id),
         }))
+      }
+      // Si era el último ítem, se ofrece borrar la categoría que quedó vacía.
+      const dep = cot.departamentos?.find(d => d.id === depId)
+      if (dep) {
+        if (sgId) {
+          const sg = dep.subgrupos?.find(s => s.id === sgId)
+          const quedan = (sg?.items ?? []).filter(i => i.id !== item.id).length
+          if (sg && quedan === 0 && await confirm(`El sub-grupo "${sg.nombre}" quedó vacío. ¿Eliminarlo también?`)) {
+            await eliminarSubgrupo(sg.id, cot.id)
+            actualizarDepLocal(depId, d => ({ ...d, subgrupos: d.subgrupos?.filter(s => s.id !== sg.id) }))
+          }
+        } else {
+          const quedan = (dep.items ?? []).filter(i => i.id !== item.id).length
+          if (quedan === 0 && (dep.subgrupos?.length ?? 0) === 0 && await confirm(`El grupo "${dep.nombre}" quedó vacío. ¿Eliminarlo también?`)) {
+            await eliminarDepartamento(dep.id, cot.id)
+            setCot(c => ({ ...c, departamentos: c.departamentos?.filter(d => d.id !== dep.id) }))
+          }
+        }
       }
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al eliminar ítem')
@@ -654,6 +673,22 @@ export default function ConstructorCotizacion({ cotizacion: initial, tarifas, eq
               className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-ch-cream hover:bg-ch-border/20 transition-colors ch-press"
             >
               duplicar
+            </button>
+            <span className="w-px h-4 bg-ch-border" />
+            <button
+              onClick={async () => {
+                const etiqueta = numeroCotizacion({ grupo: cot.grupo, version: cot.version, variante: cot.variante })
+                if (!await confirm(`¿Eliminar la cotización ${etiqueta}? Se puede recuperar con Ctrl+Z desde el listado.`)) return
+                try {
+                  await eliminarCotizacion(cot.id)
+                  toastOk(`Cotización ${etiqueta} eliminada (Ctrl+Z en el listado la recupera)`)
+                  window.location.href = '/cotizaciones'
+                } catch (e) { toastError(e instanceof Error ? e.message : 'No se pudo eliminar') }
+              }}
+              disabled={isPending}
+              className="px-3 py-1.5 font-body text-xs text-ch-muted hover:text-red-400 hover:bg-ch-border/20 transition-colors ch-press"
+            >
+              eliminar
             </button>
           </div>
 

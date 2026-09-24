@@ -78,7 +78,7 @@ export async function etiquetaObligacion(
   if (tabla === 'cotizaciones') {
     const { data } = await admin
       .from('cotizaciones')
-      .select('nombre, cliente_nombre_libre, grupo:cotizacion_grupos(numero_base), cliente:clientes(nombre)')
+      .select('nombre, cliente_nombre_libre, grupo:cotizacion_grupos(numero_base), cliente:clientes!cliente_id(nombre)')
       .eq('id', id)
       .maybeSingle()
     if (!data) return `cotización ${id}`

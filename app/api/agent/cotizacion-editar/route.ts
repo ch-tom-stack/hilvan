@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 // Campos editables a nivel cotización (columna → tipo).
 const TEXTO = ['nombre', 'descripcion', 'cliente_nombre_libre', 'cliente_email_libre',
   'notas_cliente', 'notas_internas', 'solicita', 'cliente_final', 'medios', 'referencia',
-  'cliente_id', 'proyecto_id']
+  'cliente_id', 'proyecto_id', 'agencia_id', 'agencia_nombre_libre']
 const ENUMS: Record<string, string[]> = {
   descuento_global_tipo: ['porcentaje', 'monto'],
   formato_pdf: ['simple', 'detallado'],
