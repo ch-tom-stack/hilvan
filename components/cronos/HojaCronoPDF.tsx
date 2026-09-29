@@ -62,12 +62,10 @@ function Hatch({ w, h, color, paso, grosor, dir }: { w: number; h: number; color
   return <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', top: 0, left: 0 }}>{lines}</Svg>
 }
 
+// Etapas en plano (sep-2026): solo producción lleva color; el resto, blanco.
 function FondoEtapa({ etapa, w, h }: { etapa: EtapaCrono | null; w: number; h: number }) {
-  if (!etapa) return null
-  if (etapa === 'produccion') return <Svg width={w} height={h} style={{ position: 'absolute', top: 0, left: 0 }}><Rect x={0} y={0} width={w} height={h} fill={CH.lilaFuerte} /></Svg>
-  if (etapa === 'desarrollo') return <Hatch w={w} h={h} color={CH.lila} paso={9} grosor={2.2} dir="up" />
-  if (etapa === 'pre') return <Hatch w={w} h={h} color={CH.lila} paso={9} grosor={5.2} dir="up" />
-  return <Hatch w={w} h={h} color={CH.lila} paso={9} grosor={3.7} dir="down" />
+  if (etapa !== 'produccion') return null
+  return <Svg width={w} height={h} style={{ position: 'absolute', top: 0, left: 0 }}><Rect x={0} y={0} width={w} height={h} fill={CH.lila} /></Svg>
 }
 const FondoFeriado = ({ w, h }: { w: number; h: number }) => <Hatch w={w} h={h} color={CH.linea} paso={4.5} grosor={1.1} dir="up" />
 
@@ -102,7 +100,7 @@ function Etiqueta({ h, iso, k }: { h: CronoHito; iso: string; k: number }) {
     )
   }
   return (
-    <View style={{ marginTop: 2, backgroundColor: cont && dest ? CH.blanco : bg, borderWidth: cont && dest ? 0.6 : 0, borderColor: CH.negro, paddingVertical: 2 * k, paddingHorizontal: 3.5, opacity: op, textDecoration: h.hecho ? 'line-through' : 'none' }}>{cuerpo}</View>
+    <View style={{ marginTop: 2, backgroundColor: cont && dest ? CH.blanco : bg, borderWidth: cont && dest ? 0.6 : (!clave && !dest ? 0.5 : 0), borderColor: cont && dest ? CH.negro : CH.lilaFuerte, paddingVertical: 2 * k, paddingHorizontal: 3.5, opacity: op, textDecoration: h.hecho ? 'line-through' : 'none' }}>{cuerpo}</View>
   )
 }
 
@@ -152,7 +150,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
   // días 13, leyenda 17, pie 22) más los bordes de las filas y un colchón. Antes
   // este cálculo era optimista y el estirado de filas empujaba una segunda hoja
   // vacía; `wrap={false}` en la Page es la segunda cerradura.
-  const FIJO = 36 + 40 + 58 + 13 + 17 + 22
+  const FIJO = 36 + 40 + 13 + 17 + 22
   const altoDisponible = PAGE_H - M * 2 - FIJO - semanas.length * 0.5 - 10
   const natural = altos.reduce((s, a) => s + a, 0)
   const k = natural > altoDisponible ? Math.max(0.55, altoDisponible / natural) : 1
@@ -183,7 +181,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
           {lectura.map((l, i) => {
             const bw = (W - 3 * 3) / 4
             return (
-              <View key={l.id} style={{ width: bw, height: 34, marginLeft: i ? 3 : 0, position: 'relative' }}>
+              <View key={l.id} style={{ width: bw, height: 34, marginLeft: i ? 3 : 0, position: 'relative', borderWidth: 0.5, borderColor: l.id === 'produccion' ? CH.lila : CH.linea }}>
                 <FondoEtapa etapa={l.id} w={bw} h={34} />
                 <View style={{ padding: '5 7' }}>
                   <Text style={styles.lbl}>{l.nombre}</Text>
@@ -196,7 +194,6 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
         </View>
 
         {/* Tira general */}
-        {rango ? <View style={{ marginBottom: 2 }}><TiraGeneralPDF etapas={etapas} hitos={hitos} hoy={hoy} rango={rango} /></View> : null}
 
         {/* Calendario */}
         <View style={{ borderTopWidth: 0.9, borderTopColor: CH.negro, marginTop: 6 }}>
@@ -217,15 +214,17 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
                   const esHoy = false // hoy no se exporta: es una marca de trabajo, no del documento
                   const { d, m } = partesFecha(iso)
                   const mesLabel = d === 1 || (wi === 0 && di === 0)
+                  const inicioEtapa = etapa && etapas[etapa].desde === iso ? ETAPAS_CRONO.find((e) => e.id === etapa)?.nombre ?? null : null
                   const del = hitosDelDia(hitos, iso)
                   const w = colW[di]
                   return (
-                    <View key={iso} style={{ width: w, height: alto, borderLeftWidth: di ? 0.5 : 0, borderLeftColor: CH.linea, position: 'relative', opacity: fuera ? 0.4 : 1, overflow: 'hidden' }}>
+                    <View key={iso} style={{ width: w, height: alto, borderLeftWidth: di ? (d === 1 ? 1.1 : 0.5) : 0, borderLeftColor: di && d === 1 ? CH.negro : CH.linea, borderTopWidth: d <= 7 && wi > 0 ? 1.1 : 0, borderTopColor: CH.negro, position: 'relative', overflow: 'hidden' }}>
                       {feriado ? <FondoFeriado w={w} h={alto} /> : <FondoEtapa etapa={etapa} w={w} h={alto} />}
                       {esHoy ? <Svg width={w} height={alto} style={{ position: 'absolute', top: 0, left: 0 }}><Rect x={0.75} y={0.75} width={w - 1.5} height={alto - 1.5} stroke={CH.rojo} strokeWidth={1.2} fill="none" /></Svg> : null}
-                      <View style={{ padding: '2 3' }}>
+                      <View style={{ padding: '2 3', opacity: fuera ? 0.4 : 1 }}>
                         <Text style={{ fontSize: 6.5 * Math.max(k, 0.8), color: esHoy ? CH.rojo : CH.gris }}>
                           {d}{mesLabel ? ` ${MESES_CORTOS_CRONO[m - 1].toUpperCase()}` : ''}
+                          {inicioEtapa ? `   ${inicioEtapa.toUpperCase()}` : ''}
                           {feriado ? `  ${feriado}` : ''}
                         </Text>
                         {del.map((h) => <Etiqueta key={h.id} h={h} iso={iso} k={k} />)}
@@ -244,7 +243,7 @@ export function HojaCronoPDF({ crono, feriados, hoy, logoBase64 }: HojaCronoPDFP
             <View style={{ width: 11, height: 7, borderWidth: 0.6, borderColor: CH.negro, padding: 0.8, marginRight: 3 }}><View style={{ flex: 1, borderWidth: 0.6, borderColor: CH.negro }} /></View>
             <Text style={styles.lbl}>rodaje · emisión · entrega final   </Text>
             <View style={{ width: 11, height: 7, backgroundColor: CH.negro, marginRight: 3 }} /><Text style={styles.lbl}>hito clave   </Text>
-            <View style={{ width: 11, height: 7, backgroundColor: CH.lila, marginRight: 3 }} /><Text style={styles.lbl}>otro · reunión · pago   </Text>
+            <View style={{ width: 11, height: 7, backgroundColor: CH.lila, borderWidth: 0.5, borderColor: CH.lilaFuerte, marginRight: 3 }} /><Text style={styles.lbl}>producción · otro · pago   </Text>
             <View style={{ width: 11, height: 7, borderWidth: 0.5, borderColor: CH.linea, marginRight: 3, position: 'relative', overflow: 'hidden' }}><FondoFeriado w={11} h={7} /></View><Text style={styles.lbl}>feriado</Text>
           </View>
           <Text style={{ fontSize: 6.5, color: CH.gris, flex: 1, minWidth: 0, textAlign: 'right', paddingLeft: 16, height: 9, overflow: 'hidden' }}>{crono.notas ?? ''}</Text>

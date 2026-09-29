@@ -57,15 +57,15 @@ export const CH = {
   verde: '#7a9e7e',
 }
 
-// El motivo de líneas diagonales, en lila, distingue las etapas: desarrollo y pre
-// suben hacia la derecha (135deg) con distinta densidad; producción es la única
-// sólida (es la que mueve al equipo); post va en la dirección CONTRARIA (45deg),
-// para que "antes" y "después" del rodaje se lean de un vistazo.
+// Simplificación (sep-2026, pedido del cliente vía Tomás: "muy sobrecargada, es por
+// las líneas moradas"): las etapas van en PLANO. Solo producción lleva color (lila);
+// desarrollo, pre y post quedan en blanco y se anuncian con su nombre en el primer
+// día. El único motivo de líneas que queda es el gris fino de los feriados.
 export const ETAPA_FONDO: Record<EtapaCrono, string> = {
-  desarrollo: `repeating-linear-gradient(135deg, ${CH.lila} 0 3px, ${CH.blanco} 3px 12px)`,
-  pre:        `repeating-linear-gradient(135deg, ${CH.lila} 0 7px, ${CH.blanco} 7px 12px)`,
-  produccion: CH.lilaFuerte,
-  post:       `repeating-linear-gradient(45deg, ${CH.lila} 0 5px, ${CH.blanco} 5px 12px)`,
+  desarrollo: CH.blanco,
+  pre:        CH.blanco,
+  produccion: CH.lila,
+  post:       CH.blanco,
 }
 // Feriado: el mismo motivo, fino y gris — es lo que informa. Fin de semana: gris
 // plano, sin líneas (angosto ya dice lo suyo; el motivo se reserva al feriado).
@@ -106,7 +106,7 @@ export function EtapasHoja({
       {lectura.map((l) => {
         const et = etapas[l.id]
         return (
-          <div key={l.id} style={{ background: ETAPA_FONDO[l.id], padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div key={l.id} style={{ background: ETAPA_FONDO[l.id], border: `1px solid ${l.id === 'produccion' ? CH.lila : CH.linea}`, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={LBL}>{l.nombre}</span>
             {onCambiar ? (
               <div style={{ display: 'flex', gap: 6 }}>
@@ -142,14 +142,6 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
   const hoyN = hoy && fechaValida(hoy) ? diaNum(hoy) : null
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: H, display: 'block' }} role="img" aria-label="Vista general">
-      <defs>
-        {ETAPAS_CRONO.map((e) => (
-          <pattern key={e.id} id={`crono-p-${e.id}`} patternUnits="userSpaceOnUse" width="12" height="12" patternTransform={`rotate(${e.id === 'post' ? 45 : 135})`}>
-            <rect width="12" height="12" fill={CH.blanco} />
-            <rect width={e.id === 'pre' ? 7 : e.id === 'produccion' ? 12 : e.id === 'post' ? 5 : 3} height="12" fill={e.id === 'produccion' ? CH.lilaFuerte : CH.lila} />
-          </pattern>
-        ))}
-      </defs>
       {ETAPAS_CRONO.map((e) => {
         const et = etapas[e.id]
         const fin = finEfectivoEtapa(etapas, e.id, diaNum(rango.hasta))
@@ -157,7 +149,7 @@ export function TiraGeneral({ etapas, hitos, hoy }: { etapas: Record<EtapaCrono,
         const x1 = x(diaNum(et.desde)), x2 = x(fin) + dayW
         return (
           <g key={e.id}>
-            <rect x={x1} y={Y_BAND} width={Math.max(2, x2 - x1)} height={H_BAND} fill={`url(#crono-p-${e.id})`} />
+            <rect x={x1} y={Y_BAND} width={Math.max(2, x2 - x1)} height={H_BAND} fill={e.id === 'produccion' ? CH.lilaFuerte : '#f1eff5'} />
             {x2 - x1 > 70 && <text x={x1 + 5} y={Y_BAND + 13} fill={CH.negro} fontSize={9} letterSpacing={1.5} style={{ fontFamily: 'inherit' }}>{e.nombre.toUpperCase()}</text>}
           </g>
         )
@@ -246,7 +238,7 @@ function estiloEtiqueta(h: HitoVista, cont: boolean, sel: boolean): React.CSSPro
     lineHeight: 1.25,
     background: dest ? CH.blanco : clave ? CH.negro : CH.lila,
     color: dest || !clave ? CH.negro : CH.blanco,
-    border: dest ? `3px double ${CH.negro}` : 'none',
+    border: dest ? `3px double ${CH.negro}` : clave ? 'none' : `1px solid ${CH.lilaFuerte}`,
     opacity: h.hecho ? 0.45 : cont ? 0.6 : 1,
     textDecoration: h.hecho ? 'line-through' : 'none',
     outline: sel ? `1.5px solid ${CH.rojo}` : 'none',
@@ -275,6 +267,7 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
           const { d, m } = partesFecha(iso)
           const del = hitosDelDia(hitos, iso)
           const mesLabel = d === 1 || (wi === 0 && di === 0)
+          const inicioEtapa = etapa && etapas[etapa].desde === iso ? ETAPAS_CRONO.find((e) => e.id === etapa)?.nombre ?? null : null
           // El fin de semana hereda el color de la etapa (angosto ya lo distingue); solo el feriado lleva el motivo gris.
           const fondo = feriado ? FERIADO_FONDO : etapa ? ETAPA_FONDO[etapa] : esFinde(iso) ? FINDE_FONDO : CH.blanco
           return (
@@ -287,8 +280,9 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
               style={{
                 minHeight: conHitos ? 64 : 26,
                 boxSizing: 'border-box',
-                borderTop: `1px solid ${CH.linea}`,
-                borderLeft: di === 0 ? 'none' : `1px solid ${CH.linea}`,
+                // Cambio de mes: línea negra en escalera (arriba de los días 1–7, a la izquierda del día 1).
+                borderTop: d <= 7 && wi > 0 ? `1.5px solid ${CH.negro}` : `1px solid ${CH.linea}`,
+                borderLeft: di === 0 ? 'none' : d === 1 && wi >= 0 ? `1.5px solid ${CH.negro}` : `1px solid ${CH.linea}`,
                 background: fondo,
                 boxShadow: esHoy ? `inset 0 0 0 1.5px ${CH.rojo}` : undefined,
                 padding: '3px 4px',
@@ -302,6 +296,7 @@ export function CalendarioHoja({ etapas, hitos, semanas, feriados, hoy, rango, s
               <span data-dia="1" style={{ display: 'block' }}>
                 {d}
                 {mesLabel && <span data-dia="1" style={{ marginLeft: 3, letterSpacing: '0.15em', textTransform: 'uppercase', fontSize: 7 }}>{MESES_CORTOS_CRONO[m - 1]}</span>}
+                {inicioEtapa && <span data-dia="1" style={{ marginLeft: 6, letterSpacing: '0.2em', textTransform: 'uppercase', fontSize: 7, color: CH.negro }}>{inicioEtapa}</span>}
                 {feriado && <span data-dia="1" style={{ display: 'block', fontSize: 7, color: CH.grisClaro, lineHeight: 1.1 }}>{feriado}</span>}
               </span>
               {del.map((h) => {
@@ -344,11 +339,11 @@ export function LeyendaHoja() {
   const box = (bg: string, extra?: React.CSSProperties) => <span style={{ display: 'inline-block', width: 12, height: 8, background: bg, verticalAlign: 'middle', marginRight: 4, ...extra }} />
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, ...LBL, fontSize: 7.5, letterSpacing: '0.15em' }}>
-      {ETAPAS_CRONO.map((e) => <span key={e.id}>{box(ETAPA_FONDO[e.id])}{e.nombre}</span>)}
+      <span>{box(CH.lila)}producción</span>
       <span>{box(FERIADO_FONDO, { border: `1px solid ${CH.linea}` })}feriado</span>
       <span>{box(CH.blanco, { border: `3px double ${CH.negro}`, width: 14, height: 10, boxSizing: 'border-box' })}rodaje · emisión · entrega final</span>
       <span>{box(CH.negro)}hito clave</span>
-      <span>{box(CH.lila)}otro · reunión · pago</span>
+      <span>{box(CH.lila, { border: `1px solid ${CH.lilaFuerte}` })}otro · reunión · pago</span>
       <span><span style={{ display: 'inline-block', width: 6, height: 6, background: CH.amarillo, verticalAlign: 'middle', marginRight: 4 }} />pago</span>
     </div>
   )

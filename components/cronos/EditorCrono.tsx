@@ -63,7 +63,6 @@ import {
   PanelLectura,
   PanelPagos,
   PanelSemana,
-  TiraGeneral,
 } from './CronoVistas'
 
 type HitoLocal = Omit<CronoHito, 'crono_id' | 'created_at' | 'updated_at'>
@@ -433,7 +432,6 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
             <input value={ficha.notas} onChange={(e) => setFicha({ ...ficha, notas: e.target.value })} placeholder="Nota al pie (condiciones, supuestos)" className="bg-transparent focus:outline-none text-right" style={{ fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', color: CH.gris, border: 'none', width: 320 }} />
           </div>
           <EtapasHoja lectura={lectura} etapas={rangos} onCambiar={(id, campo, valor) => setEtapas({ ...etapas, [id]: { ...etapas[id], [campo]: valor } })} />
-          <TiraGeneral etapas={rangos} hitos={hitos} hoy={hoy} />
           {semanas.length > 0 ? (
             <CalendarioHoja etapas={rangos} hitos={hitos} semanas={semanas} feriados={fer} hoy={hoy} rango={rango} seleccionado={popover?.hitoId ?? null} onClickDia={abrirNuevo} onClickHito={abrirEditar} onMoverHito={moverHito} />
           ) : <div style={{ height: 120 }} />}
