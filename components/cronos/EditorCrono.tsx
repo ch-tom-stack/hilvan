@@ -337,7 +337,17 @@ export default function EditorCrono({ crono: inicial, proyectos, rodajesProyecto
   const setDraft = (patch: Partial<Draft>) => setPopover((p) => (p ? { ...p, draft: { ...p.draft, ...patch } } : p))
 
   // ─── compuertas ────────────────────────────────────────────────────────────
-  const toggleCompuerta = (id: string, hecho: boolean) => setCompuertas((cs) => cs.map((c) => (c.id === id ? { ...c, hecho } : c)))
+  // Un check enlazado a un hito ES ese hito: marcarlo marca el hito como hecho (y el
+  // calendario lo tacha); uno manual guarda su propio estado.
+  const toggleCompuerta = (id: string, hecho: boolean) => {
+    const c = compuertas.find((x) => x.id === id)
+    if (c?.hito_id && hitos.some((h) => h.id === c.hito_id)) {
+      const hid = c.hito_id
+      setHitos((hs) => hs.map((h) => (h.id === hid ? { ...h, hecho } : h)))
+    } else {
+      setCompuertas((cs) => cs.map((x) => (x.id === id ? { ...x, hecho, hito_id: x.hito_id && !hitos.some((h) => h.id === x.hito_id) ? null : x.hito_id } : x)))
+    }
+  }
   const editarCompuerta = (id: string, campos: { texto?: string; responsable?: string | null; hito_id?: string | null }) => setCompuertas((cs) => cs.map((c) => (c.id === id ? { ...c, ...campos } : c)))
   const agregarCompuerta = (destino: DestinoCompuerta) => setCompuertas((cs) => [...cs, { id: crypto.randomUUID(), destino, orden: cs.length, texto: 'Nuevo check', hito_id: null, responsable: null, hecho: false }])
   const quitarCompuerta = (id: string) => { setCompuertas((cs) => cs.filter((c) => c.id !== id)); setEliminadasC((xs) => [...xs, id]) }

@@ -2379,7 +2379,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Compuertas del crono',
         description:
-          'Los checks que deben estar ok para pasar a la siguiente etapa (destino: pre | produccion | post | cierre). Un check con hito_id es AUTOMÁTICO: se marca solo cuando ese hito está hecho (pago cobrado, entrega hecha, rodaje confirmado). accion="reemplazar" pisa todos; "agregar" suma; "marcar" (check_id, hecho) solo para checks manuales; "eliminar" (check_id). Reversible con hilvan_deshacer (restaura el conjunto anterior COMPLETO). CONFIRMA con el usuario antes de llamar.',
+          'Los checks que deben estar ok para pasar a la siguiente etapa (destino: pre | produccion | post | cierre). Un check con hito_id es AUTOMÁTICO: se marca solo cuando ese hito está hecho (pago cobrado, entrega hecha, rodaje confirmado). accion="reemplazar" pisa todos; "agregar" suma; "marcar" (check_id, hecho): en un check manual guarda su estado; en uno enlazado a un hito marca ESE HITO como hecho; "eliminar" (check_id). Reversible con hilvan_deshacer (restaura el conjunto anterior COMPLETO). CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           crono_id: z.string(),
           accion: z.enum(['reemplazar', 'agregar', 'marcar', 'eliminar']),

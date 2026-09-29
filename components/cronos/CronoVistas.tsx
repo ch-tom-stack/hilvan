@@ -463,10 +463,10 @@ export function PanelCompuertas({
                 <input
                   type="checkbox"
                   checked={c.ok}
-                  disabled={c.automatica || !onToggle}
+                  disabled={!onToggle}
                   onChange={(e) => onToggle?.(c.id, e.target.checked)}
                   className="mt-0.5 accent-[#e6e2ed] disabled:opacity-60"
-                  title={c.automatica ? 'Automático: se marca solo cuando el hito está hecho' : 'Marcar a mano'}
+                  title={c.automatica ? 'Enlazado a un hito: marcarlo acá marca el hito como hecho en el calendario, y al revés' : 'Marcar a mano'}
                 />
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   {editable ? (
@@ -476,7 +476,7 @@ export function PanelCompuertas({
                   )}
                   <span className="text-[10px] text-ch-subtle flex flex-wrap items-center gap-x-2">
                     {c.automatica ? (
-                      <span>automático{c.fecha_hito ? ` · ${formatoCorto(c.fecha_hito)}` : ''}</span>
+                      <span>enlazado al hito{c.fecha_hito ? ` · ${formatoCorto(c.fecha_hito)}` : ''}</span>
                     ) : editable ? (
                       <input value={c.responsable ?? ''} onChange={(e) => onEditar!(c.id, { responsable: e.target.value || null })} placeholder="responsable" className="bg-transparent border-b border-transparent hover:border-ch-border focus:border-ch-cream/40 focus:outline-none w-28 placeholder:text-ch-subtle/60" />
                     ) : c.responsable ? (

@@ -701,9 +701,14 @@ export async function POST(req: Request) {
     }
   } else if (accion.herramienta === 'crono-compuertas') {
     // Restaurar el conjunto COMPLETO de compuertas anterior (payload.previo).
-    const payload = accion.payload as { previo?: Record<string, unknown>[] } | null
+    const payload = accion.payload as { previo?: Record<string, unknown>[]; hitos_previos?: { id: string; hecho: boolean }[] } | null
     if (!payload || !Array.isArray(payload.previo)) {
       return NextResponse.json({ error: 'Acción sin compuertas previas guardadas' }, { status: 400 })
+    }
+    // Marcar un check enlazado marca su hito: se restaura el `hecho` de cada hito.
+    for (const h of payload.hitos_previos ?? []) {
+      const { error: eH } = await admin.from('crono_hitos').update({ hecho: h.hecho }).eq('id', h.id).eq('crono_id', accion.resultado_id)
+      if (eH) return NextResponse.json({ error: eH.message }, { status: 500 })
     }
     const { error: eDel } = await admin.from('crono_compuertas').delete().eq('crono_id', accion.resultado_id)
     if (eDel) return NextResponse.json({ error: eDel.message }, { status: 500 })

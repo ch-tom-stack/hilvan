@@ -69,15 +69,18 @@ export async function POST(req: Request) {
       const { error } = await admin.from('crono_compuertas').delete().eq('id', check_id)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     } else {
-      if (existente.hito_id) return NextResponse.json({ error: 'Ese check es automático: se marca solo cuando su hito esté hecho (usa hilvan_crono_hitos para marcar el hito).' }, { status: 400 })
-      const { error } = await admin.from('crono_compuertas').update({ hecho: body?.hecho !== false }).eq('id', check_id)
+      const hecho = body?.hecho !== false
+      const { error } = existente.hito_id && idsHitos.has(existente.hito_id)
+        // Enlazado a un hito: el check ES el hito — se marca el hito.
+        ? await admin.from('crono_hitos').update({ hecho }).eq('id', existente.hito_id).eq('crono_id', crono_id)
+        : await admin.from('crono_compuertas').update({ hecho }).eq('id', check_id)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     }
   }
 
   const accionId = await registrarAccion({
     herramienta: 'crono-compuertas',
-    payload: { ...body, previo: previo.map(({ created_at: _c, updated_at: _u, ...p }) => p) },
+    payload: { ...body, previo: previo.map(({ created_at: _c, updated_at: _u, ...p }) => p), hitos_previos: (crono.hitos ?? []).map((h) => ({ id: h.id, hecho: h.hecho })) },
     resultado_tabla: 'cronos',
     resultado_id: crono_id,
     ok: true,
