@@ -4,6 +4,7 @@ import {
   BorderStyle, Table, TableRow, TableCell, WidthType, ShadingType,
 } from 'docx'
 import { createClient } from '@/lib/supabase/server'
+import { contentDisposition } from '@/lib/archivos'
 
 function hoy() {
   return new Date().toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -226,7 +227,7 @@ export async function POST(req: NextRequest) {
   return new NextResponse(buffer as unknown as BodyInit, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': `attachment; filename="${nombreArchivo}"`,
+      'Content-Disposition': contentDisposition('attachment', nombreArchivo, 'contrato.docx'),
     },
   })
 }

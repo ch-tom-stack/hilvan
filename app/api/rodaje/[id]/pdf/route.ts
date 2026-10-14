@@ -7,6 +7,8 @@ import SunCalc from 'suncalc'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { parseFechaLocal } from '@/lib/fechas'
+import { contentDisposition } from '@/lib/archivos'
+import { imagenParaPdf } from '@/lib/pdf-imagenes'
 
 export const maxDuration = 30
 
@@ -71,9 +73,12 @@ export async function GET(
   if (rodaje.locacion_lat && rodaje.locacion_lng && rodaje.fecha) {
     const fecha = parseFechaLocal(rodaje.fecha)
     const times = SunCalc.getTimes(fecha, rodaje.locacion_lat, rodaje.locacion_lng)
-    const fmt = (d: Date) => new Intl.DateTimeFormat('es-CL', {
-      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago',
-    }).format(d)
+    // Fuera de latitudes normales SunCalc devuelve Invalid Date y Intl lanza RangeError.
+    const fmt = (d: Date) => Number.isNaN(d?.getTime())
+      ? '—'
+      : new Intl.DateTimeFormat('es-CL', {
+          hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago',
+        }).format(d)
     sol = {
       amanecer: fmt(times.sunrise),
       atardecer: fmt(times.sunset),
@@ -86,7 +91,8 @@ export async function GET(
   if (rodaje.locacion_lat && rodaje.locacion_lng && rodaje.fecha) {
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${rodaje.locacion_lat}&longitude=${rodaje.locacion_lng}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=America%2FSantiago&start_date=${rodaje.fecha}&end_date=${rodaje.fecha}`
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+      if (!res.ok) throw new Error(`open-meteo ${res.status}`)
       const data = await res.json()
       if (data?.daily?.temperature_2m_max?.[0] !== undefined) {
         const codigo = data.daily.weathercode[0]
@@ -109,30 +115,50 @@ export async function GET(
           condicion_codigo: codigo,
         }
       }
-    } catch { /* silencioso */ }
+    } catch (e) {
+      console.error('[rodaje/pdf] clima no disponible:', e instanceof Error ? e.message : e)
+    }
   }
 
   const logoBase64 = getLogoBase64()
 
+  // Imágenes subidas por el usuario: react-pdf solo lee PNG/JPEG y revienta si
+  // una no carga. Se resuelven acá y las inservibles se omiten.
+  const [clienteLogo, chisteImagen, bloquesPdf, stickersPdf] = await Promise.all([
+    imagenParaPdf(rodaje.cliente_logo_url),
+    imagenParaPdf(rodaje.chiste_imagen_url),
+    Promise.all((bloques || []).map(async (b: any) => (
+      b.imagen_url ? { ...b, imagen_url: await imagenParaPdf(b.imagen_url) } : b
+    ))),
+    Promise.all((stickers || []).map(async (s: any) => (
+      s.tipo === 'texto' ? s : { ...s, imagen_url: await imagenParaPdf(s.imagen_url) }
+    ))),
+  ])
+
   try {
     const buffer = await renderToBuffer(
       createElement(HojaLlamadosPDF, {
-        rodaje: { ...rodaje, locacion_nombre: locacionPrincipal?.nombre || rodaje.locacion_nombre },
-        bloques: bloques || [],
+        rodaje: {
+          ...rodaje,
+          locacion_nombre: locacionPrincipal?.nombre || rodaje.locacion_nombre,
+          cliente_logo_url: clienteLogo,
+          chiste_imagen_url: chisteImagen,
+        },
+        bloques: bloquesPdf,
         sol,
         clima,
         logoBase64,
-        stickers: stickers || [],
+        stickers: stickersPdf,
         formato,
       }) as unknown as ReactElement<DocumentProps>
     )
 
-    const nombre = `hoja-llamados-${rodaje.nombre.toLowerCase().replace(/\s+/g, '-')}${formato === 'tabloid' ? '-tabloid' : ''}.pdf`
+    const nombre = `Hoja de llamados - ${rodaje.nombre}${formato === 'tabloid' ? ' - tabloid' : ''}.pdf`
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${nombre}"`,
+        'Content-Disposition': contentDisposition('inline', nombre, 'hoja-llamados.pdf'),
       },
     })
   } catch (e) {

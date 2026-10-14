@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
+import { contentDisposition } from '@/lib/archivos'
 import path from 'path'
 
 export interface FilaSantander {
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
     status: 200,
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': contentDisposition('attachment', filename, 'santander.xlsx'),
     },
   })
 }

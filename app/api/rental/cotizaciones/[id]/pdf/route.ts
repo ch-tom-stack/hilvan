@@ -5,6 +5,7 @@ import fs from 'fs'
 import { createElement } from 'react'
 import { obtenerRentalCotizacion } from '@/app/actions/rental'
 import { createClient } from '@/lib/supabase/server'
+import { contentDisposition } from '@/lib/archivos'
 import RentalCotizacionPDF from '@/components/rental/RentalCotizacionPDF'
 
 export const maxDuration = 30
@@ -42,7 +43,7 @@ export async function GET(
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${cotizacion.numero}.pdf"`,
+        'Content-Disposition': contentDisposition('attachment', `${cotizacion.numero}.pdf`, 'cotizacion-rental.pdf'),
         'Content-Length': buffer.length.toString(),
       },
     })

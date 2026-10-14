@@ -6,6 +6,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { HojaCronoPDF } from '@/components/cronos/HojaCronoPDF'
 import { hoyIso } from '@/lib/crono'
+import { contentDisposition } from '@/lib/archivos'
 import type { Crono, CronoHito, Feriado } from '@/types'
 
 export const maxDuration = 30
@@ -40,9 +41,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const buffer = await renderToBuffer(
       createElement(HojaCronoPDF, { crono: c, feriados: (feriados ?? []) as Feriado[], hoy: hoyIso(), logoBase64: getLogoBase64() }) as unknown as ReactElement<DocumentProps>,
     )
-    const nombre = `crono-${c.nombre.toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi, '-').replace(/^-|-$/g, '')}.pdf`
+    const nombre = `Crono - ${c.nombre}.pdf`
     return new NextResponse(new Uint8Array(buffer), {
-      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${nombre}"` },
+      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': contentDisposition('inline', nombre, 'crono.pdf') },
     })
   } catch (e) {
     console.error('[cronos/pdf]', e)

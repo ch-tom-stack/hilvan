@@ -4,6 +4,7 @@ import path from "path"
 import fs from "fs"
 import { getCotizacion, getCotizacionPorToken } from "@/app/actions/cotizaciones"
 import { createClient } from "@/lib/supabase/server"
+import { contentDisposition } from "@/lib/archivos"
 import CotizacionPDF from "@/components/cotizaciones/CotizacionPDF"
 import { createElement } from "react"
 
@@ -59,15 +60,12 @@ export async function GET(
       .replace(/\s+/g, " ")
       .trim()
     const filename = `${base}.pdf`
-    // Fallback ASCII para clientes que no soportan filename*
-    const filenameAscii =
-      (filename.normalize("NFKD").replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, "-").replace(/^-+|-+$/g, "") || "cotizacion.pdf")
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filenameAscii}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        "Content-Disposition": contentDisposition("attachment", filename, "cotizacion.pdf"),
         "Content-Length": buffer.length.toString(),
       },
     })
