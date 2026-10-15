@@ -43,3 +43,15 @@ describe('tipoImagenPdf', () => {
     expect(tipoImagenPdf(new Uint8Array([]))).toBeNull()
   })
 })
+
+import { extensionSegura } from '@/lib/archivos'
+describe('extensionSegura', () => {
+  it('normaliza y descarta extensiones inválidas', () => {
+    expect(extensionSegura('Foto.JPG')).toBe('jpg')
+    expect(extensionSegura('mi foto', 'jpg')).toBe('jpg')
+    expect(extensionSegura('a.b c', 'bin')).toBe('bin')
+  })
+  it('un nombre con tildes no entra a la key de Storage', () => {
+    expect(nombreArchivoAscii('José Peña Núñez', 'colaborador')).toBe('Jose-Pena-Nunez')
+  })
+})

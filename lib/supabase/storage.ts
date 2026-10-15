@@ -1,11 +1,12 @@
 import { createClient } from './client'
+import { extensionSegura } from '@/lib/archivos'
 
 export async function subirFotoEquipo(
   file: File,
   equipoId: string
 ): Promise<string | null> {
   const supabase = createClient()
-  const ext = file.name.split('.').pop()
+  const ext = extensionSegura(file.name, 'jpg')
   const path = `${equipoId}/${Date.now()}.${ext}`
 
   const { error } = await supabase.storage

@@ -44,3 +44,10 @@ export function contentDisposition(
   const utf8 = nombreOriginal.replace(/[\r\n"\\/:*?<>|]/g, '').trim() || ascii
   return `${tipo}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(utf8)}`
 }
+
+/** Extensión segura para una key de Storage (`foto.JPG` → `jpg`); sin extensión válida, `defecto`. */
+export function extensionSegura(nombre: string, defecto = 'bin'): string {
+  const i = nombre.lastIndexOf('.')
+  const ext = i >= 0 ? nombre.slice(i + 1).toLowerCase() : ''
+  return /^[a-z0-9]{1,5}$/.test(ext) ? ext : defecto
+}

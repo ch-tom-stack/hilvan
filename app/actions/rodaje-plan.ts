@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { RodajeLocacion, RodajeBloque, BloqueEstilo, PLANTILLAS_BLOQUES } from '@/types'
 import { registrar, capturar, opInsert, opUpdate, opDelete, type Fila, type Op } from '@/lib/historial'
+import { extensionSegura } from '@/lib/archivos'
 
 // ── Historial (Ctrl+Z) ───────────────────────────────────────────────────────
 async function historial(supabase: Awaited<ReturnType<typeof createClient>>, rodajeId: string, descripcion: string, ops: (Op | null)[]) {
@@ -417,7 +418,7 @@ export async function subirImagenChiste(
   archivo: File
 ): Promise<string> {
   const supabase = await createClient()
-  const ext = archivo.name.split('.').pop()
+  const ext = extensionSegura(archivo.name, 'jpg')
   const path = `${rodajeId}/chiste.${ext}`
 
   const { error } = await supabase.storage

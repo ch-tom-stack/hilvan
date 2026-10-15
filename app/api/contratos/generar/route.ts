@@ -4,7 +4,7 @@ import {
   BorderStyle, Table, TableRow, TableCell, WidthType, ShadingType,
 } from 'docx'
 import { createClient } from '@/lib/supabase/server'
-import { contentDisposition } from '@/lib/archivos'
+import { contentDisposition, nombreArchivoAscii } from '@/lib/archivos'
 
 function hoy() {
   return new Date().toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -205,13 +205,14 @@ export async function POST(req: NextRequest) {
 
   const buffer = await Packer.toBuffer(doc)
 
-  const nombreArchivo = `contrato_${tipo}_${col.nombre.replace(/\s+/g, '_')}_${Date.now()}.docx`
+  const nombreArchivo = `contrato_${tipo}_${nombreArchivoAscii(col.nombre, 'colaborador')}_${Date.now()}.docx`
 
   // Subir a Supabase Storage
   const { error: uploadError } = await supabase.storage
     .from('contratos')
     .upload(nombreArchivo, buffer, { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
 
+  if (uploadError) console.error('[contratos/generar] no se pudo guardar el contrato:', uploadError.message)
   if (!uploadError) {
     const { data: { publicUrl } } = supabase.storage.from('contratos').getPublicUrl(nombreArchivo)
 

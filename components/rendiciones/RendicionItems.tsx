@@ -8,6 +8,7 @@ import { calcularRetencion } from '@/types'
 import type { Rendicion, RendicionGasto } from '@/types'
 import FormularioGasto from './FormularioGasto'
 import NotasGlosa from './NotasGlosa'
+import { extensionSegura } from '@/lib/archivos'
 
 const TIPO_LABEL: Record<string, string> = {
   honorarios: 'Honorarios', transporte: 'Transporte', alimentacion: 'Alimentación',
@@ -181,7 +182,7 @@ export function GastoRow({ gasto: g, onAprobarContenido, onAprobarPago, onRechaz
     setSubiendoPago(true)
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop()
+      const ext = extensionSegura(file.name)
       const path = `rendiciones/pagos/${Date.now()}.${ext}`
       const { error } = await supabase.storage.from('rendiciones').upload(path, file)
       if (error) throw error

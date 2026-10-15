@@ -6,6 +6,7 @@ import type { RendicionGasto, TipoRendicion, TipoDocRendicion } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { tasaRetencionBoleta } from '@/lib/rendiciones-calc'
 import { momento } from '@/lib/momentos'
+import { extensionSegura } from '@/lib/archivos'
 
 interface DatosFactura {
   rut_emisor: string | null
@@ -141,7 +142,7 @@ export default function FormularioGasto({
     if (esPDF) parsearPDF(file)
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop()
+      const ext = extensionSegura(file.name)
       const path = `rendiciones/${Date.now()}.${ext}`
       const { error } = await supabase.storage.from('rendiciones').upload(path, file)
       if (error) throw error

@@ -1,4 +1,5 @@
 import { createClient } from './client'
+import { extensionSegura } from '@/lib/archivos'
 
 export async function subirImagenBloque(
   file: File,
@@ -6,7 +7,7 @@ export async function subirImagenBloque(
   bloqueId: string,
 ): Promise<string | null> {
   const supabase = createClient()
-  const ext = file.name.split('.').pop() || 'jpg'
+  const ext = extensionSegura(file.name, 'jpg')
   const path = `${rodajeId}/${bloqueId}.${ext}`
 
   const { error } = await supabase.storage

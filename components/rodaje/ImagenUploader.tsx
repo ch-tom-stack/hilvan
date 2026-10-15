@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { extensionSegura } from '@/lib/archivos'
 
 interface Props {
   rodajeId: string
@@ -25,7 +26,7 @@ export function ImagenUploader({ rodajeId, campo, valorActual, label, onSubida, 
 
     try {
       const supabase = createClient()
-      const ext = archivo.name.split('.').pop()
+      const ext = extensionSegura(archivo.name, 'jpg')
       const path = `${rodajeId}/${campo}.${ext}`
 
       const { error: uploadError } = await supabase.storage
