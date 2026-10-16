@@ -103,44 +103,6 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     cargarTodo().finally(() => setLoading(false))
   }, [cargarTodo])
 
-  // Keyboard: Cmd+Z / Ctrl+Z undo, Cmd+Shift+Z / Ctrl+Y redo (local, en memoria).
-  // Si no hay nada local que deshacer/rehacer, NO se detiene el evento y lo
-  // toma el historial global (lo ya guardado: bloques borrados, equipo, etc.).
-  useEffect(() => {
-    const enCampo = () => { const t = document.activeElement?.tagName; return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || (document.activeElement as HTMLElement | null)?.isContentEditable }
-    const handler = (e: KeyboardEvent) => {
-      const meta = e.metaKey || e.ctrlKey
-      if (!meta || enCampo()) return
-      const k = e.key.toLowerCase()
-      if (k === 'z' && !e.shiftKey) {
-        if (historiaIdx <= 0) return
-        e.preventDefault(); e.stopImmediatePropagation()
-        const newIdx = historiaIdx - 1
-        setBloques(historia[newIdx]); setHistoriaIdx(newIdx); setCambiosSinGuardar(true); programarAutoSave()
-      } else if ((k === 'z' && e.shiftKey) || k === 'y') {
-        if (historiaIdx >= historia.length - 1) return
-        e.preventDefault(); e.stopImmediatePropagation()
-        const newIdx = historiaIdx + 1
-        setBloques(historia[newIdx]); setHistoriaIdx(newIdx); setCambiosSinGuardar(true); programarAutoSave()
-      } else if (k === 'c' && bloqueSel) {
-        const b = bloquesRef.current.find(x => x.id === bloqueSel)
-        if (!b) return
-        e.preventDefault()
-        const { id: _i, rodaje_id: _r, created_at: _c, updated_at: _u, orden: _o, padre_id: _p, hijos: _h, locacion: _l, ...datos } = b as any
-        const p: Portapapeles = { tipo: 'bloque', etiqueta: b.titulo, origen: rodaje?.nombre ?? '', datos }
-        guardarPortapapeles(p)
-        toastOk(`Copiado el bloque «${b.titulo}». Ctrl+V lo pega después del bloque seleccionado (también en otro rodaje).`)
-      } else if (k === 'v') {
-        const p = leerPortapapeles()
-        if (p?.tipo !== 'bloque') return
-        e.preventDefault()
-        pegarBloque(p.datos as Partial<RodajeBloque> & { titulo: string })
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }) // sin deps a propósito: lee siempre el estado vigente
-
   // Tras un deshacer/rehacer GLOBAL (ya guardado en el servidor) se recarga todo.
   useEffect(() => {
     const onHistorial = () => { void cargarTodo() }
@@ -263,6 +225,44 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       toastOk(`Pegado «${nuevo.titulo}»`)
     }).catch(e => toastError(e instanceof Error ? e.message : 'No se pudo pegar el bloque'))
   }
+
+  // Keyboard: Cmd+Z / Ctrl+Z undo, Cmd+Shift+Z / Ctrl+Y redo (local, en memoria).
+  // Si no hay nada local que deshacer/rehacer, NO se detiene el evento y lo
+  // toma el historial global (lo ya guardado: bloques borrados, equipo, etc.).
+  useEffect(() => {
+    const enCampo = () => { const t = document.activeElement?.tagName; return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || (document.activeElement as HTMLElement | null)?.isContentEditable }
+    const handler = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey
+      if (!meta || enCampo()) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) {
+        if (historiaIdx <= 0) return
+        e.preventDefault(); e.stopImmediatePropagation()
+        const newIdx = historiaIdx - 1
+        setBloques(historia[newIdx]); setHistoriaIdx(newIdx); setCambiosSinGuardar(true); programarAutoSave()
+      } else if ((k === 'z' && e.shiftKey) || k === 'y') {
+        if (historiaIdx >= historia.length - 1) return
+        e.preventDefault(); e.stopImmediatePropagation()
+        const newIdx = historiaIdx + 1
+        setBloques(historia[newIdx]); setHistoriaIdx(newIdx); setCambiosSinGuardar(true); programarAutoSave()
+      } else if (k === 'c' && bloqueSel) {
+        const b = bloquesRef.current.find(x => x.id === bloqueSel)
+        if (!b) return
+        e.preventDefault()
+        const { id: _i, rodaje_id: _r, created_at: _c, updated_at: _u, orden: _o, padre_id: _p, hijos: _h, locacion: _l, ...datos } = b as any
+        const p: Portapapeles = { tipo: 'bloque', etiqueta: b.titulo, origen: rodaje?.nombre ?? '', datos }
+        guardarPortapapeles(p)
+        toastOk(`Copiado el bloque «${b.titulo}». Ctrl+V lo pega después del bloque seleccionado (también en otro rodaje).`)
+      } else if (k === 'v') {
+        const p = leerPortapapeles()
+        if (p?.tipo !== 'bloque') return
+        e.preventDefault()
+        pegarBloque(p.datos as Partial<RodajeBloque> & { titulo: string })
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }) // sin deps a propósito: lee siempre el estado vigente
 
   const handleCrearBloque = (payload: any) => {
     if (creando) return
