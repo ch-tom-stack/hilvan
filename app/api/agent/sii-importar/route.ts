@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 //   { periodo: "2026-06", compras?: {resumen, detalle}, ventas?: {resumen, detalle},
 //     bhe?: <bte list --recibidas>, herramienta?: "sii-cli 0.10.0" }
 //
-// Recibe lo que lee la CLI `sii` en el Mac (lo manda `npm run sii:importar`) y lo
+// Recibe lo que lee la CLI `sii` en el Mac (lo manda el trabajador del Mac o `npm run sii:importar`) y lo
 // guarda en sii_documentos (upsert idempotente, respaldo fiel para el contador).
 // Por cada lado registra en sii_importaciones si llegó COMPLETO o INCOMPLETO
 // (con el motivo): hilvan_sii_sync / hilvan_sii_sync_ventas leen de ahí y

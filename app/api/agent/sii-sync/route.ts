@@ -111,6 +111,6 @@ export async function POST(req: Request) {
       ya_cargados: comprasOut.concat(notasCreditoOut, honorariosOut).filter((f) => f.ya_cargado).length,
     },
     importado: Object.fromEntries(importaciones.map((i) => [i.lado, i.importado_at])),
-    nota: 'Solo lectura, desde la última importación del SII (`importado`: si fue antes de que cerrara el mes, pueden faltar documentos posteriores; se reimporta con `npm run sii:importar -- AAAA-MM` en el Mac de Tomás). Facturas y boletas NUEVAS: clasifícalas (origen mensual/proyecto, categoría o cotizacion_item_id) y cárgalas con hilvan_crear_gastos_bulk. Las NOTAS DE CRÉDITO (notas_credito) NO van por ahí: cárgalas con hilvan_crear_nota_credito (monto = el valor mostrado en POSITIVO; se persiste negativo; pasa referencia_folio = la factura que anula).',
+    nota: 'Solo lectura, desde la última importación del SII (`importado`: si fue antes de que cerrara el mes, pueden faltar documentos posteriores; se refresca con hilvan_sii_solicitar_importacion). Facturas y boletas NUEVAS: clasifícalas (origen mensual/proyecto, categoría o cotizacion_item_id) y cárgalas con hilvan_crear_gastos_bulk. Las NOTAS DE CRÉDITO (notas_credito) NO van por ahí: cárgalas con hilvan_crear_nota_credito (monto = el valor mostrado en POSITIVO; se persiste negativo; pasa referencia_folio = la factura que anula).',
   })
 }

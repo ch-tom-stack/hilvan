@@ -203,7 +203,7 @@ describe('verificarImportaciones', () => {
     if (r.ok) return
     expect(r.faltan).toEqual(['bhe'])
     expect(r.error).toContain('NO significa que no haya documentos')
-    expect(r.error).toContain('npm run sii:importar -- 2026-06')
+    expect(r.error).toContain('hilvan_sii_solicitar_importacion(periodo="202606")')
   })
 
   it('incompleto → error con los motivos', () => {

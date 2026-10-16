@@ -442,7 +442,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Documentos del SII importados (RCV compras + honorarios)',
         description:
-          'SOLO LECTURA. Entrega las FACTURAS COMPRADAS/RECIBIDAS (RCV compras), las NOTAS DE CRÉDITO recibidas (dte 61, en `notas_credito`) y las BOLETAS DE HONORARIOS RECIBIDAS (`honorarios`) de un período, ya normalizadas, marcando cuáles YA están cargadas (ya_cargado por rut+folio). Lee lo IMPORTADO del SII (sii_documentos); no consulta al SII en vivo. Si el período no está importado completo responde ERROR con la instrucción: NO lo leas como "no hubo documentos" ni reintentes; avisa a Tomás que corra `npm run sii:importar -- AAAA-MM` en su Mac. NO escribe gastos. Flujo: 1) llamas esto; 2) clasificas las filas NUEVAS de `compras` y `honorarios` (origen mensual/proyecto, categoría o cotizacion_item_id) y las cargas con hilvan_crear_gastos_bulk; 3) las de `notas_credito` NO van por ahí: cárgalas con hilvan_crear_nota_credito (monto en positivo, referencia_folio = la factura que anula). periodo en formato AAAAMM (ej. 202606). incluir_crudo=true muestra el registro original del SII.',
+          'SOLO LECTURA. Entrega las FACTURAS COMPRADAS/RECIBIDAS (RCV compras), las NOTAS DE CRÉDITO recibidas (dte 61, en `notas_credito`) y las BOLETAS DE HONORARIOS RECIBIDAS (`honorarios`) de un período, ya normalizadas, marcando cuáles YA están cargadas (ya_cargado por rut+folio). Lee lo IMPORTADO del SII (sii_documentos); no consulta al SII en vivo. Si el período no está importado completo responde ERROR: NO lo leas como "no hubo documentos" ni lo reintentes; pide la importación con hilvan_sii_solicitar_importacion y vuelve cuando hilvan_sii_estado_importacion diga "hecha". NO escribe gastos. Flujo: 1) llamas esto; 2) clasificas las filas NUEVAS de `compras` y `honorarios` (origen mensual/proyecto, categoría o cotizacion_item_id) y las cargas con hilvan_crear_gastos_bulk; 3) las de `notas_credito` NO van por ahí: cárgalas con hilvan_crear_nota_credito (monto en positivo, referencia_folio = la factura que anula). periodo en formato AAAAMM (ej. 202606). incluir_crudo=true muestra el registro original del SII.',
         inputSchema: {
           periodo: z.string().describe('AAAAMM, ej. 202606'),
           tipo: z.enum(['ambos', 'rcv', 'bhe']).optional().describe('qué traer (default ambos)'),
@@ -457,13 +457,43 @@ const baseHandler = createMcpHandler(
       {
         title: 'Facturas EMITIDAS del SII importadas (RCV ventas)',
         description:
-          'SOLO LECTURA. Entrega, desde lo IMPORTADO del SII (sii_documentos; si el período no está importado completo responde ERROR: no reintentes, avisa a Tomás que corra `npm run sii:importar -- AAAA-MM` en su Mac), las FACTURAS EMITIDAS por Casa Hiedra (RCV ventas) de un período — DTE 33/34/39 en `facturas` y las NOTAS DE CRÉDITO emitidas (dte 61) en `notas_credito`. Cada fila trae receptor (=cliente), folio, fecha, montos y `cotizacion_sugerida` {id, numero, confianza alta/media} cruzando RUT receptor + monto + fecha; `ya_registrada` marca si ese folio ya está en una cotización. NO escribe en cotizaciones. Flujo: 1) llamas esto; 2) para los matches de confianza ALTA ya confirmados: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio); 3) el cobro va por su carril (movimientos/conciliar o registrar_pago). NUNCA inventes el match — si no hay cotizacion_sugerida, pregunta. periodo AAAAMM (ej. 202606). incluir_crudo=true muestra el registro SII original.',
+          'SOLO LECTURA. Entrega, desde lo IMPORTADO del SII (sii_documentos; si el período no está importado completo responde ERROR: no reintentes; pide la importación con hilvan_sii_solicitar_importacion y vuelve cuando esté "hecha"), las FACTURAS EMITIDAS por Casa Hiedra (RCV ventas) de un período — DTE 33/34/39 en `facturas` y las NOTAS DE CRÉDITO emitidas (dte 61) en `notas_credito`. Cada fila trae receptor (=cliente), folio, fecha, montos y `cotizacion_sugerida` {id, numero, confianza alta/media} cruzando RUT receptor + monto + fecha; `ya_registrada` marca si ese folio ya está en una cotización. NO escribe en cotizaciones. Flujo: 1) llamas esto; 2) para los matches de confianza ALTA ya confirmados: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio); 3) el cobro va por su carril (movimientos/conciliar o registrar_pago). NUNCA inventes el match — si no hay cotizacion_sugerida, pregunta. periodo AAAAMM (ej. 202606). incluir_crudo=true muestra el registro SII original.',
         inputSchema: {
           periodo: z.string().describe('AAAAMM, ej. 202606'),
           incluir_crudo: z.boolean().optional().describe('incluye el registro SII original por fila (debug de mapeo)'),
         },
       },
       async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/sii-sync-ventas', args)),
+    )
+
+    server.registerTool(
+      'hilvan_sii_solicitar_importacion',
+      {
+        title: 'Pedir importación del SII (la procesa el Mac de Tomás)',
+        description:
+          'Pide importar un período del SII. Hilván NO lee el SII en vivo: la sesión y la clave viven solo en el Mac de Tomás, que revisa cada 5 min si hay pedidos, importa y reporta. Úsala cuando hilvan_sii_sync / hilvan_sii_sync_ventas respondan que el período no está importado o quedó incompleto, o para refrescar un mes que se importó antes de cerrar. Devuelve el pedido y el estado del Mac (en_linea → se procesa en minutos; fuera_de_linea → queda en cola hasta que despierte, avisa a Tomás si es urgente; bloqueado → el SII rechazó el login: NO pidas más, avisa a Tomás). Pedir dos veces el mismo período no duplica. Después revisa con hilvan_sii_estado_importacion; si el pedido queda "fallida", muestra el error a Tomás y no lo vuelvas a pedir. periodo AAAAMM (ej. 202609).',
+        inputSchema: {
+          periodo: z.string().describe('AAAAMM, ej. 202609'),
+          lados: z
+            .array(z.enum(['compras', 'ventas', 'bhe']))
+            .optional()
+            .describe('qué importar (default los tres: compras, ventas y boletas de honorarios)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/sii-solicitar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_sii_estado_importacion',
+      {
+        title: 'Estado de las importaciones del SII',
+        description:
+          'SOLO LECTURA. Cómo va la importación del SII: el Mac de Tomás (en_linea / fuera_de_linea / bloqueado, con su último latido), los últimos pedidos (pendiente → en_curso → hecha | fallida, con resultado o error) y, si pasas periodo, qué lados (compras, ventas, bhe) están importados, si completos y cuándo. Úsala después de hilvan_sii_solicitar_importacion: espera unos minutos entre consultas, no la llames en ráfaga.',
+        inputSchema: {
+          periodo: z.string().optional().describe('AAAAMM, ej. 202609 (opcional)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/sii-estado', args)),
     )
 
     server.registerTool(

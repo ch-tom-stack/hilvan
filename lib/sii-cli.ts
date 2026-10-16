@@ -291,8 +291,9 @@ export function verificarImportaciones(
     ok: false,
     error:
       `No hay datos confiables del SII para ${mes} (${partes.join('; ')}). Esto NO significa que no haya ` +
-      `documentos. Hay que importar desde el Mac de Tomás: \`npm run sii:importar -- ${mes}\` ` +
-      '(si pide sesión: `sii auth login` UNA vez). No reintentes este sync hasta que se importe.',
+      `documentos. Pide la importación con hilvan_sii_solicitar_importacion(periodo="${periodo}"), revisa ` +
+      'con hilvan_sii_estado_importacion hasta que quede "hecha" (el Mac de Tomás la procesa en minutos si ' +
+      'está en línea) y recién ahí vuelve a llamar este sync. No lo reintentes antes.',
     faltan,
     incompletos,
   }

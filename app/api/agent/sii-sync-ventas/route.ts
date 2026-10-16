@@ -153,6 +153,6 @@ export async function POST(req: Request) {
       total_emitido: ventas.reduce((s, v) => s + (v.tipo_documento === 'nota_credito' ? -v.monto_total : v.monto_total), 0),
     },
     importado: importaciones[0]?.importado_at ?? null,
-    nota: 'Solo lectura, desde la última importación del SII (`importado`: si fue antes de que cerrara el mes, pueden faltar documentos posteriores; se reimporta con `npm run sii:importar -- AAAA-MM` en el Mac de Tomás). Para registrar: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio) sólo en matches de confianza alta ya confirmados. Las NOTAS DE CRÉDITO emitidas (dte 61) reducen una venta previa (referencia_folio) — manéjalas aparte. El cobro sigue por su carril (movimientos/conciliar o registrar_pago).',
+    nota: 'Solo lectura, desde la última importación del SII (`importado`: si fue antes de que cerrara el mes, pueden faltar documentos posteriores; se refresca con hilvan_sii_solicitar_importacion). Para registrar: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio) sólo en matches de confianza alta ya confirmados. Las NOTAS DE CRÉDITO emitidas (dte 61) reducen una venta previa (referencia_folio) — manéjalas aparte. El cobro sigue por su carril (movimientos/conciliar o registrar_pago).',
   })
 }
