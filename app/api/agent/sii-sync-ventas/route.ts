@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { normalizarVenta, normalizarRut, numCL, type FilaVenta } from '@/lib/agent-sii'
+import { normalizarRut, ventaDesdeDocumento, type FilaVenta, type SiiDocumento } from '@/lib/agent-sii'
+import { periodoAAAAMM, verificarImportaciones, type ImportacionSii } from '@/lib/sii-cli'
 import { calcularTotalCot } from '@/app/actions/financiero-helpers'
 
 export const runtime = 'nodejs'
 
 // POST /api/agent/sii-sync-ventas (JSON)  { periodo: "202606", incluir_crudo?: boolean }
 //
-// SOLO LECTURA. Trae del SII (vía API Gateway) las FACTURAS EMITIDAS por Casa
-// Hiedra (RCV ventas) de un período, las normaliza, las guarda en sii_documentos
-// (respaldo fiel para el contador) y SUGIERE a qué cotización corresponde cada
-// una (RUT receptor + monto + fecha). NO escribe en cotizaciones ni ingresos:
-// el registro lo hace después hilvan_registrar_factura_emitida tras confirmar.
+// SOLO LECTURA. Entrega las FACTURAS EMITIDAS por Casa Hiedra (RCV ventas) de un
+// período y SUGIERE a qué cotización corresponde cada una (RUT receptor + monto
+// + fecha). NO escribe en cotizaciones ni ingresos: el registro lo hace después
+// hilvan_registrar_factura_emitida tras confirmar.
 //
-// Contrato del gateway (verificado): resumen /sii/rcv/ventas/resumen/{rut}/{periodo}
-// da los DTE del período; detalle /sii/rcv/ventas/detalle/{rut}/{periodo}/{dte}?tipo=rcv_csv
-// (dte puntual, sin /REGISTRO). En ventas rut/razon_social = RECEPTOR = cliente.
+// Desde oct-2026 NO consulta al SII: lee sii_documentos (fuente rcv_venta), que
+// llena /api/agent/sii-importar con lo que trae la CLI `sii` desde el Mac. Si el
+// período no se importó completo, responde ERROR (409). En ventas
+// rut_emisor/razon_social_emisor = RECEPTOR = cliente.
 export async function POST(req: Request) {
   const unauthorized = requireAgentToken(req)
   if (unauthorized) return unauthorized
@@ -24,98 +25,45 @@ export async function POST(req: Request) {
   let body: any
   try { body = await req.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
 
-  const periodo = String(body?.periodo ?? '').trim().replace('-', '')
-  if (!/^\d{6}$/.test(periodo)) {
+  const periodo = periodoAAAAMM(body?.periodo)
+  if (!periodo) {
     return NextResponse.json({ error: 'periodo inválido (formato AAAAMM, ej. 202606)' }, { status: 400 })
   }
   const incluirCrudo = body?.incluir_crudo === true
 
-  const token = process.env.APIGATEWAY_API_TOKEN
-  const rut = process.env.SII_RUT
-  const clave = process.env.SII_CLAVE
-  if (!token || !rut || !clave) {
-    return NextResponse.json({ error: 'Faltan credenciales en el servidor (APIGATEWAY_API_TOKEN, SII_RUT, SII_CLAVE)' }, { status: 503 })
-  }
-  const baseUrl = (process.env.APIGATEWAY_API_URL || 'https://app.apigateway.cl/api/v2').replace(/\/$/, '')
-  const auth = JSON.stringify({ auth: { pass: { rut, clave } } })
-  const headers = { 'Content-Type': 'application/json', Authorization: `Token ${token}` }
+  const admin = createAdminClient()
 
-  async function ag(path: string): Promise<{ ok: boolean; status: number; json: any }> {
-    try {
-      const res = await fetch(`${baseUrl}${path}`, { method: 'POST', headers, body: auth })
-      const text = await res.text()
-      let json: any = null
-      try { json = text ? JSON.parse(text) : null } catch { json = { raw: text.slice(0, 300) } }
-      return { ok: res.ok, status: res.status, json }
-    } catch (e: any) {
-      return { ok: false, status: 0, json: { error: e?.message ?? 'fetch falló' } }
-    }
+  // ── 1) ¿Está importado y completo? ─────────────────────────────────────────
+  const { data: imps, error: errImp } = await admin
+    .from('sii_importaciones')
+    .select('periodo, lado, estado, documentos, errores, importado_at')
+    .eq('periodo', periodo)
+    .eq('lado', 'ventas')
+  if (errImp) {
+    return NextResponse.json({ error: `No se pudo leer el estado de importación: ${errImp.message}` }, { status: 500 })
   }
+  const importaciones = (imps ?? []) as ImportacionSii[]
+  const verif = verificarImportaciones(periodo, ['ventas'], importaciones)
+  if (!verif.ok) return NextResponse.json(verif, { status: 409 })
 
-  const errores: string[] = []
-
-  // ── 1) Resumen: qué DTE tiene el período (con detalle disponible) ──────────
-  const resumen = await ag(`/sii/rcv/ventas/resumen/${rut}/${periodo}`)
-  if (!resumen.ok) {
-    return NextResponse.json({ error: `RCV ventas resumen: HTTP ${resumen.status}`, detalle: JSON.stringify(resumen.json)?.slice(0, 200) }, { status: 502 })
+  // ── 2) Documentos emitidos del período ────────────────────────────────────
+  const { data: docs, error: errDocs } = await admin
+    .from('sii_documentos')
+    .select('periodo, fuente, dte, tipo_documento, rut_emisor, razon_social_emisor, folio, fecha_documento, neto, iva, total, monto, anulada, doc_ref_folio, doc_ref_tipo, raw')
+    .eq('periodo', periodo)
+    .eq('fuente', 'rcv_venta')
+    .eq('anulada', false)
+    .order('fecha_documento', { ascending: true })
+  if (errDocs) {
+    return NextResponse.json({ error: `No se pudieron leer los documentos del SII: ${errDocs.message}` }, { status: 500 })
   }
-  const filasResumen: any[] = Array.isArray(resumen.json?.data?.data) ? resumen.json.data.data : []
-  const dtes = [...new Set(
-    filasResumen
-      .filter((f) => f?.rsmnLink === true && Number(f?.rsmnTipoDocInteger) > 0 && f?.dcvTipoIngresoDoc !== 'RESUMEN')
-      .map((f) => Number(f.rsmnTipoDocInteger)),
-  )]
-
-  // ── 2) Detalle por DTE ─────────────────────────────────────────────────────
-  const ventas: FilaVenta[] = []
-  for (const dte of dtes) {
-    const r = await ag(`/sii/rcv/ventas/detalle/${rut}/${periodo}/${dte}?tipo=rcv_csv`)
-    if (!r.ok) { errores.push(`Ventas detalle dte ${dte}: HTTP ${r.status}`); continue }
-    const arr: any[] = Array.isArray(r.json?.data) ? r.json.data : []
-    ventas.push(...arr.map(normalizarVenta))
-  }
+  const ventas = ((docs ?? []) as SiiDocumento[]).map(ventaDesdeDocumento)
 
   const notasCredito = ventas.filter((v) => v.tipo_documento === 'nota_credito')
   const facturas = ventas.filter((v) => v.tipo_documento !== 'nota_credito')
 
-  const admin = createAdminClient()
-
-  // ── 3) Respaldo fiel en sii_documentos (receptor en rut_emisor) ────────────
-  const ahora = new Date().toISOString()
-  const filaARow = (v: FilaVenta) => ({
-    periodo,
-    fuente: v.fuente,
-    dte: v.tipo_dte,
-    tipo_documento: v.tipo_documento,
-    rut_emisor: v.receptor_rut, // en ventas guardamos el RECEPTOR (contraparte)
-    razon_social_emisor: v.receptor_razon_social,
-    folio: v.folio,
-    fecha_documento: v.fecha_emision,
-    neto: v.monto_neto || null,
-    iva: v.iva || null,
-    total: v.monto_total || null,
-    monto: v.monto_total,
-    codigo: null,
-    anulada: false,
-    doc_ref_folio: v.referencia_folio ?? null,
-    doc_ref_tipo: v.referencia_tipo ?? null,
-    raw: v.crudo,
-    sincronizado_at: ahora,
-  })
-  let registro: { guardados: number; error?: string }
-  try {
-    const rows = ventas.map(filaARow).filter((r) => r.rut_emisor && r.folio)
-    if (!rows.length) registro = { guardados: 0 }
-    else {
-      const { error } = await admin.from('sii_documentos').upsert(rows, { onConflict: 'fuente,rut_emisor,folio,dte' })
-      registro = error ? { guardados: 0, error: error.message } : { guardados: rows.length }
-    }
-  } catch (e: any) {
-    registro = { guardados: 0, error: e?.message ?? 'fallo al guardar el registro' }
-  }
-
-  // ── 4) Auto-match a cotizaciones (RUT receptor + monto + fecha) ────────────
-  const { data: cots } = await admin
+  // ── 3) Auto-match a cotizaciones (RUT receptor + monto + fecha) ────────────
+  const { data: cots, error: errCots } = await admin
     .from('cotizaciones')
     .select(`
       id, numero_factura, fecha_factura_emitida, estado, con_iva,
@@ -127,6 +75,9 @@ export async function POST(req: Request) {
         items:cotizacion_items(precio_cliente, cantidad, dias, incluido, descuento_item, descuento_item_tipo, subgrupo_id)
       )
     `)
+  if (errCots) {
+    return NextResponse.json({ error: `No se pudieron leer las cotizaciones para sugerir el match: ${errCots.message}` }, { status: 500 })
+  }
 
   // Normaliza razón social para comparar (los clientes de Hilván a veces no tienen RUT).
   const normNombre = (s: unknown) =>
@@ -201,8 +152,7 @@ export async function POST(req: Request) {
       ya_registradas: facturasOut.concat(notasCreditoOut).filter((f) => f.ya_registrada).length,
       total_emitido: ventas.reduce((s, v) => s + (v.tipo_documento === 'nota_credito' ? -v.monto_total : v.monto_total), 0),
     },
-    registro,
-    nota: 'Solo lectura. Cada factura queda en sii_documentos (respaldo del contador). Para registrar: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio) sólo en matches de confianza alta ya confirmados. Las NOTAS DE CRÉDITO emitidas (dte 61) reducen una venta previa (referencia_folio) — manéjalas aparte. El cobro sigue por su carril (movimientos/conciliar o registrar_pago).',
-    ...(errores.length ? { errores } : {}),
+    importado: importaciones[0]?.importado_at ?? null,
+    nota: 'Solo lectura, desde la última importación del SII (`importado`: si fue antes de que cerrara el mes, pueden faltar documentos posteriores; se reimporta con `npm run sii:importar -- AAAA-MM` en el Mac de Tomás). Para registrar: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio) sólo en matches de confianza alta ya confirmados. Las NOTAS DE CRÉDITO emitidas (dte 61) reducen una venta previa (referencia_folio) — manéjalas aparte. El cobro sigue por su carril (movimientos/conciliar o registrar_pago).',
   })
 }

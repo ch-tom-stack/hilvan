@@ -440,9 +440,9 @@ const baseHandler = createMcpHandler(
     server.registerTool(
       'hilvan_sii_sync',
       {
-        title: 'Traer documentos del SII (RCV + honorarios)',
+        title: 'Documentos del SII importados (RCV compras + honorarios)',
         description:
-          'SOLO LECTURA. Trae del SII (vía API Gateway) las FACTURAS COMPRADAS/RECIBIDAS (RCV compras), las NOTAS DE CRÉDITO recibidas (dte 61, en `notas_credito`) y las BOLETAS DE HONORARIOS RECIBIDAS (`honorarios`) de un período, ya normalizadas, marcando cuáles YA están cargadas (ya_cargado por rut+folio). Además guarda cada documento en sii_documentos (respaldo fiel para el contador). NO escribe gastos. Flujo: 1) llamas esto; 2) clasificas las filas NUEVAS de `compras` y `honorarios` (origen mensual/proyecto, categoría o cotizacion_item_id) y las cargas con hilvan_crear_gastos_bulk; 3) las de `notas_credito` NO van por ahí: cárgalas con hilvan_crear_nota_credito (monto en positivo, referencia_folio = la factura que anula). periodo en formato AAAAMM (ej. 202606). incluir_crudo=true muestra el registro original del SII.',
+          'SOLO LECTURA. Entrega las FACTURAS COMPRADAS/RECIBIDAS (RCV compras), las NOTAS DE CRÉDITO recibidas (dte 61, en `notas_credito`) y las BOLETAS DE HONORARIOS RECIBIDAS (`honorarios`) de un período, ya normalizadas, marcando cuáles YA están cargadas (ya_cargado por rut+folio). Lee lo IMPORTADO del SII (sii_documentos); no consulta al SII en vivo. Si el período no está importado completo responde ERROR con la instrucción: NO lo leas como "no hubo documentos" ni reintentes; avisa a Tomás que corra `npm run sii:importar -- AAAA-MM` en su Mac. NO escribe gastos. Flujo: 1) llamas esto; 2) clasificas las filas NUEVAS de `compras` y `honorarios` (origen mensual/proyecto, categoría o cotizacion_item_id) y las cargas con hilvan_crear_gastos_bulk; 3) las de `notas_credito` NO van por ahí: cárgalas con hilvan_crear_nota_credito (monto en positivo, referencia_folio = la factura que anula). periodo en formato AAAAMM (ej. 202606). incluir_crudo=true muestra el registro original del SII.',
         inputSchema: {
           periodo: z.string().describe('AAAAMM, ej. 202606'),
           tipo: z.enum(['ambos', 'rcv', 'bhe']).optional().describe('qué traer (default ambos)'),
@@ -455,9 +455,9 @@ const baseHandler = createMcpHandler(
     server.registerTool(
       'hilvan_sii_sync_ventas',
       {
-        title: 'Traer facturas EMITIDAS del SII (RCV ventas)',
+        title: 'Facturas EMITIDAS del SII importadas (RCV ventas)',
         description:
-          'SOLO LECTURA. Trae del SII (vía API Gateway) las FACTURAS EMITIDAS por Casa Hiedra (RCV ventas) de un período — DTE 33/34/39 en `facturas` y las NOTAS DE CRÉDITO emitidas (dte 61) en `notas_credito`. Cada fila trae receptor (=cliente), folio, fecha, montos y `cotizacion_sugerida` {id, numero, confianza alta/media} cruzando RUT receptor + monto + fecha; `ya_registrada` marca si ese folio ya está en una cotización. Guarda todo en sii_documentos (respaldo del contador). NO escribe en cotizaciones. Flujo: 1) llamas esto; 2) para los matches de confianza ALTA ya confirmados: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio); 3) el cobro va por su carril (movimientos/conciliar o registrar_pago). NUNCA inventes el match — si no hay cotizacion_sugerida, pregunta. periodo AAAAMM (ej. 202606). incluir_crudo=true muestra el registro SII original.',
+          'SOLO LECTURA. Entrega, desde lo IMPORTADO del SII (sii_documentos; si el período no está importado completo responde ERROR: no reintentes, avisa a Tomás que corra `npm run sii:importar -- AAAA-MM` en su Mac), las FACTURAS EMITIDAS por Casa Hiedra (RCV ventas) de un período — DTE 33/34/39 en `facturas` y las NOTAS DE CRÉDITO emitidas (dte 61) en `notas_credito`. Cada fila trae receptor (=cliente), folio, fecha, montos y `cotizacion_sugerida` {id, numero, confianza alta/media} cruzando RUT receptor + monto + fecha; `ya_registrada` marca si ese folio ya está en una cotización. NO escribe en cotizaciones. Flujo: 1) llamas esto; 2) para los matches de confianza ALTA ya confirmados: hilvan_registrar_factura_emitida(cotizacion_id, fecha_factura_emitida, numero_factura=folio); 3) el cobro va por su carril (movimientos/conciliar o registrar_pago). NUNCA inventes el match — si no hay cotizacion_sugerida, pregunta. periodo AAAAMM (ej. 202606). incluir_crudo=true muestra el registro SII original.',
         inputSchema: {
           periodo: z.string().describe('AAAAMM, ej. 202606'),
           incluir_crudo: z.boolean().optional().describe('incluye el registro SII original por fila (debug de mapeo)'),

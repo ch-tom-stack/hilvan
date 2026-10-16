@@ -129,10 +129,7 @@ GMAIL_APP_PASSWORD             ← contraseña de aplicación Gmail (nodemailer 
 GOOGLE_SERVICE_ACCOUNT_EMAIL   ← hilvan-calendar@hilvan-casahiedra.iam.gserviceaccount.com
 GOOGLE_CALENDAR_ID             ← estudiocasahiedra@gmail.com
 GOOGLE_SERVICE_ACCOUNT_KEY     ← JSON completo de la service account
-APIGATEWAY_API_TOKEN           ← token de API Gateway (apigateway.cl) para traer RCV+BHE del SII
-SII_RUT                        ← RUT del contribuyente (77151117-1, marca Casa Hiedra) para consultar el SII
-SII_CLAVE                      ← clave tributaria del contribuyente (pendiente: evaluar certificado vía API Gateway para no usar la clave admin)
-APIGATEWAY_API_URL             ← opcional, default https://app.apigateway.cl/api/v2
+SII_RUT                        ← opcional: RUT de Casa Hiedra (77151117-1); /api/agent/sii-importar rechaza datos de otro RUT
 WHATSAPP_VERIFY_TOKEN          ← saludo de verificación del webhook de Meta (GET hub.challenge)
 WHATSAPP_APP_SECRET            ← App Secret de Meta: valida X-Hub-Signature-256 (alta directa)
 WHATSAPP_WEBHOOK_KEY           ← llave propia (header x-webhook-key o ?key=) si el alta es vía intermediario
@@ -140,7 +137,7 @@ WHATSAPP_WEBHOOK_KEY           ← llave propia (header x-webhook-key o ?key=) s
 
 > **Email:** se usa Gmail SMTP vía nodemailer (reemplazó a Resend). No hay `RESEND_API_KEY`.
 
-> **SII (API Gateway):** `hilvan_sii_sync` (endpoint `/api/agent/sii-sync`, SOLO LECTURA) trae facturas compradas/recibidas (RCV) + boletas de honorarios recibidas de un período y las normaliza al shape de gasto; la carga la hace `hilvan_crear_gastos_bulk`. Auth en dos capas: header `Authorization: Token <APIGATEWAY_API_TOKEN>` + body `{auth:{pass:{rut,clave}}}`. El mapeo de campos de la respuesta SII vive en `lib/agent-sii.ts` y se afina tras la primera corrida real (usar `incluir_crudo=true`). La **cartola bancaria NO pasa por el SII** — se importa/concilia aparte.
+> **SII (oct-2026, sin API Gateway):** el servidor ya NO consulta al SII. La CLI `sii` ([albertomarturelo/sii](https://github.com/albertomarturelo/sii), instalada en `~/sii-ensayo`) lee en el Mac de Tomás con la sesión de Casa Hiedra (`sii auth login`, entrar con el RUT de la EMPRESA: las BHE solo se leen como titular). `npm run sii:importar -- AAAA-MM` (`scripts/sii-importar.mjs`) manda lo leído a `POST /api/agent/sii-importar`, que guarda en `sii_documentos` y registra por período y lado (compras/ventas/bhe) si llegó COMPLETO en `sii_importaciones` (`sql/sii_importaciones.sql`). `hilvan_sii_sync` y `hilvan_sii_sync_ventas` leen de ahí y responden **409 si el lado no está importado completo — nunca listas vacías**. Lógica pura en `lib/sii-cli.ts` (cuadre resumen↔detalle, tipo 48 de ventas con 0 docs no cuenta) y `lib/agent-sii.ts`; tests en `tests/sii-cli.test.ts`. La clave nunca pasa por Hilván. Informe del ensayo: `docs/sii/informe-ensayo-sii-2026-10-16.md`. La **cartola bancaria NO pasa por el SII** — se importa/concilia aparte.
 
 ---
 

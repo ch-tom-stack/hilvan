@@ -1,26 +1,13 @@
 // lib/agent-sii.ts
-// Normalización PURA de los documentos que devuelve API Gateway (RCV compras +
-// BHE recibidas del SII) al shape de "fila de gasto" que consume
-// /api/agent/crear-gastos-bulk. SIN I/O: recibe el registro crudo del SII y
-// devuelve una fila sugerida lista para que un humano la clasifique (origen,
-// categoría o cotizacion_item_id) antes de cargar.
+// Documentos del SII guardados en sii_documentos → filas que entregan
+// hilvan_sii_sync (compras/NC/honorarios, shape de gasto para crear-gastos-bulk)
+// y hilvan_sii_sync_ventas (facturas emitidas). SIN I/O.
 //
-// IMPORTANTE: los nombres de campo de la respuesta de API Gateway/SII no están
-// 100% confirmados (la doc es Swagger JS). El acceso es DEFENSIVO (probamos
-// varias llaves comunes) y cada fila conserva `crudo` para fijar el mapeo con
-// exactitud tras la primera corrida real. Ajustar las llaves aquí si hace falta.
-
-/** Lee la primera llave existente de un objeto (case-insensitive, defensivo). */
-function pick(obj: Record<string, any>, ...llaves: string[]): any {
-  if (!obj) return undefined
-  const lower: Record<string, any> = {}
-  for (const k of Object.keys(obj)) lower[k.toLowerCase()] = obj[k]
-  for (const llave of llaves) {
-    const v = obj[llave] ?? lower[llave.toLowerCase()]
-    if (v !== undefined && v !== null && v !== '') return v
-  }
-  return undefined
-}
+// Desde oct-2026 el SII ya no se consulta desde el servidor (el API Gateway se
+// dejó de pagar): la CLI `sii` lee en el Mac y /api/agent/sii-importar guarda
+// cada documento en sii_documentos (ver lib/sii-cli.ts). Estas funciones leen
+// esas filas, sin importar si las escribió el gateway o la CLI: las columnas
+// son las mismas.
 
 /** Número defensivo: soporta "1.234.567", "1234,56", "$ 1.234" y number. */
 export function numCL(v: unknown): number {
@@ -36,7 +23,7 @@ export function numCL(v: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
-/** Fecha SII → YYYY-MM-DD (acepta "2026-06-15", "15-06-2026", "2026/06/15", "20260615"). */
+/** Fecha SII → YYYY-MM-DD (acepta "2026-06-15", "15-06-2026", "15/06/2026", "20260615"). */
 export function fechaISO(v: unknown): string | null {
   if (!v) return null
   const s = String(v).trim()
@@ -49,21 +36,52 @@ export function fechaISO(v: unknown): string | null {
   return null
 }
 
+export type TipoDocumentoSii = 'factura' | 'exenta' | 'boleta' | 'nota_credito'
+
 // Códigos DTE del SII que son exentos (sin IVA) → tipo_documento 'exenta'.
-const DTE_EXENTOS = new Set([34, 41]) // 34 factura exenta, 41 BHE exenta (no aplica acá)
+const DTE_EXENTOS = new Set([34, 41]) // 34 factura exenta, 41 boleta exenta
+
+/** Tipo de documento Hilván según el código DTE. 61 = nota de crédito (RESTA una
+ *  factura previa); 39 = boleta (solo aparece en ventas). */
+export function tipoDocumentoDeDte(dte: number): TipoDocumentoSii {
+  if (dte === 61) return 'nota_credito'
+  if (DTE_EXENTOS.has(dte)) return 'exenta'
+  if (dte === 39) return 'boleta'
+  return 'factura'
+}
+
+/** Una fila de sii_documentos (lo que lee el sync). */
+export interface SiiDocumento {
+  periodo: string
+  fuente: 'rcv_compra' | 'bhe_recibida' | 'rcv_venta'
+  dte: number
+  tipo_documento: TipoDocumentoSii | null
+  rut_emisor: string | null // en ventas: el RECEPTOR (= cliente)
+  razon_social_emisor: string | null
+  folio: string | null
+  fecha_documento: string | null
+  neto: number | null
+  iva: number | null
+  total: number | null
+  monto: number | null
+  anulada: boolean
+  doc_ref_folio: string | null
+  doc_ref_tipo: number | null
+  raw: Record<string, any> | null
+}
 
 export interface FilaSugerida {
   fuente: 'rcv_compra' | 'bhe_recibida'
   // Campos que entiende crear-gastos-bulk:
-  tipo_documento: 'factura' | 'exenta' | 'boleta' | 'nota_credito'
+  tipo_documento: TipoDocumentoSii
   monto: number
   monto_es: 'neto' | 'bruto'
   rut_emisor: string | null
   razon_social_emisor: string | null
   folio: string | null
   fecha_documento: string | null
-  // Solo NC (dte 61): folio/tipo del documento que la NC anula o reduce
-  // (se llena en el route con el formato rcv por-dte). Para crear-nota-credito.
+  // Solo NC (dte 61): folio/tipo del documento que la NC anula o reduce.
+  // Para crear-nota-credito.
   referencia_folio?: string | null
   referencia_tipo?: number | null
   // Si el documento da crédito fiscal IVA (factura/exenta emitida a nuestro RUT).
@@ -75,31 +93,38 @@ export interface FilaSugerida {
   crudo: Record<string, any>
 }
 
-/** Normaliza un registro de RCV compras (factura recibida) a fila sugerida. */
-export function normalizarCompra(rec: Record<string, any>): FilaSugerida {
-  const dte = Number(pick(rec, 'dte', 'tipoDte', 'tipo_dte', 'TipoDTE', 'codigoTipoDte')) || 0
-  const exenta = DTE_EXENTOS.has(dte)
-  const total = numCL(pick(rec, 'montoTotal', 'monto_total', 'MntTotal', 'total'))
-  const neto = numCL(pick(rec, 'montoNeto', 'monto_neto', 'MntNeto', 'neto'))
-  const razon = pick(rec, 'razonSocial', 'razon_social', 'RznSoc', 'razonSocialEmisor') ?? null
-  const rut = pick(rec, 'rutEmisor', 'rut_emisor', 'RUTEmisor', 'detRutDoc', 'rut') ?? null
-  const folio = pick(rec, 'folio', 'Folio', 'nroDoc', 'detNroDoc') ?? null
-  const fecha = fechaISO(pick(rec, 'fechaEmision', 'fecha_emision', 'FchEmis', 'detFchDoc', 'fecha'))
-  // dte 61 = nota de crédito (RESTA una factura previa) → tipo_documento
-  // 'nota_credito'; se carga con crear-nota-credito (monto absoluto, se persiste
-  // negativo). dte 34 = exenta. Resto = factura. Para todas se guarda el TOTAL
-  // (con IVA) como bruto; si no hay total, el neto.
-  const tipo_documento = dte === 61 ? 'nota_credito' : exenta ? 'exenta' : 'factura'
+/** Fila de sii_documentos (RCV compras o BHE recibida) → fila sugerida de gasto. */
+export function filaDesdeDocumento(d: SiiDocumento): FilaSugerida {
+  const razon = d.razon_social_emisor
+  const folio = d.folio
+  if (d.fuente === 'bhe_recibida') {
+    return {
+      fuente: 'bhe_recibida',
+      tipo_documento: 'boleta',
+      // Se persiste el bruto (total honorarios); el monto ya viene así guardado.
+      monto: numCL(d.monto),
+      monto_es: 'bruto',
+      rut_emisor: d.rut_emisor,
+      razon_social_emisor: razon,
+      folio,
+      fecha_documento: d.fecha_documento,
+      descripcion_sugerida: razon ? `Honorarios ${razon}` : `Boleta honorarios ${folio ?? ''}`.trim(),
+      crudo: d.raw ?? {},
+    }
+  }
+  // RCV compras. Para todas se guarda el TOTAL (con IVA) como bruto; si no hay
+  // total, el neto (lo resuelve la importación al llenar `monto`).
+  const tipo_documento = d.tipo_documento ?? tipoDocumentoDeDte(d.dte)
   const esNC = tipo_documento === 'nota_credito'
-  return {
+  const fila: FilaSugerida = {
     fuente: 'rcv_compra',
     tipo_documento,
-    monto: total > 0 ? total : neto,
+    monto: numCL(d.monto),
     monto_es: 'bruto',
-    rut_emisor: rut != null ? String(rut) : null,
-    razon_social_emisor: razon != null ? String(razon) : null,
-    folio: folio != null ? String(folio) : null,
-    fecha_documento: fecha,
+    rut_emisor: d.rut_emisor,
+    razon_social_emisor: razon,
+    folio,
+    fecha_documento: d.fecha_documento,
     descripcion_sugerida: razon
       ? `${esNC ? 'Nota de crédito ' : ''}${razon}`
       : `${esNC ? 'Nota de crédito' : 'Factura'} ${folio ?? ''}`.trim(),
@@ -107,48 +132,22 @@ export function normalizarCompra(rec: Record<string, any>): FilaSugerida {
     // (nuestro RUT) → toda factura/exenta real da crédito fiscal IVA por defecto.
     // (NC no importa: se carga aparte con crear-nota-credito, no por este flujo.)
     factura_casa_hiedra: !esNC,
-    crudo: rec,
+    crudo: d.raw ?? {},
   }
-}
-
-/** Normaliza una BHE recibida (boleta de honorarios de un tercero) a fila sugerida. */
-export function normalizarBhe(rec: Record<string, any>): FilaSugerida {
-  // Campos CONFIRMADOS de API Gateway (BHE recibidas):
-  //   numero, rut, dv, nombre, fecha, total_honorarios (BRUTO), total_retencion,
-  //   total_liquido, sociedad_profesional, comuna, estado, anulada, codigo.
-  const bruto = numCL(pick(rec, 'total_honorarios', 'montoBruto', 'honorarios'))
-  const liquido = numCL(pick(rec, 'total_liquido', 'montoLiquido', 'liquido'))
-  const razon = pick(rec, 'nombre', 'nombreEmisor', 'razonSocial', 'razon_social') ?? null
-  // El RUT viene partido en rut + dv → recomponer "12345678-9".
-  const rutBase = pick(rec, 'rut', 'rutEmisor', 'rut_emisor')
-  const dv = pick(rec, 'dv')
-  const rut = rutBase != null ? (dv != null ? `${rutBase}-${dv}` : String(rutBase)) : null
-  const folio = pick(rec, 'numero', 'folio', 'nroBoleta') ?? null
-  const fecha = fechaISO(pick(rec, 'fecha', 'fechaEmision', 'fecha_emision'))
-  return {
-    fuente: 'bhe_recibida',
-    tipo_documento: 'boleta',
-    // Persistimos el bruto; si solo viene líquido, dejamos ese (el humano revisa).
-    monto: bruto > 0 ? bruto : liquido,
-    monto_es: 'bruto',
-    rut_emisor: rut != null ? String(rut) : null,
-    razon_social_emisor: razon != null ? String(razon) : null,
-    folio: folio != null ? String(folio) : null,
-    fecha_documento: fecha,
-    descripcion_sugerida: razon ? `Honorarios ${razon}` : `Boleta honorarios ${folio ?? ''}`.trim(),
-    crudo: rec,
+  if (esNC) {
+    fila.referencia_folio = d.doc_ref_folio
+    fila.referencia_tipo = d.doc_ref_tipo
   }
+  return fila
 }
 
 // ── RCV VENTAS (facturas EMITIDAS por Casa Hiedra) ─────────────────────────
-// El endpoint de ventas es distinto al de compras: primero /ventas/resumen da
-// los DTE del período (con rsmnLink=true los que tienen detalle) y luego
-// /ventas/detalle/{rut}/{periodo}/{dte}?tipo=rcv_csv (SIN /REGISTRO, dte puntual).
-// En ventas los campos rut/razon_social son el RECEPTOR = el CLIENTE.
+// En ventas rut_emisor/razon_social_emisor de sii_documentos guardan el
+// RECEPTOR = el CLIENTE.
 export interface FilaVenta {
   fuente: 'rcv_venta'
   tipo_dte: number
-  tipo_documento: 'factura' | 'exenta' | 'boleta' | 'nota_credito'
+  tipo_documento: TipoDocumentoSii
   folio: string | null
   fecha_emision: string | null
   receptor_rut: string | null
@@ -162,51 +161,30 @@ export interface FilaVenta {
   crudo: Record<string, any>
 }
 
-/** Normaliza un DTE emitido (RCV ventas) a fila de venta. rut = receptor = cliente. */
-export function normalizarVenta(rec: Record<string, any>): FilaVenta {
-  const dte = Number(pick(rec, 'dte', 'tipoDte', 'tipo_dte', 'TipoDTE')) || 0
-  const neto = numCL(pick(rec, 'neto', 'montoNeto', 'monto_neto', 'MntNeto'))
-  const iva = numCL(pick(rec, 'iva', 'IVA', 'montoIva', 'MntIVA'))
-  const total = numCL(pick(rec, 'total', 'montoTotal', 'monto_total', 'MntTotal'))
-  const rut = pick(rec, 'rut', 'rutReceptor', 'rut_receptor', 'RUTRecep', 'receptor_rut') ?? null
-  const razon = pick(rec, 'razon_social', 'razonSocial', 'razonSocialReceptor', 'RznSocRecep') ?? null
-  const folio = pick(rec, 'folio', 'Folio', 'nroDoc') ?? null
-  const fecha = fechaISO(pick(rec, 'fecha', 'fechaEmision', 'fecha_emision', 'FchEmis'))
-  const tipo_documento: FilaVenta['tipo_documento'] =
-    dte === 61 ? 'nota_credito' : DTE_EXENTOS.has(dte) ? 'exenta' : dte === 39 ? 'boleta' : 'factura'
-  const refFolio = pick(rec, 'referencia_folio', 'referenciaFolio', 'detFolioDocRef') ?? null
-  const refTipo = pick(rec, 'referencia_tipo', 'referenciaTipo', 'detTipoDocRef') ?? null
+/** Fila de sii_documentos (rcv_venta) → fila de venta. */
+export function ventaDesdeDocumento(d: SiiDocumento): FilaVenta {
+  const neto = numCL(d.neto)
+  const total = numCL(d.total)
   return {
     fuente: 'rcv_venta',
-    tipo_dte: dte,
-    tipo_documento,
-    folio: folio != null ? String(folio) : null,
-    fecha_emision: fecha,
-    receptor_rut: rut != null ? String(rut) : null,
-    receptor_razon_social: razon != null ? String(razon) : null,
+    tipo_dte: d.dte,
+    tipo_documento: d.tipo_documento ?? tipoDocumentoDeDte(d.dte),
+    folio: d.folio,
+    fecha_emision: d.fecha_documento,
+    receptor_rut: d.rut_emisor,
+    receptor_razon_social: d.razon_social_emisor,
     monto_neto: neto,
-    iva,
+    iva: numCL(d.iva),
     monto_total: total > 0 ? total : neto,
-    referencia_folio: refFolio != null ? String(refFolio) : null,
-    referencia_tipo: refTipo != null ? Number(refTipo) || null : null,
-    crudo: rec,
+    referencia_folio: d.doc_ref_folio,
+    referencia_tipo: d.doc_ref_tipo,
+    crudo: d.raw ?? {},
   }
 }
 
 /** Normaliza un RUT chileno para comparar (sin puntos/espacios, dv en mayúscula). */
 export function normalizarRut(rut: string | null | undefined): string {
   return String(rut ?? '').replace(/[.\s]/g, '').toUpperCase().trim()
-}
-
-/** Extrae el array de documentos de una respuesta de API Gateway (shape variable). */
-export function extraerDocumentos(payload: any): Record<string, any>[] {
-  if (Array.isArray(payload)) return payload
-  if (!payload || typeof payload !== 'object') return []
-  // Llaves contenedoras comunes.
-  for (const k of ['data', 'documentos', 'detalle', 'compras', 'boletas', 'items', 'result']) {
-    if (Array.isArray(payload[k])) return payload[k]
-  }
-  return []
 }
 
 /** Clave de deduplicación de un documento (rut emisor + folio). */

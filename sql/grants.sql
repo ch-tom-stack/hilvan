@@ -151,3 +151,5 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.feriados         TO authenticated
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crono_compuertas TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.feriados         TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crono_compuertas TO service_role;
+-- SII: estado de importación por período (schema en sql/sii_importaciones.sql)
+GRANT ALL ON public.sii_importaciones TO service_role;
