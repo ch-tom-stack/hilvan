@@ -156,3 +156,7 @@ GRANT ALL ON public.sii_importaciones TO service_role;
 -- SII: cola del trabajador del Mac (schema en sql/sii_solicitudes.sql)
 GRANT ALL ON public.sii_solicitudes TO service_role;
 GRANT ALL ON public.sii_trabajador  TO service_role;
+-- Transferencias masivas Santander: directorio de cuentas y lotes (schema en sql/pagos_masivos.sql)
+GRANT ALL ON public.cuentas_bancarias TO service_role;
+GRANT ALL ON public.pagos_lotes       TO service_role;
+GRANT ALL ON public.pagos_lote_items  TO service_role;

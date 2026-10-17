@@ -133,6 +133,137 @@ const baseHandler = createMcpHandler(
         ok(await callAgent(extra as ToolExtra, 'GET', `/colaboradores?q=${encodeURIComponent(q)}`)),
     )
 
+    // ── Transferencias masivas Santander y directorio de cuentas ────────────
+    server.registerTool(
+      'hilvan_cuentas_bancarias',
+      {
+        title: 'Directorio de cuentas bancarias',
+        description:
+          'Lista las cuentas de destino conocidas (banco, número, RUT, nombre). Se llena solo con los avisos de Santander: confirmada_por_banco=true significa que ya se le transfirió a esa cuenta. Con sin_colaborador=true deja solo a quienes ya se les pagó pero NO están en Colaboradores: la lista para darlos de alta con hilvan_colaborador_guardar (pasa cuenta_id). Solo lectura.',
+        inputSchema: {
+          q: z.string().optional().describe('RUT o parte del nombre'),
+          sin_colaborador: z.boolean().optional(),
+        },
+      },
+      async ({ q, sin_colaborador }, extra) => {
+        const params = new URLSearchParams()
+        if (q) params.set('q', q)
+        if (sin_colaborador) params.set('sin_colaborador', 'true')
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/cuentas-bancarias${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_cuenta_bancaria_agregar',
+      {
+        title: 'Agregar cuenta bancaria',
+        description:
+          'Agrega a mano una cuenta de destino (ej. la que un colaborador mandó por correo). banco = nombre ("Banco de Chile", "BancoEstado", "Falabella"…) o código CMF de 3 dígitos. Queda sin confirmar hasta que el banco le transfiera. Nunca inventes un número de cuenta: solo uno que el usuario o un documento te haya dado. Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          rut: z.string(),
+          nombre: z.string(),
+          banco: z.string(),
+          numero_cuenta: z.string(),
+          tipo_cuenta: z.enum(['corriente', 'vista', 'ahorro']).optional(),
+          email: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/cuentas-bancarias', args)),
+    )
+
+    server.registerTool(
+      'hilvan_colaborador_guardar',
+      {
+        title: 'Crear o completar colaborador',
+        description:
+          'Crea un colaborador o completa uno existente (se busca por RUT; solo escribe los campos que pasas). Para dar de alta a alguien del directorio de cuentas, pasa su cuenta_id (de hilvan_cuentas_bancarias): copia banco, tipo y número de cuenta, y el nombre si no mandas otro. tipo_documento: boleta | bet | factura | sin_documento | contratado. Reversible con hilvan_deshacer (crear → borra; editar → restaura). CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          rut: z.string(),
+          nombre: z.string().optional(),
+          email: z.string().optional(),
+          telefono: z.string().optional(),
+          tipo_persona: z.enum(['natural', 'empresa']).optional(),
+          razon_social: z.string().optional(),
+          tipo_documento: z.enum(['boleta', 'bet', 'factura', 'sin_documento', 'contratado']).optional(),
+          rol_habitual: z.string().optional(),
+          especialidades: z.array(z.string()).optional(),
+          cuenta_id: z.string().optional().describe('id de hilvan_cuentas_bancarias (del mismo RUT)'),
+          banco: z.string().optional().describe('solo si no pasas cuenta_id'),
+          tipo_cuenta: z.enum(['corriente', 'vista', 'ahorro']).optional(),
+          numero_cuenta: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/colaborador-guardar', args)),
+    )
+
+    server.registerTool(
+      'hilvan_pagos_candidatos',
+      {
+        title: 'Qué se puede pagar',
+        description:
+          'Lo que se puede meter en una transferencia masiva: la nómina del mes (personas, montos, si tienen cuenta) y los gastos aprobados sin pagar (boletas de proyecto y BH mensuales), con monto NETO a transferir y si se conoce la cuenta del emisor. Solo lectura.',
+        inputSchema: {},
+      },
+      async (_args, extra) => ok(await callAgent(extra as ToolExtra, 'GET', '/pago-lote?candidatos=true')),
+    )
+
+    server.registerTool(
+      'hilvan_pago_lote_crear',
+      {
+        title: 'Armar transferencia masiva',
+        description:
+          'Arma un lote de transferencia masiva de Santander: nomina=true agrega la nómina del mes; gastos=[{tabla, id}] (de hilvan_pagos_candidatos) paga esas boletas por su NETO con glosa "BH <folio>"; pagos=[{rut, monto, glosa}] para pagos sueltos. Hilván pone la cuenta conocida de cada RUT y avisa si a esa persona ya se le transfirió el mismo monto hace poco (posible pago doble) o si el gasto ya está en otro lote. Usa solo_revisar=true primero para mostrar el detalle al usuario. El lote nace en borrador: la planilla para Office Banking la descarga una persona desde la url. Reversible con hilvan_deshacer mientras ningún pago haya llegado al banco. CONFIRMA con el usuario antes de llamar sin solo_revisar.',
+        inputSchema: {
+          nombre: z.string().optional(),
+          fecha: z.string().optional().describe('YYYY-MM-DD, fecha en que se paga (default hoy)'),
+          nomina: z.boolean().optional(),
+          gastos: z.array(z.object({ tabla: z.enum(['rendicion_gastos', 'rendicion_mensual_gastos']), id: z.string() })).optional(),
+          pagos: z.array(z.object({ rut: z.string(), monto: z.number(), glosa: z.string().optional(), nombre: z.string().optional(), email: z.string().optional() })).optional(),
+          notas: z.string().optional(),
+          solo_revisar: z.boolean().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/pago-lote', args)),
+    )
+
+    server.registerTool(
+      'hilvan_pago_lotes',
+      {
+        title: 'Estado de transferencias masivas',
+        description:
+          'Lista los lotes de transferencia masiva con cada pago (pendiente / pagado / anulado), sus errores y avisos, y la url para descargar la planilla. Antes de responder corre el cierre: los pagos cuyo cargo ya llegó del banco (aviso o cartola, mismo RUT y monto) quedan pagados, y su gasto de origen queda pagado sin conciliar (concílialo con hilvan_conciliar usando movimiento_id). Solo lectura salvo ese cierre automático.',
+        inputSchema: {
+          id: z.string().optional().describe('un lote'),
+          estado: z.enum(['borrador', 'generado', 'cerrado']).optional(),
+        },
+      },
+      async ({ id, estado }, extra) => {
+        const params = new URLSearchParams()
+        if (id) params.set('id', id)
+        if (estado) params.set('estado', estado)
+        const qs = params.toString()
+        return ok(await callAgent(extra as ToolExtra, 'GET', `/pago-lote${qs ? `?${qs}` : ''}`))
+      },
+    )
+
+    server.registerTool(
+      'hilvan_pago_lote_editar',
+      {
+        title: 'Corregir un pago de un lote',
+        description:
+          'Corrige un pago de un lote que aún no llegó al banco: accion="anular" | "reactivar" | "editar" (monto, glosa, o cuenta_id de hilvan_cuentas_bancarias del mismo RUT para ponerle cuenta). Reversible con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+        inputSchema: {
+          item_id: z.string(),
+          accion: z.enum(['anular', 'reactivar', 'editar']),
+          monto: z.number().optional(),
+          glosa: z.string().optional(),
+          cuenta_id: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'PATCH', '/pago-lote', args)),
+    )
+
     server.registerTool(
       'hilvan_rendicion_mensual',
       {
@@ -1102,7 +1233,7 @@ const baseHandler = createMcpHandler(
       {
         title: 'Importar movimientos bancarios',
         description:
-          'Importa movimientos de tarjeta/cuenta (extracto). Recibe un array `movimientos`, cada uno con fecha (YYYY-MM-DD), monto (>0), tipo ("cargo"=salida | "abono"=entrada) y opcionalmente descripcion/fuente/referencia. Valida TODAS las filas antes de escribir; reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
+          'Importa movimientos de tarjeta/cuenta (extracto). Recibe un array `movimientos`, cada uno con fecha (YYYY-MM-DD), monto (>0), tipo ("cargo"=salida | "abono"=entrada) y opcionalmente descripcion/fuente/referencia/aviso_texto. Si la fila viene de un correo de Santander, pasa el cuerpo del correo en aviso_texto: así se llena solo el directorio de cuentas (hilvan_cuentas_bancarias). Después de importar cierra los pagos de transferencias masivas que calzan (mismo RUT y monto) y deja su boleta pagada. Valida TODAS las filas antes de escribir; reversible en bloque con hilvan_deshacer. CONFIRMA con el usuario antes de llamar.',
         inputSchema: {
           movimientos: z
             .array(
@@ -1113,9 +1244,14 @@ const baseHandler = createMcpHandler(
                 descripcion: z.string().optional(),
                 fuente: z.string().optional().describe('ej. tarjeta, cuenta corriente'),
                 referencia: z.string().optional(),
+                aviso_texto: z.string().optional().describe('cuerpo completo del correo de Santander de donde sale la fila: Hilván lee banco, cuenta, RUT y nombre del destinatario y los guarda en el directorio de cuentas'),
               }),
             )
-            .describe('movimientos del extracto'),
+            .describe('movimientos del extracto (puede ir vacío si solo mandas avisos)'),
+          avisos: z
+            .array(z.object({ fecha: z.string().describe('YYYY-MM-DD'), texto: z.string() }))
+            .optional()
+            .describe('correos de Santander cuyo movimiento YA estaba en Hilván (no se importan): solo alimentan el directorio de cuentas'),
         },
       },
       async (args, extra) =>

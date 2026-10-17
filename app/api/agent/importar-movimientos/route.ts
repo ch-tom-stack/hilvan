@@ -2,13 +2,22 @@ import { NextResponse } from 'next/server'
 import { requireAgentToken } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarAccion } from '@/lib/agent-audit'
+import { leerAvisoSantander, type CuentaVista } from '@/lib/pagos-masivos'
+import { cerrarPagos, guardarCuentas } from '@/lib/pagos-masivos-io'
 
 export const runtime = 'nodejs'
 
 // POST /api/agent/importar-movimientos (JSON)
 // Importa movimientos bancarios / de tarjeta (extracto). Body: { movimientos: Fila[] }.
 // Cada fila: fecha (YYYY-MM-DD req), monto (req >0), tipo ('cargo'|'abono' req),
-//            descripcion?, fuente?, referencia?.
+//            descripcion?, fuente?, referencia?, aviso_texto?.
+//
+// aviso_texto = el cuerpo del correo de Santander de donde salió la fila. Se lee
+// (lib/pagos-masivos.ts) para guardar en cuentas_bancarias el banco, la cuenta,
+// el RUT y el nombre del destinatario — así el directorio de pagos se llena solo.
+// Se lee aunque el movimiento ya existiera. Después de insertar se corre el
+// cierre de transferencias masivas: los pagos pendientes de un lote cuyo cargo
+// acaba de llegar quedan pagados.
 //
 // Robustez (auditoría jun 2026):
 //   - Se VALIDA y parsea TODA fila ANTES de la primera escritura. Si alguna es
@@ -27,13 +36,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
-  const movimientos = body?.movimientos
-  if (!Array.isArray(movimientos) || movimientos.length === 0) {
-    return NextResponse.json({ error: 'Falta movimientos (array no vacío)' }, { status: 400 })
+  // avisos: [{fecha, texto}] de correos cuyo movimiento ya estaba (ej. ya en la
+  // cartola) — no se importan como movimiento, solo alimentan el directorio.
+  const movimientos = Array.isArray(body?.movimientos) ? body.movimientos : []
+  const avisosSueltos = Array.isArray(body?.avisos) ? body.avisos : []
+  if (movimientos.length === 0 && avisosSueltos.length === 0) {
+    return NextResponse.json({ error: 'Falta movimientos (array no vacío) o avisos' }, { status: 400 })
   }
 
   // ── 1. Validar y preparar TODAS las filas (sin escribir) ────────────────────
   const preparados: Record<string, any>[] = []
+  const cuentasLeidas: { fecha: string; cuentas: CuentaVista[] }[] = []
+  let avisosSinCuenta = 0
+  for (let i = 0; i < avisosSueltos.length; i++) {
+    const a = avisosSueltos[i] ?? {}
+    if (typeof a.texto !== 'string' || typeof a.fecha !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(a.fecha)) {
+      return NextResponse.json({ error: `aviso ${i}: necesita fecha (YYYY-MM-DD) y texto` }, { status: 400 })
+    }
+    const { cuentas } = leerAvisoSantander(a.texto)
+    if (cuentas.length) cuentasLeidas.push({ fecha: a.fecha, cuentas })
+    else avisosSinCuenta++
+  }
 
   for (let i = 0; i < movimientos.length; i++) {
     const fila = movimientos[i] ?? {}
@@ -69,6 +92,14 @@ export async function POST(req: Request) {
     if (fila.referencia != null && typeof fila.referencia !== 'string') {
       return NextResponse.json({ error: `${where}: referencia debe ser texto` }, { status: 400 })
     }
+    if (fila.aviso_texto != null && typeof fila.aviso_texto !== 'string') {
+      return NextResponse.json({ error: `${where}: aviso_texto debe ser texto` }, { status: 400 })
+    }
+    if (fila.aviso_texto) {
+      const { cuentas } = leerAvisoSantander(fila.aviso_texto)
+      if (cuentas.length) cuentasLeidas.push({ fecha, cuentas })
+      else avisosSinCuenta++
+    }
 
     preparados.push({
       fecha,
@@ -92,7 +123,7 @@ export async function POST(req: Request) {
   const claveLaxa = (m: any) => `${m.fecha}|${m.monto}|${m.tipo}`
 
   const fechas = [...new Set(preparados.map((p) => p.fecha))]
-  const { data: existentes } = await admin
+  const { data: existentes } = fechas.length === 0 ? { data: [] as any[] } : await admin
     .from('movimientos_bancarios')
     .select('fecha, monto, tipo, referencia, descripcion')
     .in('fecha', fechas)
@@ -145,10 +176,35 @@ export async function POST(req: Request) {
     })
   }
 
+  // ── 5. Directorio de cuentas + cierre de masivas (no aborta la importación) ─
+  const cuentasNuevas: CuentaVista[] = []
+  let cuentasVistas = 0
+  let errorCuentas: string | undefined
+  for (const { fecha, cuentas } of cuentasLeidas) {
+    const r = await guardarCuentas(admin, cuentas, { fecha, fuente: 'aviso_santander', confirmada: true })
+    cuentasNuevas.push(...r.nuevas)
+    cuentasVistas += r.vistas
+    if (r.error) { errorCuentas = r.error; console.error('[importar-movimientos] cuentas:', r.error); break }
+  }
+  let cierre: Awaited<ReturnType<typeof cerrarPagos>> | { error: string }
+  try {
+    cierre = await cerrarPagos(admin)
+  } catch (e) {
+    cierre = { error: e instanceof Error ? e.message : String(e) }
+    console.error('[importar-movimientos] cierre:', cierre.error)
+  }
+
   return NextResponse.json({
     creados: creados.length,
     duplicados_saltados: saltados.length,
     detalle: { cargos, abonos },
+    cuentas_bancarias: {
+      nuevas: cuentasNuevas.map(c => ({ rut: c.rut, nombre: c.nombre, banco: c.banco_codigo, cuenta: c.numero_cuenta })),
+      ya_conocidas: cuentasVistas,
+      ...(avisosSinCuenta ? { avisos_sin_cuenta_legible: avisosSinCuenta } : {}),
+      ...(errorCuentas ? { error: errorCuentas } : {}),
+    },
+    pagos_masivos: cierre,
     ...(posiblesDuplicados.length
       ? {
           posibles_duplicados: posiblesDuplicados.map((p) => ({

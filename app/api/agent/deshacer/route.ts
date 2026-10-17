@@ -5,6 +5,7 @@ import { obtenerAccion } from '@/lib/agent-audit'
 import { esMatchTablaValida } from '@/lib/agent-conciliacion'
 import { recomputarObligacion, recomputarMovimiento } from '@/lib/agent-conciliacion-io'
 import { aplicar, type Op } from '@/lib/historial'
+import { cerrarPagos } from '@/lib/pagos-masivos-io'
 
 export const runtime = 'nodejs'
 
@@ -248,8 +249,55 @@ export async function POST(req: Request) {
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Un pago de transferencia masiva que había calzado con un movimiento
+    // borrado vuelve a pendiente (y su gasto, a sin pagar).
+    const cierre = await cerrarPagos(admin).catch((e) => ({ error: String(e) }))
+
     await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
-    return NextResponse.json({ ok: true, borrados: ids.length })
+    return NextResponse.json({ ok: true, borrados: ids.length, pagos_masivos: cierre })
+  }
+
+  // ── Transferencias masivas y directorio de cuentas ────────────────────────
+  if (accion.herramienta === 'cuenta-bancaria') {
+    if (accion.resultado_id) {
+      const { error } = await admin.from('cuentas_bancarias').delete().eq('id', accion.resultado_id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, borrada: accion.resultado_id })
+  }
+  if (accion.herramienta === 'colaborador-guardar') {
+    const payload = accion.payload as { modo?: 'crear' | 'editar'; previo?: Record<string, unknown> } | null
+    if (!accion.resultado_id) return NextResponse.json({ error: 'La acción no guardó el colaborador' }, { status: 400 })
+    if (payload?.modo === 'editar') {
+      const { error } = await admin.from('colaboradores').update({ ...(payload.previo ?? {}), updated_at: new Date().toISOString() }).eq('id', accion.resultado_id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    } else {
+      await admin.from('cuentas_bancarias').update({ colaborador_id: null }).eq('colaborador_id', accion.resultado_id)
+      const { error } = await admin.from('colaboradores').delete().eq('id', accion.resultado_id)
+      if (error) return NextResponse.json({ error: `No se pudo borrar (¿ya tiene gastos o rodajes?): ${error.message}` }, { status: 400 })
+    }
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, colaborador_id: accion.resultado_id, modo: payload?.modo })
+  }
+  if (accion.herramienta === 'pago-lote') {
+    if (!accion.resultado_id) return NextResponse.json({ error: 'La acción no guardó el lote' }, { status: 400 })
+    const { data: pagados } = await admin.from('pagos_lote_items').select('id').eq('lote_id', accion.resultado_id).eq('estado', 'pagado')
+    if (pagados?.length) return NextResponse.json({ error: `El lote ya tiene ${pagados.length} pago(s) que llegaron al banco: anula los pendientes en vez de borrarlo` }, { status: 400 })
+    const { error } = await admin.from('pagos_lotes').delete().eq('id', accion.resultado_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, lote_borrado: accion.resultado_id })
+  }
+  if (accion.herramienta === 'pago-lote-item') {
+    const payload = accion.payload as { previo?: Record<string, unknown> } | null
+    const { data: item } = await admin.from('pagos_lote_items').select('estado').eq('id', accion.resultado_id ?? '').maybeSingle()
+    if (!item) return NextResponse.json({ error: 'El pago ya no existe' }, { status: 404 })
+    if (item.estado === 'pagado') return NextResponse.json({ error: 'Ese pago ya llegó al banco' }, { status: 400 })
+    const { error } = await admin.from('pagos_lote_items').update(payload?.previo ?? {}).eq('id', accion.resultado_id!)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true, item_id: accion.resultado_id })
   }
 
   // ── Agregar ítems a cotización: borra lo creado (ítems + depto/subgrupo nuevos).

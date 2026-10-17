@@ -481,6 +481,14 @@ export default function EstadoResultados({ datos, anterior, añoAnterior, ppmTas
                       onChange={e => setNominaEdit(prev => prev.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x))}
                       className="flex-1 min-w-0 bg-ch-dark border border-ch-border px-1.5 py-0.5 font-body text-[10px] text-ch-cream focus:outline-none focus:border-ch-green"
                     />
+                    <input
+                      type="text"
+                      value={p.rut ?? ''}
+                      placeholder="RUT"
+                      title="RUT: enlaza a la persona con su cuenta para la transferencia masiva"
+                      onChange={e => setNominaEdit(prev => prev.map((x, j) => j === i ? { ...x, rut: e.target.value.trim() || undefined } : x))}
+                      className="w-24 bg-ch-dark border border-ch-border px-1.5 py-0.5 font-mono text-[10px] text-ch-muted focus:outline-none focus:border-ch-green"
+                    />
                     <select
                       value={p.tipo}
                       onChange={e => setNominaEdit(prev => prev.map((x, j) => j === i ? { ...x, tipo: e.target.value as 'contrato' | 'honorarios' } : x))}

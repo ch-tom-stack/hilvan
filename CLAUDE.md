@@ -188,7 +188,7 @@ WHATSAPP_WEBHOOK_KEY           ← llave propia (header x-webhook-key o ?key=) s
 - `configuracion_financiero` — key/value store. Claves activas: `ppm_tasa`, `previred_mensual`, `iusc_mensual`, `nomina_personas` (JSON)
 - **RLS**: `configuracion_financiero` no tiene SELECT policy → usar siempre `createAdminClient()` en getters y setters
 - **Estado de Resultados**: base devengada (facturado, no cobrado). Incluye PPM, Previred, IUSC (todos editables), sección Nómina con personas configurables, Inversiones en columna separada
-- `getNomina()` / `setNomina()` en `app/actions/financiero.ts` — default: Tomás M. $550k, Natalia $550k, Simón $250k BH, Josué $250k BH
+- `getNomina()` / `setNomina()` en `app/actions/financiero.ts` — real (17-oct-2026): Tomás $1.467.000 y Natalia $530.000 contrato, Simón $250.000 BH; cada persona con `rut` para la transferencia masiva
 - **Créditos vigentes** en `gastos_fijos`: BancoEstado Emprende Plus ($3.107.000, 48 cuotas ~$84k, vence ago 2028) + Forum/CORFO ($2.031.064, 36 cuotas ~$56-254k, vence jun 2028)
 - Vistas: `/financiero`, `/financiero/cobrar`, `/financiero/flujo`, `/financiero/inversiones`, `/financiero/creditos`
 
@@ -223,6 +223,14 @@ WHATSAPP_WEBHOOK_KEY           ← llave propia (header x-webhook-key o ?key=) s
 - **Etapas inconsistentes** (`lib/crm-consistencia.ts`): `hilvan_datos_dudosos` las calcula al leer (en conversación sin respuesta, confirmado sin historial, rechazo sin mover). No marca ni mueve nada.
 - **Cruce origen × tamaño** (`lib/crm-cruce.ts`): en `hilvan_metricas_crm`, con `desde` para medir cambios del sitio. Línea base en `docs/crm/linea-base-leads-2026-09-19.md`.
 - `temperaturaDe`: `landing` y `brief` (lo que manda el sitio) son ENTRANTES.
+
+### Transferencias masivas Santander (oct-2026)
+- `/financiero/masivas` arma la planilla `.xlsx` de Office Banking (13 columnas) con la nómina, las boletas por pagar (NETO, glosa `BH <folio>`) y pagos sueltos. Tablas en `sql/pagos_masivos.sql`: `cuentas_bancarias` (directorio), `pagos_lotes`, `pagos_lote_items` (solo service role).
+- El directorio se llena SOLO: `importar-movimientos` lee el cuerpo del correo de Santander (`aviso_texto`, o `avisos` si el movimiento ya estaba) con `leerAvisoSantander` y guarda banco, cuenta, RUT y nombre. Cuenta a usar por RUT: la confirmada por el banco más reciente > ficha del colaborador.
+- Cierre automático (`cerrarPagos`, tras cada importación y al abrir los lotes): pago pendiente + cargo con mismo RUT y monto → pagado, y el gasto de origen `pagado=true` (sin conciliar).
+- Lógica pura en `lib/pagos-masivos.ts` + `lib/bancos.ts` (códigos CMF), tests en `tests/pagos-masivos.test.ts`; base en `lib/pagos-masivos-io.ts`; archivo en `lib/planilla-santander.ts` (desde cero: los archivos de `public/` no viajan al bundle de Vercel). El export de Centro de costos usa el mismo generador.
+- Operador: `hilvan_cuentas_bancarias`, `hilvan_cuenta_bancaria_agregar`, `hilvan_colaborador_guardar`, `hilvan_pagos_candidatos`, `hilvan_pago_lote_crear`, `hilvan_pago_lotes`, `hilvan_pago_lote_editar`. Detalle: `docs/finanzas/transferencias-masivas.md`.
+- Nómina (`nomina_personas`, cada persona con `rut`): Tomás $1.467.000 y Natalia $530.000 contrato, Simón $250.000 BH. Josué y Diego cobran por proyecto.
 
 ### Rental — las maletas reservan su contenido (sep-2026)
 - Reservar una maleta ocupa cada equipo de `maleta_items` (y la maleta misma, código sintético `MALETA:<id>`). Una sola regla en `lib/rental-ocupacion.ts` (`contextoOcupacion`) + `codigosDeReserva`/`conflictosDeNueva` en `lib/rental-kits.ts`, usada por el formulario interno, la aprobación (`verificarSobrecupoReserva`) y el catálogo público (`/api/arriendo/disponibilidad`).
@@ -347,5 +355,5 @@ Hallazgos sistemáticos de la auditoría completa (plan de corrección en `docs/
 
 ## Pendientes anotados
 
-- **Export Santander**: pendiente validar con rendiciones aprobadas reales (template en `public/templates/santander_masivo.xlsx`, API route en `/api/rendiciones/santander-export`)
+- **Export Santander**: ya no usa el template de `public/templates/` (no viajaba a Vercel); usa `lib/planilla-santander.ts`, igual que `/financiero/masivas`
 - **OTT\* NT AT HOME**: gasto recurrente en tarjeta (~$10.100/mes) — servicio sin identificar, pendiente agregar a suscripciones en rendición mensual

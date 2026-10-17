@@ -9,6 +9,8 @@ Santander no tiene API para pymes (la banca abierta regulada parte en jul-2027) 
 
 La cuenta personal del dueño es otra: de ella solo entra lo que transfiere **hacia** la empresa.
 
+Los avisos también alimentan el directorio de cuentas de las transferencias masivas (`aviso_texto` / `avisos`): ver `docs/finanzas/transferencias-masivas.md`.
+
 ## La tarea diaria
 
 Tarea programada local `santander-correos-a-hilvan` (app de Claude, 21:00, modo Auto; corre al abrir la app si estaba cerrada). En orden:

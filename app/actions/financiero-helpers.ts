@@ -126,13 +126,16 @@ export function calcularCamposContador(monto: number, tipo_documento: string | n
 
 export interface PersonaNomina {
   nombre: string
-  monto: number
+  monto: number // lo que se le transfiere al mes
   tipo: 'contrato' | 'honorarios'
+  rut?: string // enlaza con su cuenta bancaria para la transferencia masiva
 }
 
+// Solo de respaldo si configuracion_financiero no tiene 'nomina_personas'.
+// Valores reales confirmados por Tomás el 17-oct-2026 (Josué y Diego cobran
+// por proyecto: no son nómina).
 export const NOMINA_DEFAULT: PersonaNomina[] = [
-  { nombre: 'Tomás M.', monto: 550000, tipo: 'contrato' },
-  { nombre: 'Natalia', monto: 550000, tipo: 'contrato' },
-  { nombre: 'Simón Fernández', monto: 250000, tipo: 'honorarios' },
-  { nombre: 'Josué de la Fuente', monto: 250000, tipo: 'honorarios' },
+  { nombre: 'Tomás Montealegre', monto: 1467000, tipo: 'contrato', rut: '18932507-K' },
+  { nombre: 'Natalia Roa', monto: 530000, tipo: 'contrato', rut: '19410450-2' },
+  { nombre: 'Simón Fernández', monto: 250000, tipo: 'honorarios', rut: '20663627-0' },
 ]

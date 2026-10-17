@@ -28,6 +28,10 @@ export default async function PagarPage() {
           </h1>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          <Link href="/financiero/masivas"
+            className="bg-ch-green hover:bg-ch-green-light text-ch-black font-body font-medium text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
+            Transferencias masivas →
+          </Link>
           <Link href="/financiero/cobrar"
             className="border border-ch-border text-ch-muted hover:text-ch-cream font-body text-[10px] tracking-[0.35em] uppercase px-5 py-3 transition-colors">
             ← Cobranza

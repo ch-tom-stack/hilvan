@@ -6,87 +6,25 @@ import { toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
 import { calcularRetencion } from '@/types'
 import type { RendicionGasto } from '@/types'
+import { codigoBanco } from '@/lib/bancos'
+import { glosaDeGasto, limpiarCuenta, type PagoPlanilla } from '@/lib/pagos-masivos'
 
-// Códigos SBIF como enteros (Excel los almacena sin ceros a la izquierda)
-const BANCO_COD: Record<string, number> = {
-  'Banco de Chile': 1, 'Chile': 1,
-  'BancoEstado': 12, 'Banco Estado': 12, 'Banco Estado Chile': 12,
-  'Scotiabank': 14,
-  'BCI': 16,
-  'Santander': 37, 'Banco Santander': 37,
-  'Itaú': 39, 'Banco Itaú': 39,
-  'BICE': 28,
-  'Security': 49, 'Banco Security': 49,
-  'Falabella': 51, 'Banco Falabella': 51,
-  'Ripley': 53, 'Banco Ripley': 53,
-  'Consorcio': 55, 'Banco Consorcio': 55,
-  'Coopeuch': 672,
-  'Otro': 0,
-}
-
-function rutSoloDigitos(rut: string): string {
-  return rut.replace(/\./g, '').replace('-', '').toUpperCase()
-}
-
-// Devuelve true si la cuenta destino es Santander (no requiere banco/RUT/nombre)
-function esSantander(banco: string): boolean {
-  return banco === 'Santander' || banco === 'Banco Santander'
-}
-
-interface Fila {
-  cuenta_origen: string
-  moneda_origen: 'CLP'
-  cuenta_destino: string
-  moneda_destino: 'CLP'
-  codigo_banco_destino: number | ''
-  rut_beneficiario: string
-  nombre_beneficiario: string
-  monto: number
-  glosa_transferencia: string
-  correo_beneficiario: string
-  mensaje_correo: string
-  glosa_cartola_originador: string
-  glosa_cartola_beneficiario: string
-}
-
-function buildFila(r: RendicionGasto, cuentaOrigen: string): Fila {
+// La fila sale de lib/pagos-masivos.ts (el mismo generador de Financiero →
+// Transferencias masivas): código de banco CMF de 3 dígitos, RUT y cuenta
+// limpios. Sin datos bancarios el servidor rechaza el archivo completo.
+function buildPago(r: RendicionGasto): PagoPlanilla {
   const col = r.colaborador as any
   const ret = r.tipo_documento ? calcularRetencion(r) : { neto: r.monto }
-  const banco = col?.banco || ''
-  const santander = esSantander(banco)
-
   return {
-    cuenta_origen: cuentaOrigen,
-    moneda_origen: 'CLP',
-    cuenta_destino: col?.numero_cuenta || '',
-    moneda_destino: 'CLP',
-    codigo_banco_destino: santander ? '' : (BANCO_COD[banco] ?? ''),
-    rut_beneficiario: santander ? '' : rutSoloDigitos(col?.rut || ''),
-    nombre_beneficiario: santander ? '' : (col?.nombre || r.nombre_libre || ''),
+    rut: col?.rut || r.rut_emisor || '',
+    nombre: col?.nombre || r.nombre_libre || r.razon_social_emisor || '',
+    banco_codigo: codigoBanco(col?.banco),
+    numero_cuenta: limpiarCuenta(col?.numero_cuenta),
     monto: Math.round(ret.neto),
-    glosa_transferencia: r.descripcion || '',
-    correo_beneficiario: col?.email || '',
-    mensaje_correo: '',
-    glosa_cartola_originador: '',
-    glosa_cartola_beneficiario: '',
+    glosa: glosaDeGasto(r as any) || r.descripcion || '',
+    email: col?.email || null,
   }
 }
-
-const HEADERS = [
-  'Cuenta origen\n(obligatorio)',
-  'Moneda origen\n(obligatorio)',
-  'Cuenta destino\n(obligatorio)',
-  'Moneda destino\n(obligatorio)',
-  'Código banco destino\n(obligatorio solo si banco destino no es Santander)',
-  'RUT beneficiario\n(obligatorio solo si banco destino no es Santander)',
-  'Nombre beneficiario\n(obligatorio solo si banco destino no es Santander)',
-  'Monto transferencia\n(obligatorio)',
-  'Glosa personalizada transferencia\n(opcional)',
-  'Correo beneficiario\n(opcional)',
-  'Mensaje correo beneficiario\n(opcional)',
-  'Glosa cartola originador\n(opcional)',
-  'Glosa cartola beneficiario\n(opcional, solo aplica si cuenta destino es Santander)',
-]
 
 interface Props {
   cotizaciones: { id: string; nombre: string; estado?: string; grupo?: any }[]
@@ -106,13 +44,13 @@ export default function ExportSantander({ cotizaciones, rendiciones, cotizacionF
 
   const descargar = async () => {
     try {
-      const filas = rendiciones.map(r => buildFila(r, cuentaOrigen))
+      const filas = rendiciones.map(buildPago)
       const nombre = cotizaciones.find(c => c.id === cotizacionFiltro)?.nombre || 'export'
 
       const res = await fetch('/api/rendiciones/santander-export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filas, nombre }),
+        body: JSON.stringify({ pagos: filas, nombre, cuenta_origen: cuentaOrigen }),
       })
 
       if (!res.ok) {

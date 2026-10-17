@@ -1,93 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import ExcelJS from 'exceljs'
+import { createClient } from '@/lib/supabase/server'
 import { contentDisposition } from '@/lib/archivos'
-import path from 'path'
+import { revisarPago, type PagoPlanilla } from '@/lib/pagos-masivos'
+import { escribirPlanilla } from '@/lib/planilla-santander'
 
-export interface FilaSantander {
-  cuenta_origen: string
-  moneda_origen: 'CLP'
-  cuenta_destino: string
-  moneda_destino: 'CLP'
-  codigo_banco_destino: number | ''
-  rut_beneficiario: string
-  nombre_beneficiario: string
-  monto: number
-  glosa_transferencia: string
-  correo_beneficiario: string
-  mensaje_correo: string
-  glosa_cartola_originador: string
-  glosa_cartola_beneficiario: string
-}
+export const runtime = 'nodejs'
 
-// cols que van alineadas a la derecha (igual que el template)
-const RIGHT_COLS = new Set([1, 3, 5, 6, 8])
-
+// POST /api/rendiciones/santander-export { pagos: PagoPlanilla[], nombre, cuenta_origen? }
+// Planilla de transferencia masiva para los gastos aprobados de una cotización
+// (Centro de costos · Admin · Export). Usa el mismo generador que Financiero →
+// Transferencias masivas (lib/planilla-santander.ts): cuentas y códigos de
+// banco como texto, sin template en public/ (no viaja al bundle de Vercel).
 export async function POST(req: NextRequest) {
-  const { filas, nombre }: { filas: FilaSantander[]; nombre: string } = await req.json()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { data: profile } = await supabase.from('profiles').select('rol').eq('id', user.id).single()
+  if (!profile || !['admin', 'contabilidad'].includes(profile.rol)) return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
 
-  // ── Cargar template ───────────────────────────────────────────────────────
-  const templatePath = path.join(process.cwd(), 'public', 'templates', 'santander_masivo.xlsx')
-  const wb = new ExcelJS.Workbook()
-  await wb.xlsx.readFile(templatePath)
+  let body: { pagos?: PagoPlanilla[]; nombre?: string; cuenta_origen?: string }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
+  const pagos = Array.isArray(body?.pagos) ? body.pagos : []
+  if (pagos.length === 0) return NextResponse.json({ error: 'No hay pagos' }, { status: 400 })
 
-  const ws = wb.getWorksheet('Hoja1')
-  if (!ws) throw new Error('Hoja1 not found in template')
-
-  // ── Capturar estilo de la fila de ejemplo (fila 2) ───────────────────────
-  const templateRow = ws.getRow(2)
-  const cellStyles: ExcelJS.Style[] = []
-  for (let c = 1; c <= 13; c++) {
-    const cell = templateRow.getCell(c)
-    // clonar estilo profundo
-    cellStyles.push(JSON.parse(JSON.stringify(cell.style)) as ExcelJS.Style)
+  const malos = pagos.map(p => ({ p, e: revisarPago(p).errores })).filter(x => x.e.length)
+  if (malos.length) {
+    return NextResponse.json({ error: `Corrige antes: ${malos.map(x => `${x.p.nombre || x.p.rut} (${x.e.join(', ')})`).join('; ')}` }, { status: 400 })
   }
-  const templateRowHeight = templateRow.height ?? 15
+  const cuentaOrigen = String(body.cuenta_origen ?? '').replace(/\D/g, '').replace(/^0+/, '') || undefined
 
-  // ── Borrar fila de ejemplo ────────────────────────────────────────────────
-  ws.spliceRows(2, 1)
-
-  // ── Insertar filas reales ─────────────────────────────────────────────────
-  for (let i = 0; i < filas.length; i++) {
-    const f = filas[i]
-    const values = [
-      f.cuenta_origen,
-      f.moneda_origen,
-      f.cuenta_destino,
-      f.moneda_destino,
-      f.codigo_banco_destino === '' ? null : f.codigo_banco_destino,
-      f.rut_beneficiario || null,
-      f.nombre_beneficiario || null,
-      f.monto,
-      f.glosa_transferencia || null,
-      f.correo_beneficiario || null,
-      f.mensaje_correo || null,
-      f.glosa_cartola_originador || null,
-      f.glosa_cartola_beneficiario || null,
-    ]
-
-    const row = ws.getRow(2 + i)
-    row.height = templateRowHeight
-
-    for (let c = 1; c <= 13; c++) {
-      const cell = row.getCell(c)
-      cell.value = values[c - 1] ?? null
-      // aplicar estilo clonado del template
-      cell.style = JSON.parse(JSON.stringify(cellStyles[c - 1]))
-      // respetar alineación horizontal del template (right para numéricos)
-      if (RIGHT_COLS.has(c)) {
-        cell.alignment = { ...cell.alignment, horizontal: 'right' }
-      }
-    }
-
-    row.commit()
-  }
-
-  // ── Serializar y devolver ─────────────────────────────────────────────────
-  const buffer = await wb.xlsx.writeBuffer()
-  const fecha = new Date().toISOString().slice(0, 10)
-  const filename = `santander_${nombre.replace(/\s+/g, '_')}_${fecha}.xlsx`
-
-  return new NextResponse(buffer, {
+  const archivo = await escribirPlanilla(pagos, cuentaOrigen)
+  const fecha = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date())
+  const filename = `santander_${String(body.nombre || 'export').replace(/\s+/g, '_')}_${fecha}.xlsx`
+  return new NextResponse(archivo as unknown as BodyInit, {
     status: 200,
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
