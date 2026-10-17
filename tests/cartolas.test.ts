@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — módulo .mjs sin tipos (lo usa scripts/cartolas-importar.mjs)
-import { descripcionCartola, filasCartola, formatoRut, leerCartola, leerEstadoCuentaTC, leerTarjeta, rutEnTexto, separarNuevas } from '../scripts/cartolas/lector.mjs'
+import { descripcionCartola, filasCartola, formatoRut, leerCartola, leerCartolaBancoEstado, leerEstadoCuentaTC, leerTarjeta, rutEnTexto, separarNuevas } from '../scripts/cartolas/lector.mjs'
 
 // Arma una cartola sintética con el ancho fijo de Office Banking.
 const pad = (s: string, n: number) => s.padEnd(n).slice(0, n)
@@ -122,6 +122,39 @@ describe('leerEstadoCuentaTC', () => {
 
   it('no cuadra si falta una línea', () => {
     expect(leerEstadoCuentaTC(texto.replace(/.*Spotify.*\n/, '')).cuadra).toBe(false)
+  })
+})
+
+describe('leerCartolaBancoEstado', () => {
+  const r = (etiqueta: string, v: string) => [etiqueta, etiqueta, etiqueta, etiqueta, v, v]
+  const resumen = [
+    r('Rut Empresa', '77.151.117-1'),
+    r('Cartola en Línea Chequera Electrónica', 'Cartola en Línea Chequera Electrónica'),
+    r('Chequera Electrónica', '90270670201'),
+    r('Inicial', '$ 461'),
+    r('Saldo Contable', '$ 1.991'),
+    r('Total Abonos', '$ 1.036.500'),
+    r('Total Cargos', '$ 1.034.970'),
+  ]
+  const cab = ['Fecha', 'Sucursal', 'N° Operación', 'Descripción', 'Cargos', 'Abonos', 'Saldo']
+  const registros = [
+    cab,
+    ['08/06/2026', 'STGO', '00000001077', 'TEF DE   EMPRESA', '', '$ 1.036.500', '$ 1.036.961'],
+    ['08/06/2026', 'STGO', '00007029603', 'PAGO DE CREDITO CUOTA 14 DE 18', '$ 518.250', '', '$ 518.711'],
+    ['08/06/2026', 'STGO', '00007029603', 'PAGO DE CREDITO CUOTA 14 DE 18', '$ 516.720', '', '$ 1.991'],
+  ]
+
+  it('valida saldos y totales, y arma referencias únicas', () => {
+    const b = leerCartolaBancoEstado({ resumen, registros })
+    expect(b).toMatchObject({ rut: '771511171', cuenta: '90270670201', cuadra: true })
+    expect(b.filas[0]).toMatchObject({ fecha: '2026-06-08', tipo: 'abono', monto: 1036500, fuente: 'BancoEstado', descripcion: 'TEF DE EMPRESA' })
+    expect(new Set(b.filas.map((f: { referencia: string }) => f.referencia)).size).toBe(3)
+  })
+
+  it('no cuadra si un saldo de línea no sigue al anterior', () => {
+    const malo = registros.map((f) => [...f])
+    malo[2][6] = '$ 999'
+    expect(leerCartolaBancoEstado({ resumen, registros: malo }).cuadra).toBe(false)
   })
 })
 

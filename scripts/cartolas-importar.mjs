@@ -6,6 +6,7 @@
 //   - estado de cuenta mensual de la tarjeta de crédito (PDF EstadoCuentaTC…, se lee con
 //     pdftotext de poppler: `brew install poppler`)
 //   - movimientos no facturados de la tarjeta de crédito (mov_nac*.txt)
+//   - cartola en línea de la chequera electrónica BancoEstado de la empresa (.xlsx)
 // Cada archivo se valida (RUT y cuenta de Casa Hiedra; la cartola debe cuadrar con sus
 // saldos; el estado de cuenta, con sus totales), se cruza con lo que ya está en Hilván (no duplica lo que entró por los avisos
 // de correo ni lo cargado a mano) y se importa. Los archivos procesados pasan a
@@ -24,12 +25,14 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync 
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import {
+  CHEQUERAS_BANCOESTADO,
   CUENTA_EMPRESA,
   FUENTE_CC,
   FUENTE_TC,
   RUT_EMPRESA,
   filasCartola,
   leerCartola,
+  leerCartolaBancoEstado,
   leerEstadoCuentaTC,
   leerTarjeta,
   separarNuevas,
@@ -93,7 +96,37 @@ function textoPdf(ruta) {
   throw new Error('falta pdftotext para leer PDFs (brew install poppler)')
 }
 
+async function hojasXlsx(ruta) {
+  const { default: ExcelJS } = await import('exceljs')
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.readFile(ruta)
+  const filas = (nombre) => {
+    const ws = wb.getWorksheet(nombre)
+    if (!ws) return null
+    const out = []
+    ws.eachRow({ includeEmpty: false }, (r) => {
+      out.push(r.values.slice(1).map((v) => (v && typeof v === 'object' && 'result' in v ? v.result : v) ?? ''))
+    })
+    return out
+  }
+  return { resumen: filas('Resumen'), registros: filas('Registros') }
+}
+
 async function procesar(ruta) {
+  if (/\.xlsx$/i.test(ruta)) {
+    const hojas = await hojasXlsx(ruta)
+    if (!hojas.resumen || !hojas.registros) throw new Error('formato desconocido (planilla sin hojas Resumen y Registros de BancoEstado)')
+    const b = leerCartolaBancoEstado(hojas)
+    const cfg = CHEQUERAS_BANCOESTADO[b.cuenta]
+    if (!cfg || cfg.rut !== b.rut) {
+      throw new Error(`es de una cuenta que no se importa (RUT ${b.rut}, chequera ${b.cuenta}); de BancoEstado se importan: ${Object.keys(CHEQUERAS_BANCOESTADO).join(', ')}`)
+    }
+    if (!b.cuadra) {
+      throw new Error(`no cuadra: saldo ${clp(b.saldoInicial)} + abonos ${clp(b.abonos)} − cargos ${clp(b.cargos)} vs saldo contable ${clp(b.saldoFinal)}`)
+    }
+    const filas = b.filas.map((f) => ({ ...f, fuente: cfg.fuente, referencia: f.referencia.replace(/^BE /, `${cfg.prefijo} `) }))
+    return await cruzarEImportar(basename(ruta), filas, cfg.fuente, `cartola BancoEstado ${b.cuenta} (${cfg.fuente}), cuadra con sus saldos`)
+  }
   const esPdf = /\.pdf$/i.test(ruta)
   const texto = esPdf ? textoPdf(ruta) : readFileSync(ruta, 'latin1')
   const nombre = basename(ruta)
@@ -129,6 +162,10 @@ async function procesar(ruta) {
   } else {
     throw new Error('formato desconocido (no es cartola .tx1, estado de cuenta de tarjeta ni movimientos de tarjeta)')
   }
+  return await cruzarEImportar(nombre, filas, fuente, etiqueta)
+}
+
+async function cruzarEImportar(nombre, filas, fuente, etiqueta) {
   if (!filas.length) return { nombre, etiqueta, nuevas: [], yaEstaban: [] }
 
   const fechas = filas.map((f) => f.fecha).sort()
@@ -149,7 +186,7 @@ try {
   process.exit(0)
 }
 const archivos = entradas
-  .filter((n) => !n.startsWith('.') && /\.(tx1|txt|pdf)$/i.test(n))
+  .filter((n) => !n.startsWith('.') && !n.startsWith('~$') && /\.(tx1|txt|pdf|xlsx)$/i.test(n))
   .map((n) => join(carpeta, n))
   .filter((r) => statSync(r).isFile())
   .sort()

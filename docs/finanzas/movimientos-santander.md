@@ -1,4 +1,4 @@
-# Movimientos de Santander → Hilván
+# Movimientos bancarios (Santander y BancoEstado) → Hilván
 
 Santander no tiene API para pymes (la banca abierta regulada parte en jul-2027) y se descartó pagar un agregador (Fintoc). Los movimientos de la cuenta corriente **84616290** de Casa Hiedra (Tomás Montealegre Producciones E.I.R.L, RUT 77.151.117-1) y de su tarjeta de crédito entran a `movimientos_bancarios` por dos caminos. Ambos solo **importan**: conciliar es trabajo del agente.
 
@@ -22,6 +22,7 @@ Se descarga de Office Banking y se suelta en `~/Documents/Cartolas Santander`:
 
 - **Cartola mensual** de cuenta corriente: `.tx1`. Se valida RUT, cuenta y que **cuadre** (saldo inicial + abonos − cargos = saldo final); si no, no se importa nada de ese archivo.
 - **Estado de cuenta** mensual de la tarjeta: PDF `EstadoCuentaTC-…pdf` (se lee con `pdftotext` de poppler). Se valida el titular y que la suma de las líneas dé el TOTAL OPERACIONES y el total de CARGOS, COMISIONES, IMPUESTOS Y ABONOS. Las compras en cuotas entran UNA vez, por el total y en la fecha de compra; los pagos ("MONTO CANCELADO") y notas de crédito, como abono.
+- **Cartola en línea BancoEstado** (`Cartola_en_linea_<cuenta>.xlsx`): solo la chequera electrónica **90270670201** de la empresa (RUT 77.151.117-1), `fuente: "BancoEstado"`. Es acumulada (trae desde enero): se valida saldo inicial + abonos − cargos = saldo contable, los totales y el saldo de cada línea; referencia `BE <fecha> <N° operación> <monto>`. La chequera **90277664967** es de **Casa Hiedra EIRL (77.956.984-5)**: es la misma casa, pero el segundo RUT tributa aparte, así que entra con `fuente: "BancoEstado Casa Hiedra EIRL"` y referencia `BEE …` para no mezclarse. Cualquier otra chequera se rechaza (lista en `CHEQUERAS_BANCOESTADO`, `scripts/cartolas/lector.mjs`).
 - **Movimientos no facturados** de la tarjeta: `mov_nac*.txt`. Solo trae el período en curso (sirve para ver lo del mes antes de que cierre); cuando llega el estado de cuenta, lo ya cargado se reconoce y no se duplica.
 
 Lo importado pasa a `importadas/` con la fecha. Lo que falla se queda en la carpeta y la tarea dice por qué. Soltar dos veces el mismo archivo no duplica.
@@ -45,4 +46,6 @@ npm run cartolas:importar               # importar ya, sin esperar a la tarea
 ## Estado (17-oct-2026)
 
 Cuenta corriente: mayo → septiembre 2026 completos (cartolas N°055–059); octubre solo tiene lo de los correos hasta que llegue la cartola N°060.
+BancoEstado 90270670201: enero → 5-oct-2026 (22 movimientos: traspasos desde/hacia Santander y cuotas de créditos).
+BancoEstado Casa Hiedra EIRL 90277664967: febrero → agosto 2026 (6 movimientos).
 Tarjeta 0192: estados de cuenta del 06-04 al 05-10-2026, **falta el período 05-06 → 06-07-2026**. Ojo: la fila de no facturados `TEMU.COM — compra en cuota (cuof)` $28.127 del 27-09 puede repetir las compras TEMU del estado de cuenta ($11.076 + $19.194): revisar al conciliar.

@@ -236,6 +236,94 @@ export function leerEstadoCuentaTC(texto) {
   }
 }
 
+// ── BancoEstado: "Cartola en Línea Chequera Electrónica" (.xlsx) ─────────────
+// Dos hojas, que el script entrega como filas de celdas (texto):
+//   Resumen   — "Rut Empresa", "Chequera Electrónica" (n° de cuenta), "Inicial" (saldo),
+//               "Saldo Contable", "Total Abonos", "Total Cargos" (montos "$ 1.036.500")
+//   Registros — Fecha | Sucursal | N° Operación | Descripción | Cargos | Abonos | Saldo
+// Valida: saldo inicial + abonos − cargos = saldo contable, que los totales calcen y que
+// el saldo de cada línea siga al anterior. La cartola es acumulada (bajarla de nuevo trae
+// lo mismo y más): la referencia es por contenido.
+export const CUENTA_BANCOESTADO = '90270670201'
+export const FUENTE_BE = 'BancoEstado'
+// Chequeras BancoEstado que se importan. La de Casa Hiedra EIRL (77.956.984-5, la otra
+// entidad emisora) va con fuente y prefijo propios para no mezclarse con la empresa.
+export const CHEQUERAS_BANCOESTADO = {
+  [CUENTA_BANCOESTADO]: { rut: '771511171', fuente: FUENTE_BE, prefijo: 'BE' },
+  '90277664967': { rut: '779569845', fuente: 'BancoEstado Casa Hiedra EIRL', prefijo: 'BEE' },
+}
+
+export function leerCartolaBancoEstado({ resumen, registros }) {
+  const valor = (etiqueta) => {
+    const fila = resumen.find((f) => String(f[0] ?? '').trim() === etiqueta)
+    if (!fila) throw new Error(`no encontré "${etiqueta}" en el resumen`)
+    return String(fila.find((c, i) => i > 0 && String(c ?? '').trim() && String(c).trim() !== etiqueta) ?? '').trim()
+  }
+  const plata = (s) => {
+    const t = String(s ?? '').trim()
+    return t ? Number(t.replace(/[$\s.]/g, '').replace(',', '.')) : 0
+  }
+  if (!resumen.some((f) => f.some((c) => /Cartola en L[íi]nea/i.test(String(c ?? ''))))) {
+    throw new Error('no parece una cartola en línea de BancoEstado')
+  }
+  const rut = valor('Rut Empresa').replace(/[.-]/g, '').toUpperCase()
+  const cuenta = valor('Chequera Electrónica').replace(/\D/g, '')
+  const saldoInicial = plata(valor('Inicial'))
+  const saldoFinal = plata(valor('Saldo Contable'))
+  const totalAbonos = plata(valor('Total Abonos'))
+  const totalCargos = plata(valor('Total Cargos'))
+
+  const [cab, ...datos] = registros.filter((f) => f.some((c) => String(c ?? '').trim()))
+  const col = (nombre) => {
+    const i = cab.findIndex((c) => String(c ?? '').trim().toLowerCase() === nombre.toLowerCase())
+    if (i < 0) throw new Error(`falta la columna "${nombre}" en Registros`)
+    return i
+  }
+  const iF = col('Fecha'), iOp = col('N° Operación'), iD = col('Descripción'), iC = col('Cargos'), iA = col('Abonos'), iS = col('Saldo')
+  const vistos = new Map()
+  let saldo = saldoInicial
+  let saldosSeguidos = true
+  const filas = datos.map((f, n) => {
+    const fm = String(f[iF] ?? '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (!fm) throw new Error(`fila ${n + 2} de Registros sin fecha DD/MM/AAAA`)
+    const cargo = plata(f[iC])
+    const abono = plata(f[iA])
+    if ((cargo > 0) === (abono > 0)) throw new Error(`fila ${n + 2}: debe tener cargo o abono, no ambos ni ninguno`)
+    saldo += abono - cargo
+    if (Math.abs(saldo - plata(f[iS])) > 0.5) saldosSeguidos = false
+    const fecha = `${fm[3]}-${fm[2]}-${fm[1]}`
+    const monto = Math.round(cargo || abono)
+    const op = String(f[iOp] ?? '').trim()
+    const base = `BE ${fecha} ${op} ${monto}`
+    const k = (vistos.get(base) ?? 0) + 1
+    vistos.set(base, k)
+    return {
+      fecha,
+      monto,
+      tipo: abono ? 'abono' : 'cargo',
+      fuente: FUENTE_BE,
+      referencia: k === 1 ? base : `${base} #${k}`,
+      descripcion: String(f[iD] ?? '').replace(/\s+/g, ' ').trim(),
+    }
+  })
+  const abonos = filas.filter((x) => x.tipo === 'abono').reduce((s, x) => s + x.monto, 0)
+  const cargos = filas.filter((x) => x.tipo === 'cargo').reduce((s, x) => s + x.monto, 0)
+  return {
+    rut,
+    cuenta,
+    saldoInicial,
+    saldoFinal,
+    abonos,
+    cargos,
+    cuadra:
+      saldosSeguidos &&
+      abonos === totalAbonos &&
+      cargos === totalCargos &&
+      Math.abs(saldoInicial + abonos - cargos - saldoFinal) < 0.5,
+    filas,
+  }
+}
+
 // ── Cruce contra lo que ya está en Hilván ────────────────────────────────────
 const dias = (a, b) => Math.abs(Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86400000
 const origen = (referencia) => String(referencia ?? '').split(' ')[0]
