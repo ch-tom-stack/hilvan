@@ -15,6 +15,9 @@ Tarea programada local `santander-correos-a-hilvan` (app de Claude, 21:00, modo 
 
 1. `npm run -s cartolas:importar` → procesa la carpeta.
 2. Lee en Gmail los correos de `mensajeria@santander.cl` de los últimos 7 días e importa con `hilvan_importar_movimientos`.
+3. Desde el día 10 del mes, revisa que se hayan pagado las **remuneraciones** (`nomina.personas` tipo `contrato` de `hilvan_estado_financiero`): busca un cargo del mes a cada RUT por el líquido de la nómina (±2%) y avisa arriba del resumen si falta o si el monto no calza. Solo informa.
+
+**Sueldos:** se pagan el **día 5** de cada mes desde la cuenta corriente, una transferencia por persona por el líquido exacto de la liquidación, con glosa "Remuneración <mes> <año>" (recordatorio en el calendario de Tomás). Tomás lo necesita visible todos los meses para respaldar sus ingresos (crédito hipotecario). Los aportes del dueño a la empresa van otro día y con otra glosa.
 
 ## La carpeta
 
