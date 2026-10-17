@@ -48,4 +48,4 @@ npm run cartolas:importar               # importar ya, sin esperar a la tarea
 Cuenta corriente: mayo → septiembre 2026 completos (cartolas N°055–059); octubre solo tiene lo de los correos hasta que llegue la cartola N°060.
 BancoEstado 90270670201: enero → 5-oct-2026 (22 movimientos: traspasos desde/hacia Santander y cuotas de créditos).
 BancoEstado Casa Hiedra EIRL 90277664967: febrero → agosto 2026 (6 movimientos).
-Tarjeta 0192: estados de cuenta del 06-04 al 05-10-2026, **falta el período 05-06 → 06-07-2026**. Ojo: la fila de no facturados `TEMU.COM — compra en cuota (cuof)` $28.127 del 27-09 puede repetir las compras TEMU del estado de cuenta ($11.076 + $19.194): revisar al conciliar.
+Tarjeta 0192: estados de cuenta completos del 06-04 al 05-10-2026 (99 movimientos con los no facturados de octubre). Ojo: la fila de no facturados `TEMU.COM — compra en cuota (cuof)` $28.127 del 27-09 puede repetir las compras TEMU del estado de cuenta ($11.076 + $19.194): revisar al conciliar.
