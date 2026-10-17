@@ -3,9 +3,11 @@
 // Se descarga de Office Banking Santander y se deja en la carpeta (por defecto
 // ~/Documents/Cartolas Santander):
 //   - cartola mensual de cuenta corriente (.tx1)
+//   - estado de cuenta mensual de la tarjeta de crédito (PDF EstadoCuentaTC…, se lee con
+//     pdftotext de poppler: `brew install poppler`)
 //   - movimientos no facturados de la tarjeta de crédito (mov_nac*.txt)
 // Cada archivo se valida (RUT y cuenta de Casa Hiedra; la cartola debe cuadrar con sus
-// saldos), se cruza con lo que ya está en Hilván (no duplica lo que entró por los avisos
+// saldos; el estado de cuenta, con sus totales), se cruza con lo que ya está en Hilván (no duplica lo que entró por los avisos
 // de correo ni lo cargado a mano) y se importa. Los archivos procesados pasan a
 // <carpeta>/importadas/; los que fallan se quedan donde están y se informa por qué.
 //
@@ -17,6 +19,7 @@
 // Env (de .env.local vía el script de npm):
 //   HILVAN_AGENT_TOKEN  obligatorio
 //   HILVAN_URL          default https://app.casahiedra.com
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
@@ -27,6 +30,7 @@ import {
   RUT_EMPRESA,
   filasCartola,
   leerCartola,
+  leerEstadoCuentaTC,
   leerTarjeta,
   separarNuevas,
 } from './cartolas/lector.mjs'
@@ -78,13 +82,34 @@ const sumar = (filas, tipo) => filas.filter((f) => f.tipo === tipo).reduce((s, f
 const clp = (n) => `$${Math.round(n).toLocaleString('es-CL')}`
 const desplazar = (fecha, n) => new Date(Date.parse(`${fecha}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
 
+function textoPdf(ruta) {
+  for (const bin of ['pdftotext', '/opt/homebrew/bin/pdftotext', '/usr/local/bin/pdftotext']) {
+    try {
+      return execFileSync(bin, ['-layout', ruta, '-'], { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 })
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw new Error(`no pude leer el PDF: ${e.message}`)
+    }
+  }
+  throw new Error('falta pdftotext para leer PDFs (brew install poppler)')
+}
+
 async function procesar(ruta) {
-  const texto = readFileSync(ruta, 'latin1')
+  const esPdf = /\.pdf$/i.test(ruta)
+  const texto = esPdf ? textoPdf(ruta) : readFileSync(ruta, 'latin1')
   const nombre = basename(ruta)
   let filas
   let etiqueta
   let fuente
-  if (/^\d{12}/.test(texto)) {
+  if (esPdf) {
+    const e = leerEstadoCuentaTC(texto)
+    if (!/MONTEALEGRE PRODUCCION/i.test(e.titular)) throw new Error(`es de otro titular ("${e.titular}")`)
+    if (!e.cuadra) {
+      throw new Error(`no cuadra: operaciones ${clp(e.sumaOperaciones)} vs total ${clp(e.totalOperaciones)}, cargos ${clp(e.sumaCargos)} vs ${clp(e.totalCargos)}`)
+    }
+    filas = e.filas
+    fuente = FUENTE_TC
+    etiqueta = `estado de cuenta tarjeta ${e.tarjeta} (${e.desde} → ${e.hasta}), cuadra con sus totales`
+  } else if (/^\d{12}/.test(texto)) {
     const c = leerCartola(texto)
     if (c.rut !== RUT_EMPRESA || c.cuenta !== CUENTA_EMPRESA) {
       throw new Error(`es de otra cuenta (RUT ${c.rut}, cuenta ${c.cuenta}); solo se importa la cuenta corriente ${CUENTA_EMPRESA} de Casa Hiedra`)
@@ -102,7 +127,7 @@ async function procesar(ruta) {
     fuente = FUENTE_TC
     etiqueta = 'movimientos no facturados de la tarjeta de crédito'
   } else {
-    throw new Error('formato desconocido (no es cartola .tx1 ni movimientos de tarjeta)')
+    throw new Error('formato desconocido (no es cartola .tx1, estado de cuenta de tarjeta ni movimientos de tarjeta)')
   }
   if (!filas.length) return { nombre, etiqueta, nuevas: [], yaEstaban: [] }
 
@@ -120,11 +145,11 @@ try {
 } catch {
   if (dry) salir(`No existe la carpeta ${carpeta}`)
   mkdirSync(join(carpeta, 'importadas'), { recursive: true })
-  console.log(`Creé la carpeta ${carpeta}: suelta ahí las cartolas (.tx1) y los movimientos de tarjeta (mov_nac*.txt).`)
+  console.log(`Creé la carpeta ${carpeta}: suelta ahí las cartolas (.tx1) y los estados de cuenta de la tarjeta (PDF).`)
   process.exit(0)
 }
 const archivos = entradas
-  .filter((n) => !n.startsWith('.') && /\.(tx1|txt)$/i.test(n))
+  .filter((n) => !n.startsWith('.') && /\.(tx1|txt|pdf)$/i.test(n))
   .map((n) => join(carpeta, n))
   .filter((r) => statSync(r).isFile())
   .sort()

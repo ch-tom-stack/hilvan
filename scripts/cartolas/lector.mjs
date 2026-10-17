@@ -146,8 +146,99 @@ export function leerTarjeta(texto) {
   return { empresa, filas }
 }
 
+// ── Tarjeta de crédito: estado de cuenta mensual (PDF → pdftotext -layout) ───
+// Secciones: "1. TOTAL OPERACIONES $ X" (compras y pagos "MONTO CANCELADO"),
+// "2. PRODUCTOS O SERVICIOS…", "3. CARGOS, COMISIONES, IMPUESTOS Y ABONOS $ Y"
+// (intereses, comisión, notas de crédito), hasta "4. INFORMACION COMPRAS EN CUOTAS".
+// Cada línea: [lugar] DD/MM/AA descripción … $cargo-del-mes. Las compras en cuotas
+// traen "$ total $ total NN/MM $valor-cuota" y aparecen en cada estado mientras duren:
+// se importan UNA vez, por el total y en la fecha de compra (la referencia es la misma
+// en todos los estados, así que las cuotas siguientes no duplican).
+// Valida: suma de cargos del mes de la sección 1 (sin pagos) = TOTAL OPERACIONES, y
+// suma de la sección 3 = su total.
+const pesos = (s) => Number(String(s).replace(/[$\s.]/g, ''))
+
+export function leerEstadoCuentaTC(texto) {
+  if (!/ESTADO DE CUENTA EN MONEDA NACIONAL DE TARJETA DE CR[ÉE]DITO/i.test(texto)) {
+    throw new Error('no parece un estado de cuenta de tarjeta de crédito Santander')
+  }
+  const titular = (texto.match(/NOMBRE DEL TITULAR\s+(.+)/) ?? [])[1]?.trim() ?? ''
+  const tarjeta = (texto.match(/N[º°] DE TARJETA DE CR[ÉE]DITO\s+X{4} X{4} X{4} (\d{4})/) ?? [])[1] ?? ''
+  const per = texto.match(/PER[ÍI]ODO FACTURADO\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2})\/(\d{2})\/(\d{4})/)
+  if (!per) throw new Error('no encontré el período facturado')
+  const desde = `${per[3]}-${per[2]}-${per[1]}`
+  const hasta = `${per[6]}-${per[5]}-${per[4]}`
+  const total = (re) => {
+    const m = texto.match(re)
+    if (!m) throw new Error(`no encontré el total ${re}`)
+    return pesos(m[1])
+  }
+  const totalOperaciones = total(/1\. TOTAL OPERACIONES\s+(\$\s?-?[\d.]+)/)
+  const totalCargos = total(/3\. CARGOS, COMISIONES, IMPUESTOS Y ABONOS\s+(\$\s?-?[\d.]+)/)
+
+  let seccion = 0
+  const filas = []
+  const vistos = new Map()
+  let sumaOperaciones = 0
+  let sumaCargos = 0
+  for (const l of texto.split(/\r?\n/)) {
+    if (/1\. TOTAL OPERACIONES/.test(l)) { seccion = 1; continue }
+    if (/^\s*2\. PRODUCTOS O SERVICIOS/.test(l)) { seccion = 2; continue }
+    if (/^\s*3\. CARGOS, COMISIONES/.test(l)) { seccion = 3; continue }
+    if (/^\s*4\. INFORMACION COMPRAS/.test(l)) { seccion = 4; continue }
+    if (seccion !== 1 && seccion !== 3) continue
+    const m = l.match(/(\d{2})\/(\d{2})\/(\d{2})(?![\d/])\s+(.+)$/)
+    if (!m) continue
+    const resto = m[4]
+    const montos = [...resto.matchAll(/\$\s?(-?[\d.]+)/g)].map((x) => Number(x[1].replace(/\./g, '')))
+    if (!montos.length) continue
+    const fecha = `20${m[3]}-${m[2]}-${m[1]}`
+    // columnas separadas por 4+ espacios (la glosa puede traer 3, ej. 'DP   *FALABELLA.COM')
+    const columnas = resto.split(/\s{4,}/)
+    const descripcion = columnas[0].replace(/\s+/g, ' ').trim()
+    const delMes = montos.at(-1)
+    const cuota = resto.match(/(\d{2})\/(\d{2})\s+\$\s?[\d.]+\s*$/)
+    const pago = /^MONTO CANCELADO/i.test(descripcion)
+    if (seccion === 1 && !pago) sumaOperaciones += delMes
+    if (seccion === 3) sumaCargos += delMes
+    // compra en cuotas: el total es el penúltimo monto
+    const monto = cuota ? montos.at(-2) : delMes
+    const detalle = columnas[1]?.trim()
+    const base = `TCE ${fecha} ${descripcion} ${Math.abs(monto)}`
+    const n = (vistos.get(base) ?? 0) + 1
+    vistos.set(base, n)
+    filas.push({
+      fecha,
+      monto: Math.abs(monto),
+      tipo: monto < 0 ? 'abono' : 'cargo',
+      fuente: FUENTE_TC,
+      referencia: n === 1 ? base : `${base} #${n}`,
+      descripcion: pago
+        ? 'Pago de la tarjeta (monto cancelado)'
+        : cuota
+          ? `${descripcion} — compra en ${Number(cuota[2])} cuotas`
+          : detalle && /^[A-ZÁÉÍÓÚÑ .]+$/.test(detalle) && !/^(CL|US|CO|EU)$/.test(detalle)
+            ? `${descripcion} — ${detalle.toLowerCase()}`
+            : descripcion,
+    })
+  }
+  return {
+    titular,
+    tarjeta,
+    desde,
+    hasta,
+    totalOperaciones,
+    totalCargos,
+    cuadra: sumaOperaciones === totalOperaciones && sumaCargos === totalCargos,
+    sumaOperaciones,
+    sumaCargos,
+    filas,
+  }
+}
+
 // ── Cruce contra lo que ya está en Hilván ────────────────────────────────────
 const dias = (a, b) => Math.abs(Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86400000
+const origen = (referencia) => String(referencia ?? '').split(' ')[0]
 
 /**
  * Separa las filas nuevas de las que ya existen. Una fila ya existe si:
@@ -155,14 +246,14 @@ const dias = (a, b) => Math.abs(Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T
  *   2. hay uno con el mismo monto y tipo, aún sin par, y
  *      - la misma fecha, sin RUTs que se contradigan (si ambos traen RUT, debe ser el mismo), o
  *      - hasta `holguraDias` de diferencia y el MISMO RUT (aviso por correo vs cartola).
- * Cada existente calza con una sola fila. Los existentes que tienen otra referencia de
- * cartola no se usan para el punto 2 (son otras líneas de una cartola ya importada).
+ * Cada existente calza con una sola fila. Para el punto 2 solo cuentan existentes de OTRO
+ * origen (el prefijo de la referencia: `cartola`, `TC`, `TCE`, `OB`, `gmail:…`, o a mano):
+ * los del mismo origen son otras líneas de un archivo del mismo tipo y ya se cruzaron por
+ * referencia.
  */
 export function separarNuevas(filas, existentes, { holguraDias = 3 } = {}) {
   const porRef = new Set(existentes.map((e) => e.referencia).filter(Boolean))
-  const libres = existentes
-    .filter((e) => !String(e.referencia ?? '').startsWith('cartola ') && !String(e.referencia ?? '').startsWith('TC '))
-    .map((e) => ({ ...e, rut: rutEnTexto(e.descripcion), usado: false }))
+  const todos = existentes.map((e) => ({ ...e, rut: rutEnTexto(e.descripcion), origen: origen(e.referencia), usado: false }))
   const nuevas = []
   const yaEstaban = []
   for (const f of filas) {
@@ -171,7 +262,10 @@ export function separarNuevas(filas, existentes, { holguraDias = 3 } = {}) {
       continue
     }
     const rut = rutEnTexto(f.descripcion)
-    const mismos = libres.filter((e) => !e.usado && e.monto === f.monto && e.tipo === f.tipo && e.fuente === f.fuente)
+    const propio = origen(f.referencia)
+    const mismos = todos.filter(
+      (e) => !e.usado && e.origen !== propio && e.monto === f.monto && e.tipo === f.tipo && e.fuente === f.fuente,
+    )
     const mismoDia = mismos.filter((e) => e.fecha === f.fecha && !(rut && e.rut && rut !== e.rut))
     const par =
       (rut && mismoDia.find((e) => e.rut === rut)) ||

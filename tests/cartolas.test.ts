@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — módulo .mjs sin tipos (lo usa scripts/cartolas-importar.mjs)
-import { descripcionCartola, filasCartola, formatoRut, leerCartola, leerTarjeta, rutEnTexto, separarNuevas } from '../scripts/cartolas/lector.mjs'
+import { descripcionCartola, filasCartola, formatoRut, leerCartola, leerEstadoCuentaTC, leerTarjeta, rutEnTexto, separarNuevas } from '../scripts/cartolas/lector.mjs'
 
 // Arma una cartola sintética con el ancho fijo de Office Banking.
 const pad = (s: string, n: number) => s.padEnd(n).slice(0, n)
@@ -84,6 +84,47 @@ describe('leerTarjeta', () => {
   })
 })
 
+describe('leerEstadoCuentaTC', () => {
+  // Lo que deja `pdftotext -layout` (resumido): sección 1 con compras, una en cuotas y un pago;
+  // la cabecera de página se repite; sección 3 con intereses y una nota de crédito.
+  const texto = [
+    '        ESTADO DE CUENTA EN MONEDA NACIONAL DE TARJETA DE CRÉDITO',
+    'NOMBRE DEL TITULAR                EMPRESA MONTEALEGRE PRODUCCIONE',
+    'Nº DE TARJETA DE CRÉDITO          XXXX XXXX XXXX 0192        MASTER EMPRESA PLUS',
+    '   PERÍODO FACTURADO 06/08/2026 07/09/2026',
+    '                            1. TOTAL OPERACIONES                                          $ 128.858',
+    '                    04/07/26 LATAM.COM XP OTRAS               TRES CUOTAS PREC     0,00 %   $ 211.884   $ 211.884   03/03   $70.628',
+    'Stockholm           07/08/26 Spotify P4564B8B86                                     CL     8.250,00              $8.250',
+    'SAN FRANCISC        02/09/26 ANTHROPIC* CLAUDE SUB                                  US      119,00              $49.980',
+    ' 2.PERÍODO ACTUAL',
+    '                  02/09/26 MONTO CANCELADO                                  $ -300.000',
+    'SANTIAGO          23/07/26 DP   *FALABELLA.COM                                                     $0',
+    '                          2. PRODUCTOS O SERVICIOS VOLUNTARIAMENTE CONTRATADOS                     $0',
+    '                          3. CARGOS, COMISIONES, IMPUESTOS Y ABONOS                          $ -79.363',
+    'SANTIAGO          07/08/26 NOTA DE CREDITO                                                         $-89.900',
+    '                  07/09/26 INTERESES                                                                 $1.137',
+    '                  07/09/26 COMISION DE MANTENCION                                                    $9.400',
+    '                          4. INFORMACION COMPRAS EN CUOTAS EN EL PERIODO                           $0',
+    'PAGAR HASTA 02/10/2026    $ 731.747',
+  ].join('\n')
+
+  it('lee el período, valida los totales y arma las filas', () => {
+    const e = leerEstadoCuentaTC(texto)
+    expect(e).toMatchObject({ tarjeta: '0192', desde: '2026-08-06', hasta: '2026-09-07', cuadra: true })
+    const ref = (r: string) => e.filas.find((f: { referencia: string }) => f.referencia.startsWith(r))
+    // la compra en cuotas entra por el total, en la fecha de compra
+    expect(ref('TCE 2026-07-04 LATAM')).toMatchObject({ monto: 211884, tipo: 'cargo', descripcion: 'LATAM.COM XP OTRAS — compra en 3 cuotas' })
+    expect(ref('TCE 2026-09-02 MONTO CANCELADO')).toMatchObject({ monto: 300000, tipo: 'abono' })
+    expect(ref('TCE 2026-08-07 NOTA DE CREDITO')).toMatchObject({ monto: 89900, tipo: 'abono' })
+    expect(ref('TCE 2026-07-23 DP *FALABELLA.COM')).toBeTruthy()
+    expect(e.filas.some((f: { fecha: string }) => f.fecha.startsWith('2026-10'))).toBe(false)
+  })
+
+  it('no cuadra si falta una línea', () => {
+    expect(leerEstadoCuentaTC(texto.replace(/.*Spotify.*\n/, '')).cuadra).toBe(false)
+  })
+})
+
 describe('separarNuevas', () => {
   const f = (fecha: string, monto: number, descripcion: string, referencia: string, tipo = 'cargo') =>
     ({ fecha, monto, tipo, fuente: 'cuenta corriente', descripcion, referencia })
@@ -112,6 +153,12 @@ describe('separarNuevas', () => {
       [f('2026-10-05', 80000, 'Transf a Josué 17.105.922-4', 'gmail:x')],
     )
     expect(nuevas).toHaveLength(1)
+  })
+
+  it('el estado de cuenta reconoce lo que ya entró por el archivo de no facturados', () => {
+    const tc = (referencia: string) => ({ fecha: '2026-10-07', monto: 41537, tipo: 'cargo', fuente: 'tarjeta de crédito', descripcion: 'VIRTUAL*MI INTERNET', referencia })
+    const { nuevas } = separarNuevas([tc('TCE 2026-10-07 VIRTUAL*MI INTERNET SP 41537')], [tc('TC 2026-10-07 VIRTUAL*MI INTERNET S 41537')])
+    expect(nuevas).toHaveLength(0)
   })
 
   it('un existente calza con una sola fila', () => {
