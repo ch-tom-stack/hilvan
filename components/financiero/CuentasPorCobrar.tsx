@@ -3,6 +3,9 @@
 import type { DatosCobrar, FilaCobrar } from '@/app/actions/financiero'
 import { formatCLP } from '@/types'
 import { formatFecha as formatFechaHelper } from '@/lib/fechas'
+import { useState } from 'react'
+import { toastError, toastOk } from '@/lib/toast'
+import { textoPendientes, type EstadoRef } from '@/lib/cotizacion-referencias'
 
 // ─── aging ────────────────────────────────────────────────────────────────────
 function agingClass(dias: number): string {
@@ -28,6 +31,23 @@ interface Props {
 
 export default function CuentasPorCobrar({ datos }: Props) {
   const { por_facturar, por_cobrar, total_por_facturar, total_por_cobrar } = datos
+  const [soloFaltantes, setSoloFaltantes] = useState(false)
+  const faltan = por_facturar.filter((f) => f.oc === 'falta' || f.hes === 'falta' || f.oc === 'propuesta' || f.hes === 'propuesta')
+  const visibles = soloFaltantes ? faltan : por_facturar
+
+  async function copiarPendientes() {
+    const texto = textoPendientes(
+      por_facturar.map((f) => ({ numero: f.numero ?? null, nombre: f.nombre, cliente: f.cliente, total: f.total, oc: f.oc ?? 'no_aplica', hes: f.hes ?? 'no_aplica' })),
+      formatCLP,
+    )
+    if (!texto) { toastOk('No falta ninguna OC ni HES'); return }
+    try {
+      await navigator.clipboard.writeText(texto)
+      toastOk('Lista copiada: pégala en el correo al cliente')
+    } catch {
+      toastError('No se pudo copiar al portapapeles')
+    }
+  }
 
   return (
     <div className="space-y-12">
@@ -48,27 +68,42 @@ export default function CuentasPorCobrar({ datos }: Props) {
           </span>
         </div>
 
+        {faltan.length > 0 && (
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <button onClick={() => setSoloFaltantes((v) => !v)}
+              className={`font-body text-[9px] tracking-[0.3em] uppercase border px-3 py-1.5 transition-colors ${soloFaltantes ? 'border-ch-gold/60 text-ch-gold' : 'border-ch-border text-ch-muted hover:text-ch-cream'}`}>
+              {soloFaltantes ? 'Ver todos' : `Sin OC / sin HES (${faltan.length})`}
+            </button>
+            <button onClick={copiarPendientes}
+              className="font-body text-[9px] tracking-[0.3em] uppercase border border-ch-border text-ch-muted hover:text-ch-cream px-3 py-1.5 transition-colors">
+              Copiar lista para el cliente
+            </button>
+          </div>
+        )}
+
         {por_facturar.length === 0 ? (
           <EmptyState texto="No hay proyectos pendientes de facturar." />
         ) : (
           <div className="border border-ch-border/50">
             {/* Header */}
-            <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-4 px-4 py-2 border-b border-ch-border/30 bg-ch-surface/20">
+            <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 px-4 py-2 border-b border-ch-border/30 bg-ch-surface/20">
               <span className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-muted">Cliente</span>
               <span className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-muted">Proyecto</span>
+              <span className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-muted text-right">OC · HES</span>
               <span className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-muted text-right">Monto</span>
               <span className="font-body text-[9px] tracking-[0.35em] uppercase text-ch-muted text-right">Días</span>
             </div>
 
-            {por_facturar.map((fila, i) => (
-              <FilaPorFacturar key={fila.id} fila={fila} ultimo={i === por_facturar.length - 1} />
+            {visibles.map((fila, i) => (
+              <FilaPorFacturar key={fila.id} fila={fila} ultimo={i === visibles.length - 1} />
             ))}
 
             {/* Total */}
-            <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-4 px-4 py-3 border-t border-ch-border/50 bg-ch-surface/10">
+            <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 px-4 py-3 border-t border-ch-border/50 bg-ch-surface/10">
               <span className="font-body text-[10px] text-ch-muted col-span-2">
                 {por_facturar.length} proyecto{por_facturar.length !== 1 ? 's' : ''}
               </span>
+              <span />
               <span className="font-body text-sm font-mono text-ch-cream text-right">
                 {formatCLP(total_por_facturar)}
               </span>
@@ -144,15 +179,19 @@ function FilaPorFacturar({ fila, ultimo }: { fila: FilaCobrar; ultimo: boolean }
   const dias = fila.dias_desde_aprobacion
 
   return (
-    <div className={`grid grid-cols-[1fr_1fr_auto_auto] gap-4 px-4 py-3 items-center ${!ultimo ? 'border-b border-ch-border/20' : ''}`}>
+    <div className={`grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 px-4 py-3 items-center ${!ultimo ? 'border-b border-ch-border/20' : ''}`}>
       <span className="font-body text-xs text-ch-muted truncate">{fila.cliente}</span>
       <div className="min-w-0">
-        <span className="font-body text-xs text-ch-cream truncate block">{fila.nombre}</span>
+        <a href={`/cotizaciones/${fila.id}`} className="font-body text-xs text-ch-cream truncate block hover:text-ch-green-light">{fila.nombre}</a>
         {fila.fecha_aprobacion && (
           <span className="font-body text-[10px] text-ch-muted/70">
             Aprobado {formatFecha(fila.fecha_aprobacion)}
           </span>
         )}
+      </div>
+      <div className="flex gap-1 justify-end">
+        <MarcaRef que="OC" estado={fila.oc} />
+        <MarcaRef que="HES" estado={fila.hes} />
       </div>
       <span className="font-body text-sm font-mono text-ch-cream text-right whitespace-nowrap">
         {formatCLP(fila.total)}
@@ -196,6 +235,22 @@ function FilaPorCobrar({ fila, ultimo }: { fila: FilaCobrar; ultimo: boolean }) 
         </span>
       </div>
     </div>
+  )
+}
+
+// OC / HES de una cotización por facturar (sql/cotizacion_referencias.sql).
+function MarcaRef({ que, estado }: { que: string; estado?: EstadoRef }) {
+  if (!estado || estado === 'no_aplica') return null
+  const estilo = {
+    confirmada: 'border-ch-green/50 text-ch-green',
+    propuesta: 'border-ch-gold/60 text-ch-gold',
+    falta: 'border-ch-border text-ch-subtle',
+  }[estado]
+  const titulo = { confirmada: 'confirmada', propuesta: 'detectada en el correo, por confirmar', falta: 'falta' }[estado]
+  return (
+    <span title={`${que}: ${titulo}`} className={`font-body text-[9px] tracking-[0.15em] uppercase border px-1.5 py-0.5 rounded-[2px] whitespace-nowrap ${estilo}`}>
+      {estado === 'confirmada' ? '✓ ' : estado === 'propuesta' ? '? ' : ''}{que}
+    </span>
   )
 }
 

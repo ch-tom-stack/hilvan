@@ -10,6 +10,7 @@ import {
 } from '@/app/actions/cotizaciones'
 import type { Cotizacion } from '@/types'
 import { parseFechaLocal } from '@/lib/fechas'
+import ReferenciasCotizacion from './ReferenciasCotizacion'
 
 // ─── PANEL FACTURACIÓN ───────────────────────────────────────────────────────
 
@@ -94,6 +95,9 @@ export default function PanelFacturacion({ cot, setCot }: { cot: Cotizacion; set
           </button>
         </div>
       )}
+
+      {/* OC / HES que van a la factura */}
+      <ReferenciasCotizacion cotizacionId={cot.id} />
 
       {/* Pago recibido — solo aparece si ya hay factura */}
       {cot.fecha_factura_emitida && (

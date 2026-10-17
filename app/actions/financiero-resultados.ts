@@ -13,6 +13,8 @@ import {
 import { _getPPMTasa, _getPreviredMensual, _getIUSCMensual, _getNomina, _getHonorariosContador } from './financiero-config'
 import { ensamblarResumenContador, type ResumenContadorTotal } from '@/lib/agent-resumen-contador'
 import { fechaTributariaGasto } from '@/lib/agent-estado-financiero'
+import { estadoReferencias, type EstadoRef } from '@/lib/cotizacion-referencias'
+import { exigenciasDe, referenciasDe } from '@/lib/cotizacion-referencias-io'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS PÚBLICOS
@@ -338,6 +340,9 @@ export interface FilaCobrar {
   // por facturar
   fecha_aprobacion?: string | null
   dias_desde_aprobacion?: number
+  numero?: string | null
+  oc?: EstadoRef
+  hes?: EstadoRef
   // por cobrar
   fecha_factura?: string | null
   numero_factura?: string | null
@@ -373,6 +378,13 @@ export async function getCuentasPorCobrar(): Promise<DatosCobrar> {
       .order('fecha_factura_emitida', { ascending: true }),
   ])
 
+  // OC / HES de lo que falta facturar (sql/cotizacion_referencias.sql). Si la tabla
+  // aún no existe o falla, la vista sigue sin las marcas.
+  const idsPF = (cotPorFacturar ?? []).map((c: any) => c.id as string)
+  const [refsPF, exigPF] = await Promise.all([referenciasDe(supabase, idsPF), exigenciasDe(supabase, idsPF)])
+  if (!refsPF.ok) console.error('[cobrar] referencias:', refsPF.error)
+  if (!exigPF.ok) console.error('[cobrar] exigencias:', exigPF.error)
+
   const porFacturar: FilaCobrar[] = (cotPorFacturar ?? []).map((c: any) => {
     const fechaRef = c.fecha_respuesta_cliente
     const diasDesdeAprobacion = fechaRef
@@ -385,6 +397,10 @@ export async function getCuentasPorCobrar(): Promise<DatosCobrar> {
       total: calcularTotalCot(c),
       fecha_aprobacion: fechaRef ?? null,
       dias_desde_aprobacion: diasDesdeAprobacion,
+      numero: c.grupo?.numero_base ?? null,
+      ...(refsPF.ok && exigPF.ok
+        ? estadoReferencias(refsPF.valor.get(c.id) ?? [], exigPF.valor.get(c.id) ?? { oc: false, hes: false })
+        : {}),
     }
   })
 

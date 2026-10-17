@@ -628,6 +628,65 @@ const baseHandler = createMcpHandler(
     )
 
     server.registerTool(
+      'hilvan_referencias_pendientes',
+      {
+        title: 'OC y HES de lo que falta facturar',
+        description:
+          'SOLO LECTURA. Cotizaciones aprobadas / en producción SIN factura, cada una con lo que exige el cliente (exige.oc / exige.hes), el estado de su OC y su HES (confirmada | propuesta = por confirmar | falta | no_aplica), sus referencias, y `correos_vistos` (ids de Gmail ya procesados: no los vuelvas a proponer). Úsala para responder "¿qué OC/HES nos falta pedir?" y antes de proponer referencias leídas del correo.',
+        inputSchema: {},
+      },
+      async (_args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/referencias', { accion: 'pendientes' })),
+    )
+
+    server.registerTool(
+      'hilvan_proponer_referencia',
+      {
+        title: 'Proponer OC/HES leída de un correo',
+        description:
+          'Deja una referencia (OC, HES…) como PROPUESTA en una cotización, a partir de un correo. NO confirma: Tomás la confirma con un botón en el Panel de facturación de la cotización (o te lo pide por chat). Si no pasas `referencias`, Hilván las lee del correo con los formatos conocidos: Falabella "Pedido<número>" (OC, fecha de contabilización del cuerpo), Falabella "Nuevo Documento HES" (HES SIN número: el número solo está en el PDF, Tomás lo escribe al confirmar), Unabase "…Orden de Compra Nº <número>…", o texto como "OC y HES …: <n1> <n2>". Idempotente por cotización + correo. Elige la cotización con hilvan_referencias_pendientes (mismo cliente, sin esa referencia, nombre parecido al asunto); si dudas entre varias, pregúntale a Tomás en vez de proponer. Reversible con hilvan_deshacer.',
+        inputSchema: {
+          cotizacion_id: z.string(),
+          correo: z.object({
+            id: z.string().describe('id del mensaje de Gmail'),
+            remitente: z.string(),
+            asunto: z.string(),
+            cuerpo: z.string().optional().describe('texto plano del correo (sin la conversación citada si puedes)'),
+            fecha: z.string().describe('fecha del correo, ISO'),
+          }),
+          referencias: z
+            .array(z.object({
+              tipo: z.enum(['oc', 'hes', 'nota_pedido', 'contrato']),
+              folio: z.string().optional(),
+              fecha: z.string().optional().describe('YYYY-MM-DD'),
+              monto: z.number().optional().describe('neto'),
+              glosa: z.string().optional().describe('texto de la línea de la OC'),
+            }))
+            .optional()
+            .describe('solo si el formato no es uno de los conocidos o si leíste el PDF'),
+          nota: z.string().optional().describe('por qué esta cotización (corto)'),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/referencias', { accion: 'proponer', ...args })),
+    )
+
+    server.registerTool(
+      'hilvan_confirmar_referencia',
+      {
+        title: 'Confirmar una OC/HES propuesta',
+        description:
+          'Confirma una referencia PROPUESTA (queda lista para la factura), completando lo que falte: la HES de Falabella llega sin número y Tomás te lo dicta. ÚSALA SOLO cuando Tomás lo pidió explícitamente en esta conversación; si no, dile que la confirme con el botón en el Panel de facturación. Exige folio y fecha. Reversible con hilvan_deshacer.',
+        inputSchema: {
+          referencia_id: z.string(),
+          folio: z.string().optional(),
+          fecha: z.string().optional().describe('YYYY-MM-DD'),
+          monto: z.number().optional(),
+          glosa: z.string().optional(),
+        },
+      },
+      async (args, extra) => ok(await callAgent(extra as ToolExtra, 'POST', '/referencias', { accion: 'confirmar', ...args })),
+    )
+
+    server.registerTool(
       'hilvan_buscar_gastos',
       {
         title: 'Buscar gastos',

@@ -107,6 +107,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, restaurada: accion.resultado_id })
   }
 
+  // ── Referencias OC/HES: proponer (insert) y confirmar (update) guardan su op ─
+  if (accion.herramienta === 'referencia-proponer' || accion.herramienta === 'referencia-confirmar') {
+    const payload = accion.payload as { op?: Op } | null
+    if (!payload?.op) return NextResponse.json({ error: 'La acción no guardó qué cambió' }, { status: 400 })
+    const fallo = await aplicar(admin, [payload.op], 'deshacer')
+    if (fallo) return NextResponse.json({ error: `No se pudo deshacer: ${fallo}` }, { status: 409 })
+    await admin.from('agente_acciones').update({ deshecha: true }).eq('id', accion_id)
+    return NextResponse.json({ ok: true })
+  }
+
   // ── WhatsApp: ambas trabajan desde el payload, no desde resultado_id ───────
   if (accion.herramienta === 'whatsapp-registrar') {
     const payload = accion.payload as { creadas?: string[]; respondido_marcado?: string | null; mensaje_ids?: string[] } | null

@@ -153,6 +153,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.feriados         TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.crono_compuertas TO service_role;
 -- SII: estado de importación por período (schema en sql/sii_importaciones.sql)
 GRANT ALL ON public.sii_importaciones TO service_role;
+-- Referencias OC/HES por cotización (schema en sql/cotizacion_referencias.sql)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizacion_referencias TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cotizacion_referencias TO service_role;
 -- SII: cola del trabajador del Mac (schema en sql/sii_solicitudes.sql)
 GRANT ALL ON public.sii_solicitudes TO service_role;
 GRANT ALL ON public.sii_trabajador  TO service_role;
