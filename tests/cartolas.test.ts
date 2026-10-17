@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest'
-// @ts-expect-error — módulo .mjs sin tipos (lo usa scripts/cartolas-importar.mjs)
 import { descripcionCartola, filasCartola, formatoRut, leerCartola, leerCartolaBancoEstado, leerEstadoCuentaTC, leerTarjeta, rutEnTexto, separarNuevas } from '../scripts/cartolas/lector.mjs'
 
 // Arma una cartola sintética con el ancho fijo de Office Banking.
