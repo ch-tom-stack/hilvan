@@ -14,6 +14,7 @@ import {
   type Cotizacion,
 } from '@/types'
 import { encabezadoCotizacion } from '@/lib/cotizaciones-encabezado'
+import { emisoraDe, numeroProveedorDe } from '@/lib/cotizacion-emisora'
 
 interface Props {
   cotizacion: Cotizacion
@@ -196,6 +197,9 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
           </div>
         )}
 
+        {/* Facturación y pago */}
+        <BloquePago cotizacion={cotizacion} />
+
         {/* Respuesta del cliente */}
         {!preview && respondido ? (
           <div className={`rounded-[2px] p-5 border text-center ${
@@ -247,6 +251,43 @@ export default function VistaClienteCotizacion({ cotizacion, token, preview = fa
           <p className="text-xs text-gray-300 font-sans">
             Casa Hiedra · Producción audiovisual
           </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Mismo contenido que el bloque del PDF (lib/cotizacion-emisora.ts).
+function BloquePago({ cotizacion }: { cotizacion: Cotizacion }) {
+  const e = emisoraDe(cotizacion)
+  const proveedor = numeroProveedorDe(cotizacion)
+  return (
+    <div className="border-t border-gray-200 pt-5">
+      <p className="text-xs font-sans font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        Facturación y pago
+      </p>
+      <div className="grid gap-6 sm:grid-cols-2 text-sm font-sans text-gray-600 leading-relaxed">
+        <div>
+          <p className="text-xs text-gray-400 mb-1">
+            {e.clave === 'exenta' ? 'Factura exenta' : 'Factura afecta a IVA'}
+          </p>
+          <p className="font-semibold text-gray-800">{e.razonSocial}</p>
+          <p>{e.direccion}</p>
+          <p>R.U.T. {e.rut}</p>
+          <p>{e.email}</p>
+          {proveedor && (
+            <p className="font-semibold text-gray-800 mt-2">Proveedor N° {proveedor.numero}</p>
+          )}
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-1">Datos de transferencia</p>
+          <p className="font-semibold text-gray-800">{e.banco.titular}</p>
+          <p>{e.banco.rut}</p>
+          <p>{e.banco.tipoCuenta} {e.banco.banco}</p>
+          <p>{e.banco.numero}</p>
+          <p>{e.banco.email}</p>
+          <p className="mt-2">SWIFT (transferencias internacionales): {e.banco.swift}</p>
+          <p>CMF / SBIF (transferencias nacionales): {e.banco.codigoCmf}</p>
         </div>
       </div>
     </div>

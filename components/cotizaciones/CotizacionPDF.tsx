@@ -16,6 +16,7 @@ import {
   type Cotizacion,
 } from '@/types'
 import { encabezadoCotizacion } from '@/lib/cotizaciones-encabezado'
+import { emisoraDe, numeroProveedorDe } from '@/lib/cotizacion-emisora'
 
 const S = StyleSheet.create({
   page: {
@@ -210,6 +211,34 @@ const S = StyleSheet.create({
     marginBottom: 2,
     lineHeight: 1.5,
   },
+  pagoCols: {
+    flexDirection: 'row',
+    marginTop: 2,
+  },
+  pagoCol: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  pagoTitulo: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    color: '#555',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 3,
+  },
+  pagoFuerte: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#1a1a1a',
+    marginBottom: 1.5,
+  },
+  pagoLinea: {
+    fontSize: 7.5,
+    color: '#333',
+    marginBottom: 1.5,
+    lineHeight: 1.35,
+  },
   footer: {
     position: 'absolute',
     bottom: 20,
@@ -385,6 +414,8 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
           )
         })()}
 
+        <BloquePagoPDF cotizacion={cotizacion} />
+
         <View style={S.footer} fixed>
           <Text style={S.footerText}>Casa Hiedra · Producción Audiovisual</Text>
           <Text style={S.footerText}>{numVisible}</Text>
@@ -392,6 +423,43 @@ export default function CotizacionPDF({ cotizacion, logoSrc }: Props) {
 
       </Page>
     </Document>
+  )
+}
+
+// Facturación y pago: quién factura (afecta → EIRL principal / Santander;
+// exenta → Producciones Culturales / BancoEstado) y, si la factura es para
+// Falabella, el N° de proveedor. Va entero en una página (wrap={false}).
+function BloquePagoPDF({ cotizacion }: { cotizacion: Cotizacion }) {
+  const e = emisoraDe(cotizacion)
+  const proveedor = numeroProveedorDe(cotizacion)
+  return (
+    <View wrap={false}>
+      <View style={S.sectionBar}>
+        <Text style={S.sectionBarText}>Facturación y pago</Text>
+      </View>
+      <View style={S.pagoCols}>
+        <View style={S.pagoCol}>
+          <Text style={S.pagoTitulo}>{e.clave === 'exenta' ? 'Factura exenta' : 'Factura afecta a IVA'}</Text>
+          <Text style={S.pagoFuerte}>{e.razonSocial}</Text>
+          <Text style={S.pagoLinea}>{e.direccion}</Text>
+          <Text style={S.pagoLinea}>R.U.T. {e.rut}</Text>
+          <Text style={S.pagoLinea}>{e.email}</Text>
+          {proveedor && (
+            <Text style={[S.pagoFuerte, { marginTop: 4 }]}>Proveedor N° {proveedor.numero}</Text>
+          )}
+        </View>
+        <View style={S.pagoCol}>
+          <Text style={S.pagoTitulo}>Datos de transferencia</Text>
+          <Text style={S.pagoFuerte}>{e.banco.titular}</Text>
+          <Text style={S.pagoLinea}>{e.banco.rut}</Text>
+          <Text style={S.pagoLinea}>{e.banco.tipoCuenta} {e.banco.banco}</Text>
+          <Text style={S.pagoLinea}>{e.banco.numero}</Text>
+          <Text style={S.pagoLinea}>{e.banco.email}</Text>
+          <Text style={[S.pagoLinea, { marginTop: 3 }]}>SWIFT (transferencias internacionales): {e.banco.swift}</Text>
+          <Text style={S.pagoLinea}>CMF / SBIF (transferencias nacionales): {e.banco.codigoCmf}</Text>
+        </View>
+      </View>
+    </View>
   )
 }
 
