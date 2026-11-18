@@ -185,6 +185,15 @@ interface Props {
 }
 
 
+// Color de la fila entera: el del bloque diluido sobre blanco (igual que en la pantalla).
+function tinteFila(color?: string): string | undefined {
+  const m = color ? /^#([0-9a-f]{6})$/i.exec(color) : null
+  if (!m || color!.toLowerCase() === '#353135') return undefined
+  const n = parseInt(m[1], 16)
+  const mezcla = (c: number) => Math.round(c * 0.2 + 255 * 0.8)
+  return `rgb(${mezcla((n >> 16) & 255)}, ${mezcla((n >> 8) & 255)}, ${mezcla(n & 255)})`
+}
+
 // ── Ícono de clima SVG ────────────────────────────────────────────────────────
 function ClimaIcono({ codigo }: { codigo: number }) {
   const size = 14
@@ -397,7 +406,7 @@ export function HojaLlamadosPDF({ rodaje, bloques, sol, clima, logoBase64, stick
               const labelTextColor = '#ffffff'
 
               return (
-                <View key={bloque.id} style={[styles.fila, esRodaje ? styles.filaRodaje : {}]} wrap={false}>
+                <View key={bloque.id} style={[styles.fila, esRodaje && !tinteFila(bloque.scenes_color) ? styles.filaRodaje : {}, tinteFila(bloque.scenes_color) ? { backgroundColor: tinteFila(bloque.scenes_color) } : {}]} wrap={false}>
                   <View style={styles.cScenes}>
                     {bloque.scenes_label ? (
                       <Text style={[styles.scenesLabel, { backgroundColor: labelColor, color: labelTextColor }]}>

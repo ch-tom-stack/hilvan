@@ -7,7 +7,7 @@ import { actualizarImagenBloque, desanclarBloque } from '@/app/actions/rodaje-pl
 import { subirImagenBloque, eliminarImagenBloque } from '@/lib/supabase/storage-rodaje'
 import {
   RodajeBloque, RodajeLocacion, BloqueEstilo, PLANTILLAS_BLOQUES,
-  calcularCascada, aplicarCambioTiempo,
+  calcularCascada, aplicarCambioTiempo, moverBloque,
   minutosAHora, horaAMinutos,
 } from '@/types'
 import TimelineView from './TimelineView'
@@ -21,10 +21,58 @@ const COLORES_RAPIDOS = [
   '#d62828', '#f77f00', '#fcbf49', '#eae2b7',
 ]
 
+const COLOR_BASE = '#353135'
+
+/** Color de la fila entera: el color del bloque, suave, para leer el plan de un vistazo. */
+function tinteFila(color?: string): string | undefined {
+  if (!color || color.toLowerCase() === COLOR_BASE) return undefined
+  const m = /^#([0-9a-f]{6})$/i.exec(color)
+  if (!m) return undefined
+  const n = parseInt(m[1], 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, 0.2)`
+}
+
+/** Duración tecleada: «90», «1:30», «1h30», «1h». */
+function parseDuracion(v: string): number {
+  const t = v.trim().toLowerCase()
+  const hm = /^(\d+)\s*(?:h|:)\s*(\d{0,2})$/.exec(t)
+  if (hm) return parseInt(hm[1], 10) * 60 + (hm[2] ? parseInt(hm[2], 10) : 0)
+  return parseInt(t, 10)
+}
+
+// ─── Texto que crece ──────────────────────────────────────────────────────────
+// Un <input> corta la frase en una línea; esto muestra el texto completo y crece con él.
+
+function AutoTextarea({ value, onChange, placeholder, className = '' }: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  className?: string
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      placeholder={placeholder}
+      onChange={e => onChange(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); (e.target as HTMLTextAreaElement).blur() } }}
+      className={`resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-ch-surface focus:rounded-[2px] px-1 w-full leading-snug ${className}`}
+    />
+  )
+}
+
 // ─── TimeInput ────────────────────────────────────────────────────────────────
 
 function TimeInput({ value, onBlur, placeholder = '--:--', className = '' }: {
-  value?: string
+  value?: string | null
   onBlur: (val: string) => void
   placeholder?: string
   className?: string
@@ -69,7 +117,7 @@ export default function TablaPlan({
   mostrarPlantillas, setMostrarPlantillas,
   vistaTimeline, setVistaTimeline,
   onActualizar, onCrear, onCrearDesdePlantilla, onEliminar,
-  seleccionadoId = null, onSeleccionar,
+  seleccionadoId = null, onSeleccionar, titulo, fecha,
 }: {
   rodajeId: string
   bloques: RodajeBloque[]
@@ -88,6 +136,9 @@ export default function TablaPlan({
   /** Fila seleccionada (Ctrl+C / Ctrl+V / Delete la usan). */
   seleccionadoId?: string | null
   onSeleccionar?: (id: string) => void
+  /** Encabezado de la hoja del timeline (lo que se imprime). */
+  titulo?: string
+  fecha?: string | null
 }) {
   const [buscarBloque, setBuscarBloque] = useState('')
   const bloqueCoincide = (b: RodajeBloque) => {
@@ -116,12 +167,12 @@ export default function TablaPlan({
   const subirYAsignar = async (bloqueId: string, file: File) => {
     setSubiendoImagen(bloqueId)
     try {
+      const anterior = bloques.find(b => b.id === bloqueId)?.imagen_url
       const url = await subirImagenBloque(file, rodajeId, bloqueId)
-      if (url) {
-        await actualizarImagenBloque(bloqueId, rodajeId, url)
-        momento('subido', { mensaje: '' })
-        onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: url } : b))
-      }
+      await actualizarImagenBloque(bloqueId, rodajeId, url)
+      momento('subido', { mensaje: '' })
+      onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: url } : b))
+      if (anterior) eliminarImagenBloque(anterior).catch(() => {})
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al subir imagen')
     } finally {
@@ -154,7 +205,7 @@ export default function TablaPlan({
 
   const actualizarTiempo = (bloqueId: string, campo: 'inicio' | 'fin' | 'duracion', valorStr: string) => {
     if (!valorStr) return
-    const valorMin = campo === 'duracion' ? parseInt(valorStr) : horaAMinutos(valorStr)
+    const valorMin = campo === 'duracion' ? parseDuracion(valorStr) : horaAMinutos(valorStr)
     if (isNaN(valorMin)) return
     onActualizar(aplicarCambioTiempo(bloques, bloqueId, campo, valorMin))
   }
@@ -168,20 +219,51 @@ export default function TablaPlan({
 
   // Quita el ancla: el bloque vuelve a seguir el fin del bloque anterior.
   const desanclar = (bloqueId: string) => {
-    onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, hora_inicio_fija: undefined, es_anclado: false } : b))
+    onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, hora_inicio_fija: null, hora_fin: null, es_anclado: false } : b))
     desanclarBloque(bloqueId, rodajeId).catch(() => toastError('No se pudo desanclar el bloque'))
   }
 
-  const mover = (idx: number, dir: 1 | -1) => {
-    const nuevo = [...bloquesRaiz]
-    const target = idx + dir
-    if (target < 0 || target >= nuevo.length) return
-    ;[nuevo[idx], nuevo[target]] = [nuevo[target], nuevo[idx]]
-    onActualizar(bloques.map(b => {
-      const pos = nuevo.findIndex(r => r.id === b.id)
-      return pos !== -1 ? { ...b, orden: pos } : b
-    }))
+  // ── Arrastrar filas ──
+  const [arrastrandoId, setArrastrandoId] = useState<string | null>(null)
+  const [sobreIdx, setSobreIdx] = useState<number | null>(null)
+  const origenIdx = arrastrandoId ? bloquesRaiz.findIndex(b => b.id === arrastrandoId) : -1
+
+  const terminarArrastre = () => { setArrastrandoId(null); setSobreIdx(null) }
+  const soltarEn = (idx: number) => {
+    if (arrastrandoId) onActualizar(moverBloque(bloques, arrastrandoId, idx))
+    terminarArrastre()
   }
+  const empezarArrastre = (e: React.DragEvent, id: string) => {
+    setArrastrandoId(id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', id)
+    const fila = (e.currentTarget as HTMLElement).closest('[data-fila]') as HTMLElement | null
+    if (fila) e.dataTransfer.setDragImage(fila, 12, 12)
+  }
+  const propsDestino = (idx: number) => ({
+    onDragOver: (e: React.DragEvent) => { if (!arrastrandoId) return; e.preventDefault(); if (sobreIdx !== idx) setSobreIdx(idx) },
+    onDrop: (e: React.DragEvent) => { e.preventDefault(); soltarEn(idx) },
+  })
+  // Línea verde donde va a caer la fila: arriba si sube, abajo si baja.
+  const lineaDestino = (idx: number) =>
+    arrastrandoId && sobreIdx === idx && origenIdx !== idx
+      ? (idx < origenIdx ? 'shadow-[inset_0_2px_0_0_#7a9e7e]' : 'shadow-[inset_0_-2px_0_0_#7a9e7e]')
+      : ''
+
+  // Alt + ↑/↓ mueve la fila seleccionada (sin ratón).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || !seleccionadoId || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
+      const t = (document.activeElement as HTMLElement | null)?.tagName
+      if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return
+      const i = bloquesRaiz.findIndex(b => b.id === seleccionadoId)
+      if (i === -1) return
+      e.preventDefault()
+      onActualizar(moverBloque(bloques, seleccionadoId, i + (e.key === 'ArrowUp' ? -1 : 1)))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
   return (
     <div>
@@ -268,13 +350,12 @@ export default function TablaPlan({
       />
 
       {/* Desktop: scroll horizontal en vez de recortar columnas si no entra el ancho */}
-      <div className="hidden lg:block overflow-x-auto">
+      <div className={`${vistaTimeline ? 'hidden' : 'hidden lg:block'} overflow-x-auto`}>
         <div className="min-w-[900px]">
           {/* Headers desktop */}
           <div className="grid border-b border-ch-border px-2 py-1.5 text-xs text-ch-border uppercase tracking-wider select-none"
-            style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 84px 60px 50px 40px 56px' }}>
+            style={{ gridTemplateColumns: '22px 84px 1.3fr 76px 1fr 34px 34px 84px 60px 50px 40px 48px' }}>
             <span />
-            <span>↓</span>
             <span>Scenes</span>
             <span>Descripción</span>
             <span>Char #</span>
@@ -291,7 +372,7 @@ export default function TablaPlan({
       </div>
 
       {vistaTimeline ? (
-        <TimelineView bloquesRaiz={bloquesRaiz} cascada={cascada} />
+        <TimelineView bloquesRaiz={bloquesRaiz} cascada={cascada} titulo={titulo} fecha={fecha} />
       ) : bloquesRaiz.length === 0 ? (
         <div className="text-center py-12 text-ch-subtle text-sm">
           <p>El plan está vacío.</p>
@@ -316,17 +397,27 @@ export default function TablaPlan({
             // Bloque libre: lienzo expresivo a todo lo ancho (fuera de la grilla).
             if (bloque.tipo === 'libre') {
               return (
-                <BloqueLibre
-                  key={bloque.id}
-                  bloque={bloque}
-                  subiendo={subiendoImagen === bloque.id}
-                  onCampo={(campo, valor) => actualizarCelda(bloque.id, campo, valor)}
-                  onEstilo={(parcial: Partial<BloqueEstilo>) =>
-                    actualizarCelda(bloque.id, 'estilo', { ...(bloque.estilo || {}), ...parcial })}
-                  onSubirImagen={(file) => subirYAsignar(bloque.id, file)}
-                  onEliminarImagen={() => bloque.imagen_url && handleEliminarImagen(bloque.id, bloque.imagen_url)}
-                  onEliminar={() => onEliminar(bloque.id)}
-                />
+                <div key={bloque.id} data-fila className={`relative ${lineaDestino(idx)} ${arrastrandoId === bloque.id ? 'opacity-40' : ''}`} {...propsDestino(idx)}>
+                  <span
+                    draggable
+                    onDragStart={e => empezarArrastre(e, bloque.id)}
+                    onDragEnd={terminarArrastre}
+                    title="Arrastra para mover"
+                    className="hidden lg:flex absolute left-0 top-0 bottom-0 w-[22px] items-center justify-center text-ch-border hover:text-ch-muted cursor-grab active:cursor-grabbing select-none z-10"
+                  >⠿</span>
+                  <div className="lg:pl-[22px]">
+                    <BloqueLibre
+                      bloque={bloque}
+                      subiendo={subiendoImagen === bloque.id}
+                      onCampo={(campo, valor) => actualizarCelda(bloque.id, campo, valor)}
+                      onEstilo={(parcial: Partial<BloqueEstilo>) =>
+                        actualizarCelda(bloque.id, 'estilo', { ...(bloque.estilo || {}), ...parcial })}
+                      onSubirImagen={(file) => subirYAsignar(bloque.id, file)}
+                      onEliminarImagen={() => bloque.imagen_url && handleEliminarImagen(bloque.id, bloque.imagen_url)}
+                      onEliminar={() => onEliminar(bloque.id)}
+                    />
+                  </div>
+                </div>
               )
             }
 
@@ -334,38 +425,46 @@ export default function TablaPlan({
             const isExpandido = expandidoMobil === bloque.id
             const isEliminando = confirmarEliminar === bloque.id
 
+            const tinte = tinteFila(bloque.scenes_color)
+            const colorBloque = bloque.scenes_color || COLOR_BASE
+            const anclado = Boolean(bloque.hora_inicio_fija)
+
             return (
-              <div key={bloque.id} className={bloque.es_paralelo ? 'opacity-75' : ''} onClick={() => onSeleccionar?.(bloque.id)}>
+              <div
+                key={bloque.id}
+                data-fila
+                className={`${bloque.es_paralelo ? 'opacity-75' : ''} ${arrastrandoId === bloque.id ? 'opacity-40' : ''} ${lineaDestino(idx)}`}
+                onClick={() => onSeleccionar?.(bloque.id)}
+                {...propsDestino(idx)}
+              >
 
                 {/* FILA DESKTOP */}
                 <div
-                  className={`hidden lg:grid border-b border-ch-border/30 hover:bg-ch-surface/40 transition-colors group items-center min-h-[34px] border-l-2 ${seleccionadoId === bloque.id ? 'border-l-ch-green bg-ch-surface/30' : 'border-l-transparent'}`}
-                  style={{ gridTemplateColumns: '20px 52px 76px 1fr 80px 1fr 36px 36px 84px 60px 50px 40px 56px' }}
+                  className={`hidden lg:grid border-b border-ch-border/30 hover:brightness-110 transition-colors group items-start min-h-[34px] border-l-2 ${seleccionadoId === bloque.id ? 'ring-1 ring-inset ring-ch-green/60' : ''}`}
+                  style={{ gridTemplateColumns: '22px 84px 1.3fr 76px 1fr 34px 34px 84px 60px 50px 40px 48px', backgroundColor: tinte, borderLeftColor: tinte ? colorBloque : 'transparent' }}
                 >
-                  {/* Orden */}
-                  <div className="flex flex-col items-center justify-center gap-0 opacity-0 group-hover:opacity-100">
-                    <button onClick={() => mover(idx, -1)} disabled={idx === 0}
-                      className="text-ch-subtle hover:text-ch-muted disabled:opacity-20 text-[9px] leading-none py-0.5 ch-press">▲</button>
-                    <button onClick={() => mover(idx, 1)} disabled={idx === bloquesRaiz.length - 1}
-                      className="text-ch-subtle hover:text-ch-muted disabled:opacity-20 text-[9px] leading-none py-0.5 ch-press">▼</button>
-                  </div>
-
-                  {/* Hora calculada */}
-                  <div className="px-1">
-                    <span className="text-xs text-ch-muted font-mono">
-                      {casc.inicio_min !== undefined ? minutosAHora(casc.inicio_min) : '—'}
-                    </span>
+                  {/* Arrastrar */}
+                  <div className="flex items-center justify-center self-stretch">
+                    <span
+                      draggable
+                      onDragStart={e => empezarArrastre(e, bloque.id)}
+                      onDragEnd={terminarArrastre}
+                      onClick={e => e.stopPropagation()}
+                      title="Arrastra para mover (o Alt + ↑ ↓)"
+                      className="text-ch-border group-hover:text-ch-muted cursor-grab active:cursor-grabbing select-none text-sm leading-none px-1 py-2"
+                    >⠿</span>
                   </div>
 
                   {/* SCENES + color */}
-                  <div className="flex items-center gap-1 px-1 relative" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 px-1 py-1.5 relative" onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => setColorPickerAbierto(colorPickerAbierto === bloque.id ? null : bloque.id)}
-                      className="w-2.5 h-2.5 rounded-sm shrink-0 border border-ch-border ch-press"
-                      style={{ backgroundColor: bloque.scenes_color || '#353135' }}
+                      title="Color de la fila"
+                      className="w-3 h-3 rounded-sm shrink-0 border border-ch-border ch-press"
+                      style={{ backgroundColor: colorBloque }}
                     />
                     {colorPickerAbierto === bloque.id && (
-                      <div className="absolute left-0 top-6 z-30 bg-ch-surface border border-ch-border rounded-[2px] p-2">
+                      <div className="absolute left-0 top-7 z-30 bg-ch-surface border border-ch-border rounded-[2px] p-2">
                         <div className="grid grid-cols-6 gap-1 mb-2">
                           {COLORES_RAPIDOS.map(c => (
                             <button key={c} onClick={() => { actualizarCelda(bloque.id, 'scenes_color', c); setColorPickerAbierto(null) }}
@@ -373,9 +472,13 @@ export default function TablaPlan({
                               style={{ backgroundColor: c }} />
                           ))}
                         </div>
-                        <input type="color" value={bloque.scenes_color || '#353135'}
+                        <input type="color" value={bloque.scenes_color || COLOR_BASE}
                           onChange={e => actualizarCelda(bloque.id, 'scenes_color', e.target.value)}
                           className="w-full h-6 rounded cursor-pointer" />
+                        {tinte && (
+                          <button onClick={() => { actualizarCelda(bloque.id, 'scenes_color', COLOR_BASE); setColorPickerAbierto(null) }}
+                            className="w-full mt-2 text-[11px] text-ch-subtle hover:text-ch-muted ch-press">Quitar color</button>
+                        )}
                       </div>
                     )}
                     <input
@@ -383,32 +486,32 @@ export default function TablaPlan({
                       onChange={e => actualizarCelda(bloque.id, 'scenes_label', e.target.value)}
                       placeholder="SCENE"
                       className="flex-1 min-w-0 bg-transparent text-xs font-medium focus:outline-none placeholder:text-ch-border truncate"
-                      style={{ color: bloque.scenes_color && bloque.scenes_color !== '#353135' ? bloque.scenes_color : '#999' }}
+                      style={{ color: tinte ? colorBloque : '#999' }}
                     />
                   </div>
 
                   {/* Descripción */}
-                  <div className="flex flex-col justify-center px-1 py-1">
-                    <input value={bloque.titulo} onChange={e => actualizarCelda(bloque.id, 'titulo', e.target.value)}
-                      className="bg-transparent text-sm text-ch-cream focus:outline-none w-full focus:bg-ch-surface focus:rounded-[2px] px-1" />
-                    <input value={bloque.descripcion || ''} onChange={e => actualizarCelda(bloque.id, 'descripcion', e.target.value)}
-                      placeholder="subtexto..." className="bg-transparent text-xs text-ch-subtle focus:outline-none w-full mt-0.5 placeholder:text-ch-border focus:bg-ch-surface focus:rounded-[2px] px-1" />
+                  <div className="flex flex-col justify-center px-1 py-1.5">
+                    <AutoTextarea value={bloque.titulo} onChange={v => actualizarCelda(bloque.id, 'titulo', v)}
+                      className="text-sm text-ch-cream" />
+                    <AutoTextarea value={bloque.descripcion || ''} onChange={v => actualizarCelda(bloque.id, 'descripcion', v)}
+                      placeholder="subtexto..." className="text-xs text-ch-subtle placeholder:text-ch-border mt-0.5" />
                   </div>
 
                   {/* Char # */}
-                  <div className="px-1">
-                    <input value={bloque.character_num || ''} onChange={e => actualizarCelda(bloque.id, 'character_num', e.target.value)}
-                      placeholder="—" className="bg-transparent text-xs text-ch-muted focus:outline-none w-full placeholder:text-ch-border focus:bg-ch-surface focus:rounded-[2px] px-1" />
+                  <div className="px-1 py-1.5">
+                    <AutoTextarea value={bloque.character_num || ''} onChange={v => actualizarCelda(bloque.id, 'character_num', v)}
+                      placeholder="—" className="text-xs text-ch-muted placeholder:text-ch-border" />
                   </div>
 
                   {/* Notas */}
-                  <div className="px-1">
-                    <input value={bloque.nota_previa || ''} onChange={e => actualizarCelda(bloque.id, 'nota_previa', e.target.value)}
-                      placeholder="notas..." className="bg-transparent text-xs text-ch-muted focus:outline-none w-full placeholder:text-ch-border focus:bg-ch-surface focus:rounded-[2px] px-1" />
+                  <div className="px-1 py-1.5">
+                    <AutoTextarea value={bloque.nota_previa || ''} onChange={v => actualizarCelda(bloque.id, 'nota_previa', v)}
+                      placeholder="notas..." className="text-xs text-ch-muted placeholder:text-ch-border" />
                   </div>
 
                   {/* D/N */}
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-center py-1.5">
                     <button onClick={() => actualizarCelda(bloque.id, 'dia_noche', bloque.dia_noche === 'D' ? 'N' : 'D')}
                       className={`text-xs w-6 h-6 rounded-[2px] font-medium transition-colors ${bloque.dia_noche === 'N' ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'} ch-press`}>
                       {bloque.dia_noche || 'D'}
@@ -416,7 +519,7 @@ export default function TablaPlan({
                   </div>
 
                   {/* I/E */}
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-center py-1.5">
                     <button onClick={() => {
                       const ciclo: Record<string, string> = { 'I': 'E', 'E': '-', '-': 'I' }
                       actualizarCelda(bloque.id, 'interior_exterior', ciclo[bloque.interior_exterior || 'I'])
@@ -425,22 +528,24 @@ export default function TablaPlan({
                     </button>
                   </div>
 
-                  {/* INICIO */}
-                  <div className="px-1 flex items-center gap-0.5 min-w-0">
-                    <TimeInput value={bloque.hora_inicio_fija} onBlur={v => actualizarTiempo(bloque.id, 'inicio', v)}
-                      className="text-ch-cream w-12 !px-0 shrink-0" />
+                  {/* INICIO: siempre la hora real; escribirla ancla el bloque */}
+                  <div className="px-1 py-2 flex items-center gap-0.5 min-w-0">
+                    <TimeInput
+                      value={casc.inicio_min !== undefined ? minutosAHora(casc.inicio_min) : bloque.hora_inicio_fija}
+                      onBlur={v => actualizarTiempo(bloque.id, 'inicio', v)}
+                      className={`${anclado ? 'text-ch-cream' : 'text-ch-muted'} w-12 !px-0 shrink-0`} />
                     <button
                       type="button"
-                      onClick={() => bloque.hora_inicio_fija ? desanclar(bloque.id) : anclarAqui(bloque.id, casc.inicio_min)}
-                      title={bloque.hora_inicio_fija ? 'Anclado — clic para liberar y seguir al bloque anterior' : 'Libre — sigue al bloque anterior. Clic para anclar acá'}
-                      className={`shrink-0 w-3 text-[9px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${bloque.hora_inicio_fija ? '!opacity-100 text-ch-gold' : 'text-ch-border hover:text-ch-muted'} ch-press`}
+                      onClick={e => { e.stopPropagation(); anclado ? desanclar(bloque.id) : anclarAqui(bloque.id, casc.inicio_min) }}
+                      title={anclado ? 'Hora fija — clic para liberar y seguir al bloque anterior' : 'Sigue al bloque anterior — clic para fijar esta hora'}
+                      className={`shrink-0 w-3 text-[9px] leading-none transition-opacity ${anclado ? 'text-ch-gold' : 'text-ch-border opacity-0 group-hover:opacity-100 hover:text-ch-muted'} ch-press`}
                     >
                       📌
                     </button>
                   </div>
 
                   {/* FIN */}
-                  <div className="px-1">
+                  <div className="px-1 py-2">
                     <TimeInput
                       value={casc.fin_min !== undefined ? minutosAHora(casc.fin_min) : bloque.hora_fin}
                       onBlur={v => actualizarTiempo(bloque.id, 'fin', v)}
@@ -449,7 +554,7 @@ export default function TablaPlan({
                   </div>
 
                   {/* DUR */}
-                  <div className="px-1">
+                  <div className="px-1 py-2">
                     <input type="text" defaultValue={bloque.duracion_min ?? ''}
                       key={`${bloque.id}-${bloque.duracion_min}`}
                       onBlur={e => actualizarTiempo(bloque.id, 'duracion', e.target.value)}
@@ -459,7 +564,7 @@ export default function TablaPlan({
                   </div>
 
                   {/* IMG */}
-                  <div className="flex items-center justify-center px-0.5" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-center px-0.5 py-1.5" onClick={e => e.stopPropagation()}>
                     {subiendoImagen === bloque.id ? (
                       <span className="text-[10px] text-ch-border">...</span>
                     ) : bloque.imagen_url ? (
@@ -485,7 +590,7 @@ export default function TablaPlan({
                   </div>
 
                   {/* Eliminar — inline confirm */}
-                  <div className="flex items-center justify-end px-1 gap-1" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-end px-1 gap-1 py-2" onClick={e => e.stopPropagation()}>
                     {isEliminando ? (
                       <>
                         <button onClick={async () => { setConfirmarEliminar(null); await onEliminar(bloque.id) }}
@@ -510,7 +615,7 @@ export default function TablaPlan({
                 </div>
 
                 {/* FILA MÓVIL */}
-                <div className="lg:hidden border-b border-ch-border/30">
+                <div className="lg:hidden border-b border-ch-border/30" style={{ backgroundColor: tinte }}>
                   <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-ch-surface/50"
                     onClick={() => setExpandidoMobil(isExpandido ? null : bloque.id)}>
                     <div className="w-1 h-5 rounded-full shrink-0" style={{ backgroundColor: bloque.scenes_color || '#353135' }} />

@@ -13,6 +13,30 @@ async function historial(supabase: Awaited<ReturnType<typeof createClient>>, rod
 }
 const corto = (s: unknown, n = 40) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
 
+// La ficha del rodaje guarda una copia de la locación principal (nombre, dirección,
+// coordenadas): de ahí salen el sol, el clima y el PDF. Antes la copia solo se
+// actualizaba al guardar el formulario de "Editar", así que cambiar la locación
+// dejaba el clima y el sol calculados con la anterior. Ahora se sincroniza en
+// cada cambio de locaciones.
+async function sincronizarLocacionPrincipal(supabase: Awaited<ReturnType<typeof createClient>>, rodajeId: string) {
+  const { data } = await supabase
+    .from('rodaje_locaciones')
+    .select('nombre, direccion, lat, lng')
+    .eq('rodaje_id', rodajeId)
+    .order('es_principal', { ascending: false })
+    .order('orden')
+    .limit(1)
+  const l = data?.[0]
+  if (!l) return // sin locaciones cargadas no se pisa lo que tenga la ficha
+  const { error } = await supabase.from('rodajes').update({
+    locacion_nombre: l.nombre ?? null,
+    locacion_direccion: l.direccion ?? null,
+    locacion_lat: l.lat ?? null,
+    locacion_lng: l.lng ?? null,
+  }).eq('id', rodajeId)
+  if (error) console.error('[rodaje] no se pudo sincronizar la locación principal:', error.message)
+}
+
 // ─── LOCACIONES ───────────────────────────────────────────────────────────────
 
 export async function getLocaciones(rodajeId: string) {
@@ -58,6 +82,7 @@ export async function crearLocacion(rodajeId: string, payload: {
     .select()
     .single()
   if (error) throw error
+  await sincronizarLocacionPrincipal(supabase, rodajeId)
   revalidatePath(`/rodaje/${rodajeId}`)
   return data as RodajeLocacion
 }
@@ -77,6 +102,7 @@ export async function actualizarLocacion(id: string, rodajeId: string, payload: 
     .update(payload)
     .eq('id', id)
   if (error) throw error
+  await sincronizarLocacionPrincipal(supabase, rodajeId)
   revalidatePath(`/rodaje/${rodajeId}`)
 }
 
@@ -86,6 +112,7 @@ export async function eliminarLocacion(id: string, rodajeId: string) {
   const { error } = await supabase.from('rodaje_locaciones').delete().eq('id', id)
   if (error) throw error
   await historial(supabase, rodajeId, `Eliminar locación ${corto(fila[0]?.nombre)}`, [opDelete([{ tabla: 'rodaje_locaciones', filas: fila }])])
+  await sincronizarLocacionPrincipal(supabase, rodajeId)
   revalidatePath(`/rodaje/${rodajeId}`)
 }
 

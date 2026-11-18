@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { EVENTO_HISTORIAL } from '@/components/ui/AtajosGlobales'
 import { guardarPortapapeles, leerPortapapeles, type Portapapeles } from '@/lib/portapapeles-cotizacion'
-import { getRodaje, actualizarEstadoRodaje } from '@/app/actions/rodaje'
+import { getRodaje, actualizarEstadoRodaje, actualizarFichaRapida } from '@/app/actions/rodaje'
 import { toastError, toastOk } from '@/lib/toast'
 import {
   getBloques, getLocaciones, crearBloque, crearBloqueDesdePlantilla,
   guardarBloques, eliminarBloque, dividirBloque, getClima,
+  crearLocacion, actualizarLocacion, geocodificarDireccion,
 } from '@/app/actions/rodaje-plan'
 import {
   RodajeBloque, RodajeLocacion, RodajeEquipoTecnico, RodajeCitacion,
@@ -28,6 +29,10 @@ import type { RodajeSticker } from '@/types'
 import { momento } from '@/lib/momentos'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
+
+// Espera tras el último cambio antes de guardar solo. Con 30 s, cerrar la pestaña
+// o recargar perdía casi todo lo editado.
+const AUTOGUARDADO_MS = 1500
 
 const ESTADO_CICLO: EstadoRodaje[] = ['borrador', 'confirmado', 'completado']
 const ESTADO_CONFIG: Record<EstadoRodaje, { label: string; clase: string }> = {
@@ -67,6 +72,28 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
   const bloquesRef = useRef<RodajeBloque[]>([])
   bloquesRef.current = bloques
 
+  // Sol y clima salen de la fecha y las coordenadas de la locación principal:
+  // se recalculan cada vez que cambia alguna.
+  const calcularSolYClima = useCallback((r: any) => {
+    if (r?.locacion_lat && r?.locacion_lng && r?.fecha) {
+      const fecha = parseFechaLocal(r.fecha)
+      const times = SunCalc.getTimes(fecha, r.locacion_lat, r.locacion_lng)
+      const fmt = (d: Date) => Number.isNaN(d?.getTime()) ? '—' : new Intl.DateTimeFormat('es-CL', {
+        hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago',
+      }).format(d)
+      setSol({
+        amanecer: fmt(times.sunrise),
+        atardecer: fmt(times.sunset),
+        dorada_am: fmt(times.goldenHourEnd),
+        dorada_pm: fmt(times.goldenHour),
+      })
+      getClima(r.locacion_lat, r.locacion_lng, r.fecha).then(setClima).catch(() => setClima(null))
+    } else {
+      setSol(null)
+      setClima(null)
+    }
+  }, [])
+
   // Carga inicial
   const cargarTodo = useCallback(async () => {
     const [r, b, l, sk] = await Promise.all([getRodaje(id), getBloques(id), getLocaciones(id), getStickers(id)])
@@ -77,21 +104,8 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     setHistoria([b])
     setHistoriaIdx(0)
 
-    if (r?.locacion_lat && r?.locacion_lng && r?.fecha) {
-      const fecha = parseFechaLocal(r.fecha)
-      const times = SunCalc.getTimes(fecha, r.locacion_lat, r.locacion_lng)
-      const fmt = (d: Date) => new Intl.DateTimeFormat('es-CL', {
-        hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago',
-      }).format(d)
-      setSol({
-        amanecer: fmt(times.sunrise),
-        atardecer: fmt(times.sunset),
-        dorada_am: fmt(times.goldenHourEnd),
-        dorada_pm: fmt(times.goldenHour),
-      })
-      getClima(r.locacion_lat, r.locacion_lng, r.fecha).then(setClima)
-    }
-  }, [id])
+    calcularSolYClima(r)
+  }, [id, calcularSolYClima])
 
   const recargarBloques = useCallback(async () => {
     const b = await getBloques(id)
@@ -118,11 +132,13 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
         try {
           await guardarBloques(id, bloquesRef.current.map(b => ({ ...b })))
           setCambiosSinGuardar(false)
+        } catch (e) {
+          toastError(e instanceof Error ? e.message : 'No se pudo guardar el plan. Usa el botón Guardar')
         } finally {
           setGuardando(false)
         }
       }
-    }, 30000)
+    }, AUTOGUARDADO_MS)
   }, [id])
 
   const guardarAhora = async () => {
@@ -137,6 +153,14 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       setGuardando(false)
     }
   }
+
+  // Avisa al cerrar la pestaña si queda algo sin guardar.
+  useEffect(() => {
+    if (!cambiosSinGuardar) return
+    const aviso = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', aviso)
+    return () => window.removeEventListener('beforeunload', aviso)
+  }, [cambiosSinGuardar])
 
   const actualizarBloques = useCallback((nuevos: RodajeBloque[]) => {
     setBloques(nuevos)
@@ -304,6 +328,57 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     }
   }
 
+  // ── Ficha rápida: fecha y locación desde el encabezado ──
+  const [nuevaLoc, setNuevaLoc] = useState<{ nombre: string; direccion: string } | null>(null)
+  const [guardandoLoc, setGuardandoLoc] = useState(false)
+
+  const recargarFicha = async () => {
+    const [r, l] = await Promise.all([getRodaje(id), getLocaciones(id)])
+    setRodaje(r)
+    setLocaciones(l)
+    calcularSolYClima(r)
+  }
+
+  const cambiarFecha = async (fecha: string, confirmada?: boolean) => {
+    try {
+      await actualizarFichaRapida(id, { fecha: fecha || null, ...(confirmada === undefined ? {} : { fecha_confirmada: confirmada }) })
+      await recargarFicha()
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'No se pudo cambiar la fecha')
+    }
+  }
+
+  const elegirLocacion = async (locId: string) => {
+    if (locId === '__nueva') { setNuevaLoc({ nombre: '', direccion: '' }); return }
+    try {
+      await actualizarLocacion(locId, id, { es_principal: true })
+      await recargarFicha()
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'No se pudo cambiar la locación')
+    }
+  }
+
+  const guardarNuevaLocacion = async () => {
+    if (!nuevaLoc?.nombre.trim()) return
+    setGuardandoLoc(true)
+    try {
+      const geo = nuevaLoc.direccion.trim() ? await geocodificarDireccion(nuevaLoc.direccion.trim()) : null
+      if (nuevaLoc.direccion.trim() && !geo) toastOk('No se ubicó la dirección en el mapa: se guardó sin coordenadas (sin clima ni sol)')
+      await crearLocacion(id, {
+        nombre: nuevaLoc.nombre.trim(),
+        direccion: nuevaLoc.direccion.trim() || undefined,
+        lat: geo?.lat, lng: geo?.lng,
+        es_principal: true,
+      })
+      setNuevaLoc(null)
+      await recargarFicha()
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'No se pudo guardar la locación')
+    } finally {
+      setGuardandoLoc(false)
+    }
+  }
+
   const cambiarEstado = async () => {
     const idx = ESTADO_CICLO.indexOf(rodaje.estado)
     const siguiente = ESTADO_CICLO[(idx + 1) % ESTADO_CICLO.length]
@@ -357,12 +432,23 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                 </button>
                 {rodaje.proyecto && <span className="text-xs text-ch-subtle">· {rodaje.proyecto.nombre}</span>}
               </div>
-              {fecha && (
-                <p className="text-sm text-ch-muted mt-0.5">
-                  {fecha}
-                  {!rodaje.fecha_confirmada && <span className="ml-2 text-amber-500 text-xs">· fecha por confirmar</span>}
-                </p>
-              )}
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <input
+                  type="date"
+                  value={rodaje.fecha || ''}
+                  onChange={e => cambiarFecha(e.target.value)}
+                  title="Cambiar la fecha del rodaje"
+                  className="bg-transparent border border-transparent hover:border-ch-border focus:border-ch-muted rounded-[2px] px-1 py-0.5 text-sm text-ch-muted focus:outline-none cursor-pointer"
+                />
+                {fecha && <span className="text-sm text-ch-muted capitalize hidden sm:inline">{fecha}</span>}
+                <button
+                  onClick={() => cambiarFecha(rodaje.fecha || '', !rodaje.fecha_confirmada)}
+                  title="Marcar la fecha como confirmada o por confirmar"
+                  className={`text-xs ch-press ${rodaje.fecha_confirmada ? 'text-emerald-500' : 'text-amber-500'}`}
+                >
+                  {rodaje.fecha_confirmada ? '✓ fecha confirmada' : '· fecha por confirmar'}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -436,12 +522,43 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
                 <span className="font-medium text-ch-cream">{minutosAHora(callGeneral)}</span>
               </div>
             )}
-            {locacionPrincipal && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-ch-subtle">📍</span>
-                <span className="text-ch-muted">{locacionPrincipal.nombre}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-ch-subtle">📍</span>
+              {nuevaLoc ? (
+                <>
+                  <input
+                    autoFocus
+                    value={nuevaLoc.nombre}
+                    onChange={e => setNuevaLoc({ ...nuevaLoc, nombre: e.target.value })}
+                    placeholder="Nombre (ej. Estudio EQUECO)"
+                    className="bg-ch-surface border border-ch-border rounded-[2px] px-2 py-0.5 text-xs text-ch-cream w-44 focus:outline-none focus:border-ch-muted"
+                  />
+                  <input
+                    value={nuevaLoc.direccion}
+                    onChange={e => setNuevaLoc({ ...nuevaLoc, direccion: e.target.value })}
+                    onKeyDown={e => { if (e.key === 'Enter') guardarNuevaLocacion() }}
+                    placeholder="Dirección (para clima y sol)"
+                    className="bg-ch-surface border border-ch-border rounded-[2px] px-2 py-0.5 text-xs text-ch-cream w-56 focus:outline-none focus:border-ch-muted"
+                  />
+                  <button onClick={guardarNuevaLocacion} disabled={guardandoLoc || !nuevaLoc.nombre.trim()}
+                    className="text-xs text-ch-cream border border-ch-border px-2 py-0.5 rounded-[2px] hover:border-ch-muted disabled:opacity-40 ch-press">
+                    {guardandoLoc ? '…' : 'Guardar'}
+                  </button>
+                  <button onClick={() => setNuevaLoc(null)} className="text-xs text-ch-subtle hover:text-ch-muted ch-press">Cancelar</button>
+                </>
+              ) : (
+                <select
+                  value={locacionPrincipal?.id ?? ''}
+                  onChange={e => elegirLocacion(e.target.value)}
+                  title="Cambiar la locación del rodaje"
+                  className="bg-transparent border border-transparent hover:border-ch-border focus:border-ch-muted rounded-[2px] px-1 py-0.5 text-xs text-ch-muted focus:outline-none cursor-pointer max-w-[260px]"
+                >
+                  {!locacionPrincipal && <option value="">{rodaje.locacion_nombre || 'Sin locación'}</option>}
+                  {locaciones.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+                  <option value="__nueva">+ Otra locación…</option>
+                </select>
+              )}
+            </div>
             {sol && (
               <div className="flex items-center gap-2 text-ch-muted">
                 <span>↑{sol.amanecer}</span>
@@ -451,6 +568,11 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
               </div>
             )}
             {clima && <span className="text-ch-muted">{clima.temp_min}°/{clima.temp_max}° · {clima.condicion}</span>}
+            {!sol && !clima && rodaje.fecha && (!rodaje.locacion_lat || !rodaje.locacion_lng) && (
+              <span className="text-ch-subtle" title="El clima y el sol se calculan con la fecha y las coordenadas de la locación">
+                Sin coordenadas: pon una dirección en la locación para ver clima y sol
+              </span>
+            )}
             {durTotal > 0 && <span className="text-ch-subtle ml-auto">{Math.floor(durTotal / 60)}h {durTotal % 60}min</span>}
           </div>
 
@@ -501,6 +623,8 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
             onActualizar={actualizarBloques}
             seleccionadoId={bloqueSel}
             onSeleccionar={setBloqueSel}
+            titulo={rodaje.nombre}
+            fecha={rodaje.fecha}
             onCrear={handleCrearBloque}
             onCrearDesdePlantilla={handleCrearDesdePlantilla}
             onEliminar={async (bloqueId) => {

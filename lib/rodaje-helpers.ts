@@ -92,23 +92,123 @@ export function calcularCascada(bloques: RodajeBloque[]): Array<{ id: string; in
   return result
 }
 
-export function aplicarCambioTiempo(bloques: RodajeBloque[], bloqueId: string, campo: 'inicio' | 'fin' | 'duracion', valorMin: number): RodajeBloque[] {
-  const idx = bloques.findIndex(b => b.id === bloqueId)
-  if (idx === -1) return bloques
-  return bloques.map((b, i) => {
-    if (i !== idx) return b
-    const b2 = { ...b }
-    if (campo === 'inicio') { b2.hora_inicio_fija = minutosAHora(valorMin); b2.es_anclado = true; if (b2.duracion_min) b2.hora_fin = minutosAHora(valorMin + b2.duracion_min) }
-    else if (campo === 'fin') {
-      // Inicio efectivo: hora fija si la hay; si no, el que resuelve la cascada
-      // (el bloque parte donde termina el anterior). Así editar el "fin" ajusta
-      // la duración aunque el bloque no esté anclado.
-      let ini = b2.hora_inicio_fija ? horaAMinutos(b2.hora_inicio_fija) : undefined
-      if (ini === undefined) ini = calcularCascada(bloques).find(c => c.id === bloqueId)?.inicio_min
-      if (ini !== undefined && valorMin > ini) { b2.duracion_min = valorMin - ini; b2.hora_fin = minutosAHora(valorMin) }
+type Cascada = ReturnType<typeof calcularCascada>
+
+/** Bloques de primer nivel en el orden del plan (los hijos no entran a la cascada). */
+function raizOrdenada(bloques: RodajeBloque[]): RodajeBloque[] {
+  return bloques.filter(b => !b.padre_id).slice().sort((a, b) => a.orden - b.orden)
+}
+
+/**
+ * Desplaza `delta` minutos los bloques que siguen al que cambió, como en una
+ * planilla: los que no tienen hora fija ya siguen solos; los anclados que
+ * empezaban justo donde terminaba el anterior (la cadena) se corren igual, y la
+ * cadena se corta en el primer hueco, que es una hora puesta a propósito
+ * (almuerzo a las 14:00, por ejemplo).
+ */
+function correrSiguientes(
+  raiz: RodajeBloque[], desde: number, antes: Cascada, finAnterior: number | undefined, delta: number,
+  cambios: Map<string, Partial<RodajeBloque>>,
+) {
+  if (delta === 0 || finAnterior === undefined) return
+  let prevFin: number | undefined = finAnterior
+  for (let j = desde; j < raiz.length; j++) {
+    const b = raiz[j]
+    const old = antes[j]
+    if (b.es_paralelo && !b.hora_inicio_fija) continue // no avanza el reloj
+    if (b.hora_inicio_fija) {
+      if (old.inicio_min === undefined || old.inicio_min !== prevFin) break // hueco deliberado
+      const nuevoIni = old.inicio_min + delta
+      const cambio: Partial<RodajeBloque> = { hora_inicio_fija: minutosAHora(nuevoIni) }
+      if (b.duracion_min) cambio.hora_fin = minutosAHora(nuevoIni + b.duracion_min)
+      cambios.set(b.id, cambio)
     }
-    else if (campo === 'duracion') { b2.duracion_min = valorMin; if (b2.hora_inicio_fija) b2.hora_fin = minutosAHora(horaAMinutos(b2.hora_inicio_fija) + valorMin) }
-    return b2
+    prevFin = old.fin_min
+    if (prevFin === undefined) break
+  }
+}
+
+/**
+ * Edita inicio, fin o duración de un bloque y reacomoda el resto del día.
+ *  - fin: cambia la duración (el inicio manda) y corre los bloques que siguen.
+ *  - duración: ídem.
+ *  - inicio: ancla el bloque. Si queda antes de su fin actual, el fin se
+ *    mantiene y cambia la duración; si lo pasa, el bloque se desplaza entero y
+ *    arrastra a los siguientes.
+ * Para "soltar" un ancla se guarda `null` (un `undefined` no viaja al servidor
+ * y la columna quedaba con la hora vieja).
+ */
+export function aplicarCambioTiempo(bloques: RodajeBloque[], bloqueId: string, campo: 'inicio' | 'fin' | 'duracion', valorMin: number): RodajeBloque[] {
+  const objetivo = bloques.find(b => b.id === bloqueId)
+  if (!objetivo) return bloques
+
+  const raiz = raizOrdenada(bloques)
+  const idx = raiz.findIndex(b => b.id === bloqueId)
+  const cambios = new Map<string, Partial<RodajeBloque>>()
+
+  if (idx === -1) {
+    // Bloque hijo: no participa de la cascada, edición simple.
+    const c: Partial<RodajeBloque> = {}
+    if (campo === 'inicio') { c.hora_inicio_fija = minutosAHora(valorMin); c.es_anclado = true; if (objetivo.duracion_min) c.hora_fin = minutosAHora(valorMin + objetivo.duracion_min) }
+    else if (campo === 'duracion') { c.duracion_min = valorMin; if (objetivo.hora_inicio_fija) c.hora_fin = minutosAHora(horaAMinutos(objetivo.hora_inicio_fija) + valorMin) }
+    cambios.set(bloqueId, c)
+  } else {
+    const antes = calcularCascada(raiz)
+    const { inicio_min: ini0, fin_min: fin0, duracion_min: dur0 } = antes[idx]
+    const sigue = !objetivo.es_paralelo || Boolean(objetivo.hora_inicio_fija)
+
+    if (campo === 'fin') {
+      if (ini0 === undefined || valorMin <= ini0) return bloques
+      cambios.set(bloqueId, { duracion_min: valorMin - ini0, hora_fin: minutosAHora(valorMin) })
+      if (sigue) correrSiguientes(raiz, idx + 1, antes, fin0, valorMin - (fin0 ?? valorMin), cambios)
+    } else if (campo === 'duracion') {
+      const c: Partial<RodajeBloque> = { duracion_min: valorMin }
+      if (objetivo.hora_inicio_fija) c.hora_fin = minutosAHora(horaAMinutos(objetivo.hora_inicio_fija) + valorMin)
+      cambios.set(bloqueId, c)
+      if (sigue && ini0 !== undefined) correrSiguientes(raiz, idx + 1, antes, fin0, valorMin - dur0, cambios)
+    } else {
+      if (ini0 !== undefined && fin0 !== undefined && valorMin < fin0) {
+        // Mueve solo el inicio: el fin queda donde estaba y cambia la duración.
+        cambios.set(bloqueId, { hora_inicio_fija: minutosAHora(valorMin), es_anclado: true, duracion_min: fin0 - valorMin, hora_fin: minutosAHora(fin0) })
+      } else {
+        const c: Partial<RodajeBloque> = { hora_inicio_fija: minutosAHora(valorMin), es_anclado: true }
+        if (dur0) c.hora_fin = minutosAHora(valorMin + dur0)
+        cambios.set(bloqueId, c)
+        if (sigue && fin0 !== undefined) correrSiguientes(raiz, idx + 1, antes, fin0, valorMin + dur0 - fin0, cambios)
+      }
+    }
+  }
+
+  return bloques.map(b => (cambios.has(b.id) ? { ...b, ...cambios.get(b.id) } : b))
+}
+
+/**
+ * Mueve un bloque a otra posición del plan (arrastrar y soltar). El bloque
+ * movido suelta su hora fija para seguir a su nuevo vecino; si el que abría el
+ * día tenía el llamado fijado, esa hora pasa al que queda primero.
+ * `haciaIndice` es la posición final entre los bloques de primer nivel.
+ */
+export function moverBloque(bloques: RodajeBloque[], bloqueId: string, haciaIndice: number): RodajeBloque[] {
+  const raiz = raizOrdenada(bloques)
+  const desde = raiz.findIndex(b => b.id === bloqueId)
+  if (desde === -1) return bloques
+  const destino = Math.max(0, Math.min(raiz.length - 1, haciaIndice))
+  if (destino === desde) return bloques
+
+  const llamado = raiz[0].hora_inicio_fija ?? null
+  const nuevo = raiz.slice()
+  const [movido] = nuevo.splice(desde, 1)
+  nuevo.splice(destino, 0, movido)
+
+  const orden = new Map(nuevo.map((b, i) => [b.id, i]))
+  return bloques.map(b => {
+    const pos = orden.get(b.id)
+    if (pos === undefined) return b
+    let r: RodajeBloque = { ...b, orden: pos }
+    // El movido y el que abría el día (si dejó de abrirlo) sueltan su hora fija.
+    if (b.id === bloqueId || (b.id === raiz[0].id && pos !== 0)) r = { ...r, hora_inicio_fija: null, es_anclado: false, hora_fin: null }
+    if (pos === 0 && llamado) r = { ...r, hora_inicio_fija: llamado, es_anclado: true }
+    return r
   })
 }
 
