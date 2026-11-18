@@ -15,11 +15,13 @@ import {
   eliminarPersonaEquipo,
 } from '@/app/actions/rodaje'
 import { formatHora, RodajeDepartamento, RodajeEquipoTecnico, Colaborador } from '@/types'
+import NominaEquipo from '@/components/rodaje/NominaEquipo'
 
 export default function EquipoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [rodaje, setRodaje] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [vista, setVista] = useState<'departamentos' | 'nomina'>('departamentos')
   const [isPending, startTransition] = useTransition()
 
   const [modalDept, setModalDept] = useState<{ open: boolean; editando?: RodajeDepartamento }>({ open: false })
@@ -45,7 +47,7 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
   const sinDepartamento = (rodaje?.equipo_tecnico || []).filter((p: RodajeEquipoTecnico) => !p.departamento_id)
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className={`p-6 mx-auto ${vista === 'nomina' ? 'max-w-[1600px]' : 'max-w-4xl'}`}>
       {ConfirmDialog}
       <Link href={`/rodaje/${id}`} className="text-xs text-ch-muted hover:text-ch-cream transition-colors">
         ← Volver al rodaje
@@ -71,13 +73,31 @@ export default function EquipoPage({ params }: { params: Promise<{ id: string }>
         </div>
       </div>
 
-      {departamentos.length === 0 && sinDepartamento.length === 0 && (
+      <div className="flex border border-ch-border rounded-[2px] overflow-hidden w-fit mb-6">
+        {([['departamentos', 'Por departamento'], ['nomina', 'Nómina']] as const).map(([k, label], i) => (
+          <button key={k} onClick={() => setVista(k)}
+            className={`text-xs px-3 py-1.5 transition-colors ${i > 0 ? 'border-l border-ch-border' : ''} ${vista === k ? 'bg-ch-surface text-ch-cream' : 'text-ch-subtle hover:text-ch-muted'} ch-press`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {vista === 'nomina' && (
+        <NominaEquipo
+          rodajeId={id}
+          nombreRodaje={rodaje?.nombre ?? ''}
+          equipo={rodaje?.equipo_tecnico || []}
+          onCambio={recargar}
+        />
+      )}
+
+      {vista === 'departamentos' && departamentos.length === 0 && sinDepartamento.length === 0 && (
         <div className="text-center py-16 text-ch-subtle text-sm">
           Agrega departamentos y personas para armar el equipo técnico.
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className={`space-y-6 ${vista === 'nomina' ? 'hidden' : ''}`}>
         {departamentos.map((dept) => (
           <DepartamentoCard
             key={dept.id}

@@ -74,6 +74,7 @@ export async function getRodaje(id: string) {
       equipo_tecnico:rodaje_equipo_tecnico(
         *,
         departamento:rodaje_departamentos(id, nombre, hora_llamado),
+        colaborador:colaboradores(id, rut, telefono, email, restricciones_alimentarias),
         citacion:rodaje_citaciones(*)
       ),
       escenas:rodaje_escenas(* )
@@ -108,7 +109,8 @@ export async function crearRodaje(formData: FormData) {
     fecha: (formData.get('fecha') as string) || null,
     fecha_confirmada: formData.get('fecha_confirmada') === 'true',
     proyecto_id: limpiarTexto(formData.get('proyecto_id')),
-    cotizacion_id: limpiarTexto(formData.get('cotizacion_id')),
+    // El formulario de edición no trae cotizacion_id: sin este chequeo, guardar la ficha la desvinculaba.
+    ...(formData.has('cotizacion_id') ? { cotizacion_id: limpiarTexto(formData.get('cotizacion_id')) } : {}),
     locacion_nombre: limpiarTexto(formData.get('locacion_nombre')),
     locacion_direccion: limpiarTexto(formData.get('locacion_direccion')),
     locacion_lat: formData.get('locacion_lat') ? parseFloat(formData.get('locacion_lat') as string) : null,
@@ -151,6 +153,29 @@ export async function actualizarRodaje(id: string, formData: FormData) {
   if (error) throw error
   const despues = await capturar(supabase, 'rodajes', { col: 'id', valor: id })
   await historial(supabase, id, 'Editar ficha del rodaje', [opUpdate('rodajes', antes, despues)])
+  revalidatePath(`/rodaje/${id}`)
+}
+
+// Cambios sueltos de la ficha desde el encabezado del plan (fecha, confirmación),
+// sin pasar por el formulario completo de "Editar".
+export async function actualizarFichaRapida(id: string, campos: { fecha?: string | null; fecha_confirmada?: boolean }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('No autenticado')
+
+  const payload: Record<string, unknown> = {}
+  if ('fecha' in campos) {
+    if (campos.fecha && !/^\d{4}-\d{2}-\d{2}$/.test(campos.fecha)) throw new Error('Fecha inválida')
+    payload.fecha = campos.fecha || null
+  }
+  if (typeof campos.fecha_confirmada === 'boolean') payload.fecha_confirmada = campos.fecha_confirmada
+  if (Object.keys(payload).length === 0) return
+
+  const antes = await capturar(supabase, 'rodajes', { col: 'id', valor: id })
+  const { error } = await supabase.from('rodajes').update(payload).eq('id', id)
+  if (error) throw error
+  const despues = await capturar(supabase, 'rodajes', { col: 'id', valor: id })
+  await historial(supabase, id, 'Cambiar fecha del rodaje', [opUpdate('rodajes', antes, despues)])
   revalidatePath(`/rodaje/${id}`)
 }
 
@@ -314,6 +339,49 @@ export async function actualizarPersonaEquipo(id: string, rodajeId: string, form
   if (error) throw error
   const despues = await capturar(supabase, 'rodaje_equipo_tecnico', { col: 'id', valor: id })
   await historial(supabase, rodajeId, `Editar a ${corto(despues[0]?.nombre)}`, [opUpdate('rodaje_equipo_tecnico', antes, despues)])
+  revalidatePath(`/rodaje/${rodajeId}/equipo`)
+}
+
+// Campos de la nómina del equipo (edición celda a celda desde la pestaña "Nómina").
+const NOMINA_TEXTO = ['nombre', 'rol', 'telefono', 'email', 'rut', 'direccion', 'restriccion_alimentaria', 'patente'] as const
+const NOMINA_BOOL = ['necesita_transporte', 'necesita_estacionamiento'] as const
+
+export async function actualizarNomina(
+  id: string,
+  rodajeId: string,
+  campos: Partial<Record<(typeof NOMINA_TEXTO)[number] | (typeof NOMINA_BOOL)[number] | 'hora_llamado_individual', string | boolean | null>>,
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('No autenticado')
+
+  const payload: Record<string, unknown> = {}
+  for (const c of NOMINA_TEXTO) {
+    if (!(c in campos)) continue
+    const v = typeof campos[c] === 'string' ? (campos[c] as string).trim() : ''
+    if (c === 'nombre' && !v) throw new Error('El nombre no puede quedar vacío')
+    payload[c] = v === '' ? null : v
+  }
+  for (const c of NOMINA_BOOL) {
+    if (c in campos) payload[c] = campos[c] === true
+  }
+  if ('hora_llamado_individual' in campos) {
+    const h = campos.hora_llamado_individual
+    if (h && (typeof h !== 'string' || !/^\d{2}:\d{2}$/.test(h))) throw new Error('Hora inválida')
+    payload.hora_llamado_individual = h || null
+  }
+  if (Object.keys(payload).length === 0) return
+
+  const antes = await capturar(supabase, 'rodaje_equipo_tecnico', { col: 'id', valor: id })
+  const { error } = await supabase.from('rodaje_equipo_tecnico').update(payload).eq('id', id)
+  if (error) {
+    if (/column .* does not exist|schema cache/i.test(error.message)) {
+      throw new Error('Falta correr sql/rodaje_nomina.sql en Supabase para guardar estos datos')
+    }
+    throw error
+  }
+  const despues = await capturar(supabase, 'rodaje_equipo_tecnico', { col: 'id', valor: id })
+  await historial(supabase, rodajeId, `Editar nómina de ${corto(despues[0]?.nombre)}`, [opUpdate('rodaje_equipo_tecnico', antes, despues)])
   revalidatePath(`/rodaje/${rodajeId}/equipo`)
 }
 

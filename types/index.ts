@@ -597,6 +597,13 @@ export interface RodajeEquipoTecnico {
   telefono?: string
   es_jefe_departamento: boolean
   hora_llamado_individual?: string
+  // Nómina (sql/rodaje_nomina.sql)
+  rut?: string | null
+  direccion?: string | null
+  restriccion_alimentaria?: string | null
+  necesita_transporte?: boolean
+  necesita_estacionamiento?: boolean
+  patente?: string | null
   created_at: string
   updated_at: string
   citacion?: RodajeCitacion
@@ -681,8 +688,9 @@ export interface RodajeBloque {
   locacion?: RodajeLocacion
   descripcion?: string
   nota_previa?: string
-  hora_inicio_fija?: string
-  hora_fin?: string
+  /** `null` = sin hora fija (sigue al bloque anterior); un `undefined` no viaja al servidor. */
+  hora_inicio_fija?: string | null
+  hora_fin?: string | null
   duracion_min?: number
   es_paralelo: boolean
   es_anclado: boolean
@@ -1006,6 +1014,7 @@ export {
   minutosAHora,
   calcularCascada,
   aplicarCambioTiempo,
+  moverBloque,
   duracionTotalDia,
   uberLinkLocacion,
 } from '@/lib/rodaje-helpers'

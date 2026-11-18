@@ -414,3 +414,16 @@ input:-webkit-autofill:focus {
   font-size: 0.65rem;
   color: #9a9a92;
 }
+/* Imprimir el timeline del plan de rodaje: solo la hoja, apaisada. */
+@media print {
+  body * { visibility: hidden !important; }
+  .timeline-imprimible, .timeline-imprimible *, .nomina-imprimible, .nomina-imprimible * { visibility: visible !important; }
+  .timeline-imprimible, .nomina-imprimible {
+    position: absolute !important;
+    left: 0; top: 0;
+    width: 100% !important;
+    min-width: 0 !important;
+    border: 0 !important;
+  }
+  @page { size: A4 landscape; margin: 10mm; }
+}
