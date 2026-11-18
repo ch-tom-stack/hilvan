@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { RodajeSticker, BloqueEstilo } from '@/types'
 
 // Verifica sesión (el editor de rodaje es para usuarios autenticados).
@@ -70,18 +71,20 @@ export async function eliminarSticker(id: string, rodajeId: string) {
 // Sube la imagen de un sticker al bucket rodaje-imagenes (ruta {rid}/stickers/{name}).
 // Recibe los bytes ya procesados (PNG) desde el cliente.
 export async function subirImagenSticker(rodajeId: string, nombre: string, dataUrl: string) {
-  const supabase = await requireSesion()
+  await requireSesion()
   const m = /^data:(image\/[a-z+]+);base64,(.+)$/.exec(dataUrl)
   if (!m) throw new Error('dataUrl inválida')
   const buf = Buffer.from(m[2], 'base64')
   if (buf.length > 10 * 1024 * 1024) throw new Error('Imagen muy grande (máx 10 MB)')
   const safe = nombre.replace(/[^a-z0-9_-]+/gi, '_')
   const path = `${rodajeId}/stickers/${safe}.png`
-  const { error } = await supabase.storage.from('rodaje-imagenes').upload(path, buf, {
+  // Con la clave de servicio: el bucket no tiene política de escritura para la sesión de la persona.
+  const admin = createAdminClient()
+  const { error } = await admin.storage.from('rodaje-imagenes').upload(path, buf, {
     upsert: true,
     contentType: 'image/png',
   })
   if (error) throw new Error(error.message)
-  const { data } = supabase.storage.from('rodaje-imagenes').getPublicUrl(path)
+  const { data } = admin.storage.from('rodaje-imagenes').getPublicUrl(path)
   return data.publicUrl
 }
