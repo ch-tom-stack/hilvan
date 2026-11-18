@@ -1,10 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
 import { RodajeLocacion, RodajeBloque, BloqueEstilo, PLANTILLAS_BLOQUES } from '@/types'
 import { registrar, capturar, opInsert, opUpdate, opDelete, type Fila, type Op } from '@/lib/historial'
 import { extensionSegura } from '@/lib/archivos'
+import { COLUMNAS_BLOQUE, type ColumnaBloque } from '@/lib/rodaje-plan-sync'
 
 // ── Historial (Ctrl+Z) ───────────────────────────────────────────────────────
 async function historial(supabase: Awaited<ReturnType<typeof createClient>>, rodajeId: string, descripcion: string, ops: (Op | null)[]) {
@@ -83,7 +83,6 @@ export async function crearLocacion(rodajeId: string, payload: {
     .single()
   if (error) throw error
   await sincronizarLocacionPrincipal(supabase, rodajeId)
-  revalidatePath(`/rodaje/${rodajeId}`)
   return data as RodajeLocacion
 }
 
@@ -103,7 +102,6 @@ export async function actualizarLocacion(id: string, rodajeId: string, payload: 
     .eq('id', id)
   if (error) throw error
   await sincronizarLocacionPrincipal(supabase, rodajeId)
-  revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 export async function eliminarLocacion(id: string, rodajeId: string) {
@@ -113,7 +111,6 @@ export async function eliminarLocacion(id: string, rodajeId: string) {
   if (error) throw error
   await historial(supabase, rodajeId, `Eliminar locación ${corto(fila[0]?.nombre)}`, [opDelete([{ tabla: 'rodaje_locaciones', filas: fila }])])
   await sincronizarLocacionPrincipal(supabase, rodajeId)
-  revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 // ─── GEOCODING ────────────────────────────────────────────────────────────────
@@ -225,72 +222,45 @@ export async function crearBloqueDesdePlantilla(
  */
 export async function guardarBloques(
   rodajeId: string,
-  bloques: Array<{
-    id: string
-    hora_inicio_fija?: string | null
-    hora_fin?: string | null
-    duracion_min?: number | null
-    es_anclado?: boolean
-    orden?: number
-    titulo?: string
-    tipo?: string
-    scenes_label?: string | null
-    scenes_color?: string | null
-    character_num?: string | null
-    dia_noche?: string | null
-    interior_exterior?: string | null
-    locacion_id?: string | null
-    descripcion?: string | null
-    nota_previa?: string | null
-    es_paralelo?: boolean
-    visible_equipo?: boolean
-    visible_catering?: boolean
-    visible_extras?: boolean
-    visible_cliente?: boolean
-    imagen_url?: string | null
-    contenido_rico?: string | null
-    estilo?: BloqueEstilo | null
-    [k: string]: unknown
-  }>
+  bloques: Array<{ id: string } & Partial<Record<ColumnaBloque, unknown>>>,
 ) {
+  // La UI manda solo los bloques que cambiaron (lib/rodaje-plan-sync.ts).
+  // Camino corto a propósito: sesión y "antes" en paralelo, cada update devuelve
+  // su fila ya escrita (el "después" del historial sin otra consulta) y sin
+  // revalidatePath: la pantalla es cliente y ya tiene el estado; refrescar la
+  // ruta re-renderizaba el layout entero en cada autoguardado.
   const supabase = await createClient()
   const reales = bloques.filter(b => !b.id.startsWith('temp-'))
-  if (reales.length === 0) { revalidatePath(`/rodaje/${rodajeId}`); return }
-
-  // Whitelist de columnas reales: la UI nos pasa el bloque completo ({ ...b }),
-  // que incluye relaciones (locacion, hijos) y timestamps que no se deben escribir.
-  const COLS = [
-    'orden', 'titulo', 'tipo', 'scenes_label', 'scenes_color', 'character_num',
-    'dia_noche', 'interior_exterior', 'locacion_id', 'descripcion', 'nota_previa',
-    'hora_inicio_fija', 'hora_fin', 'duracion_min', 'es_anclado', 'es_paralelo',
-    'visible_equipo', 'visible_catering', 'visible_extras', 'visible_cliente',
-    'imagen_url', 'contenido_rico', 'estilo',
-  ] as const
+  if (reales.length === 0) return
 
   const ids = reales.map(b => b.id)
-  const antes = await capturar(supabase, 'rodaje_bloques', { col: 'id', valor: ids })
+  const [{ data: { user } }, antes] = await Promise.all([
+    supabase.auth.getUser(),
+    capturar(supabase, 'rodaje_bloques', { col: 'id', valor: ids }),
+  ])
+  if (!user) throw new Error('Tu sesión expiró. Recarga la página para seguir guardando.')
+
   const resultados = await Promise.allSettled(
-    reales.map((b) => {
+    reales.map(async (b) => {
+      // Whitelist: la UI puede mandar relaciones (locacion, hijos) o timestamps.
       const update: Record<string, unknown> = {}
-      for (const c of COLS) if (c in b) update[c] = (b as Record<string, unknown>)[c]
-      return supabase
-        .from('rodaje_bloques')
-        .update(update)
-        .eq('id', b.id)
-        .then(({ error }) => {
-          if (error) throw new Error(error.message)
-        })
+      for (const c of COLUMNAS_BLOQUE) if (c in b) update[c] = (b as Record<string, unknown>)[c]
+      const { data, error } = await supabase.from('rodaje_bloques').update(update).eq('id', b.id).select('*').single()
+      if (error) throw new Error(error.message)
+      return data as Fila
     })
   )
-  // El plan se guarda en tandas (autoguardado): una tanda = una acción del
-  // historial, y solo si algo cambió de verdad.
-  const despues = await capturar(supabase, 'rodaje_bloques', { col: 'id', valor: ids })
+  const despues = resultados.flatMap(r => (r.status === 'fulfilled' && r.value ? [r.value] : []))
+
+  // Una tanda de autoguardado = una acción del historial, solo si algo cambió de verdad.
   const op = opUpdate('rodaje_bloques', antes, despues)
   if (op && op.tipo === 'update') {
-    await historial(supabase, rodajeId, `Editar plan (${op.cambios.length} bloque${op.cambios.length === 1 ? '' : 's'})`, [op])
+    await registrar(supabase, user.id, {
+      ruta: `/rodaje/${rodajeId}`, modulo: 'rodaje',
+      descripcion: `Editar plan (${op.cambios.length} bloque${op.cambios.length === 1 ? '' : 's'})`,
+      ops: [op],
+    })
   }
-
-  revalidatePath(`/rodaje/${rodajeId}`)
 
   const fallidos = resultados.filter((r) => r.status === 'rejected')
   if (fallidos.length > 0) {
@@ -313,7 +283,6 @@ export async function desanclarBloque(id: string, rodajeId: string) {
   if (error) throw error
   const despues = await capturar(supabase, 'rodaje_bloques', { col: 'id', valor: id })
   await historial(supabase, rodajeId, `Desanclar bloque ${corto(antes[0]?.titulo)}`, [opUpdate('rodaje_bloques', antes, despues)])
-  revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 export async function eliminarBloque(id: string, rodajeId: string) {
@@ -325,7 +294,6 @@ export async function eliminarBloque(id: string, rodajeId: string) {
   const { error } = await supabase.from('rodaje_bloques').delete().eq('id', id)
   if (error) throw error
   await historial(supabase, rodajeId, `Eliminar bloque ${corto(bloque[0]?.titulo)}`, [opDelete([{ tabla: 'rodaje_bloques', filas: [...bloque, ...hijos] }])])
-  revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 export async function dividirBloque(id: string, rodajeId: string) {
@@ -382,7 +350,6 @@ export async function dividirBloque(id: string, rodajeId: string) {
     nuevo ? opInsert('rodaje_bloques', [nuevo as Fila]) : null,
   ])
 
-  revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 // ─── CLIMA (Open-Meteo) ───────────────────────────────────────────────────────
@@ -435,7 +402,6 @@ export async function actualizarImagenBloque(bloqueId: string, rodajeId: string,
     .update({ imagen_url: imagenUrl })
     .eq('id', bloqueId)
   if (error) throw error
-  revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 // ─── SUBIDA DE IMAGEN DEL CHISTE ─────────────────────────────────────────────

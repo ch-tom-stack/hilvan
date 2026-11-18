@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { toastError } from '@/lib/toast'
 import { momento } from '@/lib/momentos'
-import { actualizarImagenBloque, desanclarBloque } from '@/app/actions/rodaje-plan'
 import { subirImagenBloque, eliminarImagenBloque } from '@/lib/supabase/storage-rodaje'
 import {
   RodajeBloque, RodajeLocacion, BloqueEstilo, PLANTILLAS_BLOQUES,
@@ -169,7 +168,7 @@ export default function TablaPlan({
     try {
       const anterior = bloques.find(b => b.id === bloqueId)?.imagen_url
       const url = await subirImagenBloque(file, rodajeId, bloqueId)
-      await actualizarImagenBloque(bloqueId, rodajeId, url)
+      // La URL entra al plan local; el autoguardado la sube con el resto.
       momento('subido', { mensaje: '' })
       onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: url } : b))
       if (anterior) eliminarImagenBloque(anterior).catch(() => {})
@@ -191,9 +190,8 @@ export default function TablaPlan({
   const handleEliminarImagen = async (bloqueId: string, url: string) => {
     try {
       await eliminarImagenBloque(url)
-      await actualizarImagenBloque(bloqueId, rodajeId, null)
       momento('item.eliminado')
-      onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: undefined } : b))
+      onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, imagen_url: null } : b))
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Error al eliminar imagen')
     }
@@ -219,8 +217,8 @@ export default function TablaPlan({
 
   // Quita el ancla: el bloque vuelve a seguir el fin del bloque anterior.
   const desanclar = (bloqueId: string) => {
+    // Solo local: el autoguardado manda el null (ya no se pierde en el camino).
     onActualizar(bloques.map(b => b.id === bloqueId ? { ...b, hora_inicio_fija: null, hora_fin: null, es_anclado: false } : b))
-    desanclarBloque(bloqueId, rodajeId).catch(() => toastError('No se pudo desanclar el bloque'))
   }
 
   // ── Arrastrar filas ──

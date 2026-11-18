@@ -9,7 +9,7 @@ import { getRodaje, actualizarEstadoRodaje, actualizarFichaRapida } from '@/app/
 import { toastError, toastOk } from '@/lib/toast'
 import {
   getBloques, getLocaciones, crearBloque, crearBloqueDesdePlantilla,
-  guardarBloques, eliminarBloque, dividirBloque, getClima,
+  guardarBloques, eliminarBloque, dividirBloque,
   crearLocacion, actualizarLocacion, geocodificarDireccion,
 } from '@/app/actions/rodaje-plan'
 import {
@@ -27,6 +27,8 @@ import StickerLayerEditor from '@/components/rodaje/StickerLayerEditor'
 import { getStickers } from '@/app/actions/rodaje-stickers'
 import type { RodajeSticker } from '@/types'
 import { momento } from '@/lib/momentos'
+import { obtenerClima } from '@/lib/clima'
+import { bloquesPendientes, columnasBloque, firmaBloque, firmas } from '@/lib/rodaje-plan-sync'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -69,8 +71,18 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
   const [bloqueSel, setBloqueSel] = useState<string | null>(null)
 
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const climaPedidoRef = useRef<AbortController | null>(null)
   const bloquesRef = useRef<RodajeBloque[]>([])
   bloquesRef.current = bloques
+
+  // Sincronización (lib/rodaje-plan-sync.ts): el plan se calcula aquí, al
+  // instante; al servidor solo sube lo que cambió respecto de lo guardado.
+  const guardadasRef = useRef<Map<string, string>>(new Map()) // id → huella guardada
+  const guardandoRef = useRef(false)
+  const otraVueltaRef = useRef(false)
+  const guardarRef = useRef<() => Promise<void>>(async () => {})
+  const temporalesBorradosRef = useRef<Set<string>>(new Set())
+  const ultimaEdicionRef = useRef(0)
 
   // Sol y clima salen de la fecha y las coordenadas de la locación principal:
   // se recalculan cada vez que cambia alguna.
@@ -87,7 +99,11 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
         dorada_am: fmt(times.goldenHourEnd),
         dorada_pm: fmt(times.goldenHour),
       })
-      getClima(r.locacion_lat, r.locacion_lng, r.fecha).then(setClima).catch(() => setClima(null))
+      // El último pedido gana: si se cambia la fecha dos veces seguidas, no pisa una respuesta vieja.
+      climaPedidoRef.current?.abort()
+      const ctrl = new AbortController()
+      climaPedidoRef.current = ctrl
+      obtenerClima(r.locacion_lat, r.locacion_lng, r.fecha, ctrl.signal).then(c => { if (!ctrl.signal.aborted) setClima(c) })
     } else {
       setSol(null)
       setClima(null)
@@ -99,6 +115,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     const [r, b, l, sk] = await Promise.all([getRodaje(id), getBloques(id), getLocaciones(id), getStickers(id)])
     setRodaje(r)
     setBloques(b)
+    guardadasRef.current = firmas(b)
     setStickers(sk)
     setLocaciones(l)
     setHistoria([b])
@@ -110,6 +127,7 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
   const recargarBloques = useCallback(async () => {
     const b = await getBloques(id)
     setBloques(b)
+    guardadasRef.current = firmas(b)
     return b
   }, [id])
 
@@ -126,33 +144,50 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
 
   const programarAutoSave = useCallback(() => {
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-    autoSaveRef.current = setTimeout(async () => {
-      if (bloquesRef.current.length > 0) {
-        setGuardando(true)
-        try {
-          await guardarBloques(id, bloquesRef.current.map(b => ({ ...b })))
-          setCambiosSinGuardar(false)
-        } catch (e) {
-          toastError(e instanceof Error ? e.message : 'No se pudo guardar el plan. Usa el botón Guardar')
-        } finally {
-          setGuardando(false)
-        }
-      }
-    }, AUTOGUARDADO_MS)
-  }, [id])
+    autoSaveRef.current = setTimeout(() => { void guardarRef.current() }, AUTOGUARDADO_MS)
+  }, [])
 
-  const guardarAhora = async () => {
-    if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
+  // Sube lo pendiente. Nunca dos guardados a la vez: si llega otro pedido
+  // mientras uno viaja, se hace una vuelta más al terminar con lo que quede.
+  const guardarPendientes = useCallback(async () => {
+    if (autoSaveRef.current) { clearTimeout(autoSaveRef.current); autoSaveRef.current = null }
+    if (guardandoRef.current) { otraVueltaRef.current = true; return }
+    const cambiados = bloquesPendientes(bloquesRef.current, guardadasRef.current)
+    if (cambiados.length === 0) { setCambiosSinGuardar(false); return }
+
+    guardandoRef.current = true
     setGuardando(true)
+    let ok = true
     try {
-      await guardarBloques(id, bloques.map(b => ({ ...b })))
-      setCambiosSinGuardar(false)
+      await guardarBloques(id, cambiados.map(b => ({ id: b.id, ...columnasBloque(b) })))
+      for (const b of cambiados) guardadasRef.current.set(b.id, firmaBloque(b))
     } catch (e) {
-      toastError(e instanceof Error ? e.message : 'Error al guardar')
+      ok = false
+      toastError(e instanceof Error ? e.message : 'No se pudo guardar el plan. Usa el botón Guardar')
     } finally {
+      guardandoRef.current = false
       setGuardando(false)
+      const quedan = bloquesPendientes(bloquesRef.current, guardadasRef.current).length > 0
+      setCambiosSinGuardar(quedan)
+      // Lo editado mientras viajaba el guardado sale en la vuelta siguiente.
+      if (ok && quedan) {
+        if (otraVueltaRef.current) void guardarRef.current()
+        else programarAutoSave()
+      }
+      otraVueltaRef.current = false
     }
-  }
+  }, [id, programarAutoSave])
+
+  useEffect(() => { guardarRef.current = guardarPendientes }, [guardarPendientes])
+
+  const guardarAhora = () => { void guardarPendientes() }
+
+  // Al cambiar de pestaña o minimizar, sube lo pendiente sin esperar.
+  useEffect(() => {
+    const alOcultar = () => { if (document.visibilityState === 'hidden') void guardarRef.current() }
+    document.addEventListener('visibilitychange', alOcultar)
+    return () => document.removeEventListener('visibilitychange', alOcultar)
+  }, [])
 
   // Avisa al cerrar la pestaña si queda algo sin guardar.
   useEffect(() => {
@@ -165,23 +200,32 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
   const actualizarBloques = useCallback((nuevos: RodajeBloque[]) => {
     setBloques(nuevos)
     setCambiosSinGuardar(true)
-    // Agregar al historial (cortar el futuro si estábamos en undo)
+    // Historial local: las ediciones seguidas (tipear una palabra) son UN paso de
+    // deshacer, no uno por letra. Corta el futuro si se estaba deshaciendo.
+    const ahora = Date.now()
+    const agrupar = ahora - ultimaEdicionRef.current < 800
+    ultimaEdicionRef.current = ahora
     setHistoria(prev => {
       const cortado = prev.slice(0, historiaIdx + 1)
+      if (agrupar && cortado.length > 1) return [...cortado.slice(0, -1), nuevos]
       return [...cortado, nuevos].slice(-50) // max 50 estados
     })
-    setHistoriaIdx(prev => Math.min(prev + 1, 49))
+    if (!agrupar) setHistoriaIdx(prev => Math.min(prev + 1, 49))
     programarAutoSave()
   }, [historiaIdx, programarAutoSave])
 
-  const resolverYCrear = (payload: Partial<RodajeBloque> & { titulo: string }) => {
-    const bloquesRaiz = bloquesRef.current.filter(b => !b.padre_id).sort((a, b) => a.orden - b.orden)
-    const tempId = `temp-${Date.now()}`
+  // Crea un bloque al instante en pantalla (id temporal) y lo da de alta en el
+  // servidor por detrás. Si se editó mientras tanto, esas ediciones se conservan:
+  // solo cambia el id, y el autoguardado sube la diferencia.
+  const insertarOptimista = (payload: Partial<RodajeBloque> & { titulo: string }, despuesDe?: string | null) => {
+    const actuales = bloquesRef.current
+    const raiz = actuales.filter(b => !b.padre_id).sort((a, b) => a.orden - b.orden)
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
     const bloqueOptimista: RodajeBloque = {
       id: tempId,
       rodaje_id: id,
-      orden: bloquesRaiz.length,
+      orden: raiz.length,
       titulo: payload.titulo,
       tipo: payload.tipo ?? 'rodaje',
       scenes_label: payload.scenes_label,
@@ -196,58 +240,59 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
       // del bloque anterior dinámicamente). Si se fija acá con un valor congelado,
       // deja de seguir al bloque de arriba en cuanto ese cambie — hay que anclarlo
       // a mano (toggle de la columna Inicio) si de verdad se quiere una hora fija.
-      hora_inicio_fija: undefined,
-      hora_fin: undefined,
+      hora_inicio_fija: null,
+      hora_fin: null,
       duracion_min: payload.duracion_min ?? 30,
       es_paralelo: false,
       es_anclado: false,
-      visible_equipo: true,
-      visible_catering: true,
-      visible_extras: false,
-      visible_cliente: false,
+      visible_equipo: payload.visible_equipo ?? true,
+      visible_catering: payload.visible_catering ?? true,
+      visible_extras: payload.visible_extras ?? false,
+      visible_cliente: payload.visible_cliente ?? false,
+      imagen_url: payload.imagen_url,
+      contenido_rico: payload.contenido_rico,
+      estilo: payload.estilo,
       created_at: '',
       updated_at: '',
     }
 
-    actualizarBloques([...bloquesRef.current, bloqueOptimista])
+    const pos = despuesDe ? raiz.findIndex(b => b.id === despuesDe) : -1
+    const raizNueva = [...raiz]
+    raizNueva.splice(pos >= 0 ? pos + 1 : raizNueva.length, 0, bloqueOptimista)
+    const orden = new Map(raizNueva.map((b, i) => [b.id, i]))
+    actualizarBloques([
+      ...actuales.map(b => (orden.has(b.id) ? { ...b, orden: orden.get(b.id)! } : b)),
+      { ...bloqueOptimista, orden: orden.get(tempId)! },
+    ])
 
-    // Guardar cambios pendientes en paralelo sin bloquear
-    if (cambiosSinGuardar) {
-      const reales = bloquesRef.current.filter(b => !b.id.startsWith('temp-'))
-      if (reales.length > 0) {
-        guardarBloques(id, reales.map(b => ({ ...b }))).then(() => setCambiosSinGuardar(false)).catch(() => {})
-      }
-    }
-
-    crearBloque(id, {
-      ...payload,
-      duracion_min: payload.duracion_min ?? 30,
-    }).then(real => {
+    crearBloque(id, { ...payload, hora_inicio_fija: null, es_anclado: false, duracion_min: payload.duracion_min ?? 30 }).then(real => {
       const realBloque = real as RodajeBloque
-      setBloques(prev => prev.map(b => b.id === tempId ? realBloque : b))
-      setHistoria(prev => prev.map(snap => snap.map(b => b.id === tempId ? realBloque : b)))
-    }).catch(() => {
+      if (temporalesBorradosRef.current.has(tempId)) {
+        // Se borró antes de que el servidor respondiera: no dejar un huérfano.
+        eliminarBloque(realBloque.id, id).catch(() => {})
+        return
+      }
+      guardadasRef.current.set(realBloque.id, firmaBloque(realBloque))
+      const conId = (b: RodajeBloque) => (b.id === tempId ? { ...b, id: realBloque.id, created_at: realBloque.created_at, updated_at: realBloque.updated_at } : b)
+      setBloques(prev => prev.map(conId))
+      setHistoria(prev => prev.map(snap => snap.map(conId)))
+      setBloqueSel(sel => (sel === tempId ? realBloque.id : sel))
+      programarAutoSave()
+    }).catch(e => {
+      toastError(e instanceof Error ? e.message : 'No se pudo crear el bloque')
       setBloques(prev => prev.filter(b => b.id !== tempId))
       setHistoria(prev => prev.map(snap => snap.filter(b => b.id !== tempId)))
     })
+    return tempId
   }
 
-  // Pegar: se crea al final (como cualquier bloque nuevo) y se mueve justo
-  // después del seleccionado; el orden nuevo sale con el autoguardado.
+  const resolverYCrear = (payload: Partial<RodajeBloque> & { titulo: string }) => { insertarOptimista(payload) }
+
+  // Pegar: aparece al instante justo después del seleccionado.
   const pegarBloque = (datos: Partial<RodajeBloque> & { titulo: string }) => {
-    const limpio: Partial<RodajeBloque> & { titulo: string } = { ...datos, titulo: datos.titulo, hora_inicio_fija: undefined, es_anclado: false }
-    crearBloque(id, { ...limpio, duracion_min: limpio.duracion_min ?? 30 }).then(real => {
-      const nuevo = real as RodajeBloque
-      const actuales = bloquesRef.current
-      const raiz = actuales.filter(b => !b.padre_id).sort((a, b) => a.orden - b.orden)
-      const pos = bloqueSel ? raiz.findIndex(b => b.id === bloqueSel) : -1
-      const raizNueva = [...raiz]
-      raizNueva.splice(pos >= 0 ? pos + 1 : raizNueva.length, 0, nuevo)
-      const renumerada = raizNueva.map((b, i) => ({ ...b, orden: i }))
-      actualizarBloques([...actuales.filter(b => b.padre_id), ...renumerada])
-      setBloqueSel(nuevo.id)
-      toastOk(`Pegado «${nuevo.titulo}»`)
-    }).catch(e => toastError(e instanceof Error ? e.message : 'No se pudo pegar el bloque'))
+    const nuevoId = insertarOptimista({ ...datos, titulo: datos.titulo }, bloqueSel)
+    setBloqueSel(nuevoId)
+    toastOk(`Pegado «${datos.titulo}»`)
   }
 
   // Keyboard: Cmd+Z / Ctrl+Z undo, Cmd+Shift+Z / Ctrl+Y redo (local, en memoria).
@@ -339,21 +384,37 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
     calcularSolYClima(r)
   }
 
+  // Fecha y locación: se aplican en pantalla al tiro (sol y clima incluidos) y
+  // se guardan por detrás; si el servidor falla, se vuelve a lo anterior.
   const cambiarFecha = async (fecha: string, confirmada?: boolean) => {
+    const previo = rodaje
+    const nuevo = { ...rodaje, fecha: fecha || null, ...(confirmada === undefined ? {} : { fecha_confirmada: confirmada }) }
+    setRodaje(nuevo)
+    if (nuevo.fecha !== previo.fecha) calcularSolYClima(nuevo)
     try {
       await actualizarFichaRapida(id, { fecha: fecha || null, ...(confirmada === undefined ? {} : { fecha_confirmada: confirmada }) })
-      await recargarFicha()
     } catch (e) {
+      setRodaje(previo)
+      calcularSolYClima(previo)
       toastError(e instanceof Error ? e.message : 'No se pudo cambiar la fecha')
     }
   }
 
   const elegirLocacion = async (locId: string) => {
     if (locId === '__nueva') { setNuevaLoc({ nombre: '', direccion: '' }); return }
+    const loc = locaciones.find(l => l.id === locId)
+    if (!loc) return
+    const [rodajePrevio, locsPrevias] = [rodaje, locaciones]
+    const nuevo = { ...rodaje, locacion_nombre: loc.nombre, locacion_direccion: loc.direccion ?? null, locacion_lat: loc.lat ?? null, locacion_lng: loc.lng ?? null }
+    setLocaciones(ls => ls.map(l => ({ ...l, es_principal: l.id === locId })))
+    setRodaje(nuevo)
+    calcularSolYClima(nuevo)
     try {
       await actualizarLocacion(locId, id, { es_principal: true })
-      await recargarFicha()
     } catch (e) {
+      setLocaciones(locsPrevias)
+      setRodaje(rodajePrevio)
+      calcularSolYClima(rodajePrevio)
       toastError(e instanceof Error ? e.message : 'No se pudo cambiar la locación')
     }
   }
@@ -630,6 +691,8 @@ export default function RodajeCentroControl({ params }: { params: Promise<{ id: 
             onEliminar={async (bloqueId) => {
               const sinEl = bloques.filter(b => b.id !== bloqueId)
               actualizarBloques(sinEl)
+              guardadasRef.current.delete(bloqueId)
+              if (bloqueId.startsWith('temp-')) temporalesBorradosRef.current.add(bloqueId)
               if (!bloqueId.startsWith('temp-')) {
                 try {
                   await eliminarBloque(bloqueId, id)

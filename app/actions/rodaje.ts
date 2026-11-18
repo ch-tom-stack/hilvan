@@ -176,7 +176,6 @@ export async function actualizarFichaRapida(id: string, campos: { fecha?: string
   if (error) throw error
   const despues = await capturar(supabase, 'rodajes', { col: 'id', valor: id })
   await historial(supabase, id, 'Cambiar fecha del rodaje', [opUpdate('rodajes', antes, despues)])
-  revalidatePath(`/rodaje/${id}`)
 }
 
 export async function actualizarEstadoRodaje(id: string, estado: 'borrador' | 'confirmado' | 'completado') {
@@ -382,7 +381,6 @@ export async function actualizarNomina(
   }
   const despues = await capturar(supabase, 'rodaje_equipo_tecnico', { col: 'id', valor: id })
   await historial(supabase, rodajeId, `Editar nómina de ${corto(despues[0]?.nombre)}`, [opUpdate('rodaje_equipo_tecnico', antes, despues)])
-  revalidatePath(`/rodaje/${rodajeId}/equipo`)
 }
 
 export async function eliminarPersonaEquipo(id: string, rodajeId: string) {

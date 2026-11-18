@@ -698,7 +698,7 @@ export interface RodajeBloque {
   visible_catering: boolean
   visible_extras: boolean
   visible_cliente: boolean
-  imagen_url?: string
+  imagen_url?: string | null
   /** Texto libre del bloque "libre" (el lienzo: chistes, notas, lo que sea). */
   contenido_rico?: string
   /** Estilo expresivo del bloque (fuente curada, colores, tamaño, peso). */

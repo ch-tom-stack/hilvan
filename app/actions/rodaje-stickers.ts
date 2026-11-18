@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RodajeSticker, BloqueEstilo } from '@/types'
 
@@ -46,7 +45,6 @@ export async function crearSticker(
     .select()
     .single()
   if (error) throw new Error(error.message)
-  revalidatePath(`/rodaje/${rodajeId}`)
   return data as RodajeSticker
 }
 
@@ -58,14 +56,12 @@ export async function actualizarSticker(
   const supabase = await requireSesion()
   const { error } = await supabase.from('rodaje_stickers').update(campos).eq('id', id)
   if (error) throw new Error(error.message)
-  revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 export async function eliminarSticker(id: string, rodajeId: string) {
   const supabase = await requireSesion()
   const { error } = await supabase.from('rodaje_stickers').delete().eq('id', id)
   if (error) throw new Error(error.message)
-  revalidatePath(`/rodaje/${rodajeId}`)
 }
 
 // Sube la imagen de un sticker al bucket rodaje-imagenes (ruta {rid}/stickers/{name}).
