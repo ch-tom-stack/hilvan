@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { randomBytes } from 'crypto'
+import { crearLinkClave } from '@/lib/clave-link-io'
 import type { Profile, Rol } from '@/types'
 
 function generarPasswordTemporal(): string {
@@ -58,7 +59,7 @@ export async function invitarUsuario(
   email: string,
   nombre: string,
   rol: Rol,
-): Promise<{ ok?: boolean; error?: string; password?: string }> {
+): Promise<{ ok?: boolean; error?: string; userId?: string; link?: { url: string; expira: string }; password?: string }> {
   const supabase = await createClient()
 
   // Solo admins pueden invitar
@@ -102,7 +103,16 @@ export async function invitarUsuario(
   if (profileError) return { error: profileError.message }
 
   revalidatePath('/usuarios')
-  return { ok: true, password: passwordTemporal }
+
+  // Lo normal: un link para que defina su propia contraseña. Si fallara, queda
+  // la temporal como respaldo.
+  try {
+    const link = await crearLinkClave(admin, data.user.id)
+    return { ok: true, userId: data.user.id, link }
+  } catch (e) {
+    console.error('[usuarios] no se pudo crear el link de contraseña:', e)
+    return { ok: true, userId: data.user.id, password: passwordTemporal }
+  }
 }
 
 export async function resetearPassword(

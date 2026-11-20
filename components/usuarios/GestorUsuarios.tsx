@@ -2,6 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { actualizarRol, resetearPassword, eliminarUsuario } from '@/app/actions/usuarios'
+import { generarLinkClave } from '@/app/actions/clave-link'
+import { toastError } from '@/lib/toast'
+import LinkClave from '@/components/usuarios/LinkClave'
 import type { Profile, Rol } from '@/types'
 
 const ROLES: { value: Rol; label: string; desc: string }[] = [
@@ -36,6 +39,7 @@ function UsuarioRow({ usuario, isSelf }: RowProps) {
   const [eliminando, setEliminando]     = useState(false)
   const [eliminado, setEliminado]       = useState(false)
   const [tempPass, setTempPass]         = useState<string | null>(null)
+  const [linkClave, setLinkClave]       = useState<{ url: string; expira: string } | null>(null)
   const [copiado, setCopiado]           = useState(false)
   const [pending, start]                = useTransition()
   const [msg, setMsg]                   = useState('')
@@ -52,10 +56,26 @@ function UsuarioRow({ usuario, isSelf }: RowProps) {
   const handleResetPass = () => {
     setMsg('')
     setTempPass(null)
+    setLinkClave(null)
     start(async () => {
       const res = await resetearPassword(usuario.id)
       if (res.error) { setMsg(res.error) }
       else if (res.password) { setTempPass(res.password) }
+    })
+  }
+
+  const handleLinkClave = () => {
+    setMsg('')
+    setTempPass(null)
+    setLinkClave(null)
+    start(async () => {
+      try {
+        const res = await generarLinkClave(usuario.id)
+        if (res.error || !res.url || !res.expira) { setMsg(res.error || 'No se pudo generar el link') }
+        else { setLinkClave({ url: res.url, expira: res.expira }) }
+      } catch {
+        toastError('No se pudo generar el link')
+      }
     })
   }
 
@@ -150,6 +170,14 @@ function UsuarioRow({ usuario, isSelf }: RowProps) {
                     Cambiar
                   </button>
                   <button
+                    onClick={handleLinkClave}
+                    disabled={pending}
+                    title="Generar un link para que defina su contraseña"
+                    className="text-xs text-ch-muted hover:text-ch-green transition-colors disabled:opacity-50"
+                  >
+                    {pending ? '…' : 'Link clave'}
+                  </button>
+                  <button
                     onClick={handleResetPass}
                     disabled={pending}
                     title="Generar nueva contraseña temporal"
@@ -172,6 +200,20 @@ function UsuarioRow({ usuario, isSelf }: RowProps) {
         </div>
 
       </div>
+
+      {/* Link para que defina su contraseña */}
+      {linkClave && (
+        <div className="mt-3 pt-3 border-t border-ch-border/50">
+          <p className="text-[10px] text-ch-muted tracking-widest uppercase mb-1.5">Link para definir contraseña</p>
+          <LinkClave
+            userId={usuario.id}
+            email={usuario.email}
+            url={linkClave.url}
+            expira={linkClave.expira}
+            onCerrar={() => setLinkClave(null)}
+          />
+        </div>
+      )}
 
       {/* Contraseña temporal generada */}
       {tempPass && (

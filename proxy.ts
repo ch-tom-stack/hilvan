@@ -65,6 +65,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/m/') ||
     pathname.startsWith('/r/') ||
     pathname.startsWith('/q/') ||
+    pathname.startsWith('/clave/') ||
     pathname.startsWith('/cotizacion/') ||
     pathname.startsWith('/citacion/') ||
     pathname.startsWith('/col/') ||

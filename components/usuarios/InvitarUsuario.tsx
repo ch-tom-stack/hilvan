@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import { invitarUsuario } from '@/app/actions/usuarios'
 import type { Rol } from '@/types'
 import { momento } from '@/lib/momentos'
+import { toastError } from '@/lib/toast'
+import LinkClave from '@/components/usuarios/LinkClave'
 
 const ROLES: { value: Rol; label: string }[] = [
   { value: 'productor',    label: 'Productor' },
@@ -19,7 +21,7 @@ export default function InvitarUsuario() {
   const [email, setEmail]             = useState('')
   const [rol, setRol]                 = useState<Rol>('colaborador')
   const [error, setError]             = useState<string | null>(null)
-  const [creado, setCreado]           = useState<{ nombre: string; email: string; password: string } | null>(null)
+  const [creado, setCreado]           = useState<{ userId: string; nombre: string; email: string; link?: { url: string; expira: string }; password?: string } | null>(null)
   const [copiado, setCopiado]         = useState(false)
   const [pending, start]              = useTransition()
 
@@ -50,11 +52,15 @@ export default function InvitarUsuario() {
     if (!email.trim())  { setError('El email es requerido'); return }
 
     start(async () => {
-      const res = await invitarUsuario(email.trim(), nombre.trim(), rol)
-      if (res.error) {
-        setError(res.error)
-      } else if (res.password) {
-        setCreado({ nombre: nombre.trim(), email: email.trim(), password: res.password })
+      try {
+        const res = await invitarUsuario(email.trim(), nombre.trim(), rol)
+        if (res.error) {
+          setError(res.error)
+        } else if (res.userId) {
+          setCreado({ userId: res.userId, nombre: nombre.trim(), email: email.trim(), link: res.link, password: res.password })
+        }
+      } catch {
+        toastError('No se pudo crear el usuario')
       }
     })
   }
@@ -92,7 +98,9 @@ export default function InvitarUsuario() {
             Usuario <span className="text-ch-green">{creado.nombre}</span> creado correctamente.
           </p>
           <p className="text-xs text-ch-muted mb-4">
-            Comparte esta contraseña temporal con {creado.nombre} (ej. por WhatsApp). Podrá cambiarla desde su perfil.
+            {creado.link
+              ? <>Mándale este link a {creado.nombre} (por WhatsApp o por correo) para que defina su contraseña.</>
+              : <>Comparte esta contraseña temporal con {creado.nombre} (ej. por WhatsApp). Podrá cambiarla desde su perfil.</>}
           </p>
 
           <div className="mb-2">
@@ -100,20 +108,27 @@ export default function InvitarUsuario() {
             <p className="font-mono text-sm text-ch-cream">{creado.email}</p>
           </div>
 
-          <div className="mb-5">
+          {creado.link && (
+            <div className="mb-5">
+              <p className="text-[10px] text-ch-muted tracking-widest uppercase mb-1.5">Link para definir contraseña</p>
+              <LinkClave userId={creado.userId} email={creado.email} url={creado.link.url} expira={creado.link.expira} bienvenida />
+            </div>
+          )}
+
+          {creado.password && <div className="mb-5">
             <p className="text-[10px] text-ch-muted tracking-widest uppercase mb-1.5">Contraseña temporal</p>
             <div className="flex items-center gap-3">
               <code className="flex-1 font-mono text-sm text-ch-cream bg-ch-dark border border-ch-border px-3 py-2 rounded-[2px] tracking-wider select-all">
                 {creado.password}
               </code>
               <button
-                onClick={() => copiar(creado.password)}
+                onClick={() => copiar(creado.password!)}
                 className="text-xs px-3 py-2 border border-ch-border text-ch-muted hover:text-ch-cream hover:border-ch-green/50 rounded-[2px] transition-colors whitespace-nowrap"
               >
                 {copiado ? '✓ Copiado' : 'Copiar'}
               </button>
             </div>
-          </div>
+          </div>}
 
           <button
             onClick={cerrar}
